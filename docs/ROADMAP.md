@@ -13,8 +13,8 @@ Người dùng chỉ cần copy "Câu lệnh mẫu" dán cho agent. Agent đọc
 | # | Giai đoạn | Đầu ra chính | Trạng thái |
 |---|---|---|---|
 | 0 | Khởi động | Thư mục `docs/`, file theo dõi | ✅ |
-| 1 | Nghiên cứu & ý tưởng | `docs/research.md` | ⬜ |
-| 2 | Spec (PRD) & quyết định kỹ thuật | `docs/PRD.md`, `docs/adr/*` | ⬜ |
+| 1 | Nghiên cứu & ý tưởng | `docs/research.md` | ✅ |
+| 2 | Spec (PRD) & quyết định kỹ thuật | `docs/PRD.md`, `docs/adr/*` | ✅ |
 | 3 | Kiến trúc & kế hoạch | `docs/ARCHITECTURE.md`, `docs/plans/*` | ⬜ |
 | 4 | Thiết kế UI/UX | `docs/DESIGN.md`, design tokens | ⬜ |
 | 5 | MVP lõi: trận đấu offline | Đá được 1 trận với máy | ⬜ |
@@ -53,8 +53,8 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 - Đá với máy trước, PvP sau? (khuyến nghị: có)
 
 **Hoàn thành khi:**
-- [ ] `docs/research.md` có bảng so sánh + 3 phương án MVP
-- [ ] Người dùng đã chọn 1 phương án (ghi vào PROGRESS.md)
+- [x] `docs/research.md` có bảng so sánh + 3 phương án MVP
+- [x] Người dùng đã chọn 1 phương án (ghi vào PROGRESS.md)
 
 ---
 
@@ -70,9 +70,9 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 > Từ docs/PRD.md, đề xuất tech stack và ghi mỗi quyết định thành 1 ADR trong docs/adr/: game engine (Phaser/PixiJS/Three.js), framework UI, backend, database, realtime (WebSocket/Colyseus…), hosting. Mỗi ADR có lựa chọn thay thế và lý do. Sau đó điền mục "Tech stack" trong CLAUDE.md.
 
 **Hoàn thành khi:**
-- [ ] `docs/PRD.md` có mục "Không làm" và tiêu chí chấp nhận
-- [ ] Có ADR cho engine, frontend, backend, DB, realtime, hosting
-- [ ] Mục "Tech stack" trong CLAUDE.md đã điền
+- [x] `docs/PRD.md` có mục "Không làm" và tiêu chí chấp nhận
+- [x] Có ADR cho engine, frontend, backend, DB, realtime, hosting _(hosting: proposed, chốt ở GĐ 9)_
+- [x] Mục "Tech stack" trong CLAUDE.md đã điền
 
 ---
 
