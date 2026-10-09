@@ -15,7 +15,7 @@ Người dùng chỉ cần copy "Câu lệnh mẫu" dán cho agent. Agent đọc
 | 0 | Khởi động | Thư mục `docs/`, file theo dõi | ✅ |
 | 1 | Nghiên cứu & ý tưởng | `docs/research.md` | ✅ |
 | 2 | Spec (PRD) & quyết định kỹ thuật | `docs/PRD.md`, `docs/adr/*` | ✅ |
-| 3 | Kiến trúc & kế hoạch | `docs/ARCHITECTURE.md`, `docs/plans/*` | ⬜ |
+| 3 | Kiến trúc & kế hoạch | `docs/ARCHITECTURE.md`, `docs/plans/*` | ✅ |
 | 4 | Thiết kế UI/UX | `docs/DESIGN.md`, design tokens | ⬜ |
 | 5 | MVP lõi: trận đấu offline | Đá được 1 trận với máy | ⬜ |
 | 6 | Hệ thống thẻ & đội hình | Mở thẻ, kho thẻ, xếp đội hình | ⬜ |
@@ -85,9 +85,9 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 > Làm Giai đoạn 3. Dựa trên PRD và ADR, viết docs/ARCHITECTURE.md: sơ đồ module (client game, UI, API, game server, DB), schema database (user, card, player_card, pack, squad, match, transaction), danh sách API, luồng mở thẻ phía server. Sau đó dùng /ecc:blueprint chia Giai đoạn 5–9 thành các task nhỏ (mỗi task ≤ 1 phiên làm việc), lưu vào docs/plans/. Dựng skeleton dự án (monorepo, lint, test runner) và điền "Lệnh thường dùng" trong CLAUDE.md.
 
 **Hoàn thành khi:**
-- [ ] `docs/ARCHITECTURE.md` có schema DB + danh sách API
-- [ ] `docs/plans/` có task list đánh số cho giai đoạn 5–9
-- [ ] Skeleton chạy được `dev` và `test` (rỗng cũng được)
+- [x] `docs/ARCHITECTURE.md` có schema DB + danh sách API
+- [x] `docs/plans/` có task list đánh số cho giai đoạn 5–9
+- [x] Skeleton chạy được `dev` và `test` (rỗng cũng được)
 
 ---
 

@@ -195,7 +195,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Cấp đích | +1 | +2 | +3 | +4 | +5 |
 |---|---|---|---|---|---|
 | Tỉ lệ thành công cơ bản | 100% | 80% | 60% | 40% | 25% |
-| Cộng **dồn** vào mọi chỉ số (tối đa 99) | +1 | +2 | +3 | +5 | +7 |
+| **Tổng** cộng vào mọi chỉ số ở cấp đó (không cộng thêm từ các cấp trước; tối đa 99) | +1 | +2 | +3 | +5 | +7 |
 | Phí xu (× hệ số độ hiếm) | 50 | 100 | 200 | 400 | 800 |
 
 - Hệ số độ hiếm của thẻ được ép: Đồng ×1, Bạc ×2, Vàng ×3, Huyền thoại ×5.
@@ -264,7 +264,8 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 
 - Đăng ký bằng tên đăng nhập + mật khẩu (email để khôi phục là tuỳ chọn). Mật khẩu băm bằng thuật toán chậm (bcrypt/argon2). Phiên đăng nhập dùng cookie httpOnly.
 - Không có chế độ khách trong MVP.
-- Analytics ghi sự kiện: `register`, `login`, `match_start`, `match_end`, `pack_open`, `upgrade`, `mission_claim`. Dữ liệu này đủ để tính D1/D7 retention, số trận/ngày, số gói mở/ngày.
+- Analytics ghi sự kiện: `register`, `login`, `session_seen` (1 lần/ngày/người, khi gọi API đã đăng nhập), `match_start`, `match_end`, `pack_open`, `upgrade`, `mission_claim`. Dữ liệu này đủ để tính D1/D7 retention, số trận/ngày, số gói mở/ngày.
+- Người chơi **"quay lại ngày N"** = có ít nhất 1 sự kiện bất kỳ vào ngày thứ N (GMT+7) sau ngày đăng ký.
 
 **Tiêu chí chấp nhận F8, F13**
 - [ ] Đăng ký → đăng nhập → đăng xuất hoạt động. Sai mật khẩu 5 lần trong 15 phút thì tạm khoá đăng nhập 15 phút.
