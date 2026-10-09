@@ -1,0 +1,23 @@
+{
+  "name": "@pitch/server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsup",
+    "start": "node dist/server.js",
+    "typecheck": "tsc -p tsconfig.json"
+  },
+  "dependencies": {
+    "@pitch/shared": "workspace:*",
+    "@pitch/sim": "workspace:*",
+    "fastify": "^5.12.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^24.19.1",
+    "tsup": "^8.5.1",
+    "tsx": "^4.23.15"
+  }
+}

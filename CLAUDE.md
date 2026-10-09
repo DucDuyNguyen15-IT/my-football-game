@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** 3 — Kiến trúc & kế hoạch triển khai
-- **Việc tiếp theo:** xem mục "Giai đoạn 3" trong `docs/ROADMAP.md`
+- **Giai đoạn đang làm:** 4 — Thiết kế UI/UX
+- **Việc tiếp theo:** xem mục "Giai đoạn 4" trong `docs/ROADMAP.md`; task code (GĐ5–9) nằm trong `docs/plans/`
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
@@ -31,4 +31,18 @@ Chi tiết và lý do: `docs/adr/README.md`.
 - **Hosting:** Docker Compose (Caddy + server + Postgres), nhà cung cấp chốt ở Giai đoạn 9 — [ADR-0007](docs/adr/0007-hosting-docker-compose.md) _(proposed)_
 
 ## Lệnh thường dùng
-_(Điền sau Giai đoạn 3 — dev, test, build)_
+Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install-directory "$HOME/bin" pnpm` nếu không có quyền admin). Từ task 6.1 cần Postgres 16 (Docker Desktop).
+
+| Lệnh (chạy ở gốc repo) | Tác dụng |
+|---|---|
+| `pnpm install` | Cài dependency cho toàn monorepo |
+| `pnpm dev` | Chạy web (Vite :5173, proxy `/api` → :3000) + server (Fastify :3000, tự reload) |
+| `pnpm test` | Chạy toàn bộ test Vitest (mọi package) — `pnpm test:watch` để chạy theo dõi |
+| `pnpm --filter @pitch/sim exec vitest run` | Chỉ test một package (thay `@pitch/sim` bằng `@pitch/server`, `@pitch/web`, `@pitch/shared`) |
+| `pnpm lint` | ESLint (chặn Phaser/DOM/`Math.random` trong `packages/sim`, `Math.random` trong server) |
+| `pnpm typecheck` | `tsc` cho từng package |
+| `pnpm check` | lint + typecheck + test — **phải xanh trước mỗi commit** |
+| `pnpm build` | Build web (`apps/web/dist`) + server (`apps/server/dist`) |
+| `pnpm format` | Prettier |
+
+Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất biến chung).

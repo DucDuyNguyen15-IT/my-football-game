@@ -1,0 +1,5 @@
+{
+  // Không có "DOM" trong lib và không có @types/node: sim phải chạy được ở cả trình duyệt và Node (ADR-0001).
+  "extends": "../../tsconfig.base.json",
+  "include": ["src"]
+}

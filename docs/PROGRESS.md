@@ -4,6 +4,13 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
+## Giai đoạn 3 — Kiến trúc & kế hoạch triển khai (2026-10-10) ✅
+- Viết `docs/ARCHITECTURE.md`: sơ đồ module, schema 13 bảng (CHECK xu ≥ 0, ledger append-only, khoá theo thứ tự users → pack_boxes → player_cards → squads), 19 endpoint `/api/v1`, luồng mở thẻ server (idempotency + FOR UPDATE + CSPRNG), match token.
+- `docs/plans/`: 42 task cho GĐ5–9 (blueprint, đã qua review phản biện, sửa 23 phát hiện). Đưa đăng nhập/ví cơ bản từ GĐ7 lên GĐ6 vì gacha server cần biết người chơi.
+- Skeleton pnpm monorepo (`apps/web`, `apps/server`, `packages/sim`, `packages/shared`): `pnpm dev/test/lint/typecheck/build` chạy được; lint chặn Phaser/DOM/`Math.random` trong sim. TypeScript khoá 6.0 (typescript-eslint chưa hỗ trợ TS 7).
+- Chốt thêm trong PRD: ép thẻ +5 = tổng +7 chỉ số; D7 retention tính theo "có sự kiện bất kỳ", thêm `session_seen`.
+- Cần cài Docker Desktop trước task 6.1a (Postgres). Tiếp theo: Giai đoạn 4 — DESIGN.md.
+
 ## Giai đoạn 2 — Spec (PRD) & quyết định kỹ thuật (2026-10-09) ✅
 - Viết `docs/PRD.md`: 7v7 vs máy (2 hiệp × 3 phút, phạm lỗi/thẻ, luân lưu, thể lực + thay người), 4 độ hiếm Đồng→Huyền thoại, hộp 100 phiếu (2/10/30/58), gói 1 thẻ 100 xu / gói 5 thẻ 450 xu, ép +1→+5 có điểm may mắn, giới hạn 15 trận thưởng/ngày, mục tiêu D7 ≥ 15%.
 - Chốt tên cầu thủ hư cấu "quen tai", **không** dùng tên nhại (rủi ro pháp lý khi phát hành).
