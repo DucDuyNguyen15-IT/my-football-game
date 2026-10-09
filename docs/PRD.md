@@ -103,7 +103,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Hòa sau 2 hiệp | Đá **luân lưu** 5 lượt mỗi đội, sau đó đá đến khi phân thắng bại (sudden death) |
 | Thể lực | Mỗi cầu thủ có thanh thể lực 100%. Chạy nước rút làm thanh tụt nhanh, chạy thường tụt chậm, đứng yên hồi lại. Tốc độ hao phụ thuộc chỉ số Thể lực. Dưới 30% thì tốc độ tối đa và độ chính xác giảm dần |
 | Thay người | Tối đa **3 lượt/trận**, chỉ khi bóng chết (biên, góc, phát bóng, sau bàn thắng, nghỉ giữa hiệp). Mở menu thì trận tạm dừng. Đội máy cũng thay người khi cầu thủ dưới 30% thể lực |
-| Điều khiển (đề xuất, chốt ở Giai đoạn 4) | WASD/mũi tên: di chuyển · J: chuyền thấp · L: chuyền bổng · K: sút (giữ để tăng lực) · Shift: chạy nước rút · khi **không có bóng**: K = xoạc, J = đổi người gần bóng · Esc/Tab: menu thay người khi bóng chết |
+| Điều khiển (chốt GĐ4, DESIGN.md §6.2) | WASD/mũi tên: di chuyển · J: chuyền thấp · L: chuyền bổng · K: sút (giữ để tăng lực) · Shift: chạy nước rút · khi **không có bóng**: K = xoạc, J = đổi người gần bóng · Esc: tạm dừng (mọi lúc); mục thay người trong menu tạm dừng chỉ bật khi bóng chết. Không dùng Tab |
 | Kết quả | Thắng / Hòa (thua hay thắng luân lưu) / Thua. Tỉ số và thẻ phạt hiển thị cuối trận |
 
 **Tiêu chí chấp nhận F1–F3**
@@ -120,7 +120,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 
 ### 6.1 Độ hiếm và kho thẻ
 
-| Độ hiếm | OVR | Số mẫu thẻ (~150) | Màu (chốt ở Giai đoạn 4) |
+| Độ hiếm | OVR | Số mẫu thẻ (~150) | Màu (DESIGN.md §3.2) |
 |---|---|---|---|
 | Đồng | 50–64 | ~60 | Nâu đồng |
 | Bạc | 65–74 | ~45 | Bạc |
@@ -316,7 +316,7 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 
 - [ ] Tên chính thức của game (đang dùng tên tạm "Pitch Cards").
 - [ ] Phím điều khiển chi tiết. Chốt ở Giai đoạn 4 sau khi thử prototype.
-- [ ] Ảnh đại diện thẻ: tự vẽ, sinh theo tham số (avatar vector), hay chỉ silhouette + màu độ hiếm? Chốt ở Giai đoạn 4.
+- [x] Ảnh đại diện thẻ: avatar vector sinh từ `avatar_seed` (DESIGN.md §4).
 - [ ] OVR đội máy (~60 / ~78) và độ trễ phản ứng AI cần cân chỉnh qua playtest.
 - [ ] Có cần xác minh trận bằng log input ngay trong MVP không, hay chấp nhận rủi ro gian lận cho tới khi có PvP?
 - [ ] Hosting và chi phí vận hành khi phát hành thật. Chốt ở ADR hosting.

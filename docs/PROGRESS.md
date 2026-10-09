@@ -4,6 +4,12 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
+## Giai đoạn 4 — Thiết kế UI/UX (2026-10-10) ✅
+- Viết `docs/DESIGN.md`: phong cách "Sân đêm" (nền xanh đen, chữ trắng phấn, nút chanh, vạch kẻ sân làm khung UI, thẻ vát góc), font Barlow Condensed + Be Vietnam Pro, phác thảo 6 màn (menu, HUD, mở thẻ, kho, đội hình, cửa hàng).
+- Design tokens: `apps/web/src/styles/tokens.css` + `docs/design/design-tokens.json` (cho Phaser). Màu độ hiếm Đồng/Bạc/Vàng/HT kèm nhãn + số ◆ + kiểu khung để không chỉ dựa vào màu; tương phản chữ đạt AA.
+- Chốt: phím điều khiển (bỏ Tab, Esc tạm dừng mọi lúc), avatar vector sinh từ `avatar_seed`, viết tắt vị trí/chỉ số bằng tiếng Anh (GK/DF/MF/FW, PAC/SHO/…), ADR-0008 animation lật thẻ bằng CSS 3D + WAAPI (không thêm thư viện).
+- Prototype `docs/design/prototypes/pack-opening.html` đã được duyệt. Tiếp theo: Giai đoạn 5 — task đầu tiên trong `docs/plans/phase-5-match-offline.md`.
+
 ## Giai đoạn 3 — Kiến trúc & kế hoạch triển khai (2026-10-10) ✅
 - Viết `docs/ARCHITECTURE.md`: sơ đồ module, schema 13 bảng (CHECK xu ≥ 0, ledger append-only, khoá theo thứ tự users → pack_boxes → player_cards → squads), 19 endpoint `/api/v1`, luồng mở thẻ server (idempotency + FOR UPDATE + CSPRNG), match token.
 - `docs/plans/`: 42 task cho GĐ5–9 (blueprint, đã qua review phản biện, sửa 23 phát hiện). Đưa đăng nhập/ví cơ bản từ GĐ7 lên GĐ6 vì gacha server cần biết người chơi.

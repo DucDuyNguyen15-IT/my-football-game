@@ -429,6 +429,6 @@ Quyền admin: cột `users.is_admin`, bật bằng script `pnpm --filter @pitch
 
 ## 9. Quyết định mở (chưa cần ADR)
 
-- Animation lật thẻ: CSS/Framer Motion hay scene Phaser nhỏ → Giai đoạn 4.
-- Cách sinh ảnh đại diện thẻ (`avatar_seed`) → Giai đoạn 4.
+- ~~Animation lật thẻ~~ → CSS 3D + Web Animations API ([ADR-0008](adr/0008-card-reveal-css-waapi.md)).
+- ~~Cách sinh ảnh đại diện thẻ~~ → avatar vector SVG sinh từ `avatar_seed` (DESIGN.md §4).
 - Có cần cursor pagination cho kho thẻ → khi kho > 500 thẻ.

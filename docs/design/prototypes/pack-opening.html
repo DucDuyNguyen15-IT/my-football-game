@@ -1,0 +1,707 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Mở gói thẻ</title>
+<!-- Prototype GĐ4 — tự chứa, không phụ thuộc build. Tokens copy từ apps/web/src/styles/tokens.css.
+     Kết quả bốc thẻ ở đây chạy trên client CHỈ để trình diễn; bản thật do server quyết định (ARCHITECTURE §4.3). -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Be+Vietnam+Pro:wght@400;500;600&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+:root {
+  --c-bg: #0a1310; --c-surface-1: #111d18; --c-surface-2: #182822; --c-surface-3: #213530;
+  --c-line: #2a3d35; --c-line-strong: #3d5a4e;
+  --c-text: #edf2ec; --c-text-muted: #9db0a6; --c-text-faint: #71857c;
+  --c-accent: #c8f031; --c-accent-hover: #d8ff4a; --c-accent-ink: #0a1310;
+  --c-danger: #ff5a4e; --c-warning: #ffc23d; --c-focus: #5cc8ff; --c-coin: #f2b33d;
+  --c-scrim: rgb(4 8 6 / 0.82);
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Be Vietnam Pro', system-ui, sans-serif;
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px; --sp-6: 32px;
+  --radius-md: 4px; --card-notch: 14px;
+  --dur-fast: 160ms; --dur-base: 240ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --tracking-caps: 0.06em;
+  --cw: clamp(112px, 15.5vw, 188px);
+}
+.r-bronze { --base: #b87040; --hi: #ebaa78; --lo: #3a1f10; --glow: rgb(235 150 90 / 0.45); }
+.r-silver { --base: #aeb7c2; --hi: #eef2f6; --lo: #262c33; --glow: rgb(220 230 245 / 0.5); }
+.r-gold   { --base: #e0ae2e; --hi: #ffe48a; --lo: #3a2a06; --glow: rgb(255 205 70 / 0.6); }
+.r-legend { --base: #9b6bff; --hi: #d9c2ff; --lo: #120a20; --glow: rgb(155 107 255 / 0.75); }
+
+@property --foil-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--c-bg); color: var(--c-text);
+  font-family: var(--font-body); font-size: 16px; line-height: 1.5;
+  min-height: 100vh; overflow-x: hidden;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; }
+.num { font-family: var(--font-display); font-variant-numeric: tabular-nums; }
+.caps { font-family: var(--font-display); font-weight: 600; text-transform: uppercase; letter-spacing: var(--tracking-caps); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Thanh trên ---------- */
+.topbar {
+  height: 56px; display: flex; align-items: center; gap: var(--sp-4);
+  padding: 0 var(--sp-5); border-bottom: 1px solid var(--c-line);
+  background: var(--c-surface-1); position: relative; z-index: 40;
+}
+.back { background: none; border: 0; color: var(--c-text-muted); cursor: pointer; padding: var(--sp-2) 0; font-size: 14px; }
+.back:hover { color: var(--c-text); }
+.title { flex: 1; text-align: center; font-size: 22px; }
+.coins { display: flex; align-items: center; gap: var(--sp-2); font-size: 22px; font-weight: 600; }
+.coin-ico { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--c-coin); position: relative; }
+.coin-ico::after { content: ''; position: absolute; inset: 3px 6px; background: var(--c-coin); border-radius: 1px; }
+
+/* ---------- Sân khấu ---------- */
+.stage {
+  position: relative; min-height: calc(var(--cw) * 1.4 + 220px);
+  display: grid; place-items: center; padding: var(--sp-6) var(--sp-4);
+}
+/* Không tạo stacking context ở đây: thẻ đang lật (.slot.top) phải nổi trên lớp tối toàn màn. */
+#stageInner { position: relative; }
+.chalk-halfway { position: absolute; left: 0; right: 0; top: 50%; height: 2px; background: var(--c-line); z-index: 0; }
+.chalk-circle {
+  position: absolute; left: 50%; top: 50%; height: calc(100% - 40px); aspect-ratio: 1;
+  translate: -50% -50%; border: 2px solid var(--c-line); border-radius: 50%; z-index: 0;
+}
+.chalk-spot { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; translate: -50% -50%; border-radius: 50%; background: var(--c-line-strong); z-index: 0; }
+.scrim { position: fixed; inset: 0; background: var(--c-scrim); opacity: 0; pointer-events: none; transition: opacity 500ms var(--ease-out); z-index: 20; }
+.scrim.on { opacity: 1; }
+
+/* ---------- Gói ---------- */
+.pack {
+  width: calc(var(--cw) * 1.05); aspect-ratio: 5 / 7; position: relative; cursor: pointer;
+  background: none; border: 0; padding: 0;
+  animation: breathe 2.6s ease-in-out infinite;
+}
+.pack:hover { animation-play-state: paused; }
+@keyframes breathe { 50% { transform: translateY(-6px) scale(1.015); } }
+.pack-half {
+  position: absolute; inset: 0;
+  clip-path: polygon(0 0, calc(100% - var(--card-notch)) 0, 100% var(--card-notch), 100% 100%, var(--card-notch) 100%, 0 calc(100% - var(--card-notch)));
+  background:
+    radial-gradient(circle at 50% 56%, transparent 25%, var(--c-line-strong) 25.6%, var(--c-line-strong) 26.6%, transparent 27.2%),
+    linear-gradient(transparent calc(56% - 1px), var(--c-line-strong) calc(56% - 1px), var(--c-line-strong) calc(56% + 1px), transparent calc(56% + 1px)),
+    linear-gradient(135deg, transparent 72%, #b87040 72% 75%, #aeb7c2 75% 78%, #e0ae2e 78% 81%, #9b6bff 81% 84%, transparent 84%),
+    linear-gradient(160deg, #1b2c25, #0e1814);
+  box-shadow: inset 0 0 0 2px var(--c-line-strong);
+}
+.pack-top { clip-path: polygon(0 0, calc(100% - var(--card-notch)) 0, 100% var(--card-notch), 100% 22%, 92% 25%, 84% 21%, 76% 26%, 68% 22%, 60% 25%, 52% 21%, 44% 26%, 36% 22%, 28% 25%, 20% 21%, 12% 26%, 4% 22%, 0 24%); }
+.pack-bot { clip-path: polygon(0 24%, 4% 22%, 12% 26%, 20% 21%, 28% 25%, 36% 22%, 44% 26%, 52% 21%, 60% 25%, 68% 22%, 76% 26%, 84% 21%, 92% 25%, 100% 22%, 100% 100%, var(--card-notch) 100%, 0 calc(100% - var(--card-notch))); }
+.pack-label { position: absolute; left: 0; right: 0; top: 24%; text-align: center; pointer-events: none; }
+.pack-label .k { font-size: calc(var(--cw) * 0.2); line-height: 1; font-weight: 700; display: block; }
+.pack-label .s { display: block; margin-top: 6px; font-family: var(--font-body); font-size: 12px; font-weight: 500; text-transform: none; letter-spacing: 0; color: var(--c-text-muted); }
+.pack-brand { position: absolute; top: 7%; left: 10%; font-size: 13px; color: var(--c-text-muted); letter-spacing: 0.3em; }
+
+/* ---------- Hàng thẻ ---------- */
+.row { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; max-width: 1100px; }
+.slot { width: var(--cw); aspect-ratio: 5 / 7; perspective: 1100px; position: relative; }
+.slot.top { z-index: 30; }
+.mover, .shaker { position: absolute; inset: 0; }
+.flipper { position: absolute; inset: 0; transform-style: preserve-3d; }
+.flipper.flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  clip-path: polygon(0 0, calc(100% - var(--card-notch)) 0, 100% var(--card-notch), 100% 100%, var(--card-notch) 100%, 0 calc(100% - var(--card-notch)));
+}
+.aura {
+  position: absolute; inset: -22%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, var(--glow), transparent 75%); opacity: 0;
+}
+.slot.hint .aura { opacity: 0.55; animation: pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity: 0.9; transform: scale(1.06); } }
+
+/* Mặt sau */
+.back-face {
+  border: 0; padding: 0; cursor: pointer; width: 100%; height: 100%;
+  background:
+    radial-gradient(circle at 50% 50%, transparent 21%, #2f463c 21.8%, #2f463c 23%, transparent 23.8%),
+    linear-gradient(transparent calc(50% - 1px), #2f463c calc(50% - 1px), #2f463c calc(50% + 1px), transparent calc(50% + 1px)),
+    repeating-linear-gradient(0deg, #15241e 0 18px, #13211b 18px 36px);
+  box-shadow: inset 0 0 0 2px #2f463c;
+}
+.slot.hint .back-face { box-shadow: inset 0 0 0 2px var(--base), inset 0 0 18px var(--glow); }
+.back-face:hover { filter: brightness(1.15); }
+.back-face .mark { position: absolute; left: 0; right: 0; bottom: 10%; text-align: center; font-size: 12px; color: var(--c-text-faint); letter-spacing: 0.3em; }
+
+/* Mặt trước */
+.front { transform: rotateY(180deg); background: var(--frame, var(--base)); padding: 3px; container-type: inline-size; }
+.r-bronze .front { --frame: linear-gradient(150deg, var(--hi), var(--base) 45%, #7a4523); }
+.r-silver .front { --frame: repeating-linear-gradient(135deg, var(--hi) 0 3px, var(--base) 3px 7px); }
+.r-gold .front   { --frame: linear-gradient(150deg, var(--hi), var(--base) 40%, #9a7412 70%, var(--hi)); }
+.r-legend .front { --frame: conic-gradient(from var(--foil-angle), #9b6bff, #46e0d0, #ff6bd5, #ffe48a, #9b6bff); animation: foil 6s linear infinite; }
+@keyframes foil { to { --foil-angle: 360deg; } }
+.card {
+  position: relative; height: 100%; overflow: hidden;
+  clip-path: polygon(0 0, calc(100% - var(--card-notch) + 1px) 0, 100% calc(var(--card-notch) - 1px), 100% 100%, calc(var(--card-notch) - 1px) 100%, 0 calc(100% - var(--card-notch) + 1px));
+  background: radial-gradient(120% 70% at 50% 0%, color-mix(in srgb, var(--base) 28%, var(--lo)), var(--lo) 70%);
+  padding: 7cqw 7cqw 5cqw; display: flex; flex-direction: column;
+}
+.r-gold .card { box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hi) 60%, transparent); }
+.card .ovr { font-family: var(--font-display); font-weight: 700; font-size: 21cqw; line-height: 0.85; color: var(--hi); }
+.card .pos { font-family: var(--font-display); font-weight: 600; font-size: 9cqw; color: var(--c-text); letter-spacing: var(--tracking-caps); }
+.card .pips { position: absolute; top: 8cqw; right: 12cqw; color: var(--hi); font-size: 6cqw; letter-spacing: 0.5cqw; }
+.card .new { position: absolute; top: 18cqw; right: 8cqw; font-family: var(--font-display); font-weight: 700; font-size: 6.5cqw; background: var(--c-accent); color: var(--c-accent-ink); padding: 0.5cqw 2.5cqw; letter-spacing: var(--tracking-caps); }
+.card .avatar { width: 56%; margin: -10cqw auto 0; aspect-ratio: 1; }
+.card .avatar svg { width: 100%; height: 100%; display: block; }
+.card .name { font-family: var(--font-display); font-weight: 700; font-size: 12.5cqw; line-height: 1; text-transform: uppercase; text-align: center; margin-top: 1cqw; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .sub { margin-bottom: 2cqw; font-size: 5.6cqw; color: var(--c-text-muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.card .stats { margin-top: auto; border-top: 1px solid color-mix(in srgb, var(--base) 45%, transparent); padding-top: 3cqw; display: grid; grid-template-columns: repeat(3, 1fr); row-gap: 1cqw; }
+.card .stat { font-family: var(--font-display); font-size: 7.4cqw; display: flex; gap: 1.5cqw; justify-content: center; }
+.card .stat b { font-weight: 700; font-variant-numeric: tabular-nums; }
+.card .stat span { color: var(--c-text-muted); font-weight: 500; }
+.card .tier { font-family: var(--font-display); font-weight: 600; font-size: 5.6cqw; letter-spacing: 0.2em; text-transform: uppercase; color: var(--hi); text-align: center; margin-top: 2cqw; }
+.sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(105deg, transparent 35%, rgb(255 255 255 / 0.55) 50%, transparent 65%); transform: translateX(-130%); }
+
+/* Hiệu ứng bùng nổ */
+.ring { position: absolute; left: 50%; top: 50%; width: 100%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 3px solid var(--hi); opacity: 0; pointer-events: none; }
+.spark { position: absolute; left: 50%; top: 50%; width: 7px; height: 7px; margin: -3.5px; background: var(--hi); pointer-events: none; transform: rotate(45deg); }
+.rays {
+  position: absolute; left: 50%; top: 50%; width: 320%; aspect-ratio: 1; translate: -50% -50%; pointer-events: none; opacity: 0;
+  background: repeating-conic-gradient(from 0deg, rgb(155 107 255 / 0.45) 0deg 5deg, transparent 5deg 15deg);
+  -webkit-mask: radial-gradient(closest-side, #000 18%, transparent 75%); mask: radial-gradient(closest-side, #000 18%, transparent 75%);
+}
+
+/* ---------- Điều khiển & hộp ---------- */
+.controls { display: flex; flex-wrap: wrap; align-items: center; justify-content: center; gap: var(--sp-4); padding: 0 var(--sp-4) var(--sp-5); min-height: 64px; }
+.hint { color: var(--c-text-muted); font-size: 14px; }
+kbd { font-family: var(--font-display); font-weight: 600; border: 1px solid var(--c-line-strong); border-bottom-width: 2px; padding: 0 6px; border-radius: var(--radius-md); color: var(--c-text); }
+.btn {
+  height: 44px; padding: 0 var(--sp-5); border-radius: var(--radius-md); cursor: pointer;
+  font-family: var(--font-display); font-weight: 600; font-size: 18px; text-transform: uppercase; letter-spacing: var(--tracking-caps);
+  display: inline-flex; align-items: center; gap: var(--sp-2);
+  transition: background var(--dur-fast), border-color var(--dur-fast), transform 80ms;
+}
+.btn:active:not(:disabled) { transform: translateY(1px); }
+.btn-primary { background: var(--c-accent); color: var(--c-accent-ink); border: 0; }
+.btn-primary:hover:not(:disabled) { background: var(--c-accent-hover); }
+.btn-ghost { background: transparent; border: 1px solid var(--c-line-strong); }
+.btn-ghost:hover:not(:disabled) { background: var(--c-surface-2); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.btn .price { display: inline-flex; align-items: center; gap: 4px; }
+.btn .coin-ico { border-color: currentColor; }
+.btn .coin-ico::after { background: currentColor; }
+.short { color: var(--c-danger); font-size: 13px; }
+.summary-title { font-size: 26px; font-weight: 700; width: 100%; text-align: center; }
+
+.box {
+  max-width: 1100px; margin: 0 auto var(--sp-6); padding: var(--sp-4) var(--sp-5);
+  border-top: 2px solid var(--c-line); display: grid; grid-template-columns: auto 1fr; gap: var(--sp-2) var(--sp-6); align-items: center;
+}
+.box h2 { margin: 0; font-size: 15px; color: var(--c-text-muted); }
+.box h2 b { color: var(--c-text); }
+.box-rows { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
+.brow { display: grid; grid-template-columns: 1fr auto; gap: 2px var(--sp-2); font-size: 14px; }
+.brow .lbl { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--hi); font-family: var(--font-display); font-weight: 600; font-size: 16px; text-transform: uppercase; letter-spacing: var(--tracking-caps); }
+.brow .cnt { font-size: 18px; font-weight: 600; text-align: right; }
+.brow .bar { grid-column: 1 / -1; height: 6px; background: var(--c-surface-3); position: relative; }
+.brow .bar i { position: absolute; inset: 0 auto 0 0; background: var(--base); transition: width 600ms var(--ease-out); }
+.brow .odds { grid-column: 1 / -1; color: var(--c-text-muted); font-size: 13px; }
+.box-warn { grid-column: 1 / -1; color: var(--c-warning); font-size: 14px; }
+@media (max-width: 1100px) {
+  .box { grid-template-columns: 1fr; }
+  .box-rows { grid-template-columns: repeat(2, 1fr); column-gap: var(--sp-6); }
+}
+
+/* ---------- Bảng prototype ---------- */
+.proto {
+  max-width: 1100px; margin: 0 auto var(--sp-6); background: var(--c-surface-1);
+  border: 1px dashed var(--c-line-strong); padding: var(--sp-2) var(--sp-3); font-size: 13px;
+  display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-5); align-items: center;
+}
+.proto summary { cursor: pointer; color: var(--c-warning); font-weight: 600; width: 100%; }
+.proto[open] { display: flex; }
+.proto label { display: flex; gap: var(--sp-2); align-items: center; }
+.proto select { background: var(--c-surface-1); color: var(--c-text); border: 1px solid var(--c-line-strong); font: inherit; padding: 2px 4px; }
+.proto .note { color: var(--c-text-faint); margin: 0; }
+
+.toast { position: fixed; top: 68px; right: 16px; background: var(--c-surface-3); border-left: 3px solid var(--c-accent); padding: var(--sp-3) var(--sp-4); z-index: 60; font-size: 14px; }
+
+html.tab-hidden * { animation-play-state: paused !important; }
+@media (prefers-reduced-motion: reduce) {
+  .pack, .slot.hint .aura, .r-legend .front { animation: none !important; }
+}
+.reduced .pack, .reduced .slot.hint .aura, .reduced .r-legend .front { animation: none !important; }
+</style>
+</head>
+<body>
+<header class="topbar">
+  <button class="back" type="button" id="backBtn">← Cửa hàng</button>
+  <div class="title caps" id="title">Gói 5 thẻ</div>
+  <div class="coins" aria-label="Số xu"><span class="coin-ico" aria-hidden="true"></span><span class="num" id="coins">1.240</span></div>
+</header>
+
+<main>
+  <section class="stage" aria-label="Mở gói">
+    <div class="chalk-halfway"></div><div class="chalk-circle"></div><div class="chalk-spot"></div>
+    <div id="stageInner"></div>
+  </section>
+  <div class="controls" id="controls"></div>
+  <section class="box r-none" aria-labelledby="boxTitle">
+    <h2 id="boxTitle" class="caps">Hộp của bạn<br><b class="num" id="boxTotal">100</b> / 100 phiếu</h2>
+    <div class="box-rows" id="boxRows"></div>
+    <div class="box-warn" id="boxWarn" hidden>Hộp chỉ còn thẻ Đồng — gói 5 không đảm bảo Bạc.</div>
+  </section>
+</main>
+<div class="scrim" id="scrim"></div>
+<div class="sr-only" aria-live="polite" id="live"></div>
+
+<details class="proto" open>
+  <summary>Bảng điều khiển prototype</summary>
+  <label>Gói tiếp theo
+    <select id="optPack"><option value="5">Gói 5 thẻ</option><option value="1">Gói 1 thẻ</option></select>
+  </label>
+  <label>Kết quả
+    <select id="optForce">
+      <option value="demo">Demo: đủ 4 độ hiếm</option>
+      <option value="natural">Bốc tự nhiên từ hộp</option>
+      <option value="legend">Thẻ cuối = Huyền thoại</option>
+      <option value="gold">Thẻ cuối = Vàng</option>
+      <option value="silver">Thẻ cuối = Bạc</option>
+      <option value="bronze">Toàn Đồng</option>
+    </select>
+  </label>
+  <label><input type="checkbox" id="optReduced"> Giả lập "giảm chuyển động"</label>
+  <p class="note">Áp dụng từ gói tiếp theo. Bảng này không có trong game.</p>
+</details>
+
+<script>
+'use strict';
+// ---------- Dữ liệu ----------
+const TIERS = {
+  bronze: { label: 'Đồng', pips: 1, ovr: [50, 64], count: 60, init: 58, reveal: { charge: 0, flip: 360, burst: 0 } },
+  silver: { label: 'Bạc', pips: 2, ovr: [65, 74], count: 45, init: 30, reveal: { charge: 0, flip: 440, burst: 240 } },
+  gold:   { label: 'Vàng', pips: 3, ovr: [75, 84], count: 30, init: 10, reveal: { charge: 450, flip: 560, burst: 520 } },
+  legend: { label: 'Huyền thoại', pips: 4, ovr: [85, 94], count: 15, init: 2, reveal: { charge: 1300, flip: 760, burst: 900 } },
+};
+const ORDER = ['legend', 'gold', 'silver', 'bronze'];
+const POS = [['GK', 12], ['DF', 30], ['MF', 30], ['FW', 28]];
+const POS_FULL = { GK: 'Thủ môn', DF: 'Hậu vệ', MF: 'Tiền vệ', FW: 'Tiền đạo' };
+const FIRST = ['Rafinho', 'Tomás', 'Kwabena', 'Lasse', 'Matteo', 'Yusuf', 'Andrés', 'Kenta', 'Émile', 'Dario', 'Sven', 'Chidi', 'Mateus', 'Ilyas', 'Hugo', 'Bastian', 'Iker', 'Joaquim', 'Aurelio', 'Minh'];
+const LAST = ['Duarte', 'Okafor', 'Valderas', 'Lindqvist', 'Morandi', 'Haddane', 'Brantner', 'Saitoh', 'Ferrão', 'Kovalić', 'Mensara', 'Rochet', 'Dubreuil', 'Novaro', 'Castellví', 'Quang', 'Abelard', 'Ostrander'];
+const NICK = {
+  FW: ['Ma tốc độ', 'Sát thủ vòng cấm', 'Mũi khoan', 'Cánh chim lạ'],
+  MF: ['Nhạc trưởng', 'Máy quét', 'Kiến trúc sư', 'Con thoi'],
+  DF: ['Bức tường', 'Thép nguội', 'Máy ủi', 'Lính gác'],
+  GK: ['Người nhện', 'Găng sắt', 'Bạch tuộc', 'Mèo đêm'],
+};
+const STAT_KEYS = {
+  out: [['PAC', 'pace', 'Tốc độ'], ['SHO', 'sho', 'Sút'], ['PAS', 'pas', 'Chuyền'], ['DRI', 'dri', 'Rê bóng'], ['DEF', 'def', 'Phòng ngự'], ['STA', 'sta', 'Thể lực']],
+  gk: [['REF', 'ref', 'Phản xạ'], ['HAN', 'han', 'Bắt bóng'], ['POS', 'posi', 'Vị trí'], ['KIC', 'kic', 'Phát bóng'], ['STA', 'sta', 'Thể lực']],
+};
+// Trọng số OVR theo PRD §6.2
+const WEIGHTS = {
+  FW: { sho: 30, pace: 25, dri: 20, pas: 10, sta: 10, def: 5 },
+  MF: { pas: 30, dri: 20, sta: 20, sho: 10, pace: 10, def: 10 },
+  DF: { def: 40, pace: 20, sta: 20, pas: 15, dri: 5 },
+  GK: { ref: 35, han: 30, posi: 25, kic: 10 },
+};
+
+function mulberry32(a) {
+  return () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+}
+const pick = (rnd, arr) => arr[Math.floor(rnd() * arr.length)];
+function secureInt(n) { const b = new Uint32Array(1); crypto.getRandomValues(b); return b[0] % n; }
+
+// Mẫu thẻ xác định theo (độ hiếm, chỉ số mẫu) → trùng mẫu thì ra cùng một cầu thủ.
+function makeTemplate(tier, idx) {
+  const seed = (ORDER.indexOf(tier) + 1) * 1000 + idx;
+  const rnd = mulberry32(seed * 2654435761);
+  let r = rnd() * 100, pos = 'FW';
+  for (const [p, w] of POS) { if ((r -= w) < 0) { pos = p; break; } }
+  const [lo, hi] = TIERS[tier].ovr;
+  const ovr = lo + Math.floor(rnd() * (hi - lo + 1));
+  const kind = pos === 'GK' ? 'gk' : 'out';
+  const w = WEIGHTS[pos];
+  const stats = {};
+  for (const [, k] of STAT_KEYS[kind]) {
+    const weight = w[k] ?? 0;
+    stats[k] = ovr + (weight >= 25 ? 6 : weight >= 15 ? 2 : weight >= 10 ? -4 : -18) + Math.round((rnd() - 0.5) * 10);
+  }
+  let total = 0, wsum = 0;
+  for (const k in w) { total += stats[k] * w[k]; wsum += w[k]; }
+  const delta = ovr - Math.round(total / wsum);
+  for (const k in stats) stats[k] = Math.max(25, Math.min(99, stats[k] + delta));
+  return {
+    id: `${tier}-${idx}`, tier, pos, ovr, kind, stats, seed,
+    first: pick(rnd, FIRST), last: pick(rnd, LAST), nick: pick(rnd, NICK[pos]),
+  };
+}
+
+// ---------- Avatar vector sinh từ seed ----------
+const TIER_BASE = { bronze: '#b87040', silver: '#aeb7c2', gold: '#e0ae2e', legend: '#9b6bff' };
+const SKIN = ['#f3d2b5', '#e5b48f', '#c98e64', '#a46a43', '#7a4a2c', '#553220'];
+const HAIR = ['#1b1410', '#3b2414', '#6b4423', '#a8743a', '#d9b26a', '#8c8c8c'];
+function avatarSVG(seed, tier) {
+  const rnd = mulberry32(seed);
+  const skin = pick(rnd, SKIN), hair = pick(rnd, HAIR);
+  const faceW = [19, 20.5, 22][Math.floor(rnd() * 3)];
+  const style = Math.floor(rnd() * 7), beard = Math.floor(rnd() * 4);
+  const shirt = TIER_BASE[tier];
+  const hairPaths = [
+    '',
+    `<path d="M${50 - faceW} 40 Q50 14 ${50 + faceW} 40 Q${50 + faceW} 30 50 25 Q${50 - faceW} 30 ${50 - faceW} 40Z" fill="${hair}"/>`,
+    `<path d="M${50 - faceW - 1} 44 Q${47 - faceW} 18 50 18 Q${53 + faceW} 18 ${51 + faceW} 44 L${48 + faceW} 34 Q50 28 ${52 - faceW} 34Z" fill="${hair}"/>`,
+    `<rect x="${50 - faceW}" y="21" width="${faceW * 2}" height="10" rx="4" fill="${hair}"/>`,
+    `<path d="M44 26 Q50 12 56 26 L54 31 Q50 27 46 31Z" fill="${hair}"/>`,
+    `<g fill="${hair}">${Array.from({ length: 9 }, (_, i) => `<circle cx="${50 - faceW + 2 + i * (faceW * 2 - 4) / 8}" cy="${26 + (i % 2) * 2}" r="5"/>`).join('')}</g>`,
+    `<path d="M${50 - faceW - 2} 52 Q${46 - faceW} 16 50 17 Q${54 + faceW} 16 ${52 + faceW} 52 L${48 + faceW} 50 L${48 + faceW} 36 Q50 30 ${52 - faceW} 36 L${52 - faceW} 50Z" fill="${hair}"/>`,
+  ];
+  const beards = ['',
+    `<path d="M${52 - faceW} 50 Q50 70 ${48 + faceW} 50 Q${46 + faceW} 62 50 63 Q${54 - faceW} 62 ${52 - faceW} 50Z" fill="${hair}" opacity="0.85"/>`,
+    `<path d="M44 57 Q50 54 56 57 L55 59 Q50 57 45 59Z" fill="${hair}"/>`,
+    `<path d="M46 60 Q50 66 54 60 L53 64 Q50 67 47 64Z" fill="${hair}"/>`];
+  const browY = 41 + rnd() * 1.5, eyeGap = 7 + rnd() * 1.5;
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M14 100 Q16 74 38 70 L62 70 Q84 74 86 100Z" fill="${shirt}"/>
+    <path d="M38 70 L50 82 L62 70" fill="none" stroke="rgb(0 0 0 / .35)" stroke-width="2.5"/>
+    <rect x="43" y="58" width="14" height="14" fill="${skin}"/>
+    <ellipse cx="50" cy="44" rx="${faceW}" ry="${faceW + 3}" fill="${skin}"/>
+    <ellipse cx="${50 - faceW}" cy="46" rx="2.5" ry="4" fill="${skin}"/><ellipse cx="${50 + faceW}" cy="46" rx="2.5" ry="4" fill="${skin}"/>
+    ${hairPaths[style]}
+    <rect x="${50 - eyeGap - 4}" y="${browY}" width="7" height="1.8" rx=".9" fill="${hair}"/><rect x="${50 + eyeGap - 3}" y="${browY}" width="7" height="1.8" rx=".9" fill="${hair}"/>
+    <circle cx="${50 - eyeGap}" cy="47" r="1.8" fill="#1a1a1a"/><circle cx="${50 + eyeGap}" cy="47" r="1.8" fill="#1a1a1a"/>
+    <path d="M48 52 Q50 54 52 52" fill="none" stroke="rgb(0 0 0 / .3)" stroke-width="1.2"/>
+    <path d="M45.5 58 Q50 60.5 54.5 58" fill="none" stroke="rgb(0 0 0 / .45)" stroke-width="1.5" stroke-linecap="round"/>
+    ${beards[beard]}
+  </svg>`;
+}
+
+// ---------- Trạng thái ----------
+const state = {
+  coins: 1240, freePack: true,
+  box: { legend: 2, gold: 10, silver: 30, bronze: 58 },
+  owned: new Set(), cards: [], revealed: [], phase: 'pack', busy: false, skip: false,
+  anims: new Set(), packSize: 5, queue: [],
+};
+const $ = (id) => document.getElementById(id);
+const fmt = (n) => n.toLocaleString('vi-VN');
+const reduced = () => $('optReduced').checked || matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+function boxTotal() { return ORDER.reduce((s, t) => s + state.box[t], 0); }
+function drawTier(only) {
+  if (boxTotal() === 0) for (const t of ORDER) state.box[t] = TIERS[t].init; // hết phiếu → làm mới
+  const pool = ORDER.filter((t) => !only || only.includes(t));
+  const total = pool.reduce((s, t) => s + state.box[t], 0);
+  let r = secureInt(total);
+  for (const t of pool) { if ((r -= state.box[t]) < 0) { state.box[t]--; return t; } }
+}
+function takeForced(t) { if (state.box[t] > 0) state.box[t]--; return t; }
+
+function buildPack(size) {
+  const force = $('optForce').value;
+  let tiers = [];
+  if (force === 'demo' && size === 5) tiers = ['bronze', 'silver', 'bronze', 'gold', 'legend'].map(takeForced);
+  else if (force === 'demo') tiers = [takeForced('legend')];
+  else if (force === 'bronze') tiers = Array.from({ length: size }, () => takeForced('bronze'));
+  else {
+    for (let i = 0; i < size; i++) {
+      const last = i === size - 1;
+      if (last && ['legend', 'gold', 'silver'].includes(force)) tiers.push(takeForced(force));
+      else if (last && size === 5 && tiers.every((t) => t === 'bronze') && ORDER.some((t) => t !== 'bronze' && state.box[t] > 0)) tiers.push(drawTier(['legend', 'gold', 'silver']));
+      else tiers.push(drawTier());
+    }
+  }
+  return tiers.map((t) => {
+    const tpl = makeTemplate(t, secureInt(TIERS[t].count));
+    const isNew = !state.owned.has(tpl.id);
+    state.owned.add(tpl.id);
+    return { ...tpl, isNew };
+  });
+}
+
+// ---------- Render ----------
+function renderBox() {
+  const total = boxTotal();
+  $('boxTotal').textContent = total;
+  $('boxRows').innerHTML = ORDER.map((t) => {
+    const n = state.box[t], pct = total ? (n / total) * 100 : 0;
+    return `<div class="brow r-${t}"><span class="lbl">${'◆'.repeat(TIERS[t].pips)} ${TIERS[t].label}</span><span class="cnt num">${n}</span>
+      <span class="bar"><i style="width:${(n / TIERS[t].init) * 100}%"></i></span>
+      <span class="odds">Lần bốc kế: <b class="num">${pct.toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%</b></span></div>`;
+  }).join('');
+  $('boxWarn').hidden = !(total > 0 && ORDER.every((t) => t === 'bronze' || state.box[t] === 0));
+}
+function renderCoins() { $('coins').textContent = fmt(state.coins); }
+
+function cardFront(c) {
+  const keys = STAT_KEYS[c.kind];
+  return `<div class="card">
+    <div class="ovr">${c.ovr}</div><div class="pos" title="${POS_FULL[c.pos]}">${c.pos}</div>
+    <div class="pips" aria-hidden="true">${'◆'.repeat(TIERS[c.tier].pips)}</div>
+    ${c.isNew ? '<div class="new">MỚI</div>' : ''}
+    <div class="avatar">${avatarSVG(c.seed, c.tier)}</div>
+    <div class="name">${c.last}</div>
+    <div class="sub">${c.first} · “${c.nick}”</div>
+    <div class="stats">${keys.map(([lbl, k, full]) => `<div class="stat" title="${full}"><b>${c.stats[k]}</b><span>${lbl}</span></div>`).join('')}</div>
+    <div class="tier">${TIERS[c.tier].label}</div>
+    <div class="sheen"></div>
+  </div>`;
+}
+
+function renderPackStage() {
+  state.phase = 'pack';
+  const size = Number($('optPack').value);
+  state.packSize = size;
+  $('title').textContent = size === 5 ? 'Gói 5 thẻ' : 'Gói 1 thẻ';
+  document.body.classList.toggle('reduced', reduced());
+  $('stageInner').innerHTML = `<button class="pack" id="pack" type="button" aria-label="Xé gói ${size} thẻ">
+      <span class="pack-half pack-top"></span><span class="pack-half pack-bot"></span>
+      <span class="pack-brand caps">PITCH</span>
+      <span class="pack-label caps"><span class="k">${size} THẺ</span><span class="s">${state.freePack ? 'Miễn phí · quà tân thủ' : 'Bấm để mở'}</span></span>
+    </button>`;
+  $('pack').addEventListener('click', tearPack);
+  $('controls').innerHTML = `<span class="hint"><kbd>Space</kbd> hoặc bấm vào gói để xé</span>`;
+  $('pack').focus({ preventScroll: true });
+}
+
+// ---------- Animation (WAAPI) ----------
+function run(el, keyframes, opts) {
+  const o = { fill: 'none', ...opts };
+  if ((state.skip && !o.force) || o.duration <= 0) o.duration = 1;
+  delete o.force;
+  const a = el.animate(keyframes, o);
+  state.anims.add(a);
+  a.finished.catch(() => {}).finally(() => state.anims.delete(a));
+  return a.finished.catch(() => {});
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, state.skip ? 0 : ms));
+
+async function tearPack() {
+  if (state.phase !== 'pack' || state.busy) return;
+  state.busy = true;
+  // "Mua" ngay khi xé: bản thật — server trừ xu + bốc phiếu, trả kết quả trước animation.
+  state.cards = buildPack(state.packSize);
+  state.freePack = false;
+  state.revealed = state.cards.map(() => false);
+  renderBox();
+  const pack = $('pack');
+  pack.style.animation = 'none';
+  const packRect = pack.getBoundingClientRect();
+  if (!reduced()) {
+    await run(pack, [{ transform: 'none' }, { transform: 'translateX(-4px) rotate(-2deg)' }, { transform: 'translateX(4px) rotate(2deg)' }, { transform: 'none' }], { duration: 260, iterations: 2 });
+    await Promise.all([
+      run(pack.querySelector('.pack-top'), [{ transform: 'none', opacity: 1 }, { transform: 'translate(-20px,-90px) rotate(-14deg)', opacity: 0 }], { duration: 420, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' }),
+      run(pack.querySelector('.pack-bot'), [{ transform: 'none', opacity: 1 }, { transform: 'translateY(60px) scale(.9)', opacity: 0 }], { duration: 420, easing: 'ease-in', fill: 'forwards' }),
+      run(pack.querySelector('.pack-label'), [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }),
+    ]);
+  }
+  layoutCards(packRect);
+}
+
+function layoutCards(packRect) {
+  state.phase = 'reveal';
+  const row = document.createElement('div');
+  row.className = 'row';
+  row.innerHTML = state.cards.map((c, i) => `
+    <div class="slot r-${c.tier}${c.tier === 'gold' || c.tier === 'legend' ? ' hint' : ''}" data-i="${i}">
+      <div class="mover"><div class="aura"></div><div class="shaker"><div class="flipper">
+        <button class="face back-face" type="button" aria-label="Thẻ ${i + 1} — lật"><span class="mark caps">PITCH</span></button>
+        <div class="face front">${cardFront(c)}</div>
+      </div></div></div>
+    </div>`).join('');
+  $('stageInner').replaceChildren(row);
+  row.querySelectorAll('.back-face').forEach((b, i) => b.addEventListener('click', () => revealOne(i)));
+  renderRevealControls();
+
+  const slots = [...row.children];
+  const cx = packRect.left + packRect.width / 2, cy = packRect.top + packRect.height / 2;
+  Promise.all(slots.map((s, i) => {
+    if (reduced()) return run(s, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: i * 40 });
+    const r = s.getBoundingClientRect();
+    const dx = cx - (r.left + r.width / 2), dy = cy - (r.top + r.height / 2);
+    return run(s, [
+      { transform: `translate(${dx}px,${dy}px) scale(.55) rotate(${(i - 2) * 6}deg)`, opacity: 0 },
+      { opacity: 1, offset: 0.25 },
+      { transform: 'none', opacity: 1 },
+    ], { duration: 520, delay: i * 80, easing: 'cubic-bezier(.34,1.56,.64,1)', fill: 'backwards' });
+  })).then(() => {
+    state.busy = false;
+    if (state.queue.length) revealOne(state.queue.shift());
+    else slots[0].querySelector('.back-face').focus({ preventScroll: true });
+  });
+}
+
+function renderRevealControls() {
+  $('controls').innerHTML = `<span class="hint"><kbd>Space</kbd> lật thẻ tiếp · <kbd>Esc</kbd> bỏ qua</span>
+    <button class="btn btn-ghost" type="button" id="revealAll">Lật hết</button>`;
+  $('revealAll').addEventListener('click', revealAll);
+}
+
+function burst(slot, count) {
+  const mover = slot.querySelector('.mover');
+  const ring = document.createElement('div'); ring.className = 'ring'; mover.appendChild(ring);
+  const ps = [run(ring, [{ transform: 'scale(.7)', opacity: 0.9 }, { transform: 'scale(1.9)', opacity: 0 }], { duration: 620, easing: 'cubic-bezier(.22,1,.36,1)' })];
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('span'); s.className = 'spark'; mover.appendChild(s);
+    const ang = (i / count) * Math.PI * 2 + Math.random() * 0.4, dist = 90 + Math.random() * 110;
+    ps.push(run(s, [
+      { transform: 'translate(0,0) rotate(45deg) scale(1)', opacity: 1 },
+      { transform: `translate(${Math.cos(ang) * dist}px,${Math.sin(ang) * dist}px) rotate(45deg) scale(0)`, opacity: 0.2 },
+    ], { duration: 700 + Math.random() * 300, easing: 'cubic-bezier(.22,1,.36,1)' }));
+  }
+  return Promise.all(ps).then(() => { ring.remove(); mover.querySelectorAll('.spark').forEach((n) => n.remove()); });
+}
+
+async function revealOne(i, quick = false) {
+  if (state.phase !== 'reveal' || state.revealed[i]) return;
+  if (state.busy && !quick) { if (!state.queue.includes(i)) state.queue.push(i); return; } // bấm trong lúc đang diễn → xếp hàng
+  state.revealed[i] = true;
+  if (!quick) state.busy = true;
+  const c = state.cards[i];
+  const slot = document.querySelector(`.slot[data-i="${i}"]`);
+  const mover = slot.querySelector('.mover'), shaker = slot.querySelector('.shaker'), flipper = slot.querySelector('.flipper');
+  const aura = slot.querySelector('.aura'), sheen = slot.querySelector('.sheen');
+  const T = TIERS[c.tier].reveal;
+  slot.querySelector('.back-face').tabIndex = -1;
+
+  if (reduced()) {
+    await run(flipper, [{ opacity: 1 }, { opacity: 0 }], { duration: 100, force: true });
+    flipper.classList.add('flipped');
+    slot.classList.remove('hint');
+    await run(flipper, [{ opacity: 0 }, { opacity: 1 }], { duration: 100, force: true });
+  } else if (quick || state.skip) {
+    slot.classList.remove('hint');
+    await run(flipper, [{ transform: 'rotateY(0)' }, { transform: 'rotateY(180deg)' }], { duration: 240, easing: 'cubic-bezier(.65,0,.35,1)', force: true });
+    flipper.classList.add('flipped');
+  } else {
+    slot.classList.add('top');
+    const isLegend = c.tier === 'legend';
+    let toCenter = 'none';
+    if (isLegend) {
+      const st = document.querySelector('.stage').getBoundingClientRect(), r = slot.getBoundingClientRect();
+      toCenter = `translate(${st.left + st.width / 2 - (r.left + r.width / 2)}px, ${st.top + st.height / 2 - (r.top + r.height / 2)}px) scale(1.3)`;
+      $('scrim').classList.add('on');
+      const rays = document.createElement('div'); rays.className = 'rays'; mover.prepend(rays);
+      run(rays, [{ opacity: 0, transform: 'rotate(0)' }, { opacity: 1, offset: 0.2 }, { opacity: 1, offset: 0.8 }, { opacity: 0, transform: 'rotate(160deg)' }], { duration: T.charge + T.flip + T.burst + 400 })
+        .then(() => rays.remove());
+    }
+    // 1) Tích tụ
+    if (T.charge) {
+      run(aura, [{ opacity: 0.55 }, { opacity: 1, transform: 'scale(1.25)' }], { duration: T.charge, fill: 'forwards' });
+      if (isLegend) await run(mover, [{ transform: 'none' }, { transform: toCenter }], { duration: 520, easing: 'cubic-bezier(.22,1,.36,1)', fill: 'forwards' });
+      const amp = isLegend ? [1, 2, 3, 4, 5, 6] : [1, 2, 3];
+      const kf = [{ transform: 'translateY(-10px)' }];
+      amp.forEach((a) => kf.push({ transform: `translate(${-a}px,-10px) rotate(${-a * 0.4}deg)` }, { transform: `translate(${a}px,-10px) rotate(${a * 0.4}deg)` }));
+      kf.push({ transform: 'translateY(-10px)' });
+      await run(shaker, [{ transform: 'none' }, ...kf], { duration: isLegend ? T.charge - 520 : T.charge, easing: 'ease-in', fill: 'forwards' });
+    }
+    slot.classList.remove('hint');
+    // 2) Lật
+    await run(flipper, [
+      { transform: 'rotateY(0) scale(1)' },
+      { transform: 'rotateY(90deg) scale(1.08)', offset: 0.5 },
+      { transform: 'rotateY(180deg) scale(1)' },
+    ], { duration: T.flip, easing: 'cubic-bezier(.65,0,.35,1)' });
+    flipper.classList.add('flipped');
+    // 3) Bùng nổ
+    const after = [];
+    after.push(run(shaker, [{ transform: T.charge ? 'translateY(-10px)' : 'scale(1.05)' }, { transform: 'none' }], { duration: 260, easing: 'cubic-bezier(.34,1.56,.64,1)' }));
+    if (c.tier === 'silver' || c.tier === 'gold' || isLegend) after.push(run(sheen, [{ transform: 'translateX(-130%)' }, { transform: 'translateX(130%)' }], { duration: isLegend ? 900 : 600, easing: 'ease-in-out' }));
+    if (c.tier === 'gold') after.push(burst(slot, 12));
+    if (isLegend) after.push(burst(slot, 28));
+    if (T.burst) after.push(wait(T.burst));
+    await Promise.all(after);
+    shaker.getAnimations().forEach((a) => a.cancel());
+    aura.getAnimations().forEach((a) => a.cancel());
+    if (isLegend) {
+      await wait(500);
+      $('scrim').classList.remove('on');
+      await run(mover, [{ transform: toCenter }, { transform: 'none' }], { duration: 480, easing: 'cubic-bezier(.65,0,.35,1)' });
+      mover.getAnimations().forEach((a) => a.cancel());
+    }
+    slot.classList.remove('top');
+  }
+  $('live').textContent = `Thẻ ${i + 1}: ${TIERS[c.tier].label}, ${c.first} ${c.last}, ${POS_FULL[c.pos]}, OVR ${c.ovr}${c.isNew ? ', thẻ mới' : ''}`;
+  if (!quick) state.busy = false;
+  if (state.revealed.every(Boolean)) finishPack();
+  else if (!quick && state.queue.length) revealOne(state.queue.shift());
+  else if (!quick) {
+    const next = state.revealed.indexOf(false);
+    document.querySelector(`.slot[data-i="${next}"] .back-face`)?.focus({ preventScroll: true });
+  }
+}
+
+async function revealAll() {
+  if (state.phase !== 'reveal') return;
+  state.skip = true;
+  state.queue = [];
+  state.anims.forEach((a) => { try { a.finish(); } catch { /* đã xong */ } });
+  $('scrim').classList.remove('on');
+  document.querySelectorAll('.slot').forEach((s) => s.classList.remove('top'));
+  // chờ chuỗi đang chạy kết thúc rồi lật phần còn lại, cách nhau 80ms
+  await new Promise((r) => setTimeout(r, 30));
+  const rest = state.revealed.map((v, i) => (v ? -1 : i)).filter((i) => i >= 0);
+  state.busy = true;
+  await Promise.all(rest.map((i, k) => new Promise((r) => setTimeout(r, k * 80)).then(() => revealOne(i, true))));
+  state.busy = false;
+  state.skip = false;
+  if (state.phase === 'reveal' && state.revealed.every(Boolean)) finishPack();
+}
+
+function finishPack() {
+  if (state.phase === 'done') return;
+  state.phase = 'done';
+  state.skip = false;
+  const n = state.cards.length, nNew = state.cards.filter((c) => c.isNew).length;
+  const price1 = 100, price5 = 450;
+  const btn = (size, price) => {
+    const short = price - state.coins;
+    return `<button class="btn ${size === 5 ? 'btn-primary' : 'btn-ghost'}" type="button" data-buy="${size}" ${short > 0 ? 'disabled' : ''}>
+      Mở gói ${size} · <span class="price num">${fmt(price)} <span class="coin-ico" aria-hidden="true"></span></span></button>
+      ${short > 0 ? `<span class="short">Thiếu ${fmt(short)} xu</span>` : ''}`;
+  };
+  $('controls').innerHTML = `<div class="summary-title caps">Đã nhận ${n} thẻ${nNew ? ` · ${nNew} mới` : ''}</div>
+    ${btn(5, price5)} ${btn(1, price1)}
+    <button class="btn btn-ghost" type="button" id="toInv">Xem trong kho</button>`;
+  $('controls').querySelectorAll('[data-buy]').forEach((b) => b.addEventListener('click', () => buy(Number(b.dataset.buy))));
+  $('toInv').addEventListener('click', () => toast('Prototype: chuyển sang màn Kho thẻ'));
+  $('controls').querySelector('[data-buy]:not(:disabled)')?.focus({ preventScroll: true });
+}
+
+function buy(size) {
+  const price = size === 5 ? 450 : 100;
+  if (state.coins < price) return;
+  state.coins -= price;
+  animateCoins(state.coins + price, state.coins);
+  $('optPack').value = String(size);
+  renderPackStage();
+}
+function animateCoins(from, to) {
+  if (reduced()) return renderCoins();
+  const t0 = performance.now(), d = 400;
+  const step = (t) => { const k = Math.min(1, (t - t0) / d); $('coins').textContent = fmt(Math.round(from + (to - from) * (1 - (1 - k) ** 3))); if (k < 1) requestAnimationFrame(step); };
+  requestAnimationFrame(step);
+}
+function toast(msg) {
+  const t = document.createElement('div'); t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t); setTimeout(() => t.remove(), 3000);
+}
+
+// ---------- Bàn phím ----------
+document.addEventListener('keydown', (e) => {
+  if (e.target.closest?.('.proto')) return;
+  if (e.key === 'Escape') { if (state.phase === 'reveal') revealAll(); return; }
+  if (e.key !== ' ' && e.key !== 'Enter') return;
+  if (e.target.tagName === 'BUTTON') return; // nút tự xử lý Space/Enter
+  e.preventDefault();
+  if (state.phase === 'pack') tearPack();
+  else if (state.phase === 'reveal') { const i = state.revealed.findIndex((v, k) => !v && !state.queue.includes(k)); if (i >= 0) revealOne(i); }
+});
+document.addEventListener('visibilitychange', () => document.documentElement.classList.toggle('tab-hidden', document.hidden));
+$('backBtn').addEventListener('click', () => toast('Prototype: quay về Cửa hàng'));
+$('optReduced').addEventListener('change', () => document.body.classList.toggle('reduced', reduced()));
+
+renderCoins();
+renderBox();
+renderPackStage();
+</script>
+</body>
+</html>

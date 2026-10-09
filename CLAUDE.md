@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** 4 — Thiết kế UI/UX
-- **Việc tiếp theo:** xem mục "Giai đoạn 4" trong `docs/ROADMAP.md`; task code (GĐ5–9) nằm trong `docs/plans/`
+- **Giai đoạn đang làm:** 5 — MVP lõi: trận đấu offline
+- **Việc tiếp theo:** task đầu tiên chưa xong trong `docs/plans/phase-5-match-offline.md` (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)

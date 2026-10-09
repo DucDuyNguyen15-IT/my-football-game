@@ -1,0 +1,79 @@
+{
+  "$comment": "Bản JSON của apps/web/src/styles/tokens.css — dùng cho Phaser (HUD, sân, màu đội) và công cụ. Giữ đồng bộ với file CSS. Giải thích: docs/DESIGN.md §3.",
+  "color": {
+    "bg": "#0a1310",
+    "surface": { "1": "#111d18", "2": "#182822", "3": "#213530" },
+    "line": { "default": "#2a3d35", "strong": "#3d5a4e" },
+    "text": { "default": "#edf2ec", "muted": "#9db0a6", "faint": "#71857c" },
+    "accent": { "default": "#c8f031", "hover": "#d8ff4a", "ink": "#0a1310" },
+    "status": {
+      "danger": "#ff5a4e",
+      "warning": "#ffc23d",
+      "success": "#3dd68c",
+      "info": "#5cc8ff"
+    },
+    "coin": "#f2b33d",
+    "focus": "#5cc8ff",
+    "pitch": { "a": "#1d6436", "b": "#226f3c", "line": "#e8f0e6" },
+    "team": { "home": "#3fa9f5", "away": "#ff7a45" }
+  },
+  "rarity": {
+    "bronze": {
+      "label": "Đồng",
+      "pips": 1,
+      "base": "#b87040",
+      "hi": "#ebaa78",
+      "lo": "#3a1f10",
+      "glow": "rgba(235,150,90,0.45)"
+    },
+    "silver": {
+      "label": "Bạc",
+      "pips": 2,
+      "base": "#aeb7c2",
+      "hi": "#eef2f6",
+      "lo": "#262c33",
+      "glow": "rgba(220,230,245,0.5)"
+    },
+    "gold": {
+      "label": "Vàng",
+      "pips": 3,
+      "base": "#e0ae2e",
+      "hi": "#ffe48a",
+      "lo": "#3a2a06",
+      "glow": "rgba(255,205,70,0.6)"
+    },
+    "legend": {
+      "label": "Huyền thoại",
+      "pips": 4,
+      "base": "#9b6bff",
+      "hi": "#d9c2ff",
+      "lo": "#120a20",
+      "glow": "rgba(155,107,255,0.7)",
+      "foil": ["#9b6bff", "#46e0d0", "#ff6bd5", "#ffe48a", "#9b6bff"]
+    }
+  },
+  "font": {
+    "display": "Barlow Condensed",
+    "body": "Be Vietnam Pro",
+    "size": { "xs": 12, "sm": 14, "md": 16, "lg": 20, "xl": 28, "2xl": 40, "3xl": 64 },
+    "weight": { "regular": 400, "medium": 500, "semibold": 600, "bold": 700 }
+  },
+  "space": { "1": 4, "2": 8, "3": 12, "4": 16, "5": 24, "6": 32, "7": 48, "8": 64 },
+  "radius": { "sm": 2, "md": 4, "lg": 8, "cardNotch": 14 },
+  "motion": {
+    "duration": { "instant": 80, "fast": 160, "base": 240, "slow": 400 },
+    "easing": {
+      "out": [0.22, 1, 0.36, 1],
+      "inOut": [0.65, 0, 0.35, 1],
+      "snap": [0.34, 1.56, 0.64, 1]
+    },
+    "stagger": 80,
+    "reveal": {
+      "bronze": { "charge": 0, "flip": 360, "burst": 0 },
+      "silver": { "charge": 0, "flip": 440, "burst": 240 },
+      "gold": { "charge": 450, "flip": 560, "burst": 520 },
+      "legend": { "charge": 1300, "flip": 760, "burst": 900 }
+    }
+  },
+  "layout": { "max": 1280, "cardWidth": { "lg": 220, "md": 150, "sm": 96 } }
+}
