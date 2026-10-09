@@ -1,0 +1,118 @@
+/*
+ * Design tokens — nguồn: docs/DESIGN.md §3. Bản JSON cho Phaser/công cụ: docs/design/design-tokens.json.
+ * Đổi giá trị ở đây thì sửa cả file JSON (task 6.6 sẽ cân nhắc sinh tự động).
+ * Chỉ có giao diện tối: game chơi trong "sân đêm", không có chế độ sáng.
+ */
+:root {
+  /* Nền & bề mặt */
+  --c-bg: #0a1310;
+  --c-surface-1: #111d18;
+  --c-surface-2: #182822;
+  --c-surface-3: #213530;
+  --c-line: #2a3d35;
+  --c-line-strong: #3d5a4e;
+
+  /* Chữ */
+  --c-text: #edf2ec;
+  --c-text-muted: #9db0a6;
+  --c-text-faint: #71857c;
+
+  /* Hành động & trạng thái */
+  --c-accent: #c8f031;
+  --c-accent-hover: #d8ff4a;
+  --c-accent-ink: #0a1310;
+  --c-danger: #ff5a4e;
+  --c-warning: #ffc23d;
+  --c-success: #3dd68c;
+  --c-info: #5cc8ff;
+  --c-coin: #f2b33d;
+  --c-focus: #5cc8ff;
+  --c-scrim: rgb(4 8 6 / 0.78);
+
+  /* Sân & đội (HUD, Phaser) */
+  --c-pitch-a: #1d6436;
+  --c-pitch-b: #226f3c;
+  --c-pitch-line: #e8f0e6;
+  --c-team-home: #3fa9f5;
+  --c-team-away: #ff7a45;
+
+  /* Độ hiếm: base (khung), hi (OVR, viền sáng), lo (nền mặt thẻ), glow (hào quang) */
+  --r-bronze-base: #b87040;
+  --r-bronze-hi: #ebaa78;
+  --r-bronze-lo: #3a1f10;
+  --r-bronze-glow: rgb(235 150 90 / 0.45);
+
+  --r-silver-base: #aeb7c2;
+  --r-silver-hi: #eef2f6;
+  --r-silver-lo: #262c33;
+  --r-silver-glow: rgb(220 230 245 / 0.5);
+
+  --r-gold-base: #e0ae2e;
+  --r-gold-hi: #ffe48a;
+  --r-gold-lo: #3a2a06;
+  --r-gold-glow: rgb(255 205 70 / 0.6);
+
+  --r-legend-base: #9b6bff;
+  --r-legend-hi: #d9c2ff;
+  --r-legend-lo: #120a20;
+  --r-legend-glow: rgb(155 107 255 / 0.7);
+  --r-legend-foil: conic-gradient(from 0deg, #9b6bff, #46e0d0, #ff6bd5, #ffe48a, #9b6bff);
+
+  /* Chữ */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-body: 'Be Vietnam Pro', system-ui, sans-serif;
+  --fs-xs: 0.75rem; /* 12 */
+  --fs-sm: 0.875rem; /* 14 */
+  --fs-md: 1rem; /* 16 */
+  --fs-lg: 1.25rem; /* 20 */
+  --fs-xl: 1.75rem; /* 28 */
+  --fs-2xl: 2.5rem; /* 40 */
+  --fs-3xl: 4rem; /* 64 */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.05;
+  --lh-normal: 1.5;
+  --tracking-caps: 0.06em;
+
+  /* Khoảng cách (bước 4px) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* Bo góc — góc cứng, mang tính thể thao */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 8px;
+  --card-notch: 14px; /* góc vát của thẻ cầu thủ */
+
+  /* Bóng & lớp */
+  --shadow-1: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 2px 6px rgb(0 0 0 / 0.35);
+  --shadow-2: 0 8px 24px rgb(0 0 0 / 0.45);
+  --z-hud: 10;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+
+  /* Chuyển động (docs/DESIGN.md §5) */
+  --dur-instant: 80ms;
+  --dur-fast: 160ms;
+  --dur-base: 240ms;
+  --dur-slow: 400ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --stagger: 80ms;
+
+  /* Bố cục */
+  --layout-max: 1280px;
+  --card-w-lg: 220px;
+  --card-w-md: 150px;
+  --card-w-sm: 96px;
+}

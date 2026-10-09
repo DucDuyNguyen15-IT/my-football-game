@@ -11,3 +11,4 @@
 | [0005](0005-postgresql-drizzle.md) | PostgreSQL + Drizzle ORM | accepted | 2026-10-09 |
 | [0006](0006-no-realtime-in-mvp.md) | Không dùng realtime trong MVP | accepted | 2026-10-09 |
 | [0007](0007-hosting-docker-compose.md) | Hosting bằng Docker Compose | proposed | 2026-10-09 |
+| [0008](0008-card-reveal-css-waapi.md) | Animation lật thẻ bằng CSS 3D + Web Animations API | accepted | 2026-10-10 |

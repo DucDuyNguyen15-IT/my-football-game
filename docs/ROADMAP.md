@@ -16,7 +16,7 @@ Người dùng chỉ cần copy "Câu lệnh mẫu" dán cho agent. Agent đọc
 | 1 | Nghiên cứu & ý tưởng | `docs/research.md` | ✅ |
 | 2 | Spec (PRD) & quyết định kỹ thuật | `docs/PRD.md`, `docs/adr/*` | ✅ |
 | 3 | Kiến trúc & kế hoạch | `docs/ARCHITECTURE.md`, `docs/plans/*` | ✅ |
-| 4 | Thiết kế UI/UX | `docs/DESIGN.md`, design tokens | ⬜ |
+| 4 | Thiết kế UI/UX | `docs/DESIGN.md`, design tokens | ✅ |
 | 5 | MVP lõi: trận đấu offline | Đá được 1 trận với máy | ⬜ |
 | 6 | Hệ thống thẻ & đội hình | Mở thẻ, kho thẻ, xếp đội hình | ⬜ |
 | 7 | Tài khoản, kinh tế, (tuỳ chọn) PvP | Đăng nhập, tiền ảo, ghép trận | ⬜ |
@@ -100,8 +100,8 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 > Làm Giai đoạn 4. Viết docs/DESIGN.md: phong cách, bảng màu theo độ hiếm thẻ, font, design tokens. Phác thảo các màn: menu chính, trận đấu (HUD), mở thẻ (animation lật thẻ theo độ hiếm), kho thẻ, xếp đội hình, cửa hàng. Làm 1 prototype HTML cho màn mở thẻ để mình duyệt.
 
 **Hoàn thành khi:**
-- [ ] `docs/DESIGN.md` + file design tokens
-- [ ] Người dùng duyệt prototype màn mở thẻ
+- [x] `docs/DESIGN.md` + file design tokens
+- [x] Người dùng duyệt prototype màn mở thẻ
 
 ---
 
