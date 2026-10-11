@@ -188,6 +188,41 @@ describe('stepBall — cột dọc và xà ngang', () => {
     expect(events.find((e) => e.type === 'goal')).toBeUndefined();
     expect(trace.some((b) => b.vel.x < 0)).toBe(true);
   });
+
+  it('tâm bóng qua vạch cuối ở trên xà thì không bao giờ thành bàn (kể cả rơi dốc ngay sau vạch)', () => {
+    // `goal` được xét khi bóng qua hẳn vạch (tâm ở HALF_LENGTH + BALL_RADIUS). Bóng muốn tụt từ trên xà
+    // xuống dưới xà trong dải đó phải đi xuyên vùng va chạm của xà, nên va xà luôn chặn trước.
+    const barCenterZ = GOAL_HEIGHT + POST_RADIUS;
+    let checked = 0;
+    for (let x0 = HALF_LENGTH - 2; x0 < HALF_LENGTH; x0 += 0.23) {
+      for (let z0 = 1.5; z0 < 5; z0 += 0.29) {
+        // Bỏ điểm xuất phát chồng lên xà (trạng thái không hợp lệ).
+        const startDist = Math.hypot(x0 - HALF_LENGTH, z0 + BALL_RADIUS - barCenterZ);
+        if (startDist < BALL_RADIUS + POST_RADIUS + 0.02) continue;
+        for (let vx = 0.5; vx < 30; vx *= 1.6) {
+          for (let vz = -14; vz < 8; vz += 1.7) {
+            let b = ball(vec2(x0, 0.4), vec2(vx, 0), z0, vz);
+            let aboveAtLine: boolean | null = null;
+            for (let t = 0; t < 4 * TICK_RATE; t++) {
+              const r = stepBall(b, 'home');
+              if (aboveAtLine === null && b.pos.x <= HALF_LENGTH && r.ball.pos.x > HALF_LENGTH) {
+                const f = (HALF_LENGTH - b.pos.x) / (r.ball.pos.x - b.pos.x);
+                aboveAtLine = b.z + (r.ball.z - b.z) * f + BALL_RADIUS >= GOAL_HEIGHT;
+              }
+              b = r.ball;
+              if (r.events.length === 0) continue;
+              if (aboveAtLine) {
+                checked++;
+                expect(r.events[0]!.type).not.toBe('goal');
+              }
+              break;
+            }
+          }
+        }
+      }
+    }
+    expect(checked).toBeGreaterThan(100);
+  });
 });
 
 describe('stepBall — tất định', () => {
