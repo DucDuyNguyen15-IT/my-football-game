@@ -10,3 +10,4 @@ Ghi ý tưởng vào đây thay vì làm ngay. Xem xét lại khi lập kế ho�
 | Điều khiển cảm ứng/mobile, tay cầm | Agent | 2 | PRD §4.2, sau PvP bất đồng bộ và chợ |
 | CLB/quốc tịch hư cấu + bonus "team color" | Agent | 2 | PRD §4.2 |
 | Xác minh trận vs máy bằng log input (server mô phỏng lại) | Agent | 2 | Câu hỏi mở PRD §12; chống gian lận thưởng |
+| Tất định giữa các engine JS (V8/JSC/SpiderMonkey): bỏ `Math.cos/log/sin` khỏi đường state của sim (VD `nextGaussian` dùng Box–Muller) hoặc thay bằng bảng tra / xấp xỉ thuần số học; thêm test golden-hash N tick | Agent | 5 | Chỉ cần khi server mô phỏng lại trận (dòng trên) hoặc PvP. Phát hiện khi review task 5.1 |

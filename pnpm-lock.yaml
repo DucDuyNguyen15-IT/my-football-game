@@ -250,7 +250,11 @@ importers:
         specifier: ^4.6.5
         version: 4.6.5
 
-  packages/sim: {}
+  packages/sim:
+    dependencies:
+      '@pitch/shared':
+        specifier: workspace:*
+        version: link:../shared
 
 packages:
 
