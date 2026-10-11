@@ -2,6 +2,7 @@ import { FORMATION_LINES, type Formation, type SquadSlot } from '@pitch/shared';
 import { attackSign } from '../actions/shoot';
 import { add, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from '../pitch';
+import { CONTAIN_DIST } from '../stats/params';
 import type { BallState, PlayerState, TeamSide } from '../types';
 
 /*
@@ -75,8 +76,6 @@ const MARK_ZONE_X = 5;
 const MARK_RANGE = 15;
 /** Người kèm đứng giữa đối phương và khung thành nhà, cách đối phương chừng này (m). */
 const MARK_DIST = 2;
-/** Người áp sát đứng chắn trước người dẫn bóng, cách chừng này (m) — task 5.15 thêm tắc bóng. */
-const PRESS_DIST = 1.2;
 /** Đuổi bóng tự do: đón trước theo vận tốc bóng, tối đa chừng này giây. */
 const CHASE_LEAD_MAX_SEC = 1;
 const CHASE_SPEED_GUESS = 6;
@@ -241,6 +240,12 @@ export interface AiMove {
   sprint: boolean;
 }
 
+/** Điểm cách `of` một khoảng `gap`, nằm trên đường từ `of` về khung thành nhà của `team`. */
+export function goalSidePoint(of: Vec2, team: TeamSide, half: 1 | 2, gap: number): Vec2 {
+  const ownGoal = vec2(-attackSign(team, half) * HALF_LENGTH, 0);
+  return add(of, scale(normalize(sub(ownGoal, of)), gap));
+}
+
 /** Vị trí mục tiêu của cầu thủ AI trong tick này theo vai; null nếu không có vai. */
 export function aiTarget(
   player: PlayerState,
@@ -254,8 +259,7 @@ export function aiTarget(
   const anchor = plan.anchors[player.id];
   if (role === undefined || anchor === undefined) return null;
   const sign = attackSign(player.team, half);
-  const ownGoal = vec2(-sign * HALF_LENGTH, 0);
-  const goalSide = (of: Vec2, gap: number) => add(of, scale(normalize(sub(ownGoal, of)), gap));
+  const goalSide = (of: Vec2, gap: number) => goalSidePoint(of, player.team, half, gap);
   const owner = ballOwnerId === null ? undefined : players.find((p) => p.id === ballOwnerId);
 
   let target: Vec2;
@@ -265,7 +269,7 @@ export function aiTarget(
         const lead = Math.min(CHASE_LEAD_MAX_SEC, dist(player.pos, ball.pos) / CHASE_SPEED_GUESS);
         target = add(ball.pos, scale(ball.vel, lead));
       } else if (owner.team !== player.team) {
-        target = goalSide(owner.pos, PRESS_DIST);
+        target = goalSide(owner.pos, CONTAIN_DIST);
       } else {
         // Đội mình vừa giành bóng, chưa kịp lập lại kế hoạch.
         target = anchor;

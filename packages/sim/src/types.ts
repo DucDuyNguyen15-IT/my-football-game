@@ -143,6 +143,8 @@ export interface MatchState {
   bookings: Booking[];
   /** Người vừa xoạc hụt: đang trượt/đứng dậy, không di chuyển hay xoạc được trước tick này. */
   tackleRecovery: Record<string, number>;
+  /** Người vừa tắc đứng trượt: chưa tắc lại được trước tick này (vẫn di chuyển bình thường). */
+  standTackleCooldown: Record<string, number>;
   bench: Record<TeamSide, MatchPlayerSetup[]>;
   /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */
   ballOwnerId: string | null;

@@ -1,6 +1,12 @@
 import { dot, length, normalize, scale, sub, type Vec2 } from '../math/vec2';
 import { nextFloat, type RngState } from '../rng';
-import { tackleReachFor, tackleWinChance } from '../stats/params';
+import {
+  STAND_TACKLE_FOUL_CHANCE,
+  standTackleReachFor,
+  standTackleWinChance,
+  tackleReachFor,
+  tackleWinChance,
+} from '../stats/params';
 import type { BallState, PlayerState } from '../types';
 
 /*
@@ -79,6 +85,45 @@ export function resolveTackle(
   const [roll, next] = nextFloat(rng);
   const chance = tackleWinChance(tackler.stats.defending, owner.stats.dribbling);
   return { outcome: roll < chance ? { type: 'won', victimId: owner.id } : foul, rng: next };
+}
+
+/** Tắc đứng: như xoạc, thêm `failed` = trượt mà không chạm người, người dẫn bóng giữ bóng. */
+export type StandTackleOutcome = TackleOutcome | { type: 'failed' };
+
+/**
+ * Tắc bóng đứng (giữ D khi không có bóng, task 5.15) vào người dẫn bóng đối phương. Chỉ tắc khi bóng
+ * trong tầm tắc đứng (ngắn hơn xoạc), không trượt người. Từ phía sau → phạm lỗi (không thô bạo, không
+ * tung xác suất). Ngược lại tung giành bóng; trượt thì tung tiếp có chạm người (phạm lỗi) hay không.
+ * Bóng tự do, đồng đội dẫn bóng, bóng ngoài tầm → `miss` (không tắc, PRNG giữ nguyên).
+ */
+export function resolveStandTackle(
+  players: readonly PlayerState[],
+  tackler: PlayerState,
+  ball: BallState,
+  ballOwnerId: string | null,
+  rng: RngState,
+): { outcome: StandTackleOutcome; rng: RngState } {
+  const owner = ballOwnerId === null ? undefined : players.find((p) => p.id === ballOwnerId);
+  if (
+    !owner ||
+    owner.team === tackler.team ||
+    dist(ball.pos, tackler.pos) > standTackleReachFor(tackler.stats.defending)
+  ) {
+    return { outcome: { type: 'miss' }, rng };
+  }
+  if (isFromBehind(tackler, owner)) {
+    return { outcome: { type: 'foul', victimId: owner.id, fromBehind: true, rough: false }, rng };
+  }
+  const [roll, r1] = nextFloat(rng);
+  if (roll < standTackleWinChance(tackler.stats.defending, owner.stats.dribbling)) {
+    return { outcome: { type: 'won', victimId: owner.id }, rng: r1 };
+  }
+  const [contact, r2] = nextFloat(r1);
+  const outcome: StandTackleOutcome =
+    contact < STAND_TACKLE_FOUL_CHANCE
+      ? { type: 'foul', victimId: owner.id, fromBehind: false, rough: false }
+      : { type: 'failed' };
+  return { outcome, rng: r2 };
 }
 
 /** Xoạc hụt: cầu thủ trượt theo hướng mặt, ít nhất TACKLE_SLIDE_SPEED. */

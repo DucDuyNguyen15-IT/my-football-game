@@ -67,7 +67,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: khi bóng ở 1/3 sân nhà, trung bình x của đội phòng ngự lùi về; luôn có đúng 1 người áp sát; chạy 1 trận AI-vs-AI không văng lỗi, không cầu thủ nào ra ngoài sân quá 2 s.
 - **Xong khi:** hai đội AI tự di chuyển có hình dạng đội hình hợp lý.
 
-### 5.15 — Áp sát & tắc bóng (D khi không có bóng) `[ ]`
+### 5.15 — Áp sát & tắc bóng (D khi không có bóng) `[x]`
 - **Phụ thuộc:** 5.7 · **Model:** strongest
 - **Bối cảnh:** PRD §5 (dòng "Điều khiển"), DESIGN §6.2, `packages/sim/src/{match,types}.ts`, `src/actions/tackle.ts`, `src/rules/fouls.ts`. Thêm 2026-10-11 khi đổi sang bộ phím kiểu FC Online.
 - **Việc cần làm:** khi người đang điều khiển không có bóng và **giữ** nút sút (D): tự chạy tới người dẫn bóng đối phương, dừng ở khoảng cách kèm (~1–1,5 m), chắn giữa người đó và khung thành nhà; người chơi vẫn bấm hướng để chỉnh. Vào tầm thì **tắc bóng đứng**: tầm ngắn hơn xoạc, không trượt/không hồi lâu, tỉ lệ giành bóng theo Phòng ngự vs Rê bóng, trượt thì chỉ phạm lỗi khi chạm người (ít lỗi hơn xoạc), từ phía sau vẫn là lỗi. Hằng số ở `stats/params.ts`.
