@@ -22,7 +22,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** `pnpm --filter @pitch/sim exec vitest run` — test rng cùng seed cùng chuỗi; 2 lần chạy 600 tick cùng input → state `toEqual`.
 - **Xong khi:** `createMatch` + `step` chạy được, có test tất định, export qua `src/index.ts`.
 
-### 5.2 — Vật lý bóng `[ ]`
+### 5.2 — Vật lý bóng `[x]`
 - **Phụ thuộc:** 5.1 · **Model:** default
 - **Bối cảnh:** `packages/sim/src/{types,pitch,match}.ts`, PRD §5 (bóng ra ngoài).
 - **Việc cần làm:** `physics/ball.ts`: ma sát lăn trên cỏ, cản không khí, trọng lực + nảy (hệ số hồi phục) cho bóng bổng, va cột dọc/xà (đơn giản hoá 2D + z), lưới giữ bóng. Phát sự kiện `ball_out { line: 'touch'|'goal', point }` và `goal { team }` khi bóng qua hẳn vạch (tâm bóng + bán kính).

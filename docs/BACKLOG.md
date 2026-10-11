@@ -11,3 +11,6 @@ Ghi ý tưởng vào đây thay vì làm ngay. Xem xét lại khi lập kế ho�
 | CLB/quốc tịch hư cấu + bonus "team color" | Agent | 2 | PRD §4.2 |
 | Xác minh trận vs máy bằng log input (server mô phỏng lại) | Agent | 2 | Câu hỏi mở PRD §12; chống gian lận thưởng |
 | Tất định giữa các engine JS (V8/JSC/SpiderMonkey): bỏ `Math.cos/log/sin` khỏi đường state của sim (VD `nextGaussian` dùng Box–Muller) hoặc thay bằng bảng tra / xấp xỉ thuần số học; thêm test golden-hash N tick | Agent | 5 | Chỉ cần khi server mô phỏng lại trận (dòng trên) hoặc PvP. Phát hiện khi review task 5.1 |
+| Vật lý bóng: bóng qua vạch cuối **trên xà** rồi rơi xuống dưới 2 m trong dải 0–R sau vạch vẫn bị tính `goal`; nên xét "dưới xà" tại lúc tâm bóng qua x = ±HALF_LENGTH | Agent | 5 | Review task 5.2 (MEDIUM, ca hiếm). Làm cùng 5.4/5.5 |
+| Tách `TICK_RATE`/`TICK_DT` sang module lá (VD `clock.ts`) để bỏ import vòng `physics/ball.ts` ↔ `index.ts` | Agent | 5 | Review task 5.2 (LOW, chưa lỗi vì chỉ dùng làm tham số mặc định). Làm ở 5.4 trước khi thêm import chéo |
+| Test vật lý bóng bổ sung: vạch -y/-x, qua góc sân cùng bước con, bóng sát mép trong cột, kẹp lưới hông/nóc, chuẩn hoá -0 trong state | Agent | 5 | Review task 5.2 (MEDIUM/LOW) |
