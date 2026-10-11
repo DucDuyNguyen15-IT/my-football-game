@@ -2,6 +2,14 @@ import { describe, expect, it } from 'vitest';
 import {
   FATIGUE_THRESHOLD,
   accelFor,
+  controlRadiusFor,
+  lobRangeFor,
+  passAngleErrFor,
+  passPowerErrFor,
+  shotAngleErrFor,
+  shotHeightErrFor,
+  shotSpeedFor,
+  turnLossCosFor,
   fatigueFactor,
   runSpeedFor,
   sprintSpeedFor,
@@ -64,5 +72,31 @@ describe('fatigueFactor', () => {
   it('kẹp thể lực ngoài khoảng 0–100', () => {
     expect(fatigueFactor(-5)).toBe(fatigueFactor(0));
     expect(fatigueFactor(250)).toBe(1);
+  });
+});
+
+describe('ánh xạ chỉ số → kiểm soát bóng, chuyền, sút (đơn điệu)', () => {
+  it('Rê bóng cao → bán kính khống chế lớn hơn, chịu được cú xoay gắt hơn', () => {
+    expect(strictlyIncreasing(STATS.map(controlRadiusFor))).toBe(true);
+    // Ngưỡng là cos góc giữa hướng chạy và hướng bấm: càng thấp thì góc xoay được càng lớn.
+    expect(strictlyDecreasing(STATS.map(turnLossCosFor))).toBe(true);
+    for (const s of STATS) {
+      expect(turnLossCosFor(s)).toBeLessThanOrEqual(1);
+      expect(turnLossCosFor(s)).toBeGreaterThanOrEqual(-1);
+    }
+  });
+
+  it('Chuyền cao → sai số góc/lực nhỏ hơn, chuyền bổng xa hơn', () => {
+    expect(strictlyDecreasing(STATS.map(passAngleErrFor))).toBe(true);
+    expect(strictlyDecreasing(STATS.map(passPowerErrFor))).toBe(true);
+    expect(strictlyIncreasing(STATS.map(lobRangeFor))).toBe(true);
+    expect(passAngleErrFor(99)).toBeGreaterThan(0);
+  });
+
+  it('Sút cao → sút mạnh hơn, sai số góc và độ cao nhỏ hơn', () => {
+    expect(strictlyIncreasing(STATS.map(shotSpeedFor))).toBe(true);
+    expect(strictlyDecreasing(STATS.map(shotAngleErrFor))).toBe(true);
+    expect(strictlyDecreasing(STATS.map(shotHeightErrFor))).toBe(true);
+    expect(shotAngleErrFor(99)).toBeGreaterThan(0);
   });
 });

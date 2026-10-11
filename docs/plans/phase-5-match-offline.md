@@ -39,7 +39,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: Tốc độ 90 chạy 30 m nhanh hơn Tốc độ 50; nước rút liên tục làm thể lực tụt nhanh hơn chạy thường; Thể lực 90 hao chậm hơn 50; dưới 30% thì `maxSpeed` giảm.
 - **Xong khi:** tham số chỉ số có test đơn điệu (chỉ số cao → tốt hơn).
 
-### 5.4 — Kiểm soát bóng: rê, chuyền, sút, đổi người `[ ]`
+### 5.4 — Kiểm soát bóng: rê, chuyền, sút, đổi người `[x]`
 - **Phụ thuộc:** 5.2, 5.3 · **Model:** strongest
 - **Bối cảnh:** PRD §5 (điều khiển), §5 tiêu chí "Sút 90 vs Sút 55", §6.2.
 - **Việc cần làm:** `rules/possession.ts` (bóng dính chân trong bán kính phụ thuộc Rê bóng, mất bóng khi xoay gắt); `actions/pass.ts` (chuyền thấp tới đồng đội tốt nhất theo hướng, chuyền bổng theo tầm; sai số góc/lực từ Chuyền); `actions/shoot.ts` (giữ để nạp lực, sai số góc từ Sút + `fatigueFactor`); đổi người điều khiển = cầu thủ gần bóng nhất phía mình (J khi không có bóng).

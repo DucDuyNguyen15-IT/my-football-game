@@ -1,4 +1,4 @@
-import { TICK_DT } from '../index';
+import { TICK_DT } from '../tick';
 import { add, dot, length, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { BALL_RADIUS, GOAL_HEIGHT, GOAL_WIDTH, HALF_LENGTH, HALF_WIDTH } from '../pitch';
 import type { BallState, TeamSide } from '../types';
