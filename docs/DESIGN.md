@@ -139,7 +139,7 @@ Khung chung cho các màn ngoài trận: thanh trên cùng cao 56px (logo chữ 
 │                                                    └──────────┘       │
 │                         (sân 2D, camera bám bóng)                     │
 │                               ▼ (mũi tên trên đầu cầu thủ đang điều khiển)
-│                              ◉━━━━━  thanh lực sút (khi giữ K)        │
+│                              ◉━━━━━  thanh lực sút (khi giữ D)        │
 │                                                                      │
 │ ┌─────────────────────┐                                              │
 │ │ 9  R. DUARTE   FW   │                    Esc  Tạm dừng              │
@@ -149,21 +149,26 @@ Khung chung cho các màn ngoài trận: thanh trên cùng cao 56px (logo chữ 
 ```
 - **Bảng tỉ số** ở giữa phía trên: ô màu đội, tỉ số Barlow 40px, hiệp + phút (0'–90'). Các sự kiện (bàn thắng, thẻ, thay người) hiện thành dải nhỏ dưới bảng tỉ số trong 3s.
 - **Panel cầu thủ** ở góc dưới-trái: số áo, tên, vị trí, thanh thể lực. Thanh đổi sang vàng khi < 50% và đỏ khi < 30% (mốc PRD làm giảm tốc độ).
-- **Thanh lực sút** hiện cạnh cầu thủ khi giữ K, đầy trong 1s.
+- **Thanh lực sút** hiện cạnh cầu thủ khi giữ D, đầy trong 1s.
 - **Minimap** góc trên-phải hiện 14 chấm màu đội và bóng trắng.
 - Bàn thắng: chữ "VÀO!" màu chanh quét ngang màn hình 1.2s, rồi về giao bóng.
 - Lần đầu vào trận: hiện dải gợi ý phím điều khiển ở cạnh dưới trong 10s đầu, sau đó ẩn và mở lại được trong menu tạm dừng.
 
-**Phím điều khiển (chốt PRD §5):**
+**Phím điều khiển (kiểu FC Online, PRD §5 — đổi 2026-10-11, thay bộ J/K/L + WASD cũ):**
 
-| Phím | Có bóng | Không có bóng |
+| Phím | Có bóng (tấn công) | Không có bóng (phòng ngự) |
 |---|---|---|
-| WASD / mũi tên | Di chuyển | Di chuyển |
-| Shift (giữ) | Chạy nước rút | Chạy nước rút |
-| J | Chuyền thấp | Đổi sang người gần bóng nhất |
-| L | Chuyền bổng | — |
-| K (giữ để tăng lực) | Sút | Xoạc |
+| Mũi tên | Di chuyển | Di chuyển |
+| E (giữ) | Chạy nước rút | Chạy nước rút |
+| S | Chuyền ngắn sệt | Đổi cầu thủ đang điều khiển (người gần bóng nhất) |
+| A | Chuyền dài bổng | Xoạc |
+| D (giữ để tăng lực) | Sút | Giữ: áp sát người có bóng; vào tầm thì tắc bóng (task 5.15) |
+| W | Chọc khe (Could, task 5.16) | — |
+| Q + W | Chọc khe bổng (Could, task 5.16) | — |
 | Esc | Tạm dừng | Tạm dừng |
+
+- Bóng chết: S/A để chuyền; đá phạt và phạt đền giữ-thả D để sút (phạt đền chỉ sút). Nghỉ giữa hiệp: S để đá hiệp 2.
+- WASD **không** dùng để di chuyển vì W/A/S/D là phím hành động.
 
 - **Đổi so với đề xuất trong PRD:** bỏ phím Tab, vì Tab là phím chuyển focus của trình duyệt và dễ làm mất focus khỏi canvas. **Esc tạm dừng được bất cứ lúc nào.** Trong menu tạm dừng, tab "Thay người" chỉ bật khi bóng chết (đúng luật PRD), các lúc khác hiện mờ kèm dòng "Chỉ thay người khi bóng chết".
 - Menu tạm dừng gồm: Tiếp tục · Thay người (3 lượt, hiện số lượt còn) · Phím điều khiển · Bỏ trận (có hỏi xác nhận vì sẽ bị tính thua).

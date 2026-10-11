@@ -103,7 +103,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Hòa sau 2 hiệp | Đá **luân lưu** 5 lượt mỗi đội, sau đó đá đến khi phân thắng bại (sudden death) |
 | Thể lực | Mỗi cầu thủ có thanh thể lực 100%. Chạy nước rút làm thanh tụt nhanh, chạy thường tụt chậm, đứng yên hồi lại. Tốc độ hao phụ thuộc chỉ số Thể lực. Dưới 30% thì tốc độ tối đa và độ chính xác giảm dần |
 | Thay người | Tối đa **3 lượt/trận**, chỉ khi bóng chết (biên, góc, phát bóng, sau bàn thắng, nghỉ giữa hiệp). Mở menu thì trận tạm dừng. Đội máy cũng thay người khi cầu thủ dưới 30% thể lực |
-| Điều khiển (chốt GĐ4, DESIGN.md §6.2) | WASD/mũi tên: di chuyển · J: chuyền thấp · L: chuyền bổng · K: sút (giữ để tăng lực) · Shift: chạy nước rút · khi **không có bóng**: K = xoạc, J = đổi người gần bóng · Esc: tạm dừng (mọi lúc); mục thay người trong menu tạm dừng chỉ bật khi bóng chết. Không dùng Tab |
+| Điều khiển (kiểu FC Online, đổi 2026-10-11, DESIGN.md §6.2) | Mũi tên: di chuyển · E (giữ): chạy nước rút · **có bóng**: S = chuyền ngắn sệt, A = chuyền dài bổng, D = sút (giữ để tăng lực), W = chọc khe, Q+W = chọc khe bổng · **không có bóng**: S = đổi cầu thủ, A = xoạc, D (giữ) = áp sát, tắc bóng · Esc: tạm dừng (mọi lúc); mục thay người trong menu tạm dừng chỉ bật khi bóng chết. Không dùng Tab. W/Q+W là Could (task 5.16) |
 | Kết quả | Thắng / Hòa (thua hay thắng luân lưu) / Thua. Tỉ số và thẻ phạt hiển thị cuối trận |
 
 **Tiêu chí chấp nhận F1–F3**

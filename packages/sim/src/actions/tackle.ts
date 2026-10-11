@@ -4,7 +4,7 @@ import { tackleReachFor, tackleWinChance } from '../stats/params';
 import type { BallState, PlayerState } from '../types';
 
 /*
- * Xoạc (K khi không có bóng, PRD §5). Xoạc xảy ra tức thì ở tick bấm: so vị trí người xoạc với
+ * Xoạc (A — nút chuyền bổng — khi không có bóng, PRD §5). Xoạc xảy ra tức thì ở tick bấm: so vị trí người xoạc với
  * bóng và người dẫn bóng đối phương. Tầm với và tỉ lệ xoạc sạch theo Phòng ngự (`stats/params.ts`).
  * Phạm lỗi được xử lý ở `rules/fouls.ts`; ở đây chỉ quyết định xoạc trúng bóng, trúng người hay hụt.
  */

@@ -382,7 +382,7 @@ function stepPlay(
       kickLock = lock(me.id);
       shotChargeTicks = 0;
     } else if (input.shoot && (shotChargeTicks > 0 || pressed('shoot'))) {
-      // Chỉ nạp lực khi bấm K lúc đang có bóng: giữ K từ cú xoạc vừa giành bóng không thành sút.
+      // Chỉ nạp lực khi bấm nút sút lúc đang có bóng: giữ nút từ lúc chưa có bóng không thành sút.
       shotChargeTicks += 1;
     } else if (releasedShot) {
       const target = shotTarget(attackSign(me.team, state.half), input.move.y);
@@ -393,8 +393,8 @@ function stepPlay(
     }
   } else {
     shotChargeTicks = 0;
-    // K khi không có bóng = xoạc.
-    if (me && pressed('shoot') && tackleRecovery[me.id] === undefined) {
+    // Nút chuyền bổng (A) khi không có bóng = xoạc.
+    if (me && pressed('lob') && tackleRecovery[me.id] === undefined) {
       const tackle = resolveTackle(state.players, me, ball, ballOwnerId, rng, CONTROL_HEIGHT);
       rng = tackle.rng;
       const { outcome } = tackle;

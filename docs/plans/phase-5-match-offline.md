@@ -42,7 +42,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 ### 5.4 — Kiểm soát bóng: rê, chuyền, sút, đổi người `[x]`
 - **Phụ thuộc:** 5.2, 5.3 · **Model:** strongest
 - **Bối cảnh:** PRD §5 (điều khiển), §5 tiêu chí "Sút 90 vs Sút 55", §6.2.
-- **Việc cần làm:** `rules/possession.ts` (bóng dính chân trong bán kính phụ thuộc Rê bóng, mất bóng khi xoay gắt); `actions/pass.ts` (chuyền thấp tới đồng đội tốt nhất theo hướng, chuyền bổng theo tầm; sai số góc/lực từ Chuyền); `actions/shoot.ts` (giữ để nạp lực, sai số góc từ Sút + `fatigueFactor`); đổi người điều khiển = cầu thủ gần bóng nhất phía mình (J khi không có bóng).
+- **Việc cần làm:** `rules/possession.ts` (bóng dính chân trong bán kính phụ thuộc Rê bóng, mất bóng khi xoay gắt); `actions/pass.ts` (chuyền thấp tới đồng đội tốt nhất theo hướng, chuyền bổng theo tầm; sai số góc/lực từ Chuyền); `actions/shoot.ts` (giữ để nạp lực, sai số góc từ Sút + `fatigueFactor`); đổi người điều khiển = cầu thủ gần bóng nhất phía mình (nút chuyền thấp khi không có bóng — phím S theo bộ phím FCO, xem DESIGN §6.2).
 - **Kiểm chứng:** test 1.000 cú sút cùng tình huống (seed khác nhau): Sút 90 vào khung thành nhiều hơn Sút 55 **≥ 25 điểm %**; chuyền thấp tới đồng đội đứng yên 15 m tới được ≥ 90% với Chuyền 80.
 - **Xong khi:** tiêu chí PRD về sút có test xanh.
 
@@ -56,7 +56,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 ### 5.6 — Xoạc, phạm lỗi, thẻ phạt `[x]`
 - **Phụ thuộc:** 5.5 · **Model:** strongest
 - **Bối cảnh:** PRD §5 (dòng "Phạm lỗi") và tiêu chí F2.
-- **Việc cần làm:** `actions/tackle.ts` (K khi không có bóng; bán kính/tỉ lệ sạch theo Phòng ngự); `rules/fouls.ts`: không chạm bóng trước hoặc từ phía sau → phạm lỗi; trong vòng cấm → phạt đền; từ sau khi đối phương đối mặt khung thành → vàng; 2 vàng → đỏ; xoạc thô bạo (tốc độ cao từ sau) → xác suất đỏ trực tiếp (PRNG). Cầu thủ bị đỏ rời sân. Đá phạt/phạt đền là restart mới.
+- **Việc cần làm:** `actions/tackle.ts` (nút chuyền bổng — phím A — khi không có bóng; ban đầu là K, đổi sang bộ phím FCO 2026-10-11; bán kính/tỉ lệ sạch theo Phòng ngự); `rules/fouls.ts`: không chạm bóng trước hoặc từ phía sau → phạm lỗi; trong vòng cấm → phạt đền; từ sau khi đối phương đối mặt khung thành → vàng; 2 vàng → đỏ; xoạc thô bạo (tốc độ cao từ sau) → xác suất đỏ trực tiếp (PRNG). Cầu thủ bị đỏ rời sân. Đá phạt/phạt đền là restart mới.
 - **Kiểm chứng:** test từng nhánh: xoạc trượt → phạm lỗi + đá phạt; trong vòng cấm → phạt đền; xoạc từ sau khi đối phương đối mặt khung thành → vàng; vàng thứ 2 → đỏ và đội còn 6 người; xoạc thô bạo với một seed cố định ra đỏ trực tiếp và một seed cố định không ra.
 - **Xong khi:** tiêu chí F2 phạm lỗi có test xanh.
 
@@ -115,6 +115,20 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Việc cần làm:** script `pnpm --filter @pitch/sim balance` chạy headless 100 trận (danh sách **seed cố định**): `starterLikeTeam` điều khiển bởi hồ sơ AI `proxy` (hồ sơ riêng mô phỏng người chơi trung bình, nằm giữa Dễ và Khó, định nghĩa trong `ai/difficulty.ts`) vs `cpuEasyTeam` (AI Dễ) và vs `cpuHardTeam` (AI Khó); in tỉ lệ thắng. Chỉnh hằng số ở `stats/params.ts` và `ai/difficulty.ts` tới khi **thắng Dễ ≥ 60%, thắng Khó ≤ 30%**. Đo FPS trên Chrome (Performance panel hoặc overlay dev) với 14 cầu thủ, 1 trận đủ; tối ưu nếu < 55. (Chạy lại với dữ liệu thật ở 6.11.)
 - **Kiểm chứng:** test `balance.slow.test.ts` khẳng định ngưỡng — loại khỏi `pnpm test` mặc định (`exclude` trong config sim), chạy bằng `pnpm --filter @pitch/sim test:slow`; ghi số FPS đo được vào `docs/PROGRESS.md`.
 - **Xong khi:** đạt 3 tiêu chí ROADMAP GĐ5 → tick ROADMAP, cập nhật CLAUDE.md, PROGRESS.
+
+### 5.15 — Áp sát & tắc bóng (D khi không có bóng) `[ ]`
+- **Phụ thuộc:** 5.6 · **Song song với:** 5.7 · **Model:** strongest
+- **Bối cảnh:** PRD §5 (dòng "Điều khiển"), DESIGN §6.2, `packages/sim/src/{match,types}.ts`, `src/actions/tackle.ts`, `src/rules/fouls.ts`. Thêm 2026-10-11 khi đổi sang bộ phím kiểu FC Online.
+- **Việc cần làm:** khi người đang điều khiển không có bóng và **giữ** nút sút (D): tự chạy tới người dẫn bóng đối phương, dừng ở khoảng cách kèm (~1–1,5 m), chắn giữa người đó và khung thành nhà; người chơi vẫn bấm hướng để chỉnh. Vào tầm thì **tắc bóng đứng**: tầm ngắn hơn xoạc, không trượt/không hồi lâu, tỉ lệ giành bóng theo Phòng ngự vs Rê bóng, trượt thì chỉ phạm lỗi khi chạm người (ít lỗi hơn xoạc), từ phía sau vẫn là lỗi. Hằng số ở `stats/params.ts`.
+- **Kiểm chứng:** test: giữ D thì khoảng cách tới người dẫn bóng giảm và dừng quanh khoảng kèm; tắc đứng có tỉ lệ phạm lỗi thấp hơn xoạc (1.000 lần, seed cố định); Phòng ngự 90 giành bóng nhiều hơn 50; giữ D lúc giành được bóng không thành sút.
+- **Xong khi:** D khi phòng ngự dùng được, có test xanh.
+
+### 5.16 — Chọc khe W / Q+W (Could) `[ ]`
+- **Phụ thuộc:** 5.4 · **Model:** default
+- **Bối cảnh:** PRD §5 (dòng "Điều khiển"), DESIGN §6.2, `packages/sim/src/actions/pass.ts`, `src/match.ts`, `src/types.ts`.
+- **Việc cần làm:** thêm nút `through` (W) và `modifier` (Q) vào `PlayerInput`; chọc khe = chuyền sệt tới **điểm phía trước** đồng đội theo hướng tấn công (dẫn theo tốc độ chạy), Q+W = chọc khe bổng qua đầu hậu vệ; sai số theo Chuyền. Có thể hoãn nếu trễ.
+- **Kiểm chứng:** test: điểm rơi chọc khe nằm trước người nhận theo hướng tấn công; chọc khe bổng có `z` > tầm khống chế khi qua người chắn.
+- **Xong khi:** W/Q+W hoạt động, có test.
 
 ### 5.14 — Hướng dẫn trận đầu (F14, Could) `[~]`
 - Hoãn sang 7.6 (onboarding) để làm một lần cùng luồng người chơi mới.
