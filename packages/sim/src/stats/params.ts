@@ -29,6 +29,29 @@ export const FATIGUE_THRESHOLD = 30;
 /** `fatigueFactor` khi thể lực về 0. */
 export const MIN_FATIGUE_FACTOR = 0.6;
 
+/** Góc tính bằng radian. */
+const DEG = Math.PI / 180;
+
+/** Bán kính khống chế bóng (m, từ tâm cầu thủ tới tâm bóng) theo Rê bóng. */
+export const CONTROL_RADIUS_RANGE = [0.7, 1.2] as const;
+/**
+ * Mất bóng khi xoay gắt: cos của góc giữa hướng đang chạy và hướng bấm nhỏ hơn ngưỡng này
+ * (theo Rê bóng): 0 = xoay quá 90° là mất, −0.9 = phải quá ~154°.
+ */
+export const TURN_LOSS_COS_RANGE = [0, -0.9] as const;
+/** Độ lệch chuẩn sai số hướng chuyền (radian) theo Chuyền. */
+export const PASS_ANGLE_ERR_RANGE = [6 * DEG, 0.5 * DEG] as const;
+/** Độ lệch chuẩn sai số lực chuyền (tỉ lệ so với lực đúng) theo Chuyền. */
+export const PASS_POWER_ERR_RANGE = [0.15, 0.03] as const;
+/** Tầm chuyền bổng tối đa (m) theo Chuyền. */
+export const LOB_RANGE_RANGE = [20, 40] as const;
+/** Vận tốc bóng khi sút hết lực (m/s) theo Sút. */
+export const SHOT_SPEED_RANGE = [18, 30] as const;
+/** Độ lệch chuẩn sai số hướng sút (radian) theo Sút. */
+export const SHOT_ANGLE_ERR_RANGE = [14 * DEG, 1.5 * DEG] as const;
+/** Độ lệch chuẩn sai số vận tốc đứng khi sút (m/s) theo Sút — sút vọt xà. */
+export const SHOT_HEIGHT_ERR_RANGE = [2, 0.4] as const;
+
 const clamp = (v: number, lo: number, hi: number): number => Math.min(hi, Math.max(lo, v));
 
 /** Nội suy tuyến tính: chỉ số 1 → `min`, 99 → `max`; kẹp ngoài khoảng, NaN coi như 1. */
@@ -55,3 +78,25 @@ export function fatigueFactor(stamina: number): number {
   if (s >= FATIGUE_THRESHOLD) return 1;
   return MIN_FATIGUE_FACTOR + ((1 - MIN_FATIGUE_FACTOR) * s) / FATIGUE_THRESHOLD;
 }
+
+export const controlRadiusFor = (dribbling: number): number =>
+  statScale(dribbling, ...CONTROL_RADIUS_RANGE);
+
+export const turnLossCosFor = (dribbling: number): number =>
+  statScale(dribbling, ...TURN_LOSS_COS_RANGE);
+
+export const passAngleErrFor = (passing: number): number =>
+  statScale(passing, ...PASS_ANGLE_ERR_RANGE);
+
+export const passPowerErrFor = (passing: number): number =>
+  statScale(passing, ...PASS_POWER_ERR_RANGE);
+
+export const lobRangeFor = (passing: number): number => statScale(passing, ...LOB_RANGE_RANGE);
+
+export const shotSpeedFor = (shooting: number): number => statScale(shooting, ...SHOT_SPEED_RANGE);
+
+export const shotAngleErrFor = (shooting: number): number =>
+  statScale(shooting, ...SHOT_ANGLE_ERR_RANGE);
+
+export const shotHeightErrFor = (shooting: number): number =>
+  statScale(shooting, ...SHOT_HEIGHT_ERR_RANGE);

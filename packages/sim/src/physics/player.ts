@@ -1,4 +1,4 @@
-import { TICK_DT } from '../index';
+import { TICK_DT } from '../tick';
 import { add, clampLength, length, normalize, scale, sub, vec2, type Vec2 } from '../math/vec2';
 import {
   RECOVER_PER_SEC,

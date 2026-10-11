@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { cpuEasyTeam, starterLikeTeam } from './fixtures/demoTeams';
 import { createMatch, step } from './match';
-import { length } from './math/vec2';
+import { length, sub, vec2, ZERO, type Vec2 } from './math/vec2';
+import { dribbleBall, DRIBBLE_OFFSET } from './rules/possession';
+import { MAX_CHARGE_TICKS } from './actions/shoot';
 import { CENTER_CIRCLE_RADIUS, HALF_LENGTH, isInsidePitch } from './pitch';
 import { nextFloat, nextInt, seedRng, type RngState } from './rng';
 import { NO_INPUT, type MatchSetup, type MatchState, type PlayerInput } from './types';
@@ -163,5 +165,174 @@ describe('tính tất định', () => {
     expect(a).toEqual(b);
     expect(a.tick).toBe(600);
     expect(a.tick / TICK_RATE).toBe(10);
+  });
+});
+
+describe('createMatch — kiểm soát bóng', () => {
+  it('bóng tự do, chưa ai bị khoá, chưa nạp lực sút', () => {
+    const s = createMatch(setup);
+    expect(s.ballOwnerId).toBeNull();
+    expect(s.kickLock).toBeNull();
+    expect(s.shotChargeTicks).toBe(0);
+  });
+});
+
+/**
+ * Tình huống dựng sẵn: cầu thủ trong `at` đứng ở vị trí cho trước, mọi người khác dồn về vạch
+ * x = −28 (sau lưng, ngoài hình nón chuyền). `owner` có bóng dính chân; người chơi điều khiển `controlled`.
+ */
+function scenario(
+  at: Record<string, Vec2>,
+  owner: string | null,
+  controlled = 'home-P1',
+  ballPos: Vec2 = ZERO,
+): MatchState {
+  const s = createMatch(setup);
+  const players = s.players.map((p, i) => ({
+    ...p,
+    pos: at[p.id] ?? vec2(-28, -18 + i * 2.7),
+    vel: ZERO,
+  }));
+  const ownerP = players.find((p) => p.id === owner);
+  return {
+    ...s,
+    players,
+    controlledId: controlled,
+    ballOwnerId: owner,
+    ball: ownerP ? dribbleBall(ownerP) : { pos: ballPos, vel: ZERO, z: 0, vz: 0 },
+  };
+}
+
+const press = (over: Partial<PlayerInput>): PlayerInput => ({ ...NO_INPUT, ...over });
+const repeat = (s: MatchState, input: PlayerInput, n: number): MatchState => {
+  let cur = s;
+  for (let i = 0; i < n; i++) cur = step(cur, input);
+  return cur;
+};
+const playerOf = (s: MatchState, id: string) => s.players.find((p) => p.id === id)!;
+
+describe('step — di chuyển', () => {
+  it('cầu thủ được điều khiển chạy theo hướng bấm, người khác đứng yên', () => {
+    const s0 = scenario(
+      { 'home-P1': vec2(0, 5), 'home-P2': vec2(10, 10) },
+      null,
+      'home-P1',
+      vec2(20, 0),
+    );
+    const s1 = repeat(s0, press({ move: vec2(1, 0) }), 30);
+    expect(playerOf(s1, 'home-P1').pos.x).toBeGreaterThan(0.5);
+    expect(playerOf(s1, 'home-P2').pos).toEqual(vec2(10, 10));
+  });
+});
+
+describe('step — dẫn bóng và bắt bóng', () => {
+  it('chạy tới bóng tự do thì khống chế được, rồi bóng dính chân khi rê', () => {
+    const s0 = scenario({ 'home-P1': vec2(-3, 0) }, null, 'home-P1', ZERO);
+    const s1 = repeat(s0, press({ move: vec2(1, 0) }), 60);
+    expect(s1.ballOwnerId).toBe('home-P1');
+    const s2 = repeat(s1, press({ move: vec2(0, 1) }), 60);
+    expect(s2.ballOwnerId).toBe('home-P1');
+    const p = playerOf(s2, 'home-P1');
+    expect(length(sub(s2.ball.pos, p.pos))).toBeCloseTo(DRIBBLE_OFFSET);
+  });
+
+  it('cầu thủ đội khách chạm bóng thì giữ bóng, người chơi vẫn điều khiển cầu thủ cũ', () => {
+    const s0 = scenario({ 'away-P1': vec2(0.5, 0), 'home-P1': vec2(-10, 0) }, null);
+    const s1 = step(s0, NO_INPUT);
+    expect(s1.ballOwnerId).toBe('away-P1');
+    expect(s1.controlledId).toBe('home-P1');
+  });
+
+  it('chạy nhanh rồi bấm ngược hướng (xoay gắt) thì mất bóng', () => {
+    const s0 = scenario({ 'home-P1': vec2(-20, 0) }, 'home-P1');
+    const running = repeat(s0, press({ move: vec2(1, 0), sprint: true }), 90);
+    expect(running.ballOwnerId).toBe('home-P1');
+    const turned = step(running, press({ move: vec2(-1, 0), sprint: true }));
+    expect(turned.ballOwnerId).toBeNull();
+  });
+});
+
+describe('step — chuyền', () => {
+  const at = { 'home-P1': ZERO, 'home-P2': vec2(15, 0) };
+
+  it('bấm J: bóng rời chân, đồng đội 15 m nhận bóng và người chơi chuyển sang điều khiển người đó', () => {
+    const s1 = step(scenario(at, 'home-P1'), press({ pass: true }));
+    expect(s1.ballOwnerId).toBeNull();
+    expect(s1.rng).not.toBe(scenario(at, 'home-P1').rng);
+    const s2 = repeat(s1, NO_INPUT, 3 * 60);
+    expect(s2.ballOwnerId).toBe('home-P2');
+    expect(s2.controlledId).toBe('home-P2');
+  });
+
+  it('giữ J không chuyền liên tục: người nhận vẫn giữ bóng', () => {
+    const s = repeat(scenario(at, 'home-P1'), press({ pass: true }), 4 * 60);
+    expect(s.ballOwnerId).toBe('home-P2');
+  });
+
+  it('chuyền bổng (L) làm bóng bay lên', () => {
+    const s1 = step(scenario(at, 'home-P1'), press({ lob: true }));
+    expect(s1.ballOwnerId).toBeNull();
+    expect(s1.ball.z + s1.ball.vz).toBeGreaterThan(0);
+  });
+
+  it('chuyền vào khoảng trống: bấm hướng nhẹ (cần analog) vẫn chuyền đủ xa như bấm hết cỡ', () => {
+    const s0 = scenario({ 'home-P1': ZERO }, 'home-P1');
+    const light = step(s0, press({ pass: true, move: vec2(0.05, 0) }));
+    const full = step(s0, press({ pass: true, move: vec2(1, 0) }));
+    expect(light.ball.vel.x).toBeCloseTo(full.ball.vel.x);
+  });
+
+  it('người vừa chuyền không bắt lại bóng ngay lập tức', () => {
+    const s0 = scenario({ 'home-P1': ZERO }, 'home-P1');
+    const s1 = step(s0, press({ pass: true }));
+    expect(s1.kickLock?.playerId).toBe('home-P1');
+    expect(step(s1, NO_INPUT).ballOwnerId).toBeNull();
+  });
+});
+
+describe('step — sút', () => {
+  const at = { 'home-P1': vec2(10, 0) };
+
+  it('giữ K thì nạp lực, bóng vẫn dính chân', () => {
+    const s = repeat(scenario(at, 'home-P1'), press({ shoot: true }), 30);
+    expect(s.shotChargeTicks).toBe(30);
+    expect(s.ballOwnerId).toBe('home-P1');
+  });
+
+  it('thả K thì sút về khung thành đối phương; nạp lâu thì bóng nhanh hơn', () => {
+    const shotAfter = (ticks: number) =>
+      step(repeat(scenario(at, 'home-P1'), press({ shoot: true }), ticks), NO_INPUT);
+    const tap = shotAfter(1);
+    const full = shotAfter(MAX_CHARGE_TICKS);
+    expect(full.ballOwnerId).toBeNull();
+    expect(full.shotChargeTicks).toBe(0);
+    expect(full.ball.vel.x).toBeGreaterThan(15);
+    expect(length(full.ball.vel)).toBeGreaterThan(length(tap.ball.vel));
+  });
+
+  it('hiệp 2 đội nhà sút về khung thành phía −x', () => {
+    const s0 = { ...scenario({ 'home-P1': vec2(-10, 0) }, 'home-P1'), half: 2 as const };
+    const s = step(repeat(s0, press({ shoot: true }), 30), NO_INPUT);
+    expect(s.ball.vel.x).toBeLessThan(0);
+  });
+});
+
+describe('step — đổi người', () => {
+  const at = { 'home-P1': vec2(-15, 0), 'home-P2': vec2(3, 0), 'home-P3': vec2(8, 0) };
+
+  it('bấm nút đổi người khi không có bóng → cầu thủ đội nhà gần bóng nhất', () => {
+    const s = step(scenario(at, null, 'home-P1', ZERO), press({ switch: true }));
+    expect(s.controlledId).toBe('home-P2');
+  });
+
+  it('bấm J khi không có bóng cũng là đổi người', () => {
+    const s = step(scenario(at, null, 'home-P1', ZERO), press({ pass: true }));
+    expect(s.controlledId).toBe('home-P2');
+    expect(s.ballOwnerId).toBeNull();
+  });
+
+  it('giữ nút đổi người chỉ đổi một lần', () => {
+    const s = repeat(scenario(at, null, 'home-P1', ZERO), press({ switch: true }), 5);
+    expect(s.controlledId).toBe('home-P2');
   });
 });

@@ -85,6 +85,12 @@ export interface MatchState {
   /** Cầu thủ đang trên sân. */
   players: PlayerState[];
   bench: Record<TeamSide, MatchPlayerSetup[]>;
+  /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */
+  ballOwnerId: string | null;
+  /** Người vừa chuyền/sút/mất bóng không được chạm lại bóng trước tick `untilTick`. */
+  kickLock: { playerId: string; untilTick: number } | null;
+  /** Số tick người chơi đã giữ nút sút (0 = không nạp lực). */
+  shotChargeTicks: number;
   /** Cầu thủ đội nhà người chơi đang điều khiển. */
   controlledId: string;
   /** Input đã áp dụng ở tick trước. */
