@@ -113,6 +113,32 @@ export const TACKLE_WIN_CHANCE_BOUNDS = [0.05, 0.95] as const;
 export const tackleReachFor = (defending: number): number =>
   statScale(defending, ...TACKLE_REACH_RANGE);
 
+/** Tầm tắc bóng đứng (m, từ tâm người tắc tới bóng) theo Phòng ngự — ngắn hơn xoạc. */
+export const STAND_TACKLE_REACH_RANGE = [0.9, 1.4] as const;
+/** Xác suất tắc đứng giành bóng theo Phòng ngự người tắc… */
+export const STAND_TACKLE_WIN_CHANCE_RANGE = [0.2, 0.7] as const;
+/** …trừ phần này theo Rê bóng người dẫn bóng. Kẹp theo TACKLE_WIN_CHANCE_BOUNDS. */
+export const STAND_TACKLE_RESIST_RANGE = [0, 0.3] as const;
+/** Tắc đứng trượt (không từ phía sau): xác suất chạm người → phạm lỗi; còn lại người dẫn bóng giữ bóng. */
+export const STAND_TACKLE_FOUL_CHANCE = 0.25;
+/** Tắc đứng trượt xong phải chờ chừng này tick (0,4 s) mới tắc lại; vẫn di chuyển bình thường. */
+export const STAND_TACKLE_COOLDOWN_TICKS = 24;
+/** Áp sát (giữ D, AI người áp sát): đứng cách người dẫn bóng chừng này (m), phía khung thành nhà. */
+export const CONTAIN_DIST = 1.2;
+/** Giữ D: hướng người chơi bấm được cộng vào hướng tự chạy với trọng số này. */
+export const CONTAIN_STEER_WEIGHT = 0.6;
+
+export const standTackleReachFor = (defending: number): number =>
+  statScale(defending, ...STAND_TACKLE_REACH_RANGE);
+
+/** Xác suất tắc đứng giành bóng của người có Phòng ngự `defending` vào người có Rê bóng `dribbling`. */
+export function standTackleWinChance(defending: number, dribbling: number): number {
+  const chance =
+    statScale(defending, ...STAND_TACKLE_WIN_CHANCE_RANGE) -
+    statScale(dribbling, ...STAND_TACKLE_RESIST_RANGE);
+  return clamp(chance, ...TACKLE_WIN_CHANCE_BOUNDS);
+}
+
 /** Xác suất xoạc sạch của người có Phòng ngự `defending` vào người có Rê bóng `dribbling`. */
 export function tackleWinChance(defending: number, dribbling: number): number {
   const chance =
