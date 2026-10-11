@@ -123,6 +123,8 @@ export const STAND_TACKLE_RESIST_RANGE = [0, 0.3] as const;
 export const STAND_TACKLE_FOUL_CHANCE = 0.25;
 /** Tắc đứng trượt xong phải chờ chừng này tick (0,4 s) mới tắc lại; vẫn di chuyển bình thường. */
 export const STAND_TACKLE_COOLDOWN_TICKS = 24;
+/** AI tắc đứng trượt xong chờ chừng này tick (1 s) + độ trễ phản ứng mới tắc lại — tránh phạm lỗi dồn dập. */
+export const AI_STAND_TACKLE_COOLDOWN_TICKS = 60;
 /** Áp sát (giữ D, AI người áp sát): đứng cách người dẫn bóng chừng này (m), phía khung thành nhà. */
 export const CONTAIN_DIST = 1.2;
 /** Giữ D: hướng người chơi bấm được cộng vào hướng tự chạy với trọng số này. */

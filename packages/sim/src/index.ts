@@ -19,3 +19,4 @@ export * from './actions/tackle';
 export * from './rules/fouls';
 export * from './ai/team';
 export * from './ai/difficulty';
+export * from './ai/player';

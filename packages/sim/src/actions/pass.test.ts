@@ -180,3 +180,18 @@ it('PRD 5.4: chuyền thấp tới đồng đội đứng yên 15 m tới đư�
   }
   expect(received / N).toBeGreaterThanOrEqual(0.9);
 });
+
+describe('passBall — errorMult (AI theo mức độ khó)', () => {
+  it('errorMult lớn hơn thì hướng chuyền lệch nhiều hơn (500 lần, seed cố định)', () => {
+    const passer = player('home-P1', ZERO);
+    const meanLateral = (errorMult: number) => {
+      let sum = 0;
+      for (let seed = 1; seed <= 500; seed++) {
+        const { ball } = passBall(passer, ZERO, vec2(20, 0), 'ground', seedRng(seed), errorMult);
+        sum += Math.abs(ball.vel.y / length(ball.vel));
+      }
+      return sum / 500;
+    };
+    expect(meanLateral(2)).toBeGreaterThan(meanLateral(1) * 1.6);
+  });
+});

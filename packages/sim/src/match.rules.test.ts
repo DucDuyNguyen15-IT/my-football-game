@@ -192,11 +192,13 @@ describe('thực hiện lại bóng', () => {
 });
 
 describe('hiệp và đồng hồ', () => {
+  /** Tắt AI để không có bàn thắng/bóng chết làm thay đổi bù giờ. */
+  const quiet = (): MatchState => ({ ...createMatch(setup), ai: null });
   /** Đội nhà giao bóng ngay tick đầu, sau đó không bấm gì: không có bóng chết kéo dài. */
-  const firstHalf = () => repeat(step(createMatch(setup), J), NO_INPUT, HALF_TICKS - 1);
+  const firstHalf = () => repeat(step(quiet(), J), NO_INPUT, HALF_TICKS - 1);
 
   it('hiệp 1 kết thúc đúng 180 s (10.800 tick) khi không có bù giờ → nghỉ giữa hiệp', () => {
-    const before = repeat(step(createMatch(setup), J), NO_INPUT, HALF_TICKS - 2);
+    const before = repeat(step(quiet(), J), NO_INPUT, HALF_TICKS - 2);
     expect(before.phase).not.toBe('half_time');
     const s = firstHalf();
     expect(s.halfTick).toBe(HALF_TICKS);
@@ -243,7 +245,7 @@ describe('hiệp và đồng hồ', () => {
   it('chờ giao bóng quá 3 s bị tính bù giờ: hiệp kéo dài thêm đúng số phút bù', () => {
     const minTicks = HALF_TICKS / 45;
     // Đứng chờ 3 s + đúng 1 phút game rồi mới giao bóng → bù 1'.
-    const kicked = step(repeat(createMatch(setup), NO_INPUT, RESTART_DELAY_TICKS + minTicks), J);
+    const kicked = step(repeat(quiet(), NO_INPUT, RESTART_DELAY_TICKS + minTicks), J);
     expect(kicked.stoppage.overrunTicks).toBe(minTicks);
     const atReg = repeat(kicked, NO_INPUT, HALF_TICKS - kicked.halfTick);
     expect(atReg.halfTick).toBe(HALF_TICKS);

@@ -36,8 +36,8 @@ export function shotTarget(sign: 1 | -1, aimY: number): Vec2 {
 }
 
 /**
- * Sút từ `from` về `target` với lực `power` (0–1). Sai số góc và độ cao theo Sút, nhân lên khi mệt.
- * Hàm thuần: trả về bóng mới và PRNG đã tiến.
+ * Sút từ `from` về `target` với lực `power` (0–1). Sai số góc và độ cao theo Sút, nhân lên khi mệt
+ * và theo `errorMult` (AI theo mức độ khó). Hàm thuần: trả về bóng mới và PRNG đã tiến.
  */
 export function shootBall(
   shooter: PlayerState,
@@ -45,8 +45,10 @@ export function shootBall(
   target: Vec2,
   power: number,
   rng: RngState,
+  errorMult = 1,
 ): { ball: BallState; rng: RngState } {
-  const fatigue = fatigueFactor(shooter.stamina);
+  // Sai số chia cho hệ số này: mệt và errorMult > 1 đều làm sai số lớn hơn.
+  const fatigue = fatigueFactor(shooter.stamina) / errorMult;
   const offset = sub(target, from);
   const dist = length(offset);
   const [dir, r1] = deviate(
