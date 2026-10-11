@@ -68,14 +68,52 @@ export const NO_INPUT: PlayerInput = Object.freeze({
   switch: false,
 });
 
+/**
+ * Giai đoạn của trận. `kickoff`/`dead_ball`: bóng đặt sẵn chờ thực hiện; `half_time`: chờ người chơi
+ * bấm chuyền để đá hiệp 2; `full_time`: hết trận, `step` không làm gì nữa.
+ */
+export type MatchPhase = 'kickoff' | 'play' | 'dead_ball' | 'half_time' | 'full_time';
+
+export type RestartType = 'kickoff' | 'throw_in' | 'corner' | 'goal_kick';
+
+/** Tình huống bóng chết đang chờ thực hiện. */
+export interface Restart {
+  type: RestartType;
+  /** Đội được hưởng. */
+  team: TeamSide;
+  /** Điểm đặt bóng. */
+  spot: Vec2;
+  takerId: string;
+  /** Tick bắt đầu chờ (đội máy thực hiện sau RESTART_DELAY_TICKS, chờ lâu hơn bị tính bù giờ). */
+  startTick: number;
+}
+
+/** Thời gian bị mất trong hiệp hiện tại, dùng để tính bù giờ. */
+export interface Stoppage {
+  /** Số tick chờ thực hiện bóng chết vượt quá thời gian cho phép. */
+  overrunTicks: number;
+  goals: number;
+}
+
 /** Toàn bộ trạng thái trận — object thường, serialize được bằng JSON. */
 export interface MatchState {
   /** Tổng số tick đã chạy. */
   tick: number;
   half: 1 | 2;
-  /** Số tick đã chạy trong hiệp hiện tại. */
+  /** Số tick đồng hồ đã chạy trong hiệp hiện tại (đứng yên khi nghỉ giữa hiệp/hết trận). */
   halfTick: number;
+  /** Độ dài giờ chính thức một hiệp (s thật). */
   halfLengthSec: number;
+  phase: MatchPhase;
+  /** Bóng chết (mọi phase trừ `play`) — cho phép thay người (task 5.11). */
+  ballDead: boolean;
+  /** Tình huống đang chờ thực hiện khi phase là `kickoff`/`dead_ball`, ngược lại null. */
+  restart: Restart | null;
+  /** Đội chạm bóng cuối, quyết định ném biên/phạt góc/phát bóng. */
+  lastTouchTeam: TeamSide;
+  stoppage: Stoppage;
+  /** Số phút bù giờ công bố khi hết giờ chính thức của hiệp; null khi chưa tới. */
+  addedMinutes: number | null;
   difficulty: Difficulty;
   rng: RngState;
   score: Record<TeamSide, number>;

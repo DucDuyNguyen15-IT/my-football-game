@@ -196,6 +196,9 @@ function scenario(
   const ownerP = players.find((p) => p.id === owner);
   return {
     ...s,
+    phase: 'play',
+    ballDead: false,
+    restart: null,
     players,
     controlledId: controlled,
     ballOwnerId: owner,
