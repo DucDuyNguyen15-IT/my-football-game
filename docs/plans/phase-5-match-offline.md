@@ -8,7 +8,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 
 ---
 
-### 5.1 — Lõi mô phỏng & tính tất định `[ ]`
+### 5.1 — Lõi mô phỏng & tính tất định `[x]`
 - **Phụ thuộc:** — · **Model:** strongest
 - **Bối cảnh:** `packages/sim/src/index.ts` (đã có `TICK_RATE`, `TICK_DT`), ARCHITECTURE §6, PRD §5.
 - **Việc cần làm:**
