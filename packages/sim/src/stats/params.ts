@@ -123,6 +123,44 @@ export const STAND_TACKLE_RESIST_RANGE = [0, 0.3] as const;
 export const STAND_TACKLE_FOUL_CHANCE = 0.25;
 /** Tắc đứng trượt xong phải chờ chừng này tick (0,4 s) mới tắc lại; vẫn di chuyển bình thường. */
 export const STAND_TACKLE_COOLDOWN_TICKS = 24;
+/** Thủ môn (task 5.8b): số tick phản ứng với cú sút theo Phản xạ. */
+export const GK_REACTION_TICKS_RANGE = [24, 4] as const;
+/** Tầm với cản phá (m, từ thân tới bóng, theo mặt sân) theo Vị trí — "bán kính bao phủ". */
+export const GK_REACH_RANGE = [0.8, 1.4] as const;
+/** Với tới độ cao này (m, đáy bóng) khi cản phá. */
+export const GK_REACH_HEIGHT = 2.2;
+/** Bóng vào tầm: xác suất thủ môn chạm được (cản phá) theo Phản xạ; trượt thì bóng đi qua. */
+export const GK_SAVE_CHANCE_RANGE = [0.5, 0.92] as const;
+/** Chưa kịp phản ứng: bóng đi trúng người (trong chừng này mét) vẫn chặn được. */
+export const GK_BODY_BLOCK_DIST = 0.5;
+/** Đứng theo góc bóng: Vị trí 1 → chỉ dịch [0] phần so với vị trí chuẩn, 99 → [1]. */
+export const GK_POSITION_ACCURACY_RANGE = [0.4, 1] as const;
+/** Xác suất bắt dính (còn lại là đẩy ra) theo Bắt bóng… */
+export const GK_CATCH_CHANCE_RANGE = [0.3, 0.9] as const;
+/** …trừ chừng này mỗi m/s vượt GK_CATCH_EASY_SPEED; kẹp trong [0.05, 0.95]. */
+export const GK_CATCH_SPEED_PENALTY = 0.015;
+export const GK_CATCH_EASY_SPEED = 15;
+/** Tốc độ lao người cản phá (m/s), không bị giới hạn gia tốc. */
+export const GK_DIVE_SPEED = 6;
+
+export const keeperReactionTicks = (reflexes: number): number =>
+  Math.round(statScale(reflexes, ...GK_REACTION_TICKS_RANGE));
+
+export const keeperSaveChance = (reflexes: number): number =>
+  statScale(reflexes, ...GK_SAVE_CHANCE_RANGE);
+
+export const keeperReachFor = (positioning: number): number =>
+  statScale(positioning, ...GK_REACH_RANGE);
+
+export const keeperPositionAccuracy = (positioning: number): number =>
+  statScale(positioning, ...GK_POSITION_ACCURACY_RANGE);
+
+/** Xác suất bắt dính bóng tốc độ `ballSpeed` (m/s) của thủ môn có Bắt bóng `handling`. */
+export function keeperCatchChance(handling: number, ballSpeed: number): number {
+  const penalty = Math.max(0, ballSpeed - GK_CATCH_EASY_SPEED) * GK_CATCH_SPEED_PENALTY;
+  return clamp(statScale(handling, ...GK_CATCH_CHANCE_RANGE) - penalty, 0.05, 0.95);
+}
+
 /** AI tắc đứng trượt xong chờ chừng này tick (1 s) + độ trễ phản ứng mới tắc lại — tránh phạm lỗi dồn dập. */
 export const AI_STAND_TACKLE_COOLDOWN_TICKS = 60;
 /** Áp sát (giữ D, AI người áp sát): đứng cách người dẫn bóng chừng này (m), phía khung thành nhà. */

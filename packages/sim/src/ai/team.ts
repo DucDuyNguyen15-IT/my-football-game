@@ -3,6 +3,7 @@ import { attackSign } from '../actions/shoot';
 import { add, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from '../pitch';
 import { CONTAIN_DIST } from '../stats/params';
+import { keeperTarget } from './goalkeeper';
 import { supportSpot } from './player';
 import type { BallState, PlayerState, TeamSide } from '../types';
 
@@ -56,7 +57,7 @@ export interface TeamPlanInput {
 
 /** Toạ độ x tương đối của từng tuyến khi bóng ở giữa sân, chế độ chuyển trạng thái. */
 const LINE_X = { DF: -15, MF: -5, FW: 5 } as const;
-/** Thủ môn đứng cách vạch cuối nhà chừng này mét, theo bóng ngang chừng này phần (5.8b thay). */
+/** Điểm neo dự phòng của thủ môn (vị trí thật: `keeperTarget` ở ai/goalkeeper.ts). */
 const GK_DEPTH = 1.5;
 const GK_FOLLOW_Y = 0.15;
 const GK_MAX_Y = 2;
@@ -292,7 +293,7 @@ export function aiTarget(
       target = plan.mode === 'attack' ? supportSpot(anchor, player.team, players) : anchor;
       break;
     case 'keep':
-      target = anchor;
+      target = keeperTarget(player, ball, players, ballOwnerId, half);
       break;
   }
   return clampToPitch(target, TARGET_MARGIN);

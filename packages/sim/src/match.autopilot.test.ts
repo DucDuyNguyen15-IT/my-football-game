@@ -58,6 +58,13 @@ describe('autopilot: AI-vs-AI 20 trận', () => {
     for (const r of reports) expect(r.worstPressuredHold).toBeLessThanOrEqual(2 * TICK_RATE);
   });
 
+  it('tổng số bàn trung bình mỗi trận trong khoảng 1–8 (có thủ môn cản phá, task 5.8b)', () => {
+    const goals = reports.map((r) => r.final.score.home + r.final.score.away);
+    const mean = goals.reduce((a, b) => a + b, 0) / goals.length;
+    expect(mean).toBeGreaterThanOrEqual(1);
+    expect(mean).toBeLessThanOrEqual(8);
+  });
+
   it('cả hai đội đều tạo được cú sút', () => {
     expect(reports.some((r) => r.final.shots.away > 0)).toBe(true);
     expect(reports.some((r) => r.final.shots.home > 0)).toBe(true);

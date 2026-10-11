@@ -138,6 +138,8 @@ export interface MatchState {
   score: Record<TeamSide, number>;
   /** Số cú sút (cả sút phạt, phạt đền) — cho màn kết quả và cân chỉnh. */
   shots: Record<TeamSide, number>;
+  /** Cú sút đang bay (thủ môn đội kia phản ứng tính từ `tick`); null khi bóng đã được chạm/chết. */
+  lastShot: { team: TeamSide; tick: number } | null;
   /** AI điều khiển luôn đội người chơi, input bị bỏ qua. */
   autopilot: boolean;
   formations: Record<TeamSide, Formation>;

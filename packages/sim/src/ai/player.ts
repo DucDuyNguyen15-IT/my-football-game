@@ -1,11 +1,12 @@
 import type { PassKind } from '../actions/pass';
 import { attackSign, shotTarget } from '../actions/shoot';
-import { add, dot, length, normalize, scale, sub, vec2, type Vec2 } from '../math/vec2';
+import { add, dot, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from '../pitch';
 import { nextFloat, type RngState } from '../rng';
 import { cpuRestartKick } from '../rules/restarts';
 import { lobRangeFor } from '../stats/params';
 import type { PlayerState, Restart, TeamSide } from '../types';
+import { asKicker } from './goalkeeper';
 
 /*
  * AI tầng cầu thủ (task 5.8a, docs/research.md §2): người có bóng chấm điểm sút / chuyền / rê rồi
@@ -33,6 +34,8 @@ export interface CarrierContext {
 export const PRESSURE_DIST = 2.5;
 /** Thời gian giữ bóng tối thiểu mặc định (0,2 s); AI dùng max(giá trị này, độ trễ phản ứng). */
 export const AI_MIN_HOLD_TICKS = 12;
+/** Thủ môn ôm bóng ít nhất chừng này tick (0,75 s) rồi mới phát bóng. */
+export const GK_HOLD_TICKS = 45;
 
 /** Xa khung thành hơn chừng này (m) thì không sút. */
 const SHOOT_MAX_DIST = 24;
@@ -233,8 +236,17 @@ const passAction = (p: PassOption): CarrierAction => ({
  * ngược lại chuyền nếu hơn rê rõ rệt, không thì rê.
  */
 export function decideCarrier(ctx: CarrierContext): CarrierAction {
-  const { carrier, players, half } = ctx;
+  const { players, half } = ctx;
+  const carrier = asKicker(ctx.carrier);
   const opponents = players.filter((p) => p.team !== carrier.team);
+  if (carrier.position === 'GK') {
+    // Thủ môn không rê: ôm bóng một lúc rồi chuyền, không có ai thì phát bóng dài.
+    if (ctx.heldTicks < Math.max(ctx.minHoldTicks, GK_HOLD_TICKS)) {
+      return { type: 'dribble', move: ZERO, sprint: false };
+    }
+    const out = best(passOptions(carrier, carrier.pos, players, half));
+    return out ? passAction(out) : clearance(carrier, carrier.pos, half);
+  }
   const dribble = dribbleOption(carrier, opponents, half);
   const asDribble: CarrierAction = { type: 'dribble', move: dribble.move, sprint: dribble.sprint };
   if (ctx.heldTicks < ctx.minHoldTicks) return asDribble;
@@ -266,7 +278,7 @@ export function decideRestartKick(
   half: 1 | 2,
   rng: RngState,
 ): { action: CarrierAction; rng: RngState } {
-  const taker = players.find((p) => p.id === restart.takerId)!;
+  const taker = asKicker(players.find((p) => p.id === restart.takerId)!);
   const from = restart.spot;
   const sign = attackSign(restart.team, half);
   const opponents = players.filter((p) => p.team !== restart.team);
