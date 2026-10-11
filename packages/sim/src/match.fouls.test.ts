@@ -19,7 +19,9 @@ import { NO_INPUT, type Booking, type MatchState, type PlayerInput } from './typ
 
 const setup = { home: starterLikeTeam, away: cpuEasyTeam, seed: 3, difficulty: 'easy' as const };
 const press = (over: Partial<PlayerInput>): PlayerInput => ({ ...NO_INPUT, ...over });
-const K = press({ shoot: true });
+/** A: chuyền bổng, khi không có bóng = xoạc. D: sút. */
+const A = press({ lob: true });
+const D = press({ shoot: true });
 const J = press({ pass: true });
 const repeat = (s: MatchState, input: PlayerInput, n: number): MatchState => {
   let cur = s;
@@ -95,22 +97,22 @@ const frontal = (owner: Vec2, rng: RngState) =>
 
 describe('xoạc trực diện', () => {
   it('trúng bóng → giành bóng, người bị xoạc không bắt lại được ngay, bóng vẫn sống', () => {
-    const s = step(frontal(vec2(0, 0), winRoll), K);
+    const s = step(frontal(vec2(0, 0), winRoll), A);
     expect(s.phase).toBe('play');
     expect(s.ballOwnerId).toBe(ME);
     expect(s.kickLock?.playerId).toBe(OWNER);
     expect(s.bookings).toEqual([]);
   });
 
-  it('giữ K sau khi giành bóng không thành nạp lực sút', () => {
-    const s = repeat(frontal(vec2(0, 0), winRoll), K, 10);
+  it('giữ nút sút từ trước khi có bóng không thành nạp lực sút', () => {
+    const s = repeat(frontal(vec2(0, 0), winRoll), press({ lob: true, shoot: true }), 10);
     expect(s.ballOwnerId).toBe(ME);
     expect(s.shotChargeTicks).toBe(0);
   });
 
   it('trượt bóng (không chạm bóng trước) → phạm lỗi, đội khách đá phạt tại chỗ, không thẻ', () => {
     const before = frontal(vec2(0, 5), missRoll);
-    const s = step(before, K);
+    const s = step(before, A);
     expect(s.phase).toBe('dead_ball');
     expect(s.ballDead).toBe(true);
     expect(s.restart).toMatchObject({ type: 'free_kick', team: 'away' });
@@ -125,7 +127,7 @@ describe('xoạc trực diện', () => {
     // Đứng sát vai người dẫn bóng, bóng ở phía trước người đó, xa hơn tầm xoạc.
     const before = scene({ owner: vec2(0, 0), ownerFacing: vec2(0, -1), me: vec2(0, 1.2) });
     const tooFar = { ...before, ball: { ...before.ball, pos: vec2(0, -3) } };
-    const s = step(tooFar, K);
+    const s = step(tooFar, A);
     expect(s.restart?.type).toBe('free_kick');
     expect(s.rng).toBe(tooFar.rng);
   });
@@ -133,7 +135,7 @@ describe('xoạc trực diện', () => {
   it('phạm lỗi trong vòng cấm đội nhà → phạt đền cho đội khách', () => {
     const owner = vec2(-HALF_LENGTH + 6, 3);
     expect(isInPenaltyArea(owner, -1)).toBe(true);
-    const s = step(frontal(owner, missRoll), K);
+    const s = step(frontal(owner, missRoll), A);
     expect(s.restart).toMatchObject({
       type: 'penalty',
       team: 'away',
@@ -143,7 +145,7 @@ describe('xoạc trực diện', () => {
 
   it('hiệp 2 đổi sân: vòng cấm đội nhà ở phía +x', () => {
     const before = { ...frontal(vec2(HALF_LENGTH - 6, 0), missRoll), half: 2 as const };
-    const s = step(before, K);
+    const s = step(before, A);
     expect(s.restart).toMatchObject({
       type: 'penalty',
       spot: vec2(HALF_LENGTH - PENALTY_SPOT_DIST, 0),
@@ -157,26 +159,26 @@ describe('xoạc từ phía sau', () => {
     scene({ owner, me: vec2(owner.x + 1, owner.y), ...extra });
 
   it('luôn là phạm lỗi, dù bóng trong tầm', () => {
-    const s = step(behind(vec2(15, 0), { rng: winRoll }), K);
+    const s = step(behind(vec2(15, 0), { rng: winRoll }), A);
     expect(s.restart?.type).toBe('free_kick');
   });
 
   it('đối phương đang đối mặt khung thành → thẻ vàng, chưa rời sân', () => {
-    const s = step(behind(vec2(-10, 0)), K);
+    const s = step(behind(vec2(-10, 0)), A);
     expect(s.restart).toMatchObject({ type: 'free_kick', team: 'away' });
     expect(s.bookings).toEqual([{ playerId: ME, team: 'home', card: 'yellow', tick: s.tick }]);
     expect(s.players).toHaveLength(14);
   });
 
   it('không đối mặt khung thành (quay lưng về khung thành) → không thẻ', () => {
-    const s = step(behind(vec2(-10, 0), { ownerFacing: vec2(1, 0), me: vec2(-11, 0) }), K);
+    const s = step(behind(vec2(-10, 0), { ownerFacing: vec2(1, 0), me: vec2(-11, 0) }), A);
     expect(s.restart?.type).toBe('free_kick');
     expect(s.bookings).toEqual([]);
   });
 
   it('vàng thứ hai → đỏ, cầu thủ rời sân, đội nhà còn 6 người, người chơi được đổi sang người khác', () => {
     const first: Booking = { playerId: ME, team: 'home', card: 'yellow', tick: 100 };
-    const s = step(behind(vec2(-10, 0), { bookings: [first] }), K);
+    const s = step(behind(vec2(-10, 0), { bookings: [first] }), A);
     expect(s.bookings.slice(1)).toEqual([
       { playerId: ME, team: 'home', card: 'yellow', tick: s.tick },
       { playerId: ME, team: 'home', card: 'red', tick: s.tick },
@@ -190,7 +192,7 @@ describe('xoạc từ phía sau', () => {
 
   it('chơi tiếp sau thẻ đỏ: đội máy đá phạt, trận vẫn chạy và state serialize được', () => {
     const first: Booking = { playerId: ME, team: 'home', card: 'yellow', tick: 100 };
-    const red = step(behind(vec2(-10, 0), { bookings: [first] }), K);
+    const red = step(behind(vec2(-10, 0), { bookings: [first] }), A);
     expect(JSON.parse(JSON.stringify(red))).toEqual(red);
     const s = repeat(red, NO_INPUT, RESTART_DELAY_TICKS + 30);
     expect(s.phase).not.toBe('dead_ball');
@@ -204,25 +206,25 @@ describe('xoạc từ phía sau', () => {
     const noRedRng = rngWhere((r) => r >= ROUGH_RED_CHANCE);
 
     it('seed cố định ra thẻ đỏ trực tiếp → rời sân', () => {
-      const s = step(rough(redRng), K);
+      const s = step(rough(redRng), A);
       expect(s.bookings).toEqual([{ playerId: ME, team: 'home', card: 'red', tick: s.tick }]);
       expect(s.players.filter((p) => p.team === 'home')).toHaveLength(6);
     });
 
     it('seed cố định khác không ra thẻ', () => {
-      const s = step(rough(noRedRng), K);
+      const s = step(rough(noRedRng), A);
       expect(s.restart?.type).toBe('free_kick');
       expect(s.bookings).toEqual([]);
       expect(s.players).toHaveLength(14);
     });
 
     it('cùng seed thì cùng kết quả (tất định)', () => {
-      expect(step(rough(redRng), K)).toEqual(step(rough(redRng), K));
+      expect(step(rough(redRng), A)).toEqual(step(rough(redRng), A));
     });
 
     it('chạy chậm từ phía sau thì không phải thô bạo: không tung xác suất đỏ', () => {
       const slow = behind(vec2(10, 0), { meVel: vec2(-2, 0), rng: redRng });
-      const s = step(slow, K);
+      const s = step(slow, A);
       expect(s.bookings).toEqual([]);
       expect(s.rng).toBe(slow.rng);
     });
@@ -233,7 +235,7 @@ describe('xoạc hụt', () => {
   const far = () => scene({ owner: vec2(10, 0), me: vec2(0, 0) });
 
   it('không có ai trong tầm → trượt theo hướng mặt, không phạm lỗi, bóng vẫn của đối phương', () => {
-    const s = step(far(), K);
+    const s = step(far(), A);
     expect(s.phase).toBe('play');
     expect(s.ballOwnerId).toBe(OWNER);
     expect(s.tackleRecovery[ME]).toBe(s.tick + TACKLE_RECOVERY_TICKS);
@@ -241,14 +243,14 @@ describe('xoạc hụt', () => {
   });
 
   it('đang trượt/đứng dậy thì không điều khiển được và không xoạc lại được', () => {
-    const slid = repeat(step(far(), K), press({ move: vec2(0, 1) }), TACKLE_RECOVERY_TICKS - 2);
+    const slid = repeat(step(far(), A), press({ move: vec2(0, 1) }), TACKLE_RECOVERY_TICKS - 2);
     expect(playerOf(slid, ME).pos.y).toBeCloseTo(0, 5);
-    const again = step(slid, K);
+    const again = step(slid, A);
     expect(again.tackleRecovery[ME]).toBe(slid.tackleRecovery[ME]);
   });
 
   it('hồi xong thì chạy lại bình thường', () => {
-    const s = repeat(step(far(), K), press({ move: vec2(0, 1) }), TACKLE_RECOVERY_TICKS + 30);
+    const s = repeat(step(far(), A), press({ move: vec2(0, 1) }), TACKLE_RECOVERY_TICKS + 30);
     expect(s.tackleRecovery[ME]).toBeUndefined();
     expect(playerOf(s, ME).pos.y).toBeGreaterThan(0.5);
   });
@@ -278,9 +280,9 @@ describe('thực hiện đá phạt / phạt đền', () => {
     expect(length(s.ball.vel)).toBeGreaterThan(0);
   });
 
-  it('đá phạt: giữ rồi thả K để sút thẳng về khung thành', () => {
+  it('đá phạt: giữ rồi thả D để sút thẳng về khung thành', () => {
     const fk = homeRestart('free_kick', vec2(10, 0));
-    const charging = repeat(fk, K, 30);
+    const charging = repeat(fk, D, 30);
     expect(charging.phase).toBe('dead_ball');
     expect(charging.shotChargeTicks).toBe(30);
     const s = step(charging, NO_INPUT);
@@ -288,17 +290,17 @@ describe('thực hiện đá phạt / phạt đền', () => {
     expect(s.ball.vel.x).toBeGreaterThan(10);
   });
 
-  it('phạt đền: J không làm gì, chỉ sút bằng K', () => {
+  it('phạt đền: S không làm gì, chỉ sút bằng D', () => {
     const pk = homeRestart('penalty', vec2(HALF_LENGTH - PENALTY_SPOT_DIST, 0));
     expect(step(pk, J).phase).toBe('dead_ball');
-    const s = step(repeat(pk, K, 40), NO_INPUT);
+    const s = step(repeat(pk, D, 40), NO_INPUT);
     expect(s.phase).toBe('play');
     expect(s.ball.vel.x).toBeGreaterThan(10);
   });
 
   it('phạt đền của đội máy: thủ môn đội nhà đứng giữa khung, người khác ra ngoài vòng cấm, máy tự sút sau 3 s', () => {
     const goalSide = attackSign('away', 1);
-    const pk = step(frontal(vec2(goalSide * (HALF_LENGTH - 6), 2), missRoll), K);
+    const pk = step(frontal(vec2(goalSide * (HALF_LENGTH - 6), 2), missRoll), A);
     expect(pk.restart?.type).toBe('penalty');
     const gk = pk.players.find((p) => p.team === 'home' && p.position === 'GK')!;
     expect(gk.pos.y).toBe(0);

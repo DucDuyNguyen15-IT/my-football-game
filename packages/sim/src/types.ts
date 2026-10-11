@@ -46,15 +46,21 @@ export interface BallState {
 
 /**
  * Input của người chơi trong một tick. Nút là trạng thái "đang giữ";
- * sim so với `MatchState.input` (tick trước) để biết lúc bấm và lúc thả (VD: giữ K để nạp lực sút).
+ * sim so với `MatchState.input` (tick trước) để biết lúc bấm và lúc thả (VD: giữ D để nạp lực sút).
+ * Tên nút theo nghĩa khi có bóng; phím mặc định kiểu FC Online (PRD §5, DESIGN.md §6.2).
  */
 export interface PlayerInput {
-  /** Hướng di chuyển, độ dài ≤ 1. */
+  /** Hướng di chuyển (mũi tên), độ dài ≤ 1. */
   move: Vec2;
+  /** S: chuyền thấp; không có bóng = đổi người. */
   pass: boolean;
+  /** A: chuyền bổng; không có bóng = xoạc. */
   lob: boolean;
+  /** D: sút (giữ để nạp lực); không có bóng = áp sát/tắc bóng (task 5.15). */
   shoot: boolean;
+  /** E (giữ): chạy nước rút. */
   sprint: boolean;
+  /** Nút đổi người riêng (không gắn phím mặc định; dùng cho AI/test). */
   switch: boolean;
 }
 

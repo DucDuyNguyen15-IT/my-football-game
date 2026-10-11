@@ -17,7 +17,7 @@ export const SHOT_AIM_HEIGHT = 0.8;
 /** Trần vận tốc đứng khi sút (m/s): cú sút nhẹ từ xa đi thấp rồi lăn, không thành bóng bổng. */
 export const SHOT_MAX_VZ = 8;
 
-/** Lực sút (MIN_SHOT_POWER…1) theo số tick đã giữ K. */
+/** Lực sút (MIN_SHOT_POWER…1) theo số tick đã giữ nút sút (D). */
 export function shotPower(chargeTicks: number): number {
   const t = Math.min(1, Math.max(0, chargeTicks) / MAX_CHARGE_TICKS);
   return MIN_SHOT_POWER + (1 - MIN_SHOT_POWER) * t;
