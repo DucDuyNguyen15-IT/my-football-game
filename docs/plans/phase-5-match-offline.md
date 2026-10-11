@@ -67,8 +67,15 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: khi bóng ở 1/3 sân nhà, trung bình x của đội phòng ngự lùi về; luôn có đúng 1 người áp sát; chạy 1 trận AI-vs-AI không văng lỗi, không cầu thủ nào ra ngoài sân quá 2 s.
 - **Xong khi:** hai đội AI tự di chuyển có hình dạng đội hình hợp lý.
 
-### 5.8a — AI tầng cầu thủ `[ ]`
+### 5.15 — Áp sát & tắc bóng (D khi không có bóng) `[ ]`
 - **Phụ thuộc:** 5.7 · **Model:** strongest
+- **Bối cảnh:** PRD §5 (dòng "Điều khiển"), DESIGN §6.2, `packages/sim/src/{match,types}.ts`, `src/actions/tackle.ts`, `src/rules/fouls.ts`. Thêm 2026-10-11 khi đổi sang bộ phím kiểu FC Online.
+- **Việc cần làm:** khi người đang điều khiển không có bóng và **giữ** nút sút (D): tự chạy tới người dẫn bóng đối phương, dừng ở khoảng cách kèm (~1–1,5 m), chắn giữa người đó và khung thành nhà; người chơi vẫn bấm hướng để chỉnh. Vào tầm thì **tắc bóng đứng**: tầm ngắn hơn xoạc, không trượt/không hồi lâu, tỉ lệ giành bóng theo Phòng ngự vs Rê bóng, trượt thì chỉ phạm lỗi khi chạm người (ít lỗi hơn xoạc), từ phía sau vẫn là lỗi. Hằng số ở `stats/params.ts`.
+- **Kiểm chứng:** test: giữ D thì khoảng cách tới người dẫn bóng giảm và dừng quanh khoảng kèm; tắc đứng có tỉ lệ phạm lỗi thấp hơn xoạc (1.000 lần, seed cố định); Phòng ngự 90 giành bóng nhiều hơn 50; giữ D lúc giành được bóng không thành sút.
+- **Xong khi:** D khi phòng ngự dùng được, có test xanh.
+
+### 5.8a — AI tầng cầu thủ `[ ]`
+- **Phụ thuộc:** 5.15 · **Model:** strongest
 - **Bối cảnh:** `docs/research.md` §2; `packages/sim/src/ai/{team,difficulty}.ts`, `src/actions/*`.
 - **Việc cần làm:** `ai/player.ts`: người có bóng chấm điểm chuyền/sút/rê (khoảng trống, góc sút, áp lực); người không bóng chạy chỗ/đỡ bóng; AI tự thực hiện restart (sau 3 s). Các cầu thủ không điều khiển của đội người cũng dùng AI này. Thêm cờ `autopilot` trong `MatchSetup` để AI điều khiển luôn cầu thủ của người chơi (dùng cho test cân bằng và E2E).
 - **Kiểm chứng:** test: AI-vs-AI 20 trận (thủ môn tạm đứng giữa khung): mỗi trận có ≥ 1 cú sút; người có bóng bị áp sát sát thì chuyền/sút trong ≤ 2 s.
@@ -115,13 +122,6 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Việc cần làm:** script `pnpm --filter @pitch/sim balance` chạy headless 100 trận (danh sách **seed cố định**): `starterLikeTeam` điều khiển bởi hồ sơ AI `proxy` (hồ sơ riêng mô phỏng người chơi trung bình, nằm giữa Dễ và Khó, định nghĩa trong `ai/difficulty.ts`) vs `cpuEasyTeam` (AI Dễ) và vs `cpuHardTeam` (AI Khó); in tỉ lệ thắng. Chỉnh hằng số ở `stats/params.ts` và `ai/difficulty.ts` tới khi **thắng Dễ ≥ 60%, thắng Khó ≤ 30%**. Đo FPS trên Chrome (Performance panel hoặc overlay dev) với 14 cầu thủ, 1 trận đủ; tối ưu nếu < 55. (Chạy lại với dữ liệu thật ở 6.11.)
 - **Kiểm chứng:** test `balance.slow.test.ts` khẳng định ngưỡng — loại khỏi `pnpm test` mặc định (`exclude` trong config sim), chạy bằng `pnpm --filter @pitch/sim test:slow`; ghi số FPS đo được vào `docs/PROGRESS.md`.
 - **Xong khi:** đạt 3 tiêu chí ROADMAP GĐ5 → tick ROADMAP, cập nhật CLAUDE.md, PROGRESS.
-
-### 5.15 — Áp sát & tắc bóng (D khi không có bóng) `[ ]`
-- **Phụ thuộc:** 5.6 · **Song song với:** 5.7 · **Model:** strongest
-- **Bối cảnh:** PRD §5 (dòng "Điều khiển"), DESIGN §6.2, `packages/sim/src/{match,types}.ts`, `src/actions/tackle.ts`, `src/rules/fouls.ts`. Thêm 2026-10-11 khi đổi sang bộ phím kiểu FC Online.
-- **Việc cần làm:** khi người đang điều khiển không có bóng và **giữ** nút sút (D): tự chạy tới người dẫn bóng đối phương, dừng ở khoảng cách kèm (~1–1,5 m), chắn giữa người đó và khung thành nhà; người chơi vẫn bấm hướng để chỉnh. Vào tầm thì **tắc bóng đứng**: tầm ngắn hơn xoạc, không trượt/không hồi lâu, tỉ lệ giành bóng theo Phòng ngự vs Rê bóng, trượt thì chỉ phạm lỗi khi chạm người (ít lỗi hơn xoạc), từ phía sau vẫn là lỗi. Hằng số ở `stats/params.ts`.
-- **Kiểm chứng:** test: giữ D thì khoảng cách tới người dẫn bóng giảm và dừng quanh khoảng kèm; tắc đứng có tỉ lệ phạm lỗi thấp hơn xoạc (1.000 lần, seed cố định); Phòng ngự 90 giành bóng nhiều hơn 50; giữ D lúc giành được bóng không thành sút.
-- **Xong khi:** D khi phòng ngự dùng được, có test xanh.
 
 ### 5.16 — Chọc khe W / Q+W (Could) `[ ]`
 - **Phụ thuộc:** 5.4 · **Model:** default
