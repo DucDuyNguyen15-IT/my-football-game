@@ -29,7 +29,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: bóng lăn dừng trong khoảng cách mong đợi; bóng bổng chạm đất rồi nảy thấp dần; qua vạch biên → `ball_out touch`; vào khung thành dưới xà → `goal`; trên xà → `ball_out goal`.
 - **Xong khi:** mọi sự kiện có test; không có phép tính phụ thuộc thời gian thực.
 
-### 5.3 — Cầu thủ: di chuyển, chỉ số, thể lực `[ ]`
+### 5.3 — Cầu thủ: di chuyển, chỉ số, thể lực `[x]`
 - **Phụ thuộc:** 5.1 · **Song song với:** 5.2 · **Model:** default
 - **Bối cảnh:** PRD §5 (thể lực), §6.2 (bảng chỉ số → tham số).
 - **Việc cần làm:**
