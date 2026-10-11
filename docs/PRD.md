@@ -96,7 +96,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 |---|---|
 | Góc nhìn | 2D top-down, camera bám bóng |
 | Số người | 7v7 (1 thủ môn + 6), người chơi điều khiển 1 cầu thủ, AI điều khiển phần còn lại |
-| Thời lượng | 2 hiệp × 3 phút thời gian thật, nghỉ giữa hiệp đổi sân. Đồng hồ trong game hiển thị 0'–90' |
+| Thời lượng | 2 hiệp × 3 phút thời gian thật + bù giờ, nghỉ giữa hiệp đổi sân (người chơi bấm chuyền để đá hiệp 2). Đồng hồ trong game hiển thị 0'–90', bù giờ hiện 45'+N' / 90'+N'. Đồng hồ chạy cả khi bóng chết; bù giờ = phần chờ thực hiện bóng chết vượt quá 3 s + 1 phút mỗi bàn thắng, làm tròn lên phút, tối đa 3 phút game (1 phút game = 4 s thật) |
 | Đối thủ | Máy, mức **Dễ** (đội máy OVR TB ~60, AI phản ứng chậm, sai số chuyền/sút lớn) và **Khó** (OVR TB ~78, phản ứng nhanh) |
 | Bóng ra ngoài | Ném biên / phạt góc / phát bóng, đơn giản hoá: tự đặt bóng, người chơi bấm chuyền để tiếp tục (AI tự thực hiện sau 3 giây nếu là đội máy) |
 | Phạm lỗi | Xoạc không chạm bóng trước, hoặc xoạc từ phía sau → phạm lỗi, đối phương được đá phạt tại chỗ (trong vòng cấm → phạt đền). Xoạc từ sau khi đối phương đang đối mặt khung thành → thẻ vàng; 2 thẻ vàng = đỏ; xoạc thô bạo (tốc độ cao từ phía sau) có xác suất thẻ đỏ trực tiếp. Thẻ đỏ: cầu thủ rời sân, đội chơi thiếu người |
@@ -107,7 +107,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Kết quả | Thắng / Hòa (thua hay thắng luân lưu) / Thua. Tỉ số và thẻ phạt hiển thị cuối trận |
 
 **Tiêu chí chấp nhận F1–F3**
-- [ ] Trận chạy đủ 2 hiệp × 3 phút (±1 giây), đổi sân sau hiệp 1, đạt **≥ 55 FPS trung bình** trên laptop tầm trung (Chrome, tích hợp GPU) với 14 cầu thủ.
+- [ ] Trận chạy đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, đạt **≥ 55 FPS trung bình** trên laptop tầm trung (Chrome, tích hợp GPU) với 14 cầu thủ.
 - [ ] Vật lý bóng chạy theo bước thời gian cố định (60 tick/s). Cùng trạng thái ban đầu và cùng chuỗi input thì cho cùng kết quả (test tự động).
 - [ ] Bóng qua hết vạch biên dọc → ném biên cho đội không chạm bóng cuối; qua vạch cuối sân → phạt góc hoặc phát bóng đúng luật (test tự động cho cả 3 trường hợp).
 - [ ] Xoạc không chạm bóng trước → phạm lỗi, đá phạt; phạm lỗi trong vòng cấm → phạt đền; vàng thứ 2 → đỏ và cầu thủ rời sân (test tự động).
@@ -328,6 +328,7 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 |---|---|---|---|
 | Phạm vi MVP | B — Cân bằng | A Gọn, C Tham vọng | Chủ dự án chọn ở Giai đoạn 1 |
 | Thời lượng trận | 2 × 3 phút | 2 × 2, người chơi tự chọn | Nhiều tình huống hơn, vẫn ngắn |
+| Bù giờ (GĐ5, task 5.5) | Đồng hồ chạy liên tục + bù giờ theo thời gian chờ bóng chết > 3 s và bàn thắng, tối đa 3' | Dừng đồng hồ khi bóng chết; bù cố định theo sự kiện; ngẫu nhiên | Chủ dự án chọn: giữ cảm giác bóng đá thật, chống câu giờ |
 | Luật | Biên, phạm lỗi + thẻ, luân lưu khi hòa; **không** việt vị | Thêm việt vị | Việt vị khó hiểu trên sân 7v7 nhỏ |
 | Thể lực | Thể lực + 3 lượt thay khi bóng chết | Không có / chỉ thanh sprint | Cho dự bị và chỉ số Thể lực ý nghĩa |
 | Input | Chỉ bàn phím PC | + tay cầm, + cảm ứng | Giảm phạm vi |

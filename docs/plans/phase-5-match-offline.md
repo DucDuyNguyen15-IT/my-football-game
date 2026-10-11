@@ -46,10 +46,10 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test 1.000 cú sút cùng tình huống (seed khác nhau): Sút 90 vào khung thành nhiều hơn Sút 55 **≥ 25 điểm %**; chuyền thấp tới đồng đội đứng yên 15 m tới được ≥ 90% với Chuyền 80.
 - **Xong khi:** tiêu chí PRD về sút có test xanh.
 
-### 5.5 — Luật: bóng chết, giao bóng, hiệp, đồng hồ `[ ]`
+### 5.5 — Luật: bóng chết, giao bóng, hiệp, đồng hồ `[x]`
 - **Phụ thuộc:** 5.4 · **Model:** strongest
 - **Bối cảnh:** PRD §5 (thời lượng, bóng ra ngoài) và tiêu chí F1.
-- **Việc cần làm:** `rules/restarts.ts`: ném biên cho đội không chạm cuối; vạch cuối → phạt góc hoặc phát bóng; giao bóng sau bàn thắng; đặt bóng tự động, đội người bấm chuyền để tiếp tục, đội máy tự thực hiện sau 3 s. `rules/clock.ts`: 2 hiệp × `halfLengthSec` (mặc định 180), đồng hồ hiển thị 0'–90', nghỉ giữa hiệp đổi sân. Trạng thái `phase: 'kickoff'|'play'|'dead_ball'|'half_time'|'full_time'` + cờ `ballDead` (dùng cho thay người ở 5.11).
+- **Việc cần làm:** `rules/restarts.ts`: ném biên cho đội không chạm cuối; vạch cuối → phạt góc hoặc phát bóng; giao bóng sau bàn thắng; đặt bóng tự động, đội người bấm chuyền để tiếp tục, đội máy tự thực hiện sau 3 s. `rules/clock.ts`: 2 hiệp × `halfLengthSec` (mặc định 180) + bù giờ (PRD §5), đồng hồ hiển thị 0'–90' (45'+N'), nghỉ giữa hiệp đổi sân, chờ bấm chuyền để đá hiệp 2. Trạng thái `phase: 'kickoff'|'play'|'dead_ball'|'half_time'|'full_time'` + cờ `ballDead` (dùng cho thay người ở 5.11).
 - **Kiểm chứng:** test 3 trường hợp bóng ra (biên/góc/phát bóng) đúng đội; trận chạy đủ 2×180 s ±1 tick; đổi sân sau hiệp 1.
 - **Xong khi:** các tiêu chí F1 tương ứng có test.
 

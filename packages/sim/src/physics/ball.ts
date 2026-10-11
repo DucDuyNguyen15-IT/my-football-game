@@ -187,6 +187,14 @@ function crossingEvent(a: BallState, b: BallState, attackingPlusX: TeamSide): Ba
 }
 
 /**
+ * Sự kiện khi bóng đi từ `a` tới `b`: null nếu không vượt ra khỏi sân. Dùng cả khi bóng dính chân
+ * người dẫn (không chạy vật lý).
+ */
+export function exitEvent(a: BallState, b: BallState, attackingPlusX: TeamSide): BallEvent | null {
+  return !isOut(a.pos) && isOut(b.pos) ? crossingEvent(a, b, attackingPlusX) : null;
+}
+
+/**
  * Chạy vật lý bóng một tick. Hàm thuần.
  * @param attackingPlusX đội đang tấn công về khung thành phía +x (đổi sau giờ nghỉ).
  */
@@ -211,9 +219,8 @@ export function stepBall(
   for (let i = 0; i < substeps; i++) {
     const prev = b;
     b = containInNet(collideGoalFrame(integrate(b, h)));
-    if (events.length === 0 && !isOut(prev.pos) && isOut(b.pos)) {
-      events.push(crossingEvent(prev, b, attackingPlusX));
-    }
+    const event = events.length === 0 ? exitEvent(prev, b, attackingPlusX) : null;
+    if (event) events.push(event);
   }
   return { ball: b, events };
 }
