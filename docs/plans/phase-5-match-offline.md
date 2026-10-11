@@ -81,7 +81,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: AI-vs-AI 20 trận (thủ môn tạm đứng giữa khung): mỗi trận có ≥ 1 cú sút; người có bóng bị áp sát sát thì chuyền/sút trong ≤ 2 s.
 - **Xong khi:** hai đội AI tạo được cơ hội.
 
-### 5.8b — AI thủ môn `[ ]`
+### 5.8b — AI thủ môn `[x]`
 - **Phụ thuộc:** 5.8a · **Model:** strongest
 - **Bối cảnh:** PRD §6.2 (Phản xạ, Bắt bóng, Vị trí, Phát bóng); `packages/sim/src/ai/player.ts`, `src/physics/ball.ts`.
 - **Việc cần làm:** `ai/goalkeeper.ts`: đứng theo góc bóng (Vị trí), thời gian phản ứng (Phản xạ), bắt dính hay đẩy ra (Bắt bóng), phát bóng/chuyền (Phát bóng), lao ra khi đối mặt.
