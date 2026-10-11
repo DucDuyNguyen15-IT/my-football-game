@@ -60,7 +60,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test từng nhánh: xoạc trượt → phạm lỗi + đá phạt; trong vòng cấm → phạt đền; xoạc từ sau khi đối phương đối mặt khung thành → vàng; vàng thứ 2 → đỏ và đội còn 6 người; xoạc thô bạo với một seed cố định ra đỏ trực tiếp và một seed cố định không ra.
 - **Xong khi:** tiêu chí F2 phạm lỗi có test xanh.
 
-### 5.7 — AI tầng đội `[ ]`
+### 5.7 — AI tầng đội `[x]`
 - **Phụ thuộc:** 5.6 · **Model:** strongest
 - **Bối cảnh:** `docs/research.md` §2 (AI 2 tầng + steering), PRD §5 (Dễ/Khó).
 - **Việc cần làm:** `ai/team.ts`: điểm neo theo sơ đồ (2-3-1, 3-2-1, 2-2-2 từ `@pitch/shared`), dịch theo vị trí bóng, trạng thái tấn công/phòng ngự/chuyển trạng thái, phân công kèm người, người áp sát gần bóng nhất. `ai/difficulty.ts`: `reactionDelayTicks`, hệ số sai số chuyền/sút, độ hung hăng — Dễ/Khó.

@@ -215,13 +215,11 @@ const repeat = (s: MatchState, input: PlayerInput, n: number): MatchState => {
 const playerOf = (s: MatchState, id: string) => s.players.find((p) => p.id === id)!;
 
 describe('step — di chuyển', () => {
-  it('cầu thủ được điều khiển chạy theo hướng bấm, người khác đứng yên', () => {
-    const s0 = scenario(
-      { 'home-P1': vec2(0, 5), 'home-P2': vec2(10, 10) },
-      null,
-      'home-P1',
-      vec2(20, 0),
-    );
+  it('cầu thủ được điều khiển chạy theo hướng bấm, người khác đứng yên khi tắt AI', () => {
+    const s0: MatchState = {
+      ...scenario({ 'home-P1': vec2(0, 5), 'home-P2': vec2(10, 10) }, null, 'home-P1', vec2(20, 0)),
+      ai: null,
+    };
     const s1 = repeat(s0, press({ move: vec2(1, 0) }), 30);
     expect(playerOf(s1, 'home-P1').pos.x).toBeGreaterThan(0.5);
     expect(playerOf(s1, 'home-P2').pos).toEqual(vec2(10, 10));

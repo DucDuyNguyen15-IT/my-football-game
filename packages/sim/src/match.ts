@@ -1,4 +1,6 @@
 import { MatchTeamSetup, isStarterSlot, type MatchPlayerSetup } from '@pitch/shared';
+import { AI_PROFILES, type AiProfile } from './ai/difficulty';
+import { aiMove, thinkTeam } from './ai/team';
 import { choosePassTarget, passBall, type PassKind } from './actions/pass';
 import { attackSign, shootBall, shotPower, shotTarget } from './actions/shoot';
 import { resolveTackle, slideTackle, TACKLE_RECOVERY_TICKS } from './actions/tackle';
@@ -154,6 +156,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     shotChargeTicks: 0,
     controlledId: '',
     input: NO_INPUT,
+    ai: { home: null, away: null },
   };
   return enterKickoff(blank, kickoffTeam, 0);
 }
@@ -197,6 +200,61 @@ function kickPass(
   const looseDist = kind === 'lob' ? range * LOOSE_LOB_RANGE_FRAC : LOOSE_PASS_DIST;
   const to = target ? target.pos : add(from, scale(normalize(dir), looseDist));
   return passBall(passer, from, to, kind, rng);
+}
+
+/** Đội máy theo mức độ khó; cầu thủ AI cùng đội người chơi dùng profile đồng đội. */
+const aiProfile = (state: MatchState, team: TeamSide): AiProfile =>
+  team === HUMAN_TEAM ? AI_PROFILES.teammate : AI_PROFILES[state.difficulty];
+
+/**
+ * AI tầng đội cho tick này: lập lại kế hoạch hai đội nếu tới hạn, trả kế hoạch mới và hàm cho input
+ * di chuyển của từng cầu thủ AI (người đang được điều khiển và mọi người khi tắt AI: đứng yên).
+ */
+function runTeamAi(
+  state: MatchState,
+  players: readonly PlayerState[],
+  ball: BallState,
+  ballOwnerId: string | null,
+  restartTeam: TeamSide | null,
+  controlledId: string,
+  tick: number,
+): { ai: MatchState['ai']; moveOf: (p: PlayerState) => { move: Vec2; sprint: boolean } } {
+  const still = { move: ZERO, sprint: false };
+  if (!state.ai) return { ai: null, moveOf: () => still };
+  const prev = state.ai;
+  const think = (team: TeamSide) => {
+    const profile = aiProfile(state, team);
+    return thinkTeam(
+      prev[team],
+      {
+        team,
+        half: state.half,
+        formation: state.formations[team],
+        players,
+        ball,
+        ballOwnerId,
+        restartTeam,
+        aggression: profile.aggression,
+        controlledId: team === HUMAN_TEAM ? controlledId : null,
+      },
+      tick,
+      profile.reactionDelayTicks,
+    );
+  };
+  const ai = { home: think('home'), away: think('away') };
+  const moveOf = (p: PlayerState) =>
+    p.id === controlledId
+      ? still
+      : aiMove(
+          p,
+          ai[p.team].plan,
+          players,
+          ball,
+          ballOwnerId,
+          state.half,
+          aiProfile(state, p.team).aggression,
+        );
+  return { ai, moveOf };
 }
 
 /**
@@ -318,12 +376,18 @@ function stepDeadBall(
   if (!humanRestart && (pressed('switch') || pressed('pass'))) {
     controlledId = chooseSwitchTarget(state.players, HUMAN_TEAM, restart.spot, controlledId);
   }
+  // Đội hình giữ nguyên lúc chờ giao bóng; phạt đền thì mọi người đứng ngoài vòng cấm chờ.
+  const aiActive = restart.type !== 'kickoff' && restart.type !== 'penalty';
+  const { ai, moveOf } = aiActive
+    ? runTeamAi(state, state.players, state.ball, null, restart.team, controlledId, tick)
+    : { ai: state.ai, moveOf: () => ({ move: ZERO, sprint: false }) };
   const moved = separatePlayers(
-    state.players.map((p) =>
-      p.id === controlledId && p.id !== taker.id
-        ? stepPlayer(p, input.move, input.sprint)
-        : stepPlayer(p, ZERO, false),
-    ),
+    state.players.map((p) => {
+      if (p.id === taker.id) return stepPlayer(p, ZERO, false);
+      if (p.id === controlledId) return stepPlayer(p, input.move, input.sprint);
+      const m = moveOf(p);
+      return stepPlayer(p, m.move, m.sprint);
+    }),
   );
   // Phạt đền: hướng bấm chỉ dùng để nhắm lúc sút, người sút luôn quay mặt về khung thành.
   const aim = humanRestart && restart.type !== 'penalty' ? input.move : ZERO;
@@ -333,6 +397,7 @@ function stepDeadBall(
     tick,
     players: holdRestart(moved, restart, state.half, aim),
     controlledId,
+    ai,
     shotChargeTicks,
     stoppage: { ...state.stoppage, overrunTicks: state.stoppage.overrunTicks + overrun },
     input,
@@ -343,7 +408,7 @@ function stepDeadBall(
  * Bóng sống. Thứ tự: đổi người → hành động của người chơi (mất bóng khi xoay / chuyền / sút, hoặc
  * xoạc khi không có bóng — phạm lỗi thì sang bóng chết ngay) → di chuyển cầu thủ → bóng (dính chân
  * hoặc vật lý) → bóng ra ngoài / bàn thắng → bắt bóng tự do.
- * Cầu thủ không do người chơi điều khiển đứng yên cho tới khi có AI (task 5.7).
+ * Cầu thủ không do người chơi điều khiển di chuyển theo AI đội (`ai/team.ts`); chưa tự chuyền/sút/xoạc.
  */
 function stepPlay(
   state: MatchState,
@@ -412,14 +477,24 @@ function stepPlay(
     }
   }
 
-  // 3. Di chuyển cầu thủ. Người đang trượt/đứng dậy sau cú xoạc hụt không điều khiển được.
+  // 3. Di chuyển cầu thủ: người chơi theo input, người khác theo AI đội. Người đang trượt/đứng dậy
+  // sau cú xoạc hụt không điều khiển được.
+  const { ai, moveOf } = runTeamAi(
+    state,
+    state.players,
+    ball,
+    ballOwnerId,
+    null,
+    controlledId,
+    tick,
+  );
   const players = separatePlayers(
     state.players.map((p) => {
       if (p.id === slidingId) return stepPlayer(slideTackle(p), ZERO, false);
       if (tackleRecovery[p.id] !== undefined) return stepPlayer(p, ZERO, false);
-      return p.id === controlledId
-        ? stepPlayer(p, input.move, input.sprint)
-        : stepPlayer(p, ZERO, false);
+      if (p.id === controlledId) return stepPlayer(p, input.move, input.sprint);
+      const m = moveOf(p);
+      return stepPlayer(p, m.move, m.sprint);
     }),
   );
 
@@ -450,6 +525,7 @@ function stepPlay(
     controlledId,
     tackleRecovery,
     input,
+    ai,
   };
 
   // 5. Bóng ra ngoài hoặc vào lưới → bóng chết.
