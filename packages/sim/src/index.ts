@@ -9,6 +9,8 @@ export * from './types';
 export * from './rng';
 export * from './pitch';
 export * from './physics/ball';
+export * from './physics/player';
+export * from './stats/params';
 /** Phép toán vector (`V.add`, `V.length`, …) — gom vào namespace để không đè tên chung. */
 export * as V from './math/vec2';
 export type { Vec2 } from './math/vec2';
