@@ -74,7 +74,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: giữ D thì khoảng cách tới người dẫn bóng giảm và dừng quanh khoảng kèm; tắc đứng có tỉ lệ phạm lỗi thấp hơn xoạc (1.000 lần, seed cố định); Phòng ngự 90 giành bóng nhiều hơn 50; giữ D lúc giành được bóng không thành sút.
 - **Xong khi:** D khi phòng ngự dùng được, có test xanh.
 
-### 5.8a — AI tầng cầu thủ `[ ]`
+### 5.8a — AI tầng cầu thủ `[x]`
 - **Phụ thuộc:** 5.15 · **Model:** strongest
 - **Bối cảnh:** `docs/research.md` §2; `packages/sim/src/ai/{team,difficulty}.ts`, `src/actions/*`.
 - **Việc cần làm:** `ai/player.ts`: người có bóng chấm điểm chuyền/sút/rê (khoảng trống, góc sút, áp lực); người không bóng chạy chỗ/đỡ bóng; AI tự thực hiện restart (sau 3 s). Các cầu thủ không điều khiển của đội người cũng dùng AI này. Thêm cờ `autopilot` trong `MatchSetup` để AI điều khiển luôn cầu thủ của người chơi (dùng cho test cân bằng và E2E).

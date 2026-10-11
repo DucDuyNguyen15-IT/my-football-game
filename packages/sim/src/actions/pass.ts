@@ -71,8 +71,8 @@ export function groundPassSpeed(dist: number): number {
 }
 
 /**
- * Sút bóng từ `from` về `to` (chuyền thấp hoặc bổng), sai số góc/lực theo Chuyền và thể lực.
- * Hàm thuần: trả về bóng mới và PRNG đã tiến.
+ * Sút bóng từ `from` về `to` (chuyền thấp hoặc bổng), sai số góc/lực theo Chuyền và thể lực,
+ * nhân thêm `errorMult` (AI theo mức độ khó). Hàm thuần: trả về bóng mới và PRNG đã tiến.
  */
 export function passBall(
   passer: PlayerState,
@@ -80,8 +80,10 @@ export function passBall(
   to: Vec2,
   kind: PassKind,
   rng: RngState,
+  errorMult = 1,
 ): { ball: BallState; rng: RngState } {
-  const fatigue = fatigueFactor(passer.stamina);
+  // Sai số chia cho hệ số này: mệt và errorMult > 1 đều làm sai số lớn hơn.
+  const fatigue = fatigueFactor(passer.stamina) / errorMult;
   const offset = sub(to, from);
   const dist = length(offset);
   const aim = dist > 0 ? offset : passer.facing;

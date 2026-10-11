@@ -20,6 +20,8 @@ export interface MatchSetup {
   difficulty: Difficulty;
   /** Mặc định 180 s (PRD §5). */
   halfLengthSec?: number;
+  /** AI điều khiển luôn đội người chơi, bỏ qua input (test cân bằng, E2E). Mặc định tắt. */
+  autopilot?: boolean;
 }
 
 export interface PlayerState {
@@ -134,6 +136,10 @@ export interface MatchState {
   difficulty: Difficulty;
   rng: RngState;
   score: Record<TeamSide, number>;
+  /** Số cú sút (cả sút phạt, phạt đền) — cho màn kết quả và cân chỉnh. */
+  shots: Record<TeamSide, number>;
+  /** AI điều khiển luôn đội người chơi, input bị bỏ qua. */
+  autopilot: boolean;
   formations: Record<TeamSide, Formation>;
   kickoffTeam: TeamSide;
   ball: BallState;
@@ -148,6 +154,8 @@ export interface MatchState {
   bench: Record<TeamSide, MatchPlayerSetup[]>;
   /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */
   ballOwnerId: string | null;
+  /** Tick `ballOwnerId` đổi lần cuối (AI dùng để biết đã giữ bóng bao lâu). */
+  ownerSinceTick: number;
   /** Người vừa chuyền/sút/mất bóng không được chạm lại bóng trước tick `untilTick`. */
   kickLock: { playerId: string; untilTick: number } | null;
   /** Số tick người chơi đã giữ nút sút (0 = không nạp lực). */

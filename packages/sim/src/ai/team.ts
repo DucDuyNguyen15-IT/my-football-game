@@ -3,6 +3,7 @@ import { attackSign } from '../actions/shoot';
 import { add, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from '../pitch';
 import { CONTAIN_DIST } from '../stats/params';
+import { supportSpot } from './player';
 import type { BallState, PlayerState, TeamSide } from '../types';
 
 /*
@@ -79,7 +80,7 @@ const MARK_DIST = 2;
 /** Đuổi bóng tự do: đón trước theo vận tốc bóng, tối đa chừng này giây. */
 const CHASE_LEAD_MAX_SEC = 1;
 const CHASE_SPEED_GUESS = 6;
-/** Người dẫn bóng AI tạm thời rê tới cách vạch cuối đối phương chừng này (m) rồi dừng — 5.8a thay. */
+/** Vai "carry" (dự phòng, `match.ts` dùng `decideCarrier`): rê tới cách vạch cuối đối phương chừng này (m). */
 const CARRY_STOP_DEPTH = 12;
 /** Arrive: hết tốc khi còn xa hơn ARRIVE_RADIUS, chậm dần khi gần, dừng trong ARRIVE_STOP (m). */
 const ARRIVE_RADIUS = 3;
@@ -286,8 +287,11 @@ export function aiTarget(
           ? flip(vec2(HALF_LENGTH - CARRY_STOP_DEPTH, flip(player.pos, sign).y * 0.5), sign)
           : anchor;
       break;
-    case 'keep':
     case 'hold':
+      // Đội đang có bóng: chạy chỗ, dạt khỏi đối phương để nhận bóng.
+      target = plan.mode === 'attack' ? supportSpot(anchor, player.team, players) : anchor;
+      break;
+    case 'keep':
       target = anchor;
       break;
   }

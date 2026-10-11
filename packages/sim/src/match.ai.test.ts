@@ -43,7 +43,9 @@ describe('AI đội trong trận', () => {
     for (let i = 0; i < 20_000 && s.phase !== 'full_time'; i++) {
       s = step(s, botInput(s));
       for (const p of s.players) {
-        const n = isInsidePitch(p.pos) ? 0 : (outside.get(p.id) ?? 0) + 1;
+        // Người ném biên/đá phạt góc đứng sau vạch là đúng luật.
+        const taking = p.id === s.restart?.takerId;
+        const n = isInsidePitch(p.pos) || taking ? 0 : (outside.get(p.id) ?? 0) + 1;
         outside.set(p.id, n);
         worstOutside = Math.max(worstOutside, n);
       }
