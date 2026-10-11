@@ -7,6 +7,7 @@ import type {
   Position,
   SquadSlot,
 } from '@pitch/shared';
+import type { TeamAiState } from './ai/team';
 import type { Vec2 } from './math/vec2';
 import type { RngState } from './rng';
 
@@ -151,6 +152,11 @@ export interface MatchState {
   shotChargeTicks: number;
   /** Cầu thủ đội nhà người chơi đang điều khiển. */
   controlledId: string;
+  /**
+   * Kế hoạch AI tầng đội của từng đội (null = chưa lập). Cả trường null = tắt AI, mọi cầu thủ
+   * không do người chơi điều khiển đứng yên — chỉ dùng trong test cơ chế.
+   */
+  ai: Record<TeamSide, TeamAiState | null> | null;
   /** Input đã áp dụng ở tick trước. */
   input: PlayerInput;
 }

@@ -17,3 +17,5 @@ export type { Vec2 } from './math/vec2';
 export * from './fixtures/demoTeams';
 export * from './actions/tackle';
 export * from './rules/fouls';
+export * from './ai/team';
+export * from './ai/difficulty';
