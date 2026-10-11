@@ -2,7 +2,13 @@ import { FORMATION_LINES, type Formation, type SquadSlot } from '@pitch/shared';
 import type { PassKind } from '../actions/pass';
 import { attackSign } from '../actions/shoot';
 import { add, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
-import { CENTER_CIRCLE_RADIUS, HALF_LENGTH, HALF_WIDTH } from '../pitch';
+import {
+  CENTER_CIRCLE_RADIUS,
+  HALF_LENGTH,
+  HALF_WIDTH,
+  isInPenaltyArea,
+  PENALTY_AREA_DEPTH,
+} from '../pitch';
 import type { PlayerState, Restart, RestartType, TeamSide } from '../types';
 import { RESTART_GRACE_TICKS } from './clock';
 import { DRIBBLE_OFFSET } from './possession';
@@ -23,6 +29,10 @@ export const GOAL_KICK_DIST = 5;
 const THROW_IN_END_GAP = 1;
 /** Phạt góc nhắm vào điểm giữa vòng cấm, cách vạch cuối chừng này mét. */
 const CORNER_AIM_DEPTH = 7;
+/** Phạt đền: thủ môn đội phòng ngự đứng giữa khung thành, cách vạch cuối chừng này mét. */
+export const PENALTY_GK_DEPTH = 0.5;
+/** Phạt đền: mọi người khác đứng ngoài vòng cấm, cách mép vòng cấm ít nhất chừng này mét. */
+const PENALTY_WAIT_GAP = 1;
 
 const other = (team: TeamSide): TeamSide => (team === 'home' ? 'away' : 'home');
 const signOf = (v: number): 1 | -1 => (v < 0 ? -1 : 1);
@@ -72,7 +82,13 @@ function restartFacing(plan: RestartPlan, half: 1 | 2): Vec2 {
       return normalize(sub(vec2(signOf(spot.x) * (HALF_LENGTH - CORNER_AIM_DEPTH), 0), spot));
     case 'goal_kick':
     case 'kickoff':
+    case 'penalty':
       return vec2(attackSign(plan.team, half), 0);
+    case 'free_kick': {
+      const goal = vec2(attackSign(plan.team, half) * HALF_LENGTH, 0);
+      const toGoal = sub(goal, spot);
+      return length(toGoal) > 0 ? normalize(toGoal) : vec2(attackSign(plan.team, half), 0);
+    }
   }
 }
 
@@ -100,11 +116,13 @@ export function holdRestart(
   aim: Vec2 = ZERO,
 ): PlayerState[] {
   const clearance = restart.type === 'kickoff' ? CENTER_CIRCLE_RADIUS : RESTART_CLEARANCE;
+  const goalSide = attackSign(restart.team, half);
   return players.map((p) => {
     if (p.id === restart.takerId) {
       const facing = length(aim) > 0 ? normalize(aim) : p.facing;
       return { ...p, facing, pos: sub(restart.spot, scale(facing, DRIBBLE_OFFSET)), vel: ZERO };
     }
+    if (restart.type === 'penalty') return holdPenalty(p, restart, goalSide);
     if (p.team === restart.team) return p;
     const d = sub(p.pos, restart.spot);
     const dist = length(d);
@@ -113,6 +131,26 @@ export function holdRestart(
     const dir = dist > 0 ? scale(d, 1 / dist) : vec2(-attackSign(p.team, half), 0);
     return { ...p, pos: add(restart.spot, scale(dir, clearance)) };
   });
+}
+
+/**
+ * Phạt đền: thủ môn đội phòng ngự đứng giữa khung thành, mọi người khác (cả hai đội) ra ngoài vòng
+ * cấm — ngoài vòng cấm đã đủ xa chấm phạt đền.
+ */
+function holdPenalty(p: PlayerState, restart: Restart, goalSide: 1 | -1): PlayerState {
+  if (p.team !== restart.team && p.position === 'GK') {
+    return {
+      ...p,
+      pos: vec2(goalSide * (HALF_LENGTH - PENALTY_GK_DEPTH), 0),
+      vel: ZERO,
+      facing: vec2(-goalSide, 0),
+    };
+  }
+  if (!isInPenaltyArea(p.pos, goalSide)) return p;
+  return {
+    ...p,
+    pos: vec2(goalSide * (HALF_LENGTH - PENALTY_AREA_DEPTH - PENALTY_WAIT_GAP), p.pos.y),
+  };
 }
 
 /** Chọn người thực hiện, đặt người đó sau bóng, dẹp đối phương ra xa. */
@@ -193,8 +231,9 @@ export const cpuRestartDue = (restart: Restart, tick: number): boolean =>
   tick - restart.startTick >= RESTART_DELAY_TICKS;
 
 /**
- * Cách đội máy thực hiện (tạm thời, AI ở task 5.7 có thể thay): giao bóng chuyền về sau,
- * phát bóng và phạt góc chuyền bổng, ném biên chuyền thấp theo hướng đang quay mặt.
+ * Cách đội máy chuyền khi thực hiện (tạm thời, AI ở task 5.7 có thể thay): giao bóng chuyền về sau,
+ * phát bóng và phạt góc chuyền bổng, ném biên và đá phạt chuyền thấp theo hướng đang quay mặt.
+ * Phạt đền không chuyền mà sút — `match.ts` xử lý riêng.
  */
 export function cpuRestartKick(
   restart: Restart,
@@ -207,6 +246,8 @@ export function cpuRestartKick(
     case 'corner':
       return { kind: 'lob', dir: taker.facing };
     case 'throw_in':
+    case 'free_kick':
+    case 'penalty':
       return { kind: 'ground', dir: taker.facing };
   }
 }

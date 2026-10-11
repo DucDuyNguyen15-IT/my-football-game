@@ -24,3 +24,12 @@ export const BALL_RADIUS = 0.11;
 /** Trong sân, tính cả điểm nằm trên vạch. */
 export const isInsidePitch = (p: Vec2): boolean =>
   Math.abs(p.x) <= HALF_LENGTH && Math.abs(p.y) <= HALF_WIDTH;
+
+/** Chấm phạt đền cách vạch cuối chừng này mét. */
+export const PENALTY_SPOT_DIST = 8;
+
+/** Điểm nằm trong vòng cấm ở đầu sân phía `side` (1 = phía +x, −1 = phía −x), tính cả vạch. */
+export const isInPenaltyArea = (p: Vec2, side: 1 | -1): boolean =>
+  side * p.x >= HALF_LENGTH - PENALTY_AREA_DEPTH &&
+  side * p.x <= HALF_LENGTH &&
+  Math.abs(p.y) <= PENALTY_AREA_WIDTH / 2;

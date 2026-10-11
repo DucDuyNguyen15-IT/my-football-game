@@ -100,3 +100,22 @@ export const shotAngleErrFor = (shooting: number): number =>
 
 export const shotHeightErrFor = (shooting: number): number =>
   statScale(shooting, ...SHOT_HEIGHT_ERR_RANGE);
+
+/** Tầm xoạc (m, từ tâm người xoạc tới bóng hoặc tới người dẫn bóng) theo Phòng ngự. */
+export const TACKLE_REACH_RANGE = [1.3, 2.1] as const;
+/** Xác suất xoạc trúng bóng (xoạc sạch) khi bóng trong tầm, theo Phòng ngự của người xoạc. */
+export const TACKLE_WIN_CHANCE_RANGE = [0.3, 0.9] as const;
+/** Phần xác suất xoạc sạch bị trừ theo Rê bóng của người bị xoạc (giữ bóng khi bị tranh). */
+export const TACKLE_RESIST_RANGE = [0, 0.25] as const;
+/** Kẹp xác suất xoạc sạch: không bao giờ chắc chắn trúng hay chắc chắn trượt. */
+export const TACKLE_WIN_CHANCE_BOUNDS = [0.05, 0.95] as const;
+
+export const tackleReachFor = (defending: number): number =>
+  statScale(defending, ...TACKLE_REACH_RANGE);
+
+/** Xác suất xoạc sạch của người có Phòng ngự `defending` vào người có Rê bóng `dribbling`. */
+export function tackleWinChance(defending: number, dribbling: number): number {
+  const chance =
+    statScale(defending, ...TACKLE_WIN_CHANCE_RANGE) - statScale(dribbling, ...TACKLE_RESIST_RANGE);
+  return clamp(chance, ...TACKLE_WIN_CHANCE_BOUNDS);
+}
