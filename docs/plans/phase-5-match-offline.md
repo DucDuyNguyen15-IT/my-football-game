@@ -53,7 +53,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test 3 trường hợp bóng ra (biên/góc/phát bóng) đúng đội; trận chạy đủ 2×180 s ±1 tick; đổi sân sau hiệp 1.
 - **Xong khi:** các tiêu chí F1 tương ứng có test.
 
-### 5.6 — Xoạc, phạm lỗi, thẻ phạt `[ ]`
+### 5.6 — Xoạc, phạm lỗi, thẻ phạt `[x]`
 - **Phụ thuộc:** 5.5 · **Model:** strongest
 - **Bối cảnh:** PRD §5 (dòng "Phạm lỗi") và tiêu chí F2.
 - **Việc cần làm:** `actions/tackle.ts` (K khi không có bóng; bán kính/tỉ lệ sạch theo Phòng ngự); `rules/fouls.ts`: không chạm bóng trước hoặc từ phía sau → phạm lỗi; trong vòng cấm → phạt đền; từ sau khi đối phương đối mặt khung thành → vàng; 2 vàng → đỏ; xoạc thô bạo (tốc độ cao từ sau) → xác suất đỏ trực tiếp (PRNG). Cầu thủ bị đỏ rời sân. Đá phạt/phạt đền là restart mới.

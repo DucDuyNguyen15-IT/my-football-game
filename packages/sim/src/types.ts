@@ -74,7 +74,17 @@ export const NO_INPUT: PlayerInput = Object.freeze({
  */
 export type MatchPhase = 'kickoff' | 'play' | 'dead_ball' | 'half_time' | 'full_time';
 
-export type RestartType = 'kickoff' | 'throw_in' | 'corner' | 'goal_kick';
+export type RestartType = 'kickoff' | 'throw_in' | 'corner' | 'goal_kick' | 'free_kick' | 'penalty';
+
+export type CardColor = 'yellow' | 'red';
+
+/** Một thẻ phạt. Vàng thứ hai ghi thành hai dòng: một vàng rồi một đỏ. */
+export interface Booking {
+  playerId: string;
+  team: TeamSide;
+  card: CardColor;
+  tick: number;
+}
 
 /** Tình huống bóng chết đang chờ thực hiện. */
 export interface Restart {
@@ -120,8 +130,12 @@ export interface MatchState {
   formations: Record<TeamSide, Formation>;
   kickoffTeam: TeamSide;
   ball: BallState;
-  /** Cầu thủ đang trên sân. */
+  /** Cầu thủ đang trên sân (người bị thẻ đỏ đã rời sân). */
   players: PlayerState[];
+  /** Thẻ phạt theo thứ tự thời gian (cho HUD và màn kết quả). */
+  bookings: Booking[];
+  /** Người vừa xoạc hụt: đang trượt/đứng dậy, không di chuyển hay xoạc được trước tick này. */
+  tackleRecovery: Record<string, number>;
   bench: Record<TeamSide, MatchPlayerSetup[]>;
   /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */
   ballOwnerId: string | null;

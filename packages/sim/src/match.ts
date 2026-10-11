@@ -1,6 +1,7 @@
 import { MatchTeamSetup, isStarterSlot, type MatchPlayerSetup } from '@pitch/shared';
 import { choosePassTarget, passBall, type PassKind } from './actions/pass';
 import { attackSign, shootBall, shotPower, shotTarget } from './actions/shoot';
+import { resolveTackle, slideTackle, TACKLE_RECOVERY_TICKS } from './actions/tackle';
 import {
   add,
   clampLength,
@@ -14,9 +15,16 @@ import {
 } from './math/vec2';
 import { exitEvent, stepBall, type BallEvent } from './physics/ball';
 import { separatePlayers, stepPlayer } from './physics/player';
-import { type RngState, seedRng } from './rng';
+import { nextFloat, type RngState, seedRng } from './rng';
 import { advanceClock, RESTART_GRACE_TICKS } from './rules/clock';
-import { chooseSwitchTarget, dribbleBall, findCapturer, losesBallOnTurn } from './rules/possession';
+import { judgeFoul } from './rules/fouls';
+import {
+  chooseSwitchTarget,
+  CONTROL_HEIGHT,
+  dribbleBall,
+  findCapturer,
+  losesBallOnTurn,
+} from './rules/possession';
 import {
   cpuRestartDue,
   cpuRestartKick,
@@ -66,11 +74,16 @@ function spawnTeam(team: MatchTeamSetup, side: TeamSide): PlayerState[] {
 const benchOf = (team: MatchTeamSetup): MatchPlayerSetup[] =>
   team.players.filter((p) => !isStarterSlot(p.slot));
 
-/** Cầu thủ ngoài sân của người chơi gần `point` nhất (dùng khi đội máy được hưởng bóng chết). */
+/**
+ * Cầu thủ ngoài sân của người chơi gần `point` nhất (dùng khi đội máy được hưởng bóng chết).
+ * Hết cầu thủ ngoài sân (thẻ đỏ) thì lấy thủ môn.
+ */
 function nearestHuman(players: readonly PlayerState[], point: Vec2): string {
   const dist = (p: PlayerState) => length(sub(p.pos, point));
-  const mine = players.filter((p) => p.team === HUMAN_TEAM && p.position !== 'GK');
-  return mine.reduce((best, p) => (dist(p) < dist(best) ? p : best)).id;
+  const team = players.filter((p) => p.team === HUMAN_TEAM);
+  const outfield = team.filter((p) => p.position !== 'GK');
+  const pool = outfield.length > 0 ? outfield : team;
+  return pool.reduce((best, p) => (dist(p) < dist(best) ? p : best)).id;
 }
 
 /**
@@ -94,6 +107,7 @@ function enterDeadBall(
     ballOwnerId: null,
     kickLock: null,
     shotChargeTicks: 0,
+    tackleRecovery: {},
     controlledId:
       plan.team === HUMAN_TEAM ? placed.restart.takerId : nearestHuman(placed.players, plan.spot),
   };
@@ -132,6 +146,8 @@ export function createMatch(setup: MatchSetup): MatchState {
     kickoffTeam,
     ball: restingBall(ZERO),
     players: [...spawnTeam(home, 'home'), ...spawnTeam(away, 'away')],
+    bookings: [],
+    tackleRecovery: {},
     bench: { home: benchOf(home), away: benchOf(away) },
     ballOwnerId: null,
     kickLock: null,
@@ -162,6 +178,8 @@ export const KICK_LOCK_TICKS = 12;
 const LOOSE_PASS_DIST = 15;
 /** Chuyền bổng không có người nhận thì bóng đi chừng này phần tầm chuyền bổng. */
 const LOOSE_LOB_RANGE_FRAC = 0.6;
+/** Lực đội máy sút phạt đền (tạm thời, AI ở 5.8a có thể thay). */
+const CPU_PENALTY_POWER = 0.85;
 
 type Button = Exclude<keyof PlayerInput, 'move'>;
 
@@ -235,9 +253,10 @@ function startSecondHalf(state: MatchState, tick: number): MatchState {
 }
 
 /**
- * Bóng chết: đội người bấm J/L để chuyền (hướng bấm chọn hướng chuyền), đội máy tự chuyền sau 3 s.
- * Trong lúc chờ, người thực hiện đứng yên sau bóng; cầu thủ người chơi đang cầm (nếu không phải người
- * thực hiện) vẫn chạy được. Chờ quá RESTART_GRACE_TICKS bị tính vào bù giờ.
+ * Bóng chết: đội người bấm J/L để chuyền (hướng bấm chọn hướng chuyền), đá phạt và phạt đền thì
+ * giữ-thả K để sút (phạt đền chỉ được sút); đội máy tự thực hiện sau 3 s. Trong lúc chờ, người thực
+ * hiện đứng yên sau bóng; cầu thủ người chơi đang cầm (nếu không phải người thực hiện) vẫn chạy được.
+ * Chờ quá RESTART_GRACE_TICKS bị tính vào bù giờ.
  */
 function stepDeadBall(
   state: MatchState,
@@ -248,24 +267,37 @@ function stepDeadBall(
   const restart = state.restart!;
   const taker = state.players.find((p) => p.id === restart.takerId)!;
   const humanRestart = restart.team === HUMAN_TEAM;
+  const canShoot = restart.type === 'free_kick' || restart.type === 'penalty';
+  const canPass = restart.type !== 'penalty';
+  const goalSign = attackSign(restart.team, state.half);
+  const pass = (kind: PassKind, dir: Vec2) =>
+    kickPass(state.players, taker, restart.spot, dir, kind, state.rng);
 
-  let kick: { kind: PassKind; dir: Vec2 } | null = null;
-  if (humanRestart && (pressed('pass') || pressed('lob'))) {
-    const dir = length(input.move) > 0 ? input.move : taker.facing;
-    kick = { kind: pressed('pass') ? 'ground' : 'lob', dir };
-  } else if (!humanRestart && cpuRestartDue(restart, tick)) {
-    kick = cpuRestartKick(restart, taker);
+  let kicked: { ball: BallState; rng: RngState } | null = null;
+  let shotChargeTicks = 0;
+  if (humanRestart) {
+    if (canPass && (pressed('pass') || pressed('lob'))) {
+      const dir = length(input.move) > 0 ? input.move : taker.facing;
+      kicked = pass(pressed('pass') ? 'ground' : 'lob', dir);
+    } else if (canShoot && input.shoot && (state.shotChargeTicks > 0 || pressed('shoot'))) {
+      shotChargeTicks = state.shotChargeTicks + 1;
+    } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
+      const target = shotTarget(goalSign, input.move.y);
+      kicked = shootBall(taker, restart.spot, target, shotPower(state.shotChargeTicks), state.rng);
+    }
+  } else if (cpuRestartDue(restart, tick)) {
+    if (restart.type === 'penalty') {
+      const [f, r] = nextFloat(state.rng);
+      const target = shotTarget(goalSign, f * 2 - 1);
+      kicked = shootBall(taker, restart.spot, target, CPU_PENALTY_POWER, r);
+    } else {
+      const kick = cpuRestartKick(restart, taker);
+      kicked = pass(kick.kind, kick.dir);
+    }
   }
 
-  if (kick) {
-    const { ball, rng } = kickPass(
-      state.players,
-      taker,
-      restart.spot,
-      kick.dir,
-      kick.kind,
-      state.rng,
-    );
+  if (kicked) {
+    const { ball, rng } = kicked;
     return {
       ...state,
       tick,
@@ -293,22 +325,24 @@ function stepDeadBall(
         : stepPlayer(p, ZERO, false),
     ),
   );
-  const aim = humanRestart ? input.move : ZERO;
+  // Phạt đền: hướng bấm chỉ dùng để nhắm lúc sút, người sút luôn quay mặt về khung thành.
+  const aim = humanRestart && restart.type !== 'penalty' ? input.move : ZERO;
   const overrun = tick - restart.startTick > RESTART_GRACE_TICKS ? 1 : 0;
   return {
     ...state,
     tick,
     players: holdRestart(moved, restart, state.half, aim),
     controlledId,
-    shotChargeTicks: 0,
+    shotChargeTicks,
     stoppage: { ...state.stoppage, overrunTicks: state.stoppage.overrunTicks + overrun },
     input,
   };
 }
 
 /**
- * Bóng sống. Thứ tự: đổi người → hành động của người chơi (mất bóng khi xoay / chuyền / sút) →
- * di chuyển cầu thủ → bóng (dính chân hoặc vật lý) → bóng ra ngoài / bàn thắng → bắt bóng tự do.
+ * Bóng sống. Thứ tự: đổi người → hành động của người chơi (mất bóng khi xoay / chuyền / sút, hoặc
+ * xoạc khi không có bóng — phạm lỗi thì sang bóng chết ngay) → di chuyển cầu thủ → bóng (dính chân
+ * hoặc vật lý) → bóng ra ngoài / bàn thắng → bắt bóng tự do.
  * Cầu thủ không do người chơi điều khiển đứng yên cho tới khi có AI (task 5.7).
  */
 function stepPlay(
@@ -320,6 +354,10 @@ function stepPlay(
   let { ball, rng, kickLock, controlledId, ballOwnerId, shotChargeTicks } = state;
   const byId = (id: string) => state.players.find((p) => p.id === id);
   const lock = (playerId: string) => ({ playerId, untilTick: tick + KICK_LOCK_TICKS });
+  const tackleRecovery = Object.fromEntries(
+    Object.entries(state.tackleRecovery).filter(([, until]) => until > tick),
+  );
+  let slidingId: string | null = null;
 
   // 1. Đổi người: nút đổi người, hoặc J khi người đang điều khiển không có bóng.
   if (ballOwnerId !== controlledId && (pressed('switch') || pressed('pass'))) {
@@ -343,7 +381,8 @@ function stepPlay(
       ballOwnerId = null;
       kickLock = lock(me.id);
       shotChargeTicks = 0;
-    } else if (input.shoot) {
+    } else if (input.shoot && (shotChargeTicks > 0 || pressed('shoot'))) {
+      // Chỉ nạp lực khi bấm K lúc đang có bóng: giữ K từ cú xoạc vừa giành bóng không thành sút.
       shotChargeTicks += 1;
     } else if (releasedShot) {
       const target = shotTarget(attackSign(me.team, state.half), input.move.y);
@@ -354,13 +393,34 @@ function stepPlay(
     }
   } else {
     shotChargeTicks = 0;
+    // K khi không có bóng = xoạc.
+    if (me && pressed('shoot') && tackleRecovery[me.id] === undefined) {
+      const tackle = resolveTackle(state.players, me, ball, ballOwnerId, rng, CONTROL_HEIGHT);
+      rng = tackle.rng;
+      const { outcome } = tackle;
+      if (outcome.type === 'foul') {
+        const victim = byId(outcome.victimId)!;
+        return enterFoul({ ...state, tick, rng, input }, me, victim, outcome, tick);
+      }
+      if (outcome.type === 'won') {
+        ballOwnerId = me.id;
+        kickLock = outcome.victimId === null ? null : lock(outcome.victimId);
+      } else {
+        slidingId = me.id;
+        tackleRecovery[me.id] = tick + TACKLE_RECOVERY_TICKS;
+      }
+    }
   }
 
-  // 3. Di chuyển cầu thủ.
+  // 3. Di chuyển cầu thủ. Người đang trượt/đứng dậy sau cú xoạc hụt không điều khiển được.
   const players = separatePlayers(
-    state.players.map((p) =>
-      p.id === controlledId ? stepPlayer(p, input.move, input.sprint) : stepPlayer(p, ZERO, false),
-    ),
+    state.players.map((p) => {
+      if (p.id === slidingId) return stepPlayer(slideTackle(p), ZERO, false);
+      if (tackleRecovery[p.id] !== undefined) return stepPlayer(p, ZERO, false);
+      return p.id === controlledId
+        ? stepPlayer(p, input.move, input.sprint)
+        : stepPlayer(p, ZERO, false);
+    }),
   );
 
   // 4. Bóng: dính chân người dẫn, hoặc chạy vật lý.
@@ -388,6 +448,7 @@ function stepPlay(
     kickLock,
     shotChargeTicks,
     controlledId,
+    tackleRecovery,
     input,
   };
 
@@ -430,4 +491,24 @@ function stepPlay(
     controlledId,
     lastTouchTeam: holder ? holder.team : state.lastTouchTeam,
   };
+}
+
+/** Phạm lỗi: rút thẻ (nếu có), người bị đỏ rời sân, đặt bóng đá phạt/phạt đền cho đội bị phạm lỗi. */
+function enterFoul(
+  state: MatchState,
+  tackler: PlayerState,
+  victim: PlayerState,
+  foul: { fromBehind: boolean; rough: boolean },
+  tick: number,
+): MatchState {
+  const judged = judgeFoul(foul, tackler, victim, state.half, state.bookings, tick, state.rng);
+  const players = state.players.filter((p) => p.id !== judged.sentOffId);
+  const booked: MatchState = {
+    ...state,
+    rng: judged.rng,
+    players,
+    bookings: judged.bookings,
+    lastTouchTeam: victim.team,
+  };
+  return enterDeadBall(booked, players, judged.plan, tick);
 }

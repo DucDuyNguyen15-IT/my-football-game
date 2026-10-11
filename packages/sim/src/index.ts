@@ -15,3 +15,5 @@ export * from './actions/shoot';
 export * as V from './math/vec2';
 export type { Vec2 } from './math/vec2';
 export * from './fixtures/demoTeams';
+export * from './actions/tackle';
+export * from './rules/fouls';
