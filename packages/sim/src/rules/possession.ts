@@ -61,6 +61,40 @@ export function losesBallOnTurn(player: PlayerState, move: Vec2): boolean {
   return cos < turnLossCosFor(player.stats.dribbling);
 }
 
+/** Điểm chắn nằm trước người dẫn bóng chừng này mét, về phía khung thành nhà. */
+export const COVER_AHEAD = 3;
+/** Người đứng sau bóng (xa khung thành nhà hơn người dẫn bóng) bị cộng thêm chừng này mét. */
+export const BEHIND_BALL_PENALTY = 10;
+
+/**
+ * Đổi người khi đối thủ dẫn bóng: cầu thủ ngoài sân gần điểm chắn trước mặt người dẫn bóng nhất
+ * (về phía khung thành nhà `ownGoal`); người đã bị vượt qua (đứng sau bóng) bị phạt
+ * BEHIND_BALL_PENALTY nên chỉ được chọn khi không còn ai đứng chắn. Trừ người đang điều khiển;
+ * không còn ai khác thì giữ nguyên `currentId`.
+ */
+export function chooseDefensiveSwitchTarget(
+  players: readonly PlayerState[],
+  team: TeamSide,
+  carrier: PlayerState,
+  ownGoal: Vec2,
+  currentId: string,
+): string {
+  const toGoal = normalize(sub(ownGoal, carrier.pos));
+  const cover = add(carrier.pos, scale(toGoal, COVER_AHEAD));
+  let best = currentId;
+  let bestScore = Infinity;
+  for (const p of players) {
+    if (p.team !== team || p.position === 'GK' || p.id === currentId) continue;
+    const behind = dot(sub(p.pos, carrier.pos), toGoal) < 0;
+    const score = length(sub(p.pos, cover)) + (behind ? BEHIND_BALL_PENALTY : 0);
+    if (score < bestScore) {
+      best = p.id;
+      bestScore = score;
+    }
+  }
+  return best;
+}
+
 /**
  * Cầu thủ ngoài sân cùng đội gần bóng nhất, trừ người đang điều khiển.
  * Không còn ai khác thì giữ nguyên `currentId`.
