@@ -1,6 +1,7 @@
-import { dot, length, normalize, scale, sub, type Vec2 } from '../math/vec2';
+import { add, clampLength, dot, length, normalize, scale, sub, type Vec2 } from '../math/vec2';
 import { AIR_DRAG, GRAVITY, ROLL_DECEL } from '../physics/ball';
 import { nextGaussian, type RngState } from '../rng';
+import { TICK_DT } from '../tick';
 import { fatigueFactor, passAngleErrFor, passPowerErrFor } from '../stats/params';
 import type { BallState, PlayerState } from '../types';
 import { deviate } from './aim';
@@ -12,22 +13,53 @@ export type PassKind = 'ground' | 'lob';
 export const PASS_CONE_COS = 0.5;
 /** Phạt điểm theo khoảng cách khi chọn người nhận (mỗi mét). */
 export const PASS_DIST_PENALTY = 0.01;
-/** Vận tốc bóng chuyền thấp khi tới chân người nhận (m/s). */
-export const PASS_ARRIVAL_SPEED = 3;
+/** Vận tốc bóng chuyền thấp khi tới chân người nhận (m/s). 3 → 6 ở 5.17: chuyền chậm quá, dễ bị cắt. */
+export const PASS_ARRIVAL_SPEED = 6;
 /** Chuyền bổng chạm đất ở tỉ lệ này của khoảng cách, phần còn lại lăn tới. */
 export const LOB_CARRY = 0.8;
 /** Bù cản không khí cho vận tốc chuyền bổng (tính không cản rồi nhân hệ số này). */
 export const LOB_DRAG_COMP = 1.08;
 
+/** Đối thủ cách đường chuyền sệt dưới mức này (m) thì tính là chắn đường. */
+export const PASS_LANE_WIDTH = 1.5;
+/** Phạt điểm khi đối thủ đứng ngay trên đường chuyền; giảm tuyến tính về 0 ở mép PASS_LANE_WIDTH. */
+export const PASS_LANE_PENALTY = 0.5;
+/** Chuyền đón trước người nhận đang chạy tối đa chừng này mét. */
+export const PASS_LEAD_MAX = 5;
+
+/** Khoảng cách từ `p` tới đoạn `a`→`b`; null nếu `p` không nằm giữa hai đầu (trước `a` hoặc sau `b`). */
+function distToLane(p: Vec2, a: Vec2, b: Vec2): number | null {
+  const ab = sub(b, a);
+  const len2 = dot(ab, ab);
+  if (len2 === 0) return null;
+  const t = dot(sub(p, a), ab) / len2;
+  if (t <= 0 || t >= 1) return null;
+  return length(sub(p, add(a, scale(ab, t))));
+}
+
+/** Phạt chắn đường lớn nhất trong các đối thủ đứng giữa người chuyền và người nhận. */
+function lanePenalty(players: readonly PlayerState[], passer: PlayerState, to: Vec2): number {
+  let worst = 0;
+  for (const o of players) {
+    if (o.team === passer.team) continue;
+    const d = distToLane(o.pos, passer.pos, to);
+    if (d === null || d >= PASS_LANE_WIDTH) continue;
+    worst = Math.max(worst, PASS_LANE_PENALTY * (1 - d / PASS_LANE_WIDTH));
+  }
+  return worst;
+}
+
 /**
- * Đồng đội tốt nhất theo hướng `dir`: trong hình nón ±60°, điểm = cos(góc lệch) − phạt khoảng cách.
- * Null nếu không có ai (trong tầm `maxRange`).
+ * Đồng đội tốt nhất theo hướng `dir`: trong hình nón ±60°, điểm = cos(góc lệch) − phạt khoảng cách
+ * − phạt đối thủ chắn đường (chỉ chuyền sệt; chuyền bổng bay qua đầu). Null nếu không có ai
+ * (trong tầm `maxRange`).
  */
 export function choosePassTarget(
   players: readonly PlayerState[],
   passer: PlayerState,
   dir: Vec2,
   maxRange = Infinity,
+  kind: PassKind = 'ground',
 ): PlayerState | null {
   const unit = normalize(dir);
   let best: PlayerState | null = null;
@@ -39,13 +71,49 @@ export function choosePassTarget(
     if (dist === 0 || dist > maxRange) continue;
     const cos = dot(unit, to) / dist;
     if (cos < PASS_CONE_COS) continue;
-    const score = cos - dist * PASS_DIST_PENALTY;
+    const blocked = kind === 'ground' ? lanePenalty(players, passer, p.pos) : 0;
+    const score = cos - dist * PASS_DIST_PENALTY - blocked;
     if (score > bestScore) {
       best = p;
       bestScore = score;
     }
   }
   return best;
+}
+
+/**
+ * Thời gian (s) bóng đi hết `dist` mét. Sệt: tích phân từng tick đúng mô hình lăn của
+ * `physics/ball.ts` (chỉ + − × ÷, tất định). Bổng: thời gian bay (không cản) + lăn nốt phần còn lại.
+ */
+function passTravelTime(dist: number, kind: PassKind): number {
+  if (kind === 'lob') {
+    const v = Math.sqrt((LOB_CARRY * dist * GRAVITY) / 2) * LOB_DRAG_COMP;
+    return (2 * v) / GRAVITY + ((1 - LOB_CARRY) * dist) / Math.max(1, v / 2);
+  }
+  let v = groundPassSpeed(dist);
+  let x = 0;
+  let t = 0;
+  while (x < dist && v > 0 && t < 10) {
+    x += v * TICK_DT;
+    v -= (ROLL_DECEL + AIR_DRAG * v * v) * TICK_DT;
+    t += TICK_DT;
+  }
+  return t;
+}
+
+/**
+ * Điểm chuyền đón trước: chỗ người nhận sẽ tới khi bóng tới, theo vận tốc hiện tại, tối đa
+ * PASS_LEAD_MAX mét. Người nhận đứng yên thì chuyền vào chân.
+ */
+export function passLeadPoint(from: Vec2, receiver: PlayerState, kind: PassKind): Vec2 {
+  if (receiver.vel.x === 0 && receiver.vel.y === 0) return receiver.pos;
+  let point = receiver.pos;
+  // Thời gian bóng đi phụ thuộc điểm đích; lặp vài lần cho hội tụ.
+  for (let i = 0; i < 3; i++) {
+    const t = passTravelTime(length(sub(point, from)), kind);
+    point = add(receiver.pos, clampLength(scale(receiver.vel, t), PASS_LEAD_MAX));
+  }
+  return point;
 }
 
 /** e^x bằng chuỗi Taylor (chỉ + − × ÷, tất định giữa các engine); đủ chính xác với 0 ≤ x ≤ 3. */

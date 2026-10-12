@@ -1,12 +1,12 @@
 import type { PlayerStats } from '@pitch/shared';
 import { describe, expect, it } from 'vitest';
-import { length, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
+import { length, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { stepBall } from '../physics/ball';
 import { seedRng, type RngState } from '../rng';
 import { findCapturer } from '../rules/possession';
 import { TICK_RATE } from '../tick';
 import type { BallState, PlayerState, TeamSide } from '../types';
-import { choosePassTarget, groundPassSpeed, passBall } from './pass';
+import { PASS_LEAD_MAX, choosePassTarget, groundPassSpeed, passBall, passLeadPoint } from './pass';
 
 const STATS: PlayerStats = {
   pace: 70,
@@ -91,6 +91,62 @@ describe('choosePassTarget — đồng đội tốt nhất theo hướng', () =>
     expect(choosePassTarget(players, passer, RIGHT, 25)).toBeNull();
     expect(choosePassTarget(players, passer, RIGHT, 35)?.id).toBe('home-P2');
   });
+
+  // Người chơi chơi thử 5.9: chuyền thẳng vào người bị kèm thì bị cắt ngay (task 5.17).
+  describe('đường chuyền bị chắn (chuyền sệt)', () => {
+    const blocked = player('home-P2', vec2(10, 0));
+    const open = player('home-P3', vec2(10, 4));
+    const marker = player('away-P1', vec2(5, 0.3));
+
+    it('đối thủ đứng trên đường chuyền thì chọn đồng đội thoáng gần hướng đó', () => {
+      const players = [passer, blocked, open, marker];
+      expect(choosePassTarget(players, passer, RIGHT)?.id).toBe('home-P3');
+    });
+
+    it('không có đối thủ chắn thì vẫn chọn người đúng hướng nhất', () => {
+      expect(choosePassTarget([passer, blocked, open], passer, RIGHT)?.id).toBe('home-P2');
+    });
+
+    it('đối thủ đứng sau người nhận không tính là chắn', () => {
+      const behind = player('away-P1', vec2(13, 0));
+      expect(choosePassTarget([passer, blocked, open, behind], passer, RIGHT)?.id).toBe('home-P2');
+    });
+
+    it('chuyền bổng bay qua đầu nên không bị phạt chắn đường', () => {
+      const players = [passer, blocked, open, marker];
+      expect(choosePassTarget(players, passer, RIGHT, Infinity, 'lob')?.id).toBe('home-P2');
+    });
+
+    it('người duy nhất trong hướng bị chắn thì vẫn chuyền cho người đó', () => {
+      expect(choosePassTarget([passer, blocked, marker], passer, RIGHT)?.id).toBe('home-P2');
+    });
+  });
+});
+
+describe('passLeadPoint — chuyền đón trước người nhận', () => {
+  it('người nhận đứng yên thì chuyền vào chân', () => {
+    const receiver = player('home-P2', vec2(12, 0));
+    expect(passLeadPoint(ZERO, receiver, 'ground')).toEqual(receiver.pos);
+  });
+
+  it('người nhận đang chạy thì điểm chuyền nằm phía trước theo hướng chạy, có giới hạn', () => {
+    const receiver = player('home-P2', vec2(12, 0), { vel: vec2(0, 6) });
+    const lead = passLeadPoint(ZERO, receiver, 'ground');
+    expect(lead.x).toBeCloseTo(12);
+    expect(lead.y).toBeGreaterThan(1);
+    expect(lead.y).toBeLessThanOrEqual(PASS_LEAD_MAX);
+  });
+
+  it('bóng sệt tới điểm đón trước gần lúc người nhận chạy tới (sai lệch < 1.5 m)', () => {
+    const receiver = player('home-P2', vec2(12, 0), { vel: vec2(0, 2.5) });
+    const lead = passLeadPoint(ZERO, receiver, 'ground');
+    const speed = groundPassSpeed(length(lead));
+    const dir = scale(lead, 1 / length(lead));
+    const trace = fly({ pos: ZERO, vel: scale(dir, speed), z: 0, vz: 0 });
+    const arrival = trace.findIndex((b) => length(sub(b.pos, ZERO)) >= length(lead));
+    const runnerY = 2.5 * (arrival / TICK_RATE);
+    expect(Math.abs(runnerY - lead.y)).toBeLessThan(1.5);
+  });
 });
 
 describe('groundPassSpeed — lực chuyền thấp vừa tới đích', () => {
@@ -98,7 +154,8 @@ describe('groundPassSpeed — lực chuyền thấp vừa tới đích', () => {
     const trace = fly({ pos: ZERO, vel: vec2(groundPassSpeed(d), 0), z: 0, vz: 0 });
     const end = trace[trace.length - 1]!;
     expect(end.pos.x).toBeGreaterThan(d);
-    expect(end.pos.x).toBeLessThan(d + 6);
+    // Tới chân 6 m/s (5.17): không ai đón thì trôi thêm ~8 m như đường chuyền căng.
+    expect(end.pos.x).toBeLessThan(d + 9);
   });
 
   it('chuyền xa cần lực lớn hơn', () => {

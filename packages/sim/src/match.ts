@@ -8,7 +8,7 @@ import {
 } from './ai/player';
 import { asKicker, diveStep, diveTarget, resolveSave } from './ai/goalkeeper';
 import { aiMove, arrive, goalSidePoint, thinkTeam } from './ai/team';
-import { choosePassTarget, passBall, type PassKind } from './actions/pass';
+import { choosePassTarget, passBall, passLeadPoint, type PassKind } from './actions/pass';
 import { attackSign, shootBall, shotPower, shotTarget } from './actions/shoot';
 import {
   isFromBehind,
@@ -29,11 +29,13 @@ import {
   type Vec2,
 } from './math/vec2';
 import { exitEvent, stepBall, type BallEvent } from './physics/ball';
+import { HALF_LENGTH } from './pitch';
 import { separatePlayers, stepPlayer } from './physics/player';
 import { nextFloat, type RngState, seedRng } from './rng';
 import { advanceClock, RESTART_GRACE_TICKS } from './rules/clock';
 import { judgeFoul } from './rules/fouls';
 import {
+  chooseDefensiveSwitchTarget,
   chooseSwitchTarget,
   CONTROL_HEIGHT,
   dribbleBall,
@@ -214,7 +216,10 @@ const LOOSE_PASS_DIST = 15;
 const LOOSE_LOB_RANGE_FRAC = 0.6;
 type Button = Exclude<keyof PlayerInput, 'move'>;
 
-/** Chuyền từ `from` theo hướng `dir`: tới đồng đội tốt nhất trong hướng, không có thì vào khoảng trống. */
+/**
+ * Chuyền từ `from` theo hướng `dir`: đón trước đồng đội tốt nhất trong hướng, không có thì vào
+ * khoảng trống. `receiverId` là người nhận dự kiến (null khi chuyền vào khoảng trống).
+ */
 function kickPass(
   players: readonly PlayerState[],
   passer: PlayerState,
@@ -222,13 +227,19 @@ function kickPass(
   dir: Vec2,
   kind: PassKind,
   rng: RngState,
-): { ball: BallState; rng: RngState } {
+): { ball: BallState; rng: RngState; receiverId: string | null } {
   const range = kind === 'lob' ? lobRangeFor(passer.stats.passing) : Infinity;
-  const target = choosePassTarget(players, passer, dir, range);
+  const target = choosePassTarget(players, passer, dir, range, kind);
   const looseDist = kind === 'lob' ? range * LOOSE_LOB_RANGE_FRAC : LOOSE_PASS_DIST;
-  const to = target ? target.pos : add(from, scale(normalize(dir), looseDist));
-  return passBall(passer, from, to, kind, rng);
+  const to = target
+    ? passLeadPoint(from, target, kind)
+    : add(from, scale(normalize(dir), looseDist));
+  return { ...passBall(passer, from, to, kind, rng), receiverId: target?.id ?? null };
 }
+
+/** Khung thành nhà của `team` trong hiệp `half`. */
+const ownGoalOf = (team: TeamSide, half: 1 | 2): Vec2 =>
+  vec2(-attackSign(team, half) * HALF_LENGTH, 0);
 
 /** Đội máy theo mức độ khó; cầu thủ AI cùng đội người chơi dùng profile đồng đội. */
 const aiProfile = (state: MatchState, team: TeamSide): AiProfile =>
@@ -390,7 +401,12 @@ function stepDeadBall(
   const pass = (kind: PassKind, dir: Vec2) =>
     kickPass(state.players, taker, restart.spot, dir, kind, state.rng);
 
-  let kicked: { ball: BallState; rng: RngState; shot: boolean } | null = null;
+  let kicked: {
+    ball: BallState;
+    rng: RngState;
+    shot: boolean;
+    receiverId?: string | null;
+  } | null = null;
   let shotChargeTicks = 0;
   if (humanRestart) {
     if (canPass && (pressed('pass') || pressed('lob'))) {
@@ -423,6 +439,8 @@ function stepDeadBall(
       ball,
       ballOwnerId: null,
       ownerSinceTick: tick,
+      // Người chơi chuyền bóng chết: đổi ngay sang người nhận (5.17).
+      controlledId: humanRestart && kicked.receiverId ? kicked.receiverId : state.controlledId,
       kickLock: { playerId: taker.id, untilTick: tick + KICK_LOCK_TICKS },
       lastTouchTeam: restart.team,
       shotChargeTicks: 0,
@@ -493,7 +511,18 @@ function stepPlay(
 
   // 1. Đổi người: nút đổi người, hoặc J khi người đang điều khiển không có bóng.
   if (ballOwnerId !== controlledId && (pressed('switch') || pressed('pass'))) {
-    controlledId = chooseSwitchTarget(state.players, HUMAN_TEAM, ball.pos, controlledId);
+    const carrier = ballOwnerId === null ? undefined : byId(ballOwnerId);
+    // Đối thủ dẫn bóng: chọn người chắn trước mặt họ, không chọn người đã bị vượt qua (5.17).
+    controlledId =
+      carrier && carrier.team !== HUMAN_TEAM
+        ? chooseDefensiveSwitchTarget(
+            state.players,
+            HUMAN_TEAM,
+            carrier,
+            ownGoalOf(HUMAN_TEAM, state.half),
+            controlledId,
+          )
+        : chooseSwitchTarget(state.players, HUMAN_TEAM, ball.pos, controlledId);
   }
 
   // 2. Hành động của người dẫn bóng do người chơi điều khiển.
@@ -510,7 +539,10 @@ function stepPlay(
     } else if (kind) {
       // Chuẩn hoá: độ lớn cần analog chỉ chọn hướng, không làm ngắn đường chuyền vào khoảng trống.
       const dir = length(input.move) > 0 ? normalize(input.move) : me.facing;
-      ({ ball, rng } = kickPass(state.players, asKicker(me), ball.pos, dir, kind, rng));
+      let receiverId: string | null;
+      ({ ball, rng, receiverId } = kickPass(state.players, asKicker(me), ball.pos, dir, kind, rng));
+      // Đổi ngay sang người nhận như FC Online, không chờ bắt được bóng (5.17).
+      if (receiverId) controlledId = receiverId;
       ballOwnerId = null;
       kickLock = lock(me.id);
       shotChargeTicks = 0;

@@ -7,6 +7,7 @@ import type { BallState, PlayerState, TeamSide } from '../types';
 import {
   CONTROL_HEIGHT,
   TURN_LOSS_MIN_SPEED,
+  chooseDefensiveSwitchTarget,
   chooseSwitchTarget,
   dribbleBall,
   findCapturer,
@@ -146,6 +147,53 @@ describe('chooseSwitchTarget — đổi người điều khiển', () => {
   it('không còn ai khác để đổi thì giữ nguyên', () => {
     const solo = [player('home-GK', vec2(-1, 0)), player('home-P1', vec2(2, 0))];
     expect(chooseSwitchTarget(solo, 'home', ZERO, 'home-P1')).toBe('home-P1');
+  });
+});
+
+// Người chơi chơi thử 5.9: đối thủ lao về khung thành, bấm S lại ra tiền đạo đứng sau bóng (task 5.17).
+describe('chooseDefensiveSwitchTarget — đổi người khi đối thủ dẫn bóng', () => {
+  const OWN_GOAL = vec2(-30, 0);
+  // Đối thủ dẫn bóng ở x = −10, lao về khung thành nhà (x = −30).
+  const carrier = player('away-P5', vec2(-10, 0), { vel: vec2(-6, 0) });
+  const defender = player('home-P1', vec2(-17, 1));
+  const midfielder = player('home-P3', vec2(-13, 6));
+  const forward = player('home-P6', vec2(-8, 0.5));
+  const keeper = player('home-GK', vec2(-12, 0));
+  const players = [keeper, defender, midfielder, forward, carrier];
+
+  it('chọn người đứng chắn phía trước người dẫn bóng, không chọn tiền đạo bị bỏ lại phía sau', () => {
+    expect(chooseDefensiveSwitchTarget(players, 'home', carrier, OWN_GOAL, 'home-P3')).toBe(
+      'home-P1',
+    );
+  });
+
+  it('đang cầm người chắn tốt nhất thì đổi sang người chắn tốt thứ hai, vẫn không ra tiền đạo', () => {
+    expect(chooseDefensiveSwitchTarget(players, 'home', carrier, OWN_GOAL, 'home-P1')).toBe(
+      'home-P3',
+    );
+  });
+
+  it('không chọn thủ môn', () => {
+    expect(chooseDefensiveSwitchTarget(players, 'home', carrier, OWN_GOAL, 'home-P6')).not.toBe(
+      'home-GK',
+    );
+  });
+
+  it('cả đội đều đứng sau bóng thì chọn người gần điểm chắn nhất', () => {
+    const chasers = [
+      player('home-P1', vec2(-4, 2)),
+      player('home-P2', vec2(2, 0)),
+      player('home-P3', vec2(-6, -1)),
+      carrier,
+    ];
+    expect(chooseDefensiveSwitchTarget(chasers, 'home', carrier, OWN_GOAL, 'home-P2')).toBe(
+      'home-P3',
+    );
+  });
+
+  it('không còn ai khác để đổi thì giữ nguyên', () => {
+    const solo = [keeper, defender, carrier];
+    expect(chooseDefensiveSwitchTarget(solo, 'home', carrier, OWN_GOAL, 'home-P1')).toBe('home-P1');
   });
 });
 

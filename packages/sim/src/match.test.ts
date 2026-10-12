@@ -265,6 +265,27 @@ describe('step — chuyền', () => {
     expect(s2.controlledId).toBe('home-P2');
   });
 
+  it('bấm chuyền là đổi ngay sang điều khiển người nhận, không chờ bắt bóng (5.17)', () => {
+    const s1 = step(scenario(at, 'home-P1'), press({ pass: true }));
+    expect(s1.ballOwnerId).toBeNull();
+    expect(s1.controlledId).toBe('home-P2');
+  });
+
+  it('giao bóng bằng S cũng đổi ngay sang người nhận (5.17)', () => {
+    const s0 = createMatch(setup);
+    expect(s0.phase).toBe('kickoff');
+    // Giao bóng: mọi đồng đội đứng phần sân nhà, chuyền về phía sau.
+    const s1 = step(s0, press({ pass: true, move: vec2(-1, 0) }));
+    expect(s1.phase).toBe('play');
+    expect(s1.controlledId).not.toBe(s0.controlledId);
+    expect(playerOf(s1, s1.controlledId).team).toBe('home');
+  });
+
+  it('chuyền vào khoảng trống (không có người nhận) thì giữ người đang điều khiển', () => {
+    const s1 = step(scenario({ 'home-P1': ZERO }, 'home-P1'), press({ pass: true }));
+    expect(s1.controlledId).toBe('home-P1');
+  });
+
   it('giữ J không chuyền liên tục: người nhận vẫn giữ bóng', () => {
     const s = repeat(scenario(at, 'home-P1'), press({ pass: true }), 4 * 60);
     expect(s.ballOwnerId).toBe('home-P2');
@@ -330,6 +351,17 @@ describe('step — đổi người', () => {
     const s = step(scenario(at, null, 'home-P1', ZERO), press({ pass: true }));
     expect(s.controlledId).toBe('home-P2');
     expect(s.ballOwnerId).toBeNull();
+  });
+
+  it('đối thủ dẫn bóng về khung thành nhà: S chọn người đứng chắn, không chọn tiền đạo sau bóng (5.17)', () => {
+    const defending = {
+      'away-P5': vec2(-10, 0),
+      'home-P1': vec2(-17, 1),
+      'home-P5': vec2(-8, 0.5),
+      'home-P3': vec2(5, 10),
+    };
+    const s = step(scenario(defending, 'away-P5', 'home-P3'), press({ pass: true }));
+    expect(s.controlledId).toBe('home-P1');
   });
 
   it('giữ nút đổi người chỉ đổi một lần', () => {
