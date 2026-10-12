@@ -95,6 +95,13 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** `pnpm dev` → vào `/play` điều khiển được 1 cầu thủ, chuyền/sút được; vào/ra `/play` 10 lần không tăng số canvas/listener (kiểm DevTools). Test unit cho map phím → input.
 - **Xong khi:** đá được bóng trên trình duyệt; Phaser không chứa logic luật/vật lý.
 
+### 5.17 — Hỗ trợ chuyền & đổi người kiểu FC Online `[ ]`
+- **Phụ thuộc:** 5.9 · **Model:** strongest · _Thêm 2026-10-12 sau khi người dùng chơi thử 5.9; làm trước 5.10._
+- **Bối cảnh:** PRD §5 (Điều khiển), DESIGN §6.2, `packages/sim/src/actions/pass.ts`, `src/rules/possession.ts`, `src/match.ts`.
+- **Việc cần làm:** (1) chọn người nhận: trong nón theo hướng bấm, ưu tiên đường chuyền thoáng (phạt khi đối thủ đứng gần đường bóng), chuyền đón trước theo vận tốc người nhận, bóng sệt tới chân căng hơn; (2) bấm chuyền là đổi người điều khiển sang người nhận ngay (không chờ bắt bóng); (3) S khi đối thủ có bóng: chọn cầu thủ ngoài sân gần **điểm phía trước người dẫn bóng** (về phía khung thành nhà), phạt người đứng sau bóng — không còn nhảy sang tiền đạo khi đối thủ lao về khung thành.
+- **Kiểm chứng:** test: đồng đội bị đối thủ chắn đường bị bỏ qua khi có người thoáng tương đương; điểm chuyền nằm trước người nhận đang chạy; sau tick bấm chuyền `controlledId` = người nhận; đối thủ dẫn bóng về khung thành → S chọn hậu vệ đứng chắn chứ không chọn tiền đạo phía sau; AI-vs-AI vẫn ra tỉ số hợp lý (test hiện có xanh).
+- **Xong khi:** người dùng chơi thử thấy chuyền/đổi người "như FC Online".
+
 ### 5.10 — HUD & luồng trận `[ ]`
 - **Phụ thuộc:** 5.9, 5.5 · **Model:** default
 - **Bối cảnh:** `docs/DESIGN.md` (HUD), PRD §5.
