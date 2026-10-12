@@ -4,7 +4,7 @@ _Tạo ở Giai đoạn 3 (2026-10-10) bằng `ecc:blueprint`. Nguồn: `docs/PR
 
 | File | Giai đoạn | Số task |
 |---|---|---|
-| [phase-5-match-offline.md](phase-5-match-offline.md) | 5 — Trận đấu offline | 16 |
+| [phase-5-match-offline.md](phase-5-match-offline.md) | 5 — Trận đấu offline | 17 |
 | [phase-6-cards-squad.md](phase-6-cards-squad.md) | 6 — Thẻ & đội hình (+ nền server, tài khoản cơ bản) | 15 |
 | [phase-7-accounts-economy.md](phase-7-accounts-economy.md) | 7 — Tài khoản, kinh tế | 6 |
 | [phase-8-qa-security.md](phase-8-qa-security.md) | 8 — Kiểm thử, bảo mật, tối ưu | 4 |
@@ -37,7 +37,7 @@ _Tạo ở Giai đoạn 3 (2026-10-10) bằng `ecc:blueprint`. Nguồn: `docs/PR
 ```
 GĐ5:  5.1 → {5.2, 5.3} → 5.4 → 5.5 → 5.6 → 5.7 → 5.15 → 5.8a → 5.8b → {5.11, 5.12} → 5.13
                           ├─► 5.16 (chọc khe, Could — làm cuối GĐ5 nếu còn thời gian)
-                          └─► 5.9 (cần GĐ4) → 5.10 (cần 5.5) ─► 5.11
+                          └─► 5.9 (cần GĐ4) → 5.17 → 5.10 (cần 5.5) ─► 5.11
 
 GĐ6:  6.1a → 6.1b → 6.2 ─┐
       6.1a → 6.4 ────────┼─► 6.3a(sau 6.1b) → 6.3b → 6.5 → 6.7 → 6.8 → 6.10 → 6.11 (cần 5.13)
