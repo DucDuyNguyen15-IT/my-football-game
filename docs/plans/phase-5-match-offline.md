@@ -88,7 +88,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: thủ môn Phản xạ 90 cản nhiều cú sút chuẩn hơn Phản xạ 50 (500 cú, seed cố định); AI-vs-AI 20 trận tỉ số TB trong 1–8 bàn.
 - **Xong khi:** AI-vs-AI ra trận "trông như bóng đá" (ghi chú quan sát vào PROGRESS ở 5.13).
 
-### 5.9 — Client game: Phaser render + input `[ ]`
+### 5.9 — Client game: Phaser render + input `[x]`
 - **Phụ thuộc:** 5.4, **GĐ4 xong** · **Song song với:** 5.5–5.8b · **Model:** default
 - **Bối cảnh:** ADR-0002, ADR-0003, ARCHITECTURE §2 & §6, `docs/DESIGN.md` (phím điều khiển, màu), `apps/web/src/`.
 - **Việc cần làm:** cài `phaser` (khoá bản 3.x cụ thể) + `react-router`; `game/MatchCanvas.tsx` tạo `Phaser.Game` khi mount, `destroy(true)` khi unmount; `game/scenes/MatchScene.ts`: vẽ sân, cầu thủ (hình tròn + số áo, màu theo đội), bóng + bóng đổ theo `z`; vòng lặp accumulator chạy `step` cố định 60 tick/s, **nội suy** vị trí khi render; `game/input/keyboard.ts` map phím → `PlayerInput`; camera bám bóng; overlay FPS ở chế độ dev. Route `/play` dùng `demoTeams`.
