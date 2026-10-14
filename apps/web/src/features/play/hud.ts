@@ -1,5 +1,5 @@
 /**
- * Dữ liệu HUD rút từ `MatchState`, thuần (không React/Phaser). Chỉ đọc state, không quyết định luật.
+ * Dữ liệu HUD rút từ `MatchState`, thuần (không React/Three.js). Chỉ đọc state, không quyết định luật.
  * Snapshot làm tròn (phút, % thể lực) để React chỉ vẽ lại vài lần mỗi giây dù sim chạy 60 tick/s.
  */
 import type { Position, SquadSlot } from '@pitch/shared';

@@ -1,5 +1,5 @@
 /*
- * Design tokens — nguồn: docs/DESIGN.md §3. Bản JSON cho Phaser/công cụ: docs/design/design-tokens.json.
+ * Design tokens — nguồn: docs/DESIGN.md §3. Bản JSON cho phần vẽ trận (Three.js)/công cụ: docs/design/design-tokens.json.
  * Đổi giá trị ở đây thì sửa cả file JSON (task 6.6 sẽ cân nhắc sinh tự động).
  * Chỉ có giao diện tối: game chơi trong "sân đêm", không có chế độ sáng.
  */
@@ -29,7 +29,7 @@
   --c-focus: #5cc8ff;
   --c-scrim: rgb(4 8 6 / 0.78);
 
-  /* Sân & đội (HUD, Phaser) */
+  /* Sân & đội (HUD, vẽ trận 3D) */
   --c-pitch-a: #1d6436;
   --c-pitch-b: #226f3c;
   --c-pitch-line: #e8f0e6;

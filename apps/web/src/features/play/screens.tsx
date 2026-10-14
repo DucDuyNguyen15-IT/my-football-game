@@ -4,6 +4,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { Difficulty } from '@pitch/shared';
+import type { GraphicsQuality } from '../../game/bridge';
 import { CARD_LABEL, TEAM_LABEL, matchOutcome, type HudSnapshot } from './hud';
 
 const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
@@ -96,7 +97,17 @@ export function HalfTimeOverlay({ hud }: { hud: HudSnapshot }) {
   );
 }
 
-export function PauseMenu({ onResume, onQuit }: { onResume: () => void; onQuit: () => void }) {
+export function PauseMenu({
+  quality,
+  onQuality,
+  onResume,
+  onQuit,
+}: {
+  quality: GraphicsQuality;
+  onQuality: (q: GraphicsQuality) => void;
+  onResume: () => void;
+  onQuit: () => void;
+}) {
   const [view, setView] = useState<'menu' | 'controls' | 'confirm'>('menu');
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
@@ -111,6 +122,14 @@ export function PauseMenu({ onResume, onQuit }: { onResume: () => void; onQuit: 
             </button>
             <button type="button" className="btn btn--ghost" onClick={() => setView('controls')}>
               Phím điều khiển
+            </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              aria-pressed={quality === 'low'}
+              onClick={() => onQuality(quality === 'high' ? 'low' : 'high')}
+            >
+              Đồ hoạ: {quality === 'high' ? 'Cao' : 'Thấp'}
             </button>
             <button type="button" className="btn btn--danger" onClick={() => setView('confirm')}>
               Bỏ trận

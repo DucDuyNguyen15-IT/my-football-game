@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter } from 'react-router';
 import { App } from '../App';
 
-// Phaser (~1 MB) chỉ tải khi vào trận.
+// Three.js (~600 KB) chỉ tải khi vào trận.
 const PlayPage = lazy(() =>
   import('../features/play/PlayPage').then((m) => ({ default: m.PlayPage })),
 );

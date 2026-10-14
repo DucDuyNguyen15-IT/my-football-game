@@ -22,9 +22,9 @@ Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu
 
 ## Tech stack
 Chi tiết và lý do: `docs/adr/README.md`.
-- **Ngôn ngữ & cấu trúc:** TypeScript, monorepo pnpm (`apps/web`, `apps/server`, `packages/sim`, `packages/shared`). `packages/sim` không được import Phaser/DOM — [ADR-0001](docs/adr/0001-typescript-monorepo-shared-sim.md)
-- **Game engine:** Three.js render trận 3D (camera truyền hình), chỉ vẽ + input; vật lý/luật/AI nằm trong `packages/sim` — [ADR-0009](docs/adr/0009-threejs-3d-match-render.md) (thay Phaser 3 của ADR-0002; code chuyển ở task 5.18a)
-- **UI:** React + Vite, TanStack Query; Phaser nhúng trong `<MatchCanvas>` — [ADR-0003](docs/adr/0003-react-vite-ui.md)
+- **Ngôn ngữ & cấu trúc:** TypeScript, monorepo pnpm (`apps/web`, `apps/server`, `packages/sim`, `packages/shared`). `packages/sim` không được import Three.js/DOM — [ADR-0001](docs/adr/0001-typescript-monorepo-shared-sim.md)
+- **Game engine:** Three.js render trận 3D (camera truyền hình), chỉ vẽ + input; vật lý/luật/AI nằm trong `packages/sim` — [ADR-0009](docs/adr/0009-threejs-3d-match-render.md) (thay Phaser 3 của ADR-0002)
+- **UI:** React + Vite, TanStack Query; Three.js nhúng trong `<MatchCanvas>` — [ADR-0003](docs/adr/0003-react-vite-ui.md)
 - **Backend:** Node.js LTS + Fastify, Zod, session cookie + argon2, random bằng `node:crypto`, test bằng Vitest — [ADR-0004](docs/adr/0004-fastify-backend.md)
 - **Database:** PostgreSQL 16+ + Drizzle ORM; ví/hộp thẻ dùng transaction + `FOR UPDATE` — [ADR-0005](docs/adr/0005-postgresql-drizzle.md)
 - **Realtime:** không dùng trong MVP (chỉ REST); Colyseus cho PvP realtime sau này — [ADR-0006](docs/adr/0006-no-realtime-in-mvp.md)
@@ -39,7 +39,7 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | `pnpm dev` | Chạy web (Vite :5173, proxy `/api` → :3000) + server (Fastify :3000, tự reload) |
 | `pnpm test` | Chạy toàn bộ test Vitest (mọi package) — `pnpm test:watch` để chạy theo dõi |
 | `pnpm --filter @pitch/sim exec vitest run` | Chỉ test một package (thay `@pitch/sim` bằng `@pitch/server`, `@pitch/web`, `@pitch/shared`) |
-| `pnpm lint` | ESLint (chặn Phaser/DOM/`Math.random` trong `packages/sim`, `Math.random` trong server) |
+| `pnpm lint` | ESLint (chặn Three.js/Phaser/DOM/`Math.random` trong `packages/sim`, `Math.random` trong server) |
 | `pnpm typecheck` | `tsc` cho từng package |
 | `pnpm check` | lint + typecheck + test — **phải xanh trước mỗi commit** |
 | `pnpm build` | Build web (`apps/web/dist`) + server (`apps/server/dist`) |

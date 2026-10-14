@@ -1,6 +1,6 @@
 # DESIGN.md — Phong cách, design tokens, phác thảo màn hình
 
-Nguồn spec: `docs/PRD.md`. Token chạy thật: [`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css), bản JSON cho Phaser: [`docs/design/design-tokens.json`](design/design-tokens.json). Prototype màn mở thẻ: [`docs/design/prototypes/pack-opening.html`](design/prototypes/pack-opening.html). Cách làm animation lật thẻ: [ADR-0008](adr/0008-card-reveal-css-waapi.md). Prototype đã được duyệt ngày 2026-10-10.
+Nguồn spec: `docs/PRD.md`. Token chạy thật: [`apps/web/src/styles/tokens.css`](../apps/web/src/styles/tokens.css), bản JSON cho phần vẽ trận: [`docs/design/design-tokens.json`](design/design-tokens.json). Prototype màn mở thẻ: [`docs/design/prototypes/pack-opening.html`](design/prototypes/pack-opening.html). Cách làm animation lật thẻ: [ADR-0008](adr/0008-card-reveal-css-waapi.md). Prototype đã được duyệt ngày 2026-10-10.
 
 ## 1. Hướng thiết kế
 
@@ -127,7 +127,7 @@ Khung chung cho các màn ngoài trận: thanh trên cùng cao 56px (logo chữ 
 - Ba ô dưới là lối tắt, mỗi ô chỉ ghi **trạng thái cần biết** (có gói miễn phí, thẻ mới, cảnh báo đội hình), không mô tả tính năng.
 - Hết lượt trận có thưởng thì vẫn cho đá, nhãn đổi thành "Không còn thưởng hôm nay".
 
-### 6.2 Trận đấu (HUD, vẽ bằng Phaser)
+### 6.2 Trận đấu (sân 3D Three.js + HUD React đè lên — ADR-0009)
 
 ```
 ┌──────────────────────────────────────────────────────────────────────┐

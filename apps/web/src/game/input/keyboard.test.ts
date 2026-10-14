@@ -1,6 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { NO_INPUT } from '@pitch/sim';
-import { CONTROL_KEYS, NO_KEYS, createTapLatch, keysToInput, type KeyState } from './keyboard';
+import {
+  CONTROL_KEYS,
+  NO_KEYS,
+  createTapLatch,
+  keyForCode,
+  keysToInput,
+  type KeyState,
+} from './keyboard';
 
 const keys = (held: Partial<KeyState>): KeyState => ({ ...NO_KEYS, ...held });
 
@@ -39,23 +46,24 @@ describe('keysToInput', () => {
 });
 
 describe('CONTROL_KEYS', () => {
-  it('bộ phím FC Online: mũi tên + E/S/A/D', () => {
+  it('bộ phím FC Online theo KeyboardEvent.code: mũi tên + E/S/A/D', () => {
     expect(CONTROL_KEYS).toEqual({
-      up: 'UP',
-      down: 'DOWN',
-      left: 'LEFT',
-      right: 'RIGHT',
-      sprint: 'E',
-      pass: 'S',
-      lob: 'A',
-      shoot: 'D',
+      up: 'ArrowUp',
+      down: 'ArrowDown',
+      left: 'ArrowLeft',
+      right: 'ArrowRight',
+      sprint: 'KeyE',
+      pass: 'KeyS',
+      lob: 'KeyA',
+      shoot: 'KeyD',
     });
   });
 
-  it('không dùng WASD để di chuyển, không dùng Tab', () => {
-    const move = [CONTROL_KEYS.up, CONTROL_KEYS.down, CONTROL_KEYS.left, CONTROL_KEYS.right];
-    for (const k of ['W', 'A', 'S', 'D']) expect(move).not.toContain(k);
-    expect(Object.values(CONTROL_KEYS)).not.toContain('TAB');
+  it('keyForCode tra ngược mã phím → chức năng, phím lạ → null', () => {
+    expect(keyForCode('KeyS')).toBe('pass');
+    expect(keyForCode('ArrowLeft')).toBe('left');
+    expect(keyForCode('KeyW')).toBeNull();
+    expect(keyForCode('Escape')).toBeNull();
   });
 });
 
