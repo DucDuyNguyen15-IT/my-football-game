@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { NO_INPUT } from '@pitch/sim';
-import { CONTROL_KEYS, NO_KEYS, keysToInput, type KeyState } from './keyboard';
+import { CONTROL_KEYS, NO_KEYS, createTapLatch, keysToInput, type KeyState } from './keyboard';
 
 const keys = (held: Partial<KeyState>): KeyState => ({ ...NO_KEYS, ...held });
 
@@ -56,5 +56,29 @@ describe('CONTROL_KEYS', () => {
     const move = [CONTROL_KEYS.up, CONTROL_KEYS.down, CONTROL_KEYS.left, CONTROL_KEYS.right];
     for (const k of ['W', 'A', 'S', 'D']) expect(move).not.toContain(k);
     expect(Object.values(CONTROL_KEYS)).not.toContain('TAB');
+  });
+});
+
+describe('createTapLatch', () => {
+  it('phím nhấn rồi thả giữa hai khung hình vẫn được tính là đang giữ', () => {
+    const latch = createTapLatch();
+    latch.press('pass');
+    expect(latch.sample(NO_KEYS).pass).toBe(true);
+  });
+
+  it('chưa chạy tick nào (khung hình ngắn hơn 1 tick) thì giữ lại cú nhấn', () => {
+    const latch = createTapLatch();
+    latch.press('shoot');
+    latch.sample(NO_KEYS);
+    expect(latch.sample(NO_KEYS).shoot).toBe(true);
+  });
+
+  it('sau khi sim đã chạy tick với cú nhấn thì bỏ, lần sau theo phím thật', () => {
+    const latch = createTapLatch();
+    latch.press('lob');
+    latch.sample(NO_KEYS);
+    latch.consume();
+    expect(latch.sample(NO_KEYS).lob).toBe(false);
+    expect(latch.sample(keys({ lob: true })).lob).toBe(true);
   });
 });

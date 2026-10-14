@@ -60,3 +60,27 @@ export function keysToInput(keys: KeyState): PlayerInput {
     switch: false,
   };
 }
+
+/**
+ * Nhớ phím đã nhấn cho tới khi sim chạy được ít nhất một tick: nhấn-thả nhanh trong cùng một khung
+ * hình (lúc đọc `isDown` đã nhả) vẫn thành một lần bấm, sim thấy "giữ" đúng một tick rồi "thả".
+ */
+export function createTapLatch() {
+  const tapped = new Set<keyof KeyState>();
+  return {
+    press(key: keyof KeyState): void {
+      tapped.add(key);
+    },
+    /** Phím đang giữ cộng với phím đã nhấn mà chưa được tick nào dùng. */
+    sample(held: KeyState): KeyState {
+      if (tapped.size === 0) return held;
+      const merged = { ...held };
+      for (const key of tapped) merged[key] = true;
+      return merged;
+    },
+    /** Gọi sau khi đã chạy ít nhất một tick với kết quả `sample`. */
+    consume(): void {
+      tapped.clear();
+    },
+  };
+}
