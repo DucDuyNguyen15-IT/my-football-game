@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { attackSign } from './actions/shoot';
-import { TACKLE_RECOVERY_TICKS } from './actions/tackle';
+import {
+  TACKLE_POKE_SPEED,
+  TACKLE_RECOVERY_TICKS,
+  VICTIM_FALL_TICKS,
+  VICTIM_STUMBLE_TICKS,
+} from './actions/tackle';
 import { cpuEasyTeam, starterLikeTeam } from './fixtures/demoTeams';
 import { createMatch, step } from './match';
 import { length, sub, vec2, ZERO, type Vec2 } from './math/vec2';
@@ -96,17 +101,40 @@ const frontal = (owner: Vec2, rng: RngState) =>
   scene({ owner, me: vec2(owner.x - 1.2, owner.y), rng });
 
 describe('xoạc trực diện', () => {
-  it('trúng bóng → giành bóng, người bị xoạc không bắt lại được ngay, bóng vẫn sống', () => {
+  it('trúng bóng → bóng bật ra theo hướng xoạc, người xoạc nằm trượt, bóng vẫn sống, không thẻ', () => {
     const s = step(frontal(vec2(0, 0), winRoll), A);
     expect(s.phase).toBe('play');
-    expect(s.ballOwnerId).toBe(ME);
+    expect(s.ballOwnerId).toBeNull();
+    expect(s.ball.vel.x).toBeGreaterThan(TACKLE_POKE_SPEED - 1);
+    expect(s.tackleRecovery[ME]).toBe(s.tick + TACKLE_RECOVERY_TICKS);
     expect(s.kickLock?.playerId).toBe(OWNER);
     expect(s.bookings).toEqual([]);
+    expect(s.lastTackle).toMatchObject({ tick: s.tick, tacklerId: ME, victimId: OWNER, outcome: 'won' });
+  });
+
+  it('trúng bóng → người bị xoạc ngã hoặc vấp (tất định theo seed), không ai trong hai người bắt lại bóng ngay', () => {
+    const s = step(frontal(vec2(0, 0), winRoll), A);
+    const reaction = s.lastTackle?.victimReaction;
+    expect(['fall', 'stumble']).toContain(reaction);
+    const ticks = reaction === 'fall' ? VICTIM_FALL_TICKS : VICTIM_STUMBLE_TICKS;
+    expect(s.tackleRecovery[OWNER]).toBe(s.tick + ticks);
+    const later = repeat(s, NO_INPUT, 10);
+    expect(later.ballOwnerId === ME || later.ballOwnerId === OWNER).toBe(false);
+    expect(step(frontal(vec2(0, 0), winRoll), A).lastTackle).toEqual(s.lastTackle);
+  });
+
+  it('trúng bóng: có seed làm người bị xoạc ngã, có seed chỉ vấp', () => {
+    const reactions = new Set<string | null | undefined>();
+    for (let seed = 1; seed < 400 && reactions.size < 2; seed++) {
+      const rng = seedRng(seed);
+      if (nextFloat(rng)[0] >= winChance) continue;
+      reactions.add(step(frontal(vec2(0, 0), rng), A).lastTackle?.victimReaction);
+    }
+    expect(reactions).toEqual(new Set(['fall', 'stumble']));
   });
 
   it('giữ nút sút từ trước khi có bóng không thành nạp lực sút', () => {
     const s = repeat(frontal(vec2(0, 0), winRoll), press({ lob: true, shoot: true }), 10);
-    expect(s.ballOwnerId).toBe(ME);
     expect(s.shotChargeTicks).toBe(0);
   });
 
@@ -121,6 +149,7 @@ describe('xoạc trực diện', () => {
     expect(s.bookings).toEqual([]);
     expect(s.players).toHaveLength(14);
     expect(s.rng).not.toBe(before.rng);
+    expect(s.lastTackle).toMatchObject({ tacklerId: ME, victimId: OWNER, outcome: 'foul' });
   });
 
   it('chạm người nhưng bóng ngoài tầm → phạm lỗi, không cần tung xác suất', () => {
@@ -240,6 +269,21 @@ describe('xoạc hụt', () => {
     expect(s.ballOwnerId).toBe(OWNER);
     expect(s.tackleRecovery[ME]).toBe(s.tick + TACKLE_RECOVERY_TICKS);
     expect(playerOf(s, ME).vel.x).toBeGreaterThan(4);
+    expect(s.lastTackle).toMatchObject({ tacklerId: ME, victimId: null, outcome: 'miss' });
+    expect(s.tackleRecovery[OWNER]).toBeUndefined();
+  });
+
+  it('trượt đi một đoạn (2,5–5 m) theo hướng mặt rồi dừng', () => {
+    const s = repeat(step(far(), A), NO_INPUT, TACKLE_RECOVERY_TICKS - 2);
+    expect(playerOf(s, ME).pos.x).toBeGreaterThan(2.5);
+    expect(playerOf(s, ME).pos.x).toBeLessThan(5);
+    expect(length(playerOf(s, ME).vel)).toBeLessThan(0.01);
+  });
+
+  it('chạy nước rút rồi xoạc cũng không trượt quá xa', () => {
+    const sprinting = scene({ owner: vec2(20, 0), me: vec2(0, 0), meVel: vec2(9, 0) });
+    const s = repeat(step(sprinting, A), NO_INPUT, TACKLE_RECOVERY_TICKS - 2);
+    expect(playerOf(s, ME).pos.x).toBeLessThan(5.5);
   });
 
   it('đang trượt/đứng dậy thì không điều khiển được và không xoạc lại được', () => {
@@ -349,6 +393,7 @@ describe('thủ môn ôm bóng trong vòng cấm', () => {
 
   it('thủ môn dẫn bóng ngoài vòng cấm vẫn bị tắc như cầu thủ thường', () => {
     const s = step(keeperScene(vec2(HALF_LENGTH - 16, 0), winRoll), A);
-    expect(s.ballOwnerId).toBe(ME);
+    expect(s.lastTackle?.outcome).toBe('won');
+    expect(s.ballOwnerId).toBeNull();
   });
 });

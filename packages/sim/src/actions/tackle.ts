@@ -1,4 +1,4 @@
-import { dot, length, normalize, scale, sub, type Vec2 } from '../math/vec2';
+import { add, dot, length, normalize, scale, sub, type Vec2 } from '../math/vec2';
 import { nextFloat, type RngState } from '../rng';
 import {
   STAND_TACKLE_FOUL_CHANCE,
@@ -7,6 +7,7 @@ import {
   tackleReachFor,
   tackleWinChance,
 } from '../stats/params';
+import { TICK_DT } from '../tick';
 import type { BallState, PlayerState } from '../types';
 
 /*
@@ -22,10 +23,21 @@ import type { BallState, PlayerState } from '../types';
 export const BEHIND_COS = -0.5;
 /** Xoạc từ phía sau với tốc độ từ mức này (m/s) trở lên là xoạc thô bạo. */
 export const ROUGH_TACKLE_SPEED = 5;
-/** Xoạc hụt: cầu thủ trượt đi với tốc độ tối thiểu này (m/s) theo hướng mặt. */
+/** Xoạc (A): cầu thủ trượt theo hướng mặt với tốc độ trong khoảng này (m/s). */
 export const TACKLE_SLIDE_SPEED = 6;
-/** Xoạc hụt: nằm sân/đứng dậy chừng này tick (0,7 s), không di chuyển hay xoạc lại được. */
-export const TACKLE_RECOVERY_TICKS = 42;
+export const TACKLE_SLIDE_MAX_SPEED = 7.5;
+/** Ma sát khi trượt / ngã trên cỏ (m/s²): trượt 6 m/s đi chừng 3 m. */
+export const TACKLE_SLIDE_DECEL = 6;
+/** Sau cú xoạc: nằm sân/đứng dậy chừng này tick (1,2 s), không di chuyển hay xoạc lại được. */
+export const TACKLE_RECOVERY_TICKS = 72;
+/** Xoạc trúng bóng: bóng bật ra theo hướng xoạc với tốc độ này (m/s). */
+export const TACKLE_POKE_SPEED = 8;
+/** Xoạc trúng bóng rồi mới chạm chân: người bị xoạc ngã với xác suất này, còn lại chỉ vấp. */
+export const VICTIM_FALL_CHANCE = 0.5;
+/** Người bị xoạc ngã: nằm/đứng dậy chừng này tick (1,5 s). */
+export const VICTIM_FALL_TICKS = 90;
+/** Người bị xoạc vấp: mất thăng bằng chừng này tick (0,4 s). */
+export const VICTIM_STUMBLE_TICKS = 24;
 
 export type TackleOutcome =
   /** Không có bóng hay người dẫn bóng đối phương trong tầm. */
@@ -126,8 +138,33 @@ export function resolveStandTackle(
   return { outcome, rng: r2 };
 }
 
-/** Xoạc hụt: cầu thủ trượt theo hướng mặt, ít nhất TACKLE_SLIDE_SPEED. */
+/** Bắt đầu xoạc: cầu thủ lao theo hướng mặt, tốc độ kẹp trong [TACKLE_SLIDE_SPEED, TACKLE_SLIDE_MAX_SPEED]. */
 export function slideTackle(tackler: PlayerState): PlayerState {
-  const speed = Math.max(length(tackler.vel), TACKLE_SLIDE_SPEED);
+  const speed = Math.min(
+    TACKLE_SLIDE_MAX_SPEED,
+    Math.max(length(tackler.vel), TACKLE_SLIDE_SPEED),
+  );
   return { ...tackler, vel: scale(tackler.facing, speed) };
+}
+
+/** Một tick trượt trên cỏ (đang xoạc / ngã / vấp): chậm dần theo TACKLE_SLIDE_DECEL, giữ hướng mặt. */
+export function slideStep(player: PlayerState): PlayerState {
+  const speed = length(player.vel);
+  const next = Math.max(0, speed - TACKLE_SLIDE_DECEL * TICK_DT);
+  const vel = speed === 0 ? player.vel : scale(player.vel, next / speed);
+  return { ...player, vel, pos: add(player.pos, scale(vel, TICK_DT)) };
+}
+
+/** Xoạc trúng bóng: bóng bật ra theo hướng xoạc, sát mặt cỏ. */
+export const pokeBall = (tackler: PlayerState, ball: BallState): BallState => ({
+  ...ball,
+  vel: scale(tackler.facing, TACKLE_POKE_SPEED),
+  z: 0,
+  vz: 0,
+});
+
+/** Người bị xoạc trúng bóng (không phạm lỗi): ngã hay chỉ vấp, theo PRNG. */
+export function victimReaction(rng: RngState): { reaction: 'fall' | 'stumble'; rng: RngState } {
+  const [roll, next] = nextFloat(rng);
+  return { reaction: roll < VICTIM_FALL_CHANCE ? 'fall' : 'stumble', rng: next };
 }

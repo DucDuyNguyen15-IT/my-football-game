@@ -1,7 +1,7 @@
 /**
  * Chọn hoạt ảnh cầu thủ từ `MatchState` (task 5.18d), thuần (không Three.js). Chỉ đọc state:
  * - `locomotionFor`: clip lặp theo vận tốc so với hướng mặt (đứng / chạy / lùi / ngang).
- * - `animationEvents`: clip một lần khi có sự kiện giữa 2 tick (chuyền, sút, xoạc, ngã, bắt bóng…).
+ * - `animationEvents`: clip một lần khi có sự kiện giữa 2 tick (chuyền, sút, xoạc, ngã, vấp, bắt bóng…).
  * - `diveClip`: thủ môn đang lao người cản phá.
  * Tên clip khớp `CLIPS` trong `scripts/build-player-model.mjs`.
  */
@@ -9,7 +9,9 @@ import type { MatchState, PlayerState } from '@pitch/sim';
 
 export type ClipName =
   | 'idle'
+  | 'walk'
   | 'jog'
+  | 'run'
   | 'jog_back'
   | 'strafe_left'
   | 'strafe_right'
@@ -19,6 +21,7 @@ export type ClipName =
   | 'header'
   | 'tackle'
   | 'trip'
+  | 'stumble'
   | 'fallen'
   | 'get_up'
   | 'throw_in'
@@ -30,12 +33,28 @@ export type ClipName =
   | 'gk_throw'
   | 'gk_kick';
 
-/** Clip chạy (`jog forward`) đi 2,07 m mỗi chu kỳ 0,83 s: phát nhanh/chậm theo tốc độ để chân không trượt. */
+/**
+ * Tốc độ bước (m/s) của clip di chuyển: phát nhanh/chậm theo tốc độ để chân không trượt. Mặc định
+ * cho file cũ; `pnpm assets` đo lại từ clip và ghi vào GLB (`ClipSpeeds`).
+ */
 export const JOG_CLIP_SPEED = 2.5;
-const STRAFE_CLIP_SPEED = 2.6;
-const BACK_CLIP_SPEED = 2.3;
+const DEFAULT_SPEEDS = { jog: JOG_CLIP_SPEED, jog_back: 2.3, strafe_left: 2.6, strafe_right: 2.6 };
+export type ClipSpeeds = Partial<Record<ClipName, number>>;
 /** Chậm hơn mức này (m/s) thì coi như đứng. */
 const IDLE_SPEED = 0.4;
+/** Chậm hơn mức này thì đi bộ (khi có clip `walk`). */
+export const WALK_MAX_SPEED = 2.2;
+/**
+ * Từ mức này trở lên dùng clip `run` (khi có): chạy thường 4,5–6,5 m/s, nước rút ×1,35 — clip `jog`
+ * (2,5 m/s) phát nhanh gấp đôi trông giật.
+ */
+export const RUN_MIN_SPEED = 4;
+/** Vùng đệm (m/s) quanh ngưỡng đổi clip để tốc độ dao động nhẹ không làm nhảy qua lại. */
+const SWITCH_MARGIN = 0.3;
+/** Thiếu clip `run`: từ mức này (nước rút) bắt đầu cúi người về trước. */
+export const SPRINT_LEAN_MIN_SPEED = 6.2;
+/** Thiếu clip `run`: cúi người về trước tối đa chừng này (rad) khi chạy nhanh. */
+const MAX_SPRINT_LEAN = 0.3;
 /** Thủ môn chạy nhanh hơn mức này sau cú sút đối phương = đang lao người. */
 const DIVE_MIN_SPEED = 4;
 /** Bóng cao hơn mức này (m) lúc chạm = đánh đầu. */
@@ -44,6 +63,8 @@ const HEADER_MIN_Z = 1.2;
 export interface Locomotion {
   clip: ClipName;
   timeScale: number;
+  /** Góc cúi người thêm (rad, cộng vào xương Spine) — chỉ dùng khi thiếu clip chạy nhanh. */
+  lean: number;
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.min(hi, Math.max(lo, v));
@@ -55,19 +76,37 @@ const speedOf = (p: PlayerState) => Math.hypot(p.vel.x, p.vel.y);
  */
 const leftOf = (f: { x: number; y: number }) => ({ x: f.y, y: -f.x });
 
-export function locomotionFor(p: PlayerState): Locomotion {
+/**
+ * `speeds`: tốc độ bước của clip có trong model; clip `walk`/`run` chỉ dùng khi có mặt ở đây.
+ * `current`: clip lặp đang phát, để giữ nguyên trong vùng đệm quanh ngưỡng.
+ */
+export function locomotionFor(
+  p: PlayerState,
+  speeds: ClipSpeeds = {},
+  current?: ClipName,
+): Locomotion {
   const speed = speedOf(p);
-  if (speed < IDLE_SPEED) return { clip: p.position === 'GK' ? 'gk_idle' : 'idle', timeScale: 1 };
+  if (speed < IDLE_SPEED) {
+    return { clip: p.position === 'GK' ? 'gk_idle' : 'idle', timeScale: 1, lean: 0 };
+  }
+  const at = (clip: ClipName, lo: number, hi: number, lean = 0): Locomotion => {
+    const clipSpeed = speeds[clip] ?? DEFAULT_SPEEDS[clip as keyof typeof DEFAULT_SPEEDS] ?? 1;
+    return { clip, timeScale: clamp(speed / clipSpeed, lo, hi), lean };
+  };
   const dx = p.vel.x / speed;
   const dy = p.vel.y / speed;
   const forward = dx * p.facing.x + dy * p.facing.y;
   const left = leftOf(p.facing);
-  if (forward >= 0.5) return { clip: 'jog', timeScale: clamp(speed / JOG_CLIP_SPEED, 0.6, 2.6) };
-  if (forward <= -0.5) {
-    return { clip: 'jog_back', timeScale: clamp(speed / BACK_CLIP_SPEED, 0.6, 2) };
+  if (forward >= 0.5) {
+    const walkMax = WALK_MAX_SPEED + (current === 'walk' ? SWITCH_MARGIN : -SWITCH_MARGIN);
+    const runMin = RUN_MIN_SPEED + (current === 'run' ? -SWITCH_MARGIN : SWITCH_MARGIN);
+    if (speed < walkMax && speeds.walk) return at('walk', 0.5, 2);
+    if (speed >= runMin && speeds.run) return at('run', 0.6, 1.8);
+    const lean = MAX_SPRINT_LEAN * clamp((speed - SPRINT_LEAN_MIN_SPEED + 1) / 3, 0, 1);
+    return at('jog', 0.6, 2.6, lean);
   }
-  const side = dx * left.x + dy * left.y > 0 ? 'strafe_left' : 'strafe_right';
-  return { clip: side, timeScale: clamp(speed / STRAFE_CLIP_SPEED, 0.6, 2) };
+  if (forward <= -0.5) return at('jog_back', 0.6, 2);
+  return at(dx * left.x + dy * left.y > 0 ? 'strafe_left' : 'strafe_right', 0.6, 2);
 }
 
 /** Thủ môn đang lao người sau cú sút của đối phương: clip lao sang trái/phải nhân vật, null nếu không. */
@@ -117,9 +156,14 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     }
   }
 
-  // Xoạc (người chơi xoạc hụt/trượt thì sim đặt `tackleRecovery`).
-  for (const id of Object.keys(curr.tackleRecovery)) {
-    if (prev.tackleRecovery[id] === undefined) events.push({ playerId: id, clip: 'tackle' });
+  // Xoạc (A): người xoạc nằm trượt; trúng bóng thì người bị xoạc ngã hoặc vấp.
+  const tackle = curr.lastTackle;
+  if (tackle && tackle.tick === curr.tick && tackle.tick !== prev.lastTackle?.tick) {
+    events.push({ playerId: tackle.tacklerId, clip: 'tackle' });
+    if (tackle.victimId !== null && tackle.victimReaction !== null) {
+      const clip = tackle.victimReaction === 'fall' ? 'trip' : 'stumble';
+      events.push({ playerId: tackle.victimId, clip });
+    }
   }
 
   // Bị phạm lỗi: đang dẫn bóng thì trận dừng và đội mình được đá phạt / phạt đền.
@@ -130,7 +174,8 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     r &&
     (r.type === 'free_kick' || r.type === 'penalty') &&
     owner !== null &&
-    prev.players.find((p) => p.id === owner)?.team === r.team
+    prev.players.find((p) => p.id === owner)?.team === r.team &&
+    !events.some((e) => e.playerId === owner)
   ) {
     events.push({ playerId: owner, clip: 'trip' });
   }
