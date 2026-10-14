@@ -35,3 +35,7 @@ Thumbs.db
 
 # Prompt cá nhân dán sau /clear (không push)
 CLEAR_PROMPT.md
+
+# File gốc Mixamo: giấy phép không cho phát tán, repo public (ADR-0009, task 5.18d)
+assets-src/mixamo/
+apps/web/public/models/player.glb

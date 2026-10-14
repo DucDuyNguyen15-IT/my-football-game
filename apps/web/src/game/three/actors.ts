@@ -14,7 +14,7 @@ const LEG_H = 0.55;
 const CHARGE_BAR_W = 1.5;
 const CHARGE_BAR_H = 0.22;
 
-function numberTexture(n: number, ink: string): THREE.CanvasTexture {
+export function numberTexture(n: number, ink: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 64;
   const ctx = canvas.getContext('2d');

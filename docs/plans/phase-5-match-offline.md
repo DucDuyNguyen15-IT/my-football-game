@@ -130,8 +130,8 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test thuần cho đổi toạ độ minimap; người dùng xem trên trình duyệt.
 - **Xong khi:** HUD đủ các phần DESIGN §6.2.
 
-### 5.18d — Thay nhân vật bằng mô hình Mixamo + hoạt ảnh `[~]`
-- **Phụ thuộc:** 5.18a, **chủ dự án tải file Mixamo vào `assets-src/mixamo/`** (danh sách đã gửi 2026-10-14: Y Bot + chạy/nước rút/chuyền/sút/đánh đầu/xoạc/ngã/đứng dậy/thủ môn bắt-bay người-ném) · **Model:** strongest · _Hoãn tới khi có file. Gói Quaternius CC0 đã xem: thiếu sút/chuyền/bay người nên chủ dự án chọn Mixamo. Giấy phép Mixamo: dùng trong game được, không phát tán file gốc → không commit FBX gốc nếu repo public._
+### 5.18d — Thay nhân vật bằng mô hình Mixamo + hoạt ảnh `[x]`
+- **Phụ thuộc:** 5.18a, **chủ dự án tải file Mixamo vào `assets-src/mixamo/`** (danh sách đã gửi 2026-10-14: Y Bot + chạy/nước rút/chuyền/sút/đánh đầu/xoạc/ngã/đứng dậy/thủ môn bắt-bay người-ném) · **Model:** strongest · _Có file 2026-10-14 (Y Bot + Soccer Game Pack, 54 clip; chọn 21). Gói Quaternius CC0 đã xem: thiếu sút/chuyền/bay người nên chủ dự án chọn Mixamo. Giấy phép Mixamo: dùng trong game được, không phát tán file gốc → không commit FBX gốc nếu repo public._
 - **Bối cảnh:** ADR-0009.
 - **Việc cần làm:** đổi FBX → glTF nén (gltf-transform: bỏ clip thừa, nén), nạp rig + clip, `AnimationMixer` hoà trộn, đổi màu áo theo đội + số áo; hàm thuần `animationFor(player, state)` chọn clip (đứng/chạy/nước rút theo tốc độ, chuyền/sút khi vừa chạm bóng, xoạc khi `tackleRecovery`, thủ môn bay người) có test; tải lười chỉ khi vào trận.
 - **Kiểm chứng:** FPS ≥ 55; giấy phép tài nguyên ghi vào `docs/`.
