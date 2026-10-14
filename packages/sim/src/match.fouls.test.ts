@@ -317,3 +317,38 @@ describe('thực hiện đá phạt / phạt đền', () => {
     expect(length(shot.ball.vel)).toBeGreaterThan(15);
   });
 });
+
+describe('thủ môn ôm bóng trong vòng cấm', () => {
+  const KEEPER = 'away-GK';
+  /** Thủ môn khách ôm bóng trong vòng cấm nhà mình (đội khách giữ khung +x ở hiệp 1). */
+  const keeperScene = (keeperPos: Vec2, rng: RngState): MatchState => {
+    const s = scene({ owner: vec2(0, 0), me: vec2(keeperPos.x - 1.1, keeperPos.y), rng });
+    const players = s.players.map((p) =>
+      p.id === KEEPER ? { ...p, pos: keeperPos, facing: vec2(-1, 0) } : p,
+    );
+    return {
+      ...s,
+      players,
+      ballOwnerId: KEEPER,
+      ball: dribbleBall(players.find((p) => p.id === KEEPER)!),
+    };
+  };
+  const inBox = vec2(HALF_LENGTH - 3, 0);
+
+  it.each([
+    ['xoạc (A)', A],
+    ['giữ D tắc bóng', D],
+  ])('%s vào thủ môn → không tranh được bóng, không phạm lỗi', (_name, input) => {
+    for (const rng of [winRoll, missRoll]) {
+      const s = repeat(keeperScene(inBox, rng), input, 20);
+      expect(s.restart).toBeNull();
+      expect(s.bookings).toEqual([]);
+      expect(s.ballOwnerId === ME).toBe(false);
+    }
+  });
+
+  it('thủ môn dẫn bóng ngoài vòng cấm vẫn bị tắc như cầu thủ thường', () => {
+    const s = step(keeperScene(vec2(HALF_LENGTH - 16, 0), winRoll), A);
+    expect(s.ballOwnerId).toBe(ME);
+  });
+});

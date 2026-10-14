@@ -11,6 +11,7 @@ const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
   controlled: { id: 'home-P5', number: 6, position: 'FW', stamina: 42 },
   bookings: [],
   shots: { home: 5, away: 3 },
+  foulRestart: null,
   ...over,
 });
 
