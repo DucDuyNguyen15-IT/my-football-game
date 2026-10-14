@@ -149,8 +149,22 @@ export interface MatchState {
   players: PlayerState[];
   /** Thẻ phạt theo thứ tự thời gian (cho HUD và màn kết quả). */
   bookings: Booking[];
-  /** Người vừa xoạc hụt: đang trượt/đứng dậy, không di chuyển hay xoạc được trước tick này. */
+  /**
+   * Người đang nằm sân sau cú xoạc (người xoạc, người bị xoạc ngã/vấp): trượt theo quán tính, không
+   * di chuyển, xoạc hay bắt bóng được trước tick này.
+   */
   tackleRecovery: Record<string, number>;
+  /**
+   * Cú xoạc (A) gần nhất, cho render chọn hoạt ảnh. `victimReaction`: người bị xoạc trúng bóng ngã
+   * hay vấp (null khi hụt / phạm lỗi — phạm lỗi thì trận dừng).
+   */
+  lastTackle: {
+    tick: number;
+    tacklerId: string;
+    victimId: string | null;
+    outcome: 'won' | 'miss' | 'foul';
+    victimReaction: 'fall' | 'stumble' | null;
+  } | null;
   /** Người vừa tắc đứng trượt: chưa tắc lại được trước tick này (vẫn di chuyển bình thường). */
   standTackleCooldown: Record<string, number>;
   bench: Record<TeamSide, MatchPlayerSetup[]>;

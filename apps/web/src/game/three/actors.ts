@@ -7,8 +7,11 @@ import type { PlayerState } from '@pitch/sim';
 import { COLORS } from '../render/colors';
 import { shirtNumber } from '../render/view';
 
-/** Bóng thật (0.11 m) nhỏ khó nhìn ở góc truyền hình; vẽ to hơn một chút. */
-export const BALL_DRAW_RADIUS = 0.2;
+/**
+ * Bóng thật bán kính 0,11 m; vẽ to hơn chút cho dễ nhìn ở góc truyền hình nhưng vẫn cân với cầu thủ
+ * Mixamo cao 1,8 m (0,2 m trước đây trông như bóng tập to gấp đôi).
+ */
+export const BALL_DRAW_RADIUS = 0.13;
 const BODY_H = 1.25;
 const LEG_H = 0.55;
 const CHARGE_BAR_W = 1.5;

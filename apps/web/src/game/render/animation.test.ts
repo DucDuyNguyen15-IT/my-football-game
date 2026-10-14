@@ -6,7 +6,15 @@ import {
   type MatchState,
   type PlayerState,
 } from '@pitch/sim';
-import { JOG_CLIP_SPEED, animationEvents, diveClip, locomotionFor } from './animation';
+import {
+  JOG_CLIP_SPEED,
+  RUN_MIN_SPEED,
+  SPRINT_LEAN_MIN_SPEED,
+  WALK_MAX_SPEED,
+  animationEvents,
+  diveClip,
+  locomotionFor,
+} from './animation';
 
 const base = (): MatchState => ({
   ...createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 1 }),
@@ -41,6 +49,36 @@ describe('locomotionFor', () => {
     // Mặt hướng +x (sim), trái của nhân vật là −y sim (z thế giới = sim y, camera nhìn từ +z).
     expect(locomotionFor(p(v(0, -3))).clip).toBe('strafe_left');
     expect(locomotionFor(p(v(0, 3))).clip).toBe('strafe_right');
+  });
+
+  it('có clip đi bộ / chạy nhanh thì dùng theo tốc độ, phát khớp tốc độ bước đo được', () => {
+    const speeds = { walk: 1.5, run: 6 };
+    const walk = locomotionFor(p(v(WALK_MAX_SPEED - 0.5, 0)), speeds);
+    expect(walk.clip).toBe('walk');
+    expect(walk.timeScale).toBeCloseTo((WALK_MAX_SPEED - 0.5) / 1.5);
+    expect(locomotionFor(p(v(3, 0)), speeds).clip).toBe('jog');
+    expect(locomotionFor(p(v(5, 0)), speeds).clip).toBe('run');
+    const sprint = locomotionFor(p(v(7.5, 0)), speeds);
+    expect(sprint).toMatchObject({ clip: 'run', lean: 0 });
+    expect(sprint.timeScale).toBeCloseTo(7.5 / 6);
+  });
+
+  it('thiếu clip chạy nhanh → jog, cúi người về trước khi chạy nhanh', () => {
+    const sprint = locomotionFor(p(v(SPRINT_LEAN_MIN_SPEED + 2, 0)));
+    expect(sprint.clip).toBe('jog');
+    expect(sprint.lean).toBeGreaterThan(0.1);
+    expect(locomotionFor(p(v(4, 0))).lean).toBe(0);
+    expect(locomotionFor(p(v(1, 0))).clip).toBe('jog');
+  });
+
+  it('quanh ngưỡng đổi clip: giữ clip đang phát, không nhảy qua lại', () => {
+    const speeds = { run: 5.7 };
+    const at = (speed: number, current: 'jog' | 'run') =>
+      locomotionFor(p(v(speed, 0)), speeds, current).clip;
+    expect(at(RUN_MIN_SPEED, 'jog')).toBe('jog');
+    expect(at(RUN_MIN_SPEED, 'run')).toBe('run');
+    expect(at(RUN_MIN_SPEED + 0.5, 'jog')).toBe('run');
+    expect(at(RUN_MIN_SPEED - 0.5, 'run')).toBe('jog');
   });
 });
 
@@ -96,10 +134,55 @@ describe('animationEvents', () => {
     expect(animationEvents(pen, penShot)[0]?.clip).toBe('penalty');
   });
 
-  it('bắt đầu xoạc → tackle', () => {
+  const tackled = (
+    prev: MatchState,
+    over: Partial<NonNullable<MatchState['lastTackle']>>,
+  ): MatchState => ({
+    ...prev,
+    tick: prev.tick + 1,
+    lastTackle: {
+      tick: prev.tick + 1,
+      tacklerId: ME,
+      victimId: null,
+      outcome: 'miss',
+      victimReaction: null,
+      ...over,
+    },
+  });
+
+  it('xoạc hụt → tackle', () => {
     const prev = base();
-    const curr = { ...prev, tick: prev.tick + 1, tackleRecovery: { [ME]: prev.tick + 40 } };
-    expect(animationEvents(prev, curr)).toEqual([{ playerId: ME, clip: 'tackle' }]);
+    expect(animationEvents(prev, tackled(prev, {}))).toEqual([{ playerId: ME, clip: 'tackle' }]);
+  });
+
+  it('xoạc trúng bóng → người xoạc tackle, người bị xoạc trip (ngã) hoặc stumble (vấp)', () => {
+    const prev = base();
+    const won = (victimReaction: 'fall' | 'stumble') =>
+      animationEvents(prev, tackled(prev, { outcome: 'won', victimId: 'away-P4', victimReaction }));
+    expect(won('fall')).toEqual([
+      { playerId: ME, clip: 'tackle' },
+      { playerId: 'away-P4', clip: 'trip' },
+    ]);
+    expect(won('stumble')[1]).toEqual({ playerId: 'away-P4', clip: 'stumble' });
+  });
+
+  it('cú xoạc cũ (đã báo ở tick trước) không phát lại', () => {
+    const prev = tackled(base(), {});
+    expect(animationEvents(prev, { ...prev, tick: prev.tick + 1 })).toEqual([]);
+  });
+
+  it('xoạc phạm lỗi → người xoạc tackle, người bị xoạc trip, mỗi người một lần', () => {
+    const prev = { ...base(), ballOwnerId: 'away-P4' };
+    const curr: MatchState = {
+      ...tackled(prev, { outcome: 'foul', victimId: 'away-P4' }),
+      phase: 'dead_ball',
+      ballOwnerId: null,
+      restart: { type: 'free_kick', team: 'away', spot: v(0, 0), takerId: 'away-P4', startTick: 1 },
+    };
+    expect(animationEvents(prev, curr)).toEqual([
+      { playerId: ME, clip: 'tackle' },
+      { playerId: 'away-P4', clip: 'trip' },
+    ]);
   });
 
   it('bị phạm lỗi (đang dẫn bóng thì thành đá phạt cho đội mình) → trip', () => {

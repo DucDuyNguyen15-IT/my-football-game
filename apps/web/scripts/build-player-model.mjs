@@ -6,7 +6,7 @@
  * Việc làm: nạp Y Bot + các clip đã chọn, ghim tại chỗ (sim tự di chuyển cầu thủ: bỏ dịch chuyển
  * ngang của hông, giữ độ cao để ngã/xoạc vẫn thấp người), đổi cm → m, xuất GLB.
  */
-import { mkdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, readdirSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
@@ -48,6 +48,31 @@ const CLIPS = {
   gk_kick: 'goalkeeper drop kick',
 };
 
+/**
+ * Clip thêm, không có trong Soccer Game Pack: tải riêng từ Mixamo (Y Bot, **bỏ** "In Place" để đo được
+ * tốc độ bước) vào `assets-src/mixamo/` hoặc `assets-src/mixamo/extra/`, tên nào trong danh sách cũng
+ * được (không phân biệt hoa thường). Thiếu file thì bỏ qua — game dùng `jog` thay thế.
+ */
+const OPTIONAL_CLIPS = {
+  walk: ['walking', 'walk'],
+  run: ['fast run', 'running', 'run'],
+};
+
+/** File `<tên>.fbx` đầu tiên khớp (không phân biệt hoa thường) trong các thư mục clip thêm. */
+function findOptional(names) {
+  for (const dir of [SRC, join(SRC, 'extra')]) {
+    if (!existsSync(dir)) continue;
+    const files = readdirSync(dir);
+    for (const name of names) {
+      const hit = files.find((f) => f.toLowerCase() === `${name}.fbx`);
+      if (hit) return join(dir, hit);
+    }
+  }
+  return null;
+}
+/** Clip chạy/đi: đo tốc độ bước (m/s) từ dịch chuyển hông trước khi ghim, để web phát khớp chân. */
+const LOCOMOTION = new Set(['jog', 'jog_back', 'strafe_left', 'strafe_right', 'walk', 'run']);
+
 /** Node không có FileReader; GLTFExporter (binary) chỉ cần readAsArrayBuffer + onloadend. */
 globalThis.FileReader ??= class {
   readAsArrayBuffer(blob) {
@@ -67,6 +92,15 @@ function loadFbx(path) {
 /** Ngón tay không nhìn thấy từ camera truyền hình: bỏ track để file nhẹ. */
 const FINGER = /(Thumb|Index|Middle|Ring|Pinky)\d/;
 
+/** Tốc độ ngang (m/s) của hông trong clip — Mixamo dùng cm. */
+function strideSpeed(clip) {
+  const hips = clip.tracks.find((t) => t.name.endsWith('Hips.position'));
+  if (!hips || clip.duration === 0) return 0;
+  const v = hips.values;
+  const n = v.length - 3;
+  return Math.hypot(v[n] - v[0], v[n + 2] - v[2]) / 100 / clip.duration;
+}
+
 /** Ghim hông tại chỗ: x/z giữ như khung đầu, y (độ cao) giữ nguyên. */
 function pinInPlace(clip) {
   const hips = clip.tracks.find((t) => t.name.endsWith('Hips.position'));
@@ -85,24 +119,41 @@ if (!existsSync(characterPath)) {
 }
 const character = loadFbx(characterPath);
 character.animations = [];
+// FBXLoader để lại thông tin biến đổi gốc trong userData → GLTFExporter ghi thành extras (~50 KB thừa).
+character.traverse((o) => (o.userData = {}));
 
 const clips = [];
+/** Tốc độ bước của clip di chuyển, ghi vào `extras` của GLB (web đọc ở `playerModel.ts`). */
+const clipSpeeds = {};
+function addClip(name, path) {
+  const clip = loadFbx(path).animations[0];
+  clip.name = name;
+  clip.tracks = clip.tracks.filter((t) => !FINGER.test(t.name));
+  if (LOCOMOTION.has(name)) {
+    const speed = strideSpeed(clip);
+    if (speed > 0.3) clipSpeeds[name] = Number(speed.toFixed(2));
+  }
+  pinInPlace(clip);
+  clips.push(clip);
+}
 for (const [name, file] of Object.entries(CLIPS)) {
   const path = join(PACK, `${file}.fbx`);
   if (!existsSync(path)) {
     console.error(`Thiếu ${path}`);
     process.exit(1);
   }
-  const clip = loadFbx(path).animations[0];
-  clip.name = name;
-  clip.tracks = clip.tracks.filter((t) => !FINGER.test(t.name));
-  pinInPlace(clip);
-  clips.push(clip);
+  addClip(name, path);
+}
+for (const [name, files] of Object.entries(OPTIONAL_CLIPS)) {
+  const path = findOptional(files);
+  if (path) addClip(name, path);
+  else console.warn(`Bỏ qua clip "${name}": chưa có ${files.map((f) => `${f}.fbx`).join(' / ')}`);
 }
 
 // Mixamo dùng cm; bọc ngoài một nhóm thu nhỏ 0,01 để model cao ~1,8 m.
 const scene = new THREE.Group();
 scene.name = 'Player';
+scene.userData = { clipSpeeds };
 character.scale.setScalar(0.01);
 scene.add(character);
 scene.updateMatrixWorld(true);
@@ -130,4 +181,5 @@ await doc.transform(
 const out = await io.writeBinary(doc);
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, out);
+console.log('Tốc độ bước (m/s):', clipSpeeds);
 console.log(`Đã ghi ${OUT} (${(out.byteLength / 1e6).toFixed(2)} MB, ${clips.length} clip)`);

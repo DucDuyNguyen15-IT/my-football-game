@@ -8,7 +8,7 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { MatchState, PlayerState } from '@pitch/sim';
-import { diveClip, locomotionFor, type ClipName } from '../render/animation';
+import { diveClip, locomotionFor, type ClipName, type ClipSpeeds } from '../render/animation';
 import { COLORS } from '../render/colors';
 import { shirtNumber } from '../render/view';
 import { numberTexture } from './actors';
@@ -18,6 +18,8 @@ export const PLAYER_MODEL_URL = '/models/player.glb';
 export interface PlayerModel {
   scene: THREE.Object3D;
   clips: ReadonlyMap<string, THREE.AnimationClip>;
+  /** Tốc độ bước đo lúc `pnpm assets` (extras của node `Player`); file cũ không có thì rỗng. */
+  speeds: ClipSpeeds;
 }
 
 /** Nạp model; null nếu chưa có file (máy chưa chạy `pnpm assets`) hoặc file hỏng. */
@@ -30,25 +32,46 @@ export async function loadPlayerModel(): Promise<PlayerModel | null> {
   if (magic !== 'glTF') return null;
   try {
     const gltf = await new GLTFLoader().setMeshoptDecoder(MeshoptDecoder).parseAsync(buf, '');
-    return { scene: gltf.scene, clips: new Map(gltf.animations.map((a) => [a.name, a])) };
+    let speeds: ClipSpeeds = {};
+    gltf.scene.traverse((o) => {
+      const s = (o.userData as { clipSpeeds?: ClipSpeeds }).clipSpeeds;
+      if (s) speeds = s;
+    });
+    return { scene: gltf.scene, clips: new Map(gltf.animations.map((a) => [a.name, a])), speeds };
   } catch {
     return null;
   }
 }
 
+interface OneShot {
+  /** Bắt đầu từ giây này của clip. */
+  start: number;
+  /** Phát nhanh chừng này lần. */
+  speed: number;
+  /** Clip nối tiếp ngay sau (ngã → đứng dậy). */
+  next?: ClipName;
+  /** Dùng hoạt ảnh của clip khác (vấp = đoạn đầu của ngã). */
+  source?: ClipName;
+  /** Dừng ở giây này của clip rồi trả về chạy/đứng. */
+  stop?: number;
+}
+
 /**
- * Clip một lần: bắt đầu từ `start` giây (cắt đoạn chạy đà để cú chạm bóng khớp lúc sim cho bóng
- * đi), phát nhanh `speed` lần; `next` nối tiếp ngay sau (ngã → đứng dậy).
+ * Clip một lần. Sim cho bóng đi ngay lúc bấm nên `start` cắt đoạn chạy đà, chừa lại nhịp vung chân
+ * ngắn trước lúc chạm (đo tốc độ bàn chân): chuyền chạm ~0,23 s, sút ~0,45 s, phạt đền ~0,75 s.
+ * Xoạc nằm xuống ~0,5 s, nằm tới ~0,95 s, đứng dậy xong 1,77 s — phát vừa khung 1,2 s sim khoá
+ * (`TACKLE_RECOVERY_TICKS`); ngã + đứng dậy vừa 1,5 s (`VICTIM_FALL_TICKS`).
  */
-const ONE_SHOT: Partial<Record<ClipName, { start: number; speed: number; next?: ClipName }>> = {
-  pass: { start: 0.12, speed: 1.3 },
-  shot: { start: 0.45, speed: 1.2 },
-  penalty: { start: 0.75, speed: 1.2 },
+const ONE_SHOT: Partial<Record<ClipName, OneShot>> = {
+  pass: { start: 0.1, speed: 1.5 },
+  shot: { start: 0.3, speed: 1.6 },
+  penalty: { start: 0.6, speed: 1.5 },
   header: { start: 0.45, speed: 1.3 },
   throw_in: { start: 1.1, speed: 1.3 },
-  tackle: { start: 0, speed: 1.25 },
-  trip: { start: 0, speed: 1.2, next: 'get_up' },
-  get_up: { start: 0, speed: 1.3 },
+  tackle: { start: 0, speed: 1.5 },
+  trip: { start: 0, speed: 1.5, next: 'get_up' },
+  stumble: { start: 0, speed: 1.2, source: 'trip', stop: 0.35 },
+  get_up: { start: 0.4, speed: 2.4 },
   gk_catch: { start: 0.1, speed: 1.2 },
   gk_dive_left: { start: 0.35, speed: 1.4 },
   gk_dive_right: { start: 0.35, speed: 1.4 },
@@ -56,6 +79,11 @@ const ONE_SHOT: Partial<Record<ClipName, { start: number; speed: number; next?: 
   gk_kick: { start: 1.2, speed: 1.3 },
 };
 const FADE_SEC = 0.15;
+/** Clip nằm sân: sim đã cho chạy lại (hết khoá, bóng sống) mà còn phát thì cắt về chạy. */
+const GROUNDED = new Set<ClipName>(['tackle', 'trip', 'get_up']);
+const MOVING_SPEED = 1;
+/** Clip chạy tiến (cùng kiểu chu kỳ bước): đổi qua lại thì giữ pha. */
+const STRIDE = new Set<ClipName>(['walk', 'jog', 'run']);
 /** Tốc độ xoay người về hướng mặt (1/s), tránh giật khi sim đổi hướng tức thì. */
 const TURN_RATE = 12;
 
@@ -82,6 +110,8 @@ export class ModelActor {
   private readonly actions = new Map<ClipName, THREE.AnimationAction>();
   private loop: THREE.AnimationAction | null = null;
   private oneShot: { clip: ClipName; action: THREE.AnimationAction } | null = null;
+  private readonly speeds: ClipSpeeds;
+  private readonly spine: THREE.Object3D | undefined;
 
   constructor(model: PlayerModel, p: PlayerState, materials: ModelMaterials) {
     this.root = cloneSkinned(model.scene);
@@ -94,6 +124,8 @@ export class ModelActor {
       o.frustumCulled = false;
     });
     this.attachNumber(shirtNumber(p.slot));
+    this.speeds = model.speeds;
+    this.spine = this.root.getObjectByName('mixamorigSpine');
 
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const [name, clip] of model.clips) {
@@ -102,6 +134,8 @@ export class ModelActor {
     this.mixer.addEventListener('finished', (e) => {
       if (this.oneShot?.action !== e.action) return;
       const next = ONE_SHOT[this.oneShot.clip]?.next;
+      // clampWhenFinished giữ khung cuối với trọng số 1: không fade ra thì trộn mãi với clip lặp.
+      e.action.fadeOut(FADE_SEC);
       this.oneShot = null;
       if (next) this.trigger(next);
     });
@@ -126,9 +160,9 @@ export class ModelActor {
 
   /** Phát clip một lần (chuyền, sút, xoạc…), đè lên clip lặp đang chạy. */
   trigger(clip: ClipName): void {
-    const action = this.actions.get(clip);
-    if (!action) return;
     const cfg = ONE_SHOT[clip] ?? { start: 0, speed: 1 };
+    const action = this.actions.get(cfg.source ?? clip);
+    if (!action) return;
     this.oneShot?.action.fadeOut(FADE_SEC);
     action.reset();
     action.setLoop(THREE.LoopOnce, 1);
@@ -146,20 +180,51 @@ export class ModelActor {
     const turn = wrapAngle(heading - this.root.rotation.y);
     this.root.rotation.y += turn * Math.min(1, TURN_RATE * dt);
 
+    if (this.oneShot && this.shouldEnd(this.oneShot, p, state)) {
+      this.oneShot.action.fadeOut(FADE_SEC);
+      this.oneShot = null;
+    }
     if (!this.oneShot) {
       const dive = diveClip(p, state);
       if (dive) this.trigger(dive);
     }
+    let lean = 0;
     if (!this.oneShot) {
-      const loco = locomotionFor(p);
+      const current = this.loop?.getClip().name as ClipName | undefined;
+      const loco = locomotionFor(p, this.speeds, current);
+      lean = loco.lean;
       const action = this.actions.get(loco.clip);
       if (action && action !== this.loop) {
-        action.reset().setLoop(THREE.LoopRepeat, Infinity).fadeIn(FADE_SEC).play();
+        action.reset().setLoop(THREE.LoopRepeat, Infinity);
+        // Đi ↔ chạy ↔ chạy nhanh: giữ nhịp bước (cùng pha chu kỳ) để chân không giật khi trộn.
+        if (this.loop && current && STRIDE.has(current) && STRIDE.has(loco.clip)) {
+          const phase = this.loop.time / this.loop.getClip().duration;
+          action.time = phase * action.getClip().duration;
+        }
+        action.fadeIn(FADE_SEC).play();
         this.loop?.fadeOut(FADE_SEC);
         this.loop = action;
       }
       if (action) action.timeScale = loco.timeScale;
     }
     this.mixer.update(dt);
+    // Mixer ghi đè xoay xương mỗi khung nên cộng thêm sau đó; +X cục bộ của Spine = cúi về trước.
+    if (this.spine && lean > 0) this.spine.rotation.x += lean;
+  }
+
+  /** Clip một lần đã tới điểm dừng (`stop`), hoặc nằm sân mà sim đã cho chạy lại. */
+  private shouldEnd(
+    shot: { clip: ClipName; action: THREE.AnimationAction },
+    p: PlayerState,
+    state: MatchState,
+  ): boolean {
+    const stop = ONE_SHOT[shot.clip]?.stop;
+    if (stop !== undefined && shot.action.time >= stop) return true;
+    return (
+      GROUNDED.has(shot.clip) &&
+      state.phase === 'play' &&
+      state.tackleRecovery[p.id] === undefined &&
+      Math.hypot(p.vel.x, p.vel.y) > MOVING_SPEED
+    );
   }
 }

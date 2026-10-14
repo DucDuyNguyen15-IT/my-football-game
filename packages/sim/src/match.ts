@@ -19,10 +19,15 @@ import {
 import { attackSign, shootBall, shotPower, shotTarget } from './actions/shoot';
 import {
   isFromBehind,
+  pokeBall,
   resolveStandTackle,
   resolveTackle,
+  slideStep,
   slideTackle,
   TACKLE_RECOVERY_TICKS,
+  VICTIM_FALL_TICKS,
+  VICTIM_STUMBLE_TICKS,
+  victimReaction,
 } from './actions/tackle';
 import {
   add,
@@ -189,6 +194,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     players: [...spawnTeam(home, 'home'), ...spawnTeam(away, 'away')],
     bookings: [],
     tackleRecovery: {},
+    lastTackle: null,
     standTackleCooldown: {},
     bench: { home: benchOf(home), away: benchOf(away) },
     ballOwnerId: null,
@@ -516,7 +522,7 @@ function stepPlay(
 ): MatchState {
   let { ball, rng, kickLock, controlledId, ballOwnerId, shotChargeTicks, passCharge, shots } =
     state;
-  let { lastShot, lastTouchTeam } = state;
+  let { lastShot, lastTouchTeam, lastTackle } = state;
   const byId = (id: string) => state.players.find((p) => p.id === id);
   const lock = (playerId: string) => ({ playerId, untilTick: tick + KICK_LOCK_TICKS });
   const tackleRecovery = Object.fromEntries(
@@ -619,17 +625,37 @@ function stepPlay(
       const tackle = resolveTackle(state.players, me, ball, ballOwnerId, rng, CONTROL_HEIGHT);
       rng = tackle.rng;
       const { outcome } = tackle;
+      const victimId = outcome.type === 'miss' ? null : outcome.victimId;
+      const tackleOf = (reaction: 'fall' | 'stumble' | null): MatchState['lastTackle'] => ({
+        tick,
+        tacklerId: me.id,
+        victimId,
+        outcome: outcome.type,
+        victimReaction: reaction,
+      });
       if (outcome.type === 'foul') {
         const victim = byId(outcome.victimId)!;
-        return enterFoul({ ...state, tick, rng, input }, me, victim, outcome, tick);
+        const fouled = enterFoul({ ...state, tick, rng, input }, me, victim, outcome, tick);
+        return { ...fouled, lastTackle: tackleOf(null) };
       }
+      // Trúng bóng hay hụt đều nằm trượt; trúng bóng thì bóng bật ra, người bị xoạc ngã hoặc vấp.
+      slidingId = me.id;
+      tackleRecovery[me.id] = tick + TACKLE_RECOVERY_TICKS;
+      let reaction: 'fall' | 'stumble' | null = null;
       if (outcome.type === 'won') {
-        ballOwnerId = me.id;
-        kickLock = outcome.victimId === null ? null : lock(outcome.victimId);
-      } else {
-        slidingId = me.id;
-        tackleRecovery[me.id] = tick + TACKLE_RECOVERY_TICKS;
+        ball = pokeBall(me, ball);
+        ballOwnerId = null;
+        lastTouchTeam = me.team;
+        if (outcome.victimId !== null) {
+          const hit = victimReaction(rng);
+          rng = hit.rng;
+          reaction = hit.reaction;
+          kickLock = lock(outcome.victimId);
+          tackleRecovery[outcome.victimId] =
+            tick + (reaction === 'fall' ? VICTIM_FALL_TICKS : VICTIM_STUMBLE_TICKS);
+        }
       }
+      lastTackle = tackleOf(reaction);
     } else if (
       me &&
       !keeperHolds &&
@@ -741,8 +767,8 @@ function stepPlay(
       : null;
   let players = separatePlayers(
     state.players.map((p) => {
-      if (p.id === slidingId) return stepPlayer(slideTackle(p), ZERO, false);
-      if (tackleRecovery[p.id] !== undefined) return stepPlayer(p, ZERO, false);
+      if (p.id === slidingId) return slideStep(slideTackle(p));
+      if (tackleRecovery[p.id] !== undefined) return slideStep(p);
       if (p.id === human) return stepPlayer(p, controlledMove(p), input.sprint);
       if (p.id === carrierMove?.id) return stepPlayer(p, carrierMove.move, carrierMove.sprint);
       const dive = diving(p);
@@ -813,6 +839,7 @@ function stepPlay(
     passCharge,
     controlledId,
     tackleRecovery,
+    lastTackle,
     standTackleCooldown,
     shots,
     lastShot,
@@ -837,7 +864,12 @@ function stepPlay(
   // 6. Bắt bóng tự do.
   if (!owner) {
     if (kickLock && tick >= kickLock.untilTick) kickLock = null;
-    const capturer = findCapturer(players, ball, kickLock?.playerId ?? null);
+    const down = (p: PlayerState) => tackleRecovery[p.id] !== undefined;
+    const capturer = findCapturer(
+      players.filter((p) => !down(p)),
+      ball,
+      kickLock?.playerId ?? null,
+    );
     const captured = capturer === null ? undefined : players.find((p) => p.id === capturer);
     if (captured) {
       ballOwnerId = captured.id;
