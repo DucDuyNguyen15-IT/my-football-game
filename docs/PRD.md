@@ -84,7 +84,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 ### 4.3 Không làm (kể cả khi người chơi yêu cầu)
 - **Thanh toán bằng tiền thật dưới mọi hình thức**: ràng buộc cố định, gacha chỉ dùng xu.
 - **Tên/ảnh cầu thủ thật, tên nhại cầu thủ thật, logo CLB, thương hiệu FIFA/EA**: rủi ro pháp lý khi phát hành (quyền nhân thân, nhãn hiệu). Dùng tên hư cấu "quen tai" (xem F4).
-- **11v11 và đồ hoạ 3D**: AI khó cân bằng, nặng với máy yếu (research.md §3).
+- **11v11**: AI khó cân bằng (research.md §3). _(Đồ hoạ 3D từng nằm ở mục này; bỏ ngày 2026-10-14 theo quyết định chủ dự án, xem ADR-0009 — vẫn giữ yêu cầu ≥ 55 FPS.)_
 - **Việt vị**: khó hiển thị và khó hiểu trên sân 7v7 nhỏ.
 - **Chat, clan, bạn bè**: cần kiểm duyệt nội dung, ngoài trọng tâm.
 - **Tiền ảo thứ hai (premium)**: chỉ một loại xu cho đơn giản và minh bạch.
@@ -94,7 +94,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 
 | Mục | Quy định |
 |---|---|
-| Góc nhìn | 2D top-down, camera bám bóng |
+| Góc nhìn (đổi 2026-10-14, ADR-0009) | 3D, camera kiểu truyền hình (nhìn chéo từ khán đài), bám bóng. Có mức đồ hoạ "Thấp" cho máy yếu |
 | Số người | 7v7 (1 thủ môn + 6), người chơi điều khiển 1 cầu thủ, AI điều khiển phần còn lại |
 | Thời lượng | 2 hiệp × 3 phút thời gian thật + bù giờ, nghỉ giữa hiệp đổi sân (người chơi bấm chuyền để đá hiệp 2). Đồng hồ trong game hiển thị 0'–90', bù giờ hiện 45'+N' / 90'+N'. Đồng hồ chạy cả khi bóng chết; bù giờ = phần chờ thực hiện bóng chết vượt quá 3 s + 1 phút mỗi bàn thắng, làm tròn lên phút, tối đa 3 phút game (1 phút game = 4 s thật) |
 | Đối thủ | Máy, mức **Dễ** (đội máy OVR TB ~60, AI phản ứng chậm, sai số chuyền/sút lớn) và **Khó** (OVR TB ~78, phản ứng nhanh) |
@@ -300,7 +300,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 **Khả thi: TRUNG BÌNH.** Gacha, kinh tế và tài khoản là CRUD + transaction, dễ làm. Phần khó là trận 7v7 với AI "có cảm giác" và thể lực/thay người, trong khi chỉ có một người làm trong 3–4 tháng.
 
 Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2, PRD không quyết định):
-- Engine 2D (Phaser 3/PixiJS), vật lý bóng tự viết, **module mô phỏng dùng chung client/server** (cần cho PvP bất đồng bộ sau MVP).
+- Render 3D bằng Three.js (ADR-0009, thay Phaser 3 của ADR-0002), vật lý bóng tự viết, **module mô phỏng dùng chung client/server** (cần cho PvP bất đồng bộ sau MVP).
 - AI 2 tầng + steering behaviors (research.md §2).
 - Trận vs máy chạy ở client. Server chỉ phát match token và kiểm tra kết quả.
 

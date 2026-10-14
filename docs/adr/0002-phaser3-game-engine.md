@@ -1,7 +1,7 @@
 # ADR-0002: Phaser 3 làm game engine
 
 **Date**: 2026-10-09
-**Status**: accepted
+**Status**: superseded by ADR-0009
 **Deciders**: Chủ dự án + Claude
 
 ## Context

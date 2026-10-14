@@ -25,7 +25,7 @@ _Tạo ở Giai đoạn 3 (2026-10-10) bằng `ecc:blueprint`. Nguồn: `docs/PR
 ## Bất biến chung (kiểm sau MỌI task)
 
 - `pnpm check` xanh (lint + typecheck + test).
-- `packages/sim` không import Phaser/React/DOM/`node:*`, không dùng `Math.random` (lint đã chặn).
+- `packages/sim` không import Three.js/Phaser/React/DOM/`node:*`, không dùng `Math.random` (lint đã chặn).
 - Server không dùng `Math.random`; random cho gacha/ép thẻ đến từ `node:crypto`.
 - Đổi API = sửa schema Zod trong `packages/shared/src/api` **trước**, server và web cùng dùng schema đó (`contract-first`).
 - Mọi thay đổi xu/thẻ chạy trong **một DB transaction**, khoá theo thứ tự `users → pack_boxes → player_cards → squads`, có dòng `coin_transactions` khi xu đổi.
@@ -37,7 +37,7 @@ _Tạo ở Giai đoạn 3 (2026-10-10) bằng `ecc:blueprint`. Nguồn: `docs/PR
 ```
 GĐ5:  5.1 → {5.2, 5.3} → 5.4 → 5.5 → 5.6 → 5.7 → 5.15 → 5.8a → 5.8b → {5.11, 5.12} → 5.13
                           ├─► 5.16 (chọc khe, Could — làm cuối GĐ5 nếu còn thời gian)
-                          └─► 5.9 (cần GĐ4) → 5.17 → 5.10 (cần 5.5) ─► 5.11
+                          └─► 5.9 (cần GĐ4) → 5.17 → 5.10 (cần 5.5) → 5.18a → {5.18b, 5.18c} ─► 5.11
 
 GĐ6:  6.1a → 6.1b → 6.2 ─┐
       6.1a → 6.4 ────────┼─► 6.3a(sau 6.1b) → 6.3b → 6.5 → 6.7 → 6.8 → 6.10 → 6.11 (cần 5.13)
@@ -49,7 +49,7 @@ GĐ7:  7.1 (sau 6.3b) ;  7.2 (sau 6.11) → 7.3 → 7.4 → 7.5 → 7.6
 GĐ8:  8.1 → {8.2, 8.3} → 8.4          GĐ9:  9.1 → 9.2 → 9.3
 ```
 
-- 5.9 (render Phaser) có thể làm song song với 5.5–5.8b sau khi 5.4 xong.
+- 5.9 (render, nay chuyển sang Three.js ở 5.18a — ADR-0009) có thể làm song song với 5.5–5.8b sau khi 5.4 xong.
 - 6.1a–6.5 (server) **không phụ thuộc** GĐ5 — có thể làm xen kẽ, nhưng ROADMAP vẫn đánh dấu theo giai đoạn. 6.11 là điểm hội tụ, cần cả 5.13.
 - 6.12a/b (ép thẻ) là Should: được hoãn nếu trễ (PRD §11); 7.3 và 7.5 khi đó bỏ phần liên quan ép thẻ.
 

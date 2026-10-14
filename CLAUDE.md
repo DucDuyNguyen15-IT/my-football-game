@@ -23,7 +23,7 @@ Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu
 ## Tech stack
 Chi tiết và lý do: `docs/adr/README.md`.
 - **Ngôn ngữ & cấu trúc:** TypeScript, monorepo pnpm (`apps/web`, `apps/server`, `packages/sim`, `packages/shared`). `packages/sim` không được import Phaser/DOM — [ADR-0001](docs/adr/0001-typescript-monorepo-shared-sim.md)
-- **Game engine:** Phaser 3, chỉ dùng để render + input; vật lý/luật/AI nằm trong `packages/sim` — [ADR-0002](docs/adr/0002-phaser3-game-engine.md)
+- **Game engine:** Three.js render trận 3D (camera truyền hình), chỉ vẽ + input; vật lý/luật/AI nằm trong `packages/sim` — [ADR-0009](docs/adr/0009-threejs-3d-match-render.md) (thay Phaser 3 của ADR-0002; code chuyển ở task 5.18a)
 - **UI:** React + Vite, TanStack Query; Phaser nhúng trong `<MatchCanvas>` — [ADR-0003](docs/adr/0003-react-vite-ui.md)
 - **Backend:** Node.js LTS + Fastify, Zod, session cookie + argon2, random bằng `node:crypto`, test bằng Vitest — [ADR-0004](docs/adr/0004-fastify-backend.md)
 - **Database:** PostgreSQL 16+ + Drizzle ORM; ví/hộp thẻ dùng transaction + `FOR UPDATE` — [ADR-0005](docs/adr/0005-postgresql-drizzle.md)
