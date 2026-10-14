@@ -20,7 +20,7 @@ import {
   type MatchState,
   type PlayerState,
 } from '@pitch/sim';
-import { CONTROL_KEYS, keysToInput, type KeyState } from '../input/keyboard';
+import { CONTROL_KEYS, createTapLatch, keysToInput, type KeyState } from '../input/keyboard';
 import { COLORS } from '../render/colors';
 import { lerp, lerpPos, shirtNumber } from '../render/view';
 
@@ -70,6 +70,7 @@ export class MatchScene extends Phaser.Scene {
   private debugText: Phaser.GameObjects.Text | null = null;
   private debugRefreshAt = 0;
   private bridge: MatchBridge | undefined;
+  private readonly taps = createTapLatch();
 
   constructor() {
     super(MATCH_SCENE_KEY);
@@ -100,6 +101,10 @@ export class MatchScene extends Phaser.Scene {
     const keyboard = this.input.keyboard;
     if (!keyboard) throw new Error('MatchScene cần bật input bàn phím');
     this.keys = keyboard.addKeys(CONTROL_KEYS) as Record<keyof KeyState, Phaser.Input.Keyboard.Key>;
+    // Sự kiện `down` vẫn phát khi phím được nhấn và thả trong cùng một khung hình.
+    for (const name of Object.keys(this.keys) as (keyof KeyState)[]) {
+      this.keys[name].on(Phaser.Input.Keyboard.Events.DOWN, () => this.taps.press(name));
+    }
 
     const cam = this.cameras.main;
     const boundX = (HALF_LENGTH + RUNOFF_M) * PX;
@@ -121,16 +126,21 @@ export class MatchScene extends Phaser.Scene {
     // Tạm dừng: không chạy sim, không dồn thời gian để lúc tiếp tục không chạy bù.
     if (this.bridge?.isPaused()) {
       this.accumulator = 0;
+      // Phím bấm trong menu tạm dừng không được tính vào trận.
+      this.taps.consume();
       return;
     }
     this.accumulator += Math.min(deltaMs / 1000, MAX_FRAME_SEC);
-    const input = keysToInput(this.readKeys());
+    const input = keysToInput(this.taps.sample(this.readKeys()));
     const before = this.curr;
+    let ticked = false;
     while (this.accumulator >= TICK_DT) {
       this.prev = this.curr;
       this.curr = step(this.curr, input);
       this.accumulator -= TICK_DT;
+      ticked = true;
     }
+    if (ticked) this.taps.consume();
     this.draw(this.accumulator / TICK_DT);
     if (this.curr !== before) this.bridge?.onState(this.curr);
     if (this.debugText && time >= this.debugRefreshAt) this.refreshDebug(time);
