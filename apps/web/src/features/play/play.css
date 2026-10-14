@@ -1,0 +1,471 @@
+/* Màn trận đấu & HUD — DESIGN.md §6.2. Chỉ animate transform/opacity (§5). */
+
+.play-root {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  background: var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: var(--lh-normal);
+}
+
+.play-root kbd {
+  display: inline-block;
+  padding: 0 var(--sp-1);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-2);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+}
+
+/* ---------- Nút ---------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 40px;
+  padding: 0 var(--sp-5);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: var(--c-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--dur-instant) var(--ease-out);
+}
+.btn:hover {
+  background: var(--c-surface-2);
+}
+.btn:active {
+  transform: scale(0.97);
+}
+.btn:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
+}
+.btn--primary {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+}
+.btn--primary:hover {
+  background: var(--c-accent-hover);
+}
+.btn--danger {
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+.btn--big {
+  min-height: 48px;
+}
+
+/* ---------- Màn (chọn độ khó, kết quả) ---------- */
+.screen {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-5);
+  min-height: 100%;
+  padding: var(--sp-6) var(--sp-4);
+  text-align: center;
+}
+.screen-title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  text-transform: uppercase;
+}
+.difficulty-list {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-4);
+}
+.difficulty {
+  flex-direction: column;
+  gap: var(--sp-1);
+  width: 240px;
+  padding: var(--sp-5);
+  text-transform: none;
+}
+.difficulty-label {
+  font-size: var(--fs-xl);
+  text-transform: uppercase;
+}
+.difficulty-hint {
+  color: var(--c-text-muted);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+}
+
+/* ---------- HUD ---------- */
+.hud {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-hud);
+  pointer-events: none;
+}
+.hud-top {
+  position: absolute;
+  top: var(--sp-3);
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  transform: translateX(-50%);
+}
+.hud-scoreboard {
+  padding: var(--sp-1) var(--sp-5) var(--sp-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+  background: var(--c-scrim);
+  box-shadow: var(--shadow-1);
+  text-align: center;
+}
+.hud-score {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.hud-team {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+}
+.hud-team--home {
+  color: var(--c-team-home);
+}
+.hud-team--away {
+  color: var(--c-team-away);
+}
+.hud-score-num {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+}
+.hud-clock {
+  color: var(--c-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  letter-spacing: var(--tracking-caps);
+}
+.hud-clock-min {
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+.hud-events {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.hud-event {
+  padding: var(--sp-1) var(--sp-3);
+  border-left: 3px solid var(--c-accent);
+  border-radius: var(--radius-sm);
+  background: var(--c-scrim);
+  font-size: var(--fs-sm);
+  animation: hud-in var(--dur-base) var(--ease-out);
+}
+.hud-event--yellow {
+  border-left-color: var(--c-warning);
+}
+.hud-event--red {
+  border-left-color: var(--c-danger);
+}
+.hud-event-mark {
+  margin-right: var(--sp-2);
+}
+.hud-event-mark--home {
+  color: var(--c-team-home);
+}
+.hud-event-mark--away {
+  color: var(--c-team-away);
+}
+
+.hud-player {
+  position: absolute;
+  bottom: var(--sp-4);
+  left: var(--sp-4);
+  width: 220px;
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+  background: var(--c-scrim);
+}
+.hud-player-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+}
+.hud-player-head abbr {
+  text-decoration: none;
+}
+.hud-player-num {
+  font-size: var(--fs-xl);
+  font-variant-numeric: tabular-nums;
+}
+.hud-stamina {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.hud-stamina-label {
+  color: var(--c-text-muted);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.hud-stamina-bar {
+  flex: 1;
+  height: 8px;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-3);
+}
+.hud-stamina-fill {
+  display: block;
+  height: 100%;
+  background: var(--c-success);
+  transform-origin: left center;
+  transition: transform var(--dur-slow) var(--ease-out);
+}
+.hud-stamina-fill--low {
+  background: var(--c-warning);
+}
+.hud-stamina-fill--critical {
+  background: var(--c-danger);
+}
+
+.hud-pause-hint {
+  position: absolute;
+  right: var(--sp-4);
+  bottom: var(--sp-4);
+  margin: 0;
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+}
+/* Nằm trên panel cầu thủ để màn hẹp không bị đè. */
+.hud-hints {
+  position: absolute;
+  bottom: 96px;
+  left: 50%;
+  margin: 0;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-md);
+  background: var(--c-scrim);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
+
+/* "VÀO!" quét ngang màn hình 1.2s. */
+.goal-banner {
+  position: absolute;
+  top: 40%;
+  left: 0;
+  z-index: var(--z-overlay);
+  color: var(--c-accent);
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-bold);
+  letter-spacing: var(--tracking-caps);
+  pointer-events: none;
+  animation: goal-sweep 1.2s var(--ease-in-out) both;
+}
+@keyframes goal-sweep {
+  from {
+    transform: translateX(-30vw);
+    opacity: 0;
+  }
+  20%,
+  80% {
+    opacity: 1;
+  }
+  to {
+    transform: translateX(110vw);
+    opacity: 0;
+  }
+}
+@keyframes hud-in {
+  from {
+    transform: translateY(-4px);
+    opacity: 0;
+  }
+}
+
+/* ---------- Lớp phủ: nghỉ giữa hiệp, tạm dừng ---------- */
+.overlay {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-modal);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  background: var(--c-scrim);
+  text-align: center;
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+.overlay--passive {
+  z-index: var(--z-overlay);
+  pointer-events: none;
+}
+.overlay p {
+  margin: 0;
+}
+.overlay-kicker {
+  margin: 0;
+  color: var(--c-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.overlay-score {
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+}
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 320px;
+  padding: var(--sp-5);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-lg);
+  background: var(--c-surface-1);
+  box-shadow: var(--shadow-2);
+}
+.menu {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.menu--row {
+  flex-direction: row;
+  justify-content: center;
+}
+.controls-table {
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+  text-align: left;
+}
+.controls-table th,
+.controls-table td {
+  padding: var(--sp-1) var(--sp-3);
+  border-bottom: 1px solid var(--c-line);
+}
+.controls-table thead th {
+  color: var(--c-text-muted);
+  font-weight: var(--fw-medium);
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* ---------- Kết quả ---------- */
+.result-outcome {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-3xl);
+  font-weight: var(--fw-bold);
+  line-height: var(--lh-tight);
+  text-transform: uppercase;
+}
+.result-outcome--win {
+  color: var(--c-accent);
+}
+.result-outcome--loss {
+  color: var(--c-danger);
+}
+.result-score {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.result-score span {
+  font-size: var(--fs-lg);
+}
+.result-shots,
+.result-empty {
+  margin: 0;
+  color: var(--c-text-muted);
+}
+.result-subtitle {
+  margin: 0;
+  color: var(--c-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.result-bookings {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.card-chip {
+  display: inline-block;
+  width: 10px;
+  height: 14px;
+  margin-right: var(--sp-2);
+  border-radius: var(--radius-sm);
+  vertical-align: -2px;
+}
+.card-chip--yellow {
+  background: var(--c-warning);
+}
+.card-chip--red {
+  background: var(--c-danger);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-banner {
+    left: 50%;
+    transform: translateX(-50%);
+    animation: fade-in 200ms linear both;
+  }
+  .hud-event,
+  .overlay {
+    animation-name: fade-in;
+    animation-duration: 160ms;
+  }
+  .hud-stamina-fill,
+  .btn {
+    transition: none;
+  }
+}

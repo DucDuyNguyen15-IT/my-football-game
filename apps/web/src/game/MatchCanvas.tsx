@@ -2,7 +2,12 @@ import { useEffect, useRef } from 'react';
 import Phaser from 'phaser';
 import type { MatchSetup } from '@pitch/sim';
 import { COLORS } from './render/colors';
-import { MATCH_SCENE_KEY, MatchScene, type MatchSceneData } from './scenes/MatchScene';
+import {
+  MATCH_SCENE_KEY,
+  MatchScene,
+  type MatchBridge,
+  type MatchSceneData,
+} from './scenes/MatchScene';
 
 type ListenerArgs = Parameters<Document['addEventListener']>;
 
@@ -40,7 +45,7 @@ function trackPhaserGlobals(game: Phaser.Game): () => void {
  * Ranh giới React ↔ Phaser (ADR-0003): tạo `Phaser.Game` khi mount, huỷ hẳn (cả canvas) khi unmount
  * để vào/ra trận nhiều lần không rò canvas, listener hay WebGL context.
  */
-export function MatchCanvas({ setup }: { setup: MatchSetup }) {
+export function MatchCanvas({ setup, bridge }: { setup: MatchSetup; bridge?: MatchBridge }) {
   const hostRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,7 +62,7 @@ export function MatchCanvas({ setup }: { setup: MatchSetup }) {
       audio: { noAudio: true },
     });
     const releaseGlobals = trackPhaserGlobals(game);
-    const data: MatchSceneData = { setup };
+    const data: MatchSceneData = { setup, bridge };
     game.scene.add(MATCH_SCENE_KEY, MatchScene, true, data);
 
     return () => {
@@ -72,7 +77,7 @@ export function MatchCanvas({ setup }: { setup: MatchSetup }) {
       });
       game.destroy(true);
     };
-  }, [setup]);
+  }, [setup, bridge]);
 
   return <div ref={hostRef} style={{ width: '100%', height: '100%', overflow: 'hidden' }} />;
 }

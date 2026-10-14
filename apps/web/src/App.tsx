@@ -18,8 +18,7 @@ export function App() {
       <h1>Pitch Cards</h1>
       <p>Server: {status}</p>
       <p>
-        <Link to="/play">Đá thử vs máy Dễ</Link> ·{' '}
-        <Link to="/play?difficulty=hard">vs máy Khó</Link>
+        <Link to="/play">Đá vs máy</Link>
       </p>
     </main>
   );

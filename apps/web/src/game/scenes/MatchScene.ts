@@ -26,8 +26,16 @@ import { lerp, lerpPos, shirtNumber } from '../render/view';
 
 export const MATCH_SCENE_KEY = 'match';
 
+/** Kênh scene ↔ React (HUD): React đọc state để hiển thị, scene hỏi có đang tạm dừng không. */
+export interface MatchBridge {
+  isPaused(): boolean;
+  /** Gọi sau mỗi khung hình có tick mới. */
+  onState(state: MatchState): void;
+}
+
 export interface MatchSceneData {
   setup: MatchSetup;
+  bridge?: MatchBridge;
 }
 
 /** Pixel trên mét ở zoom 1. */
@@ -61,6 +69,7 @@ export class MatchScene extends Phaser.Scene {
   private marker!: Phaser.GameObjects.Triangle;
   private debugText: Phaser.GameObjects.Text | null = null;
   private debugRefreshAt = 0;
+  private bridge: MatchBridge | undefined;
 
   constructor() {
     super(MATCH_SCENE_KEY);
@@ -71,6 +80,7 @@ export class MatchScene extends Phaser.Scene {
     this.prev = this.curr;
     this.accumulator = 0;
     this.sprites.clear();
+    this.bridge = data.bridge;
   }
 
   create(): void {
@@ -104,17 +114,25 @@ export class MatchScene extends Phaser.Scene {
 
     if (import.meta.env.DEV) this.createDebugOverlay();
     this.draw(1);
+    this.bridge?.onState(this.curr);
   }
 
   override update(time: number, deltaMs: number): void {
+    // Tạm dừng: không chạy sim, không dồn thời gian để lúc tiếp tục không chạy bù.
+    if (this.bridge?.isPaused()) {
+      this.accumulator = 0;
+      return;
+    }
     this.accumulator += Math.min(deltaMs / 1000, MAX_FRAME_SEC);
     const input = keysToInput(this.readKeys());
+    const before = this.curr;
     while (this.accumulator >= TICK_DT) {
       this.prev = this.curr;
       this.curr = step(this.curr, input);
       this.accumulator -= TICK_DT;
     }
     this.draw(this.accumulator / TICK_DT);
+    if (this.curr !== before) this.bridge?.onState(this.curr);
     if (this.debugText && time >= this.debugRefreshAt) this.refreshDebug(time);
   }
 
