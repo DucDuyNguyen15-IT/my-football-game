@@ -149,7 +149,7 @@ Khung chung cho các màn ngoài trận: thanh trên cùng cao 56px (logo chữ 
 ```
 - **Bảng tỉ số** ở giữa phía trên: ô màu đội, tỉ số Barlow 40px, hiệp + phút (0'–90'). Các sự kiện (bàn thắng, thẻ, thay người) hiện thành dải nhỏ dưới bảng tỉ số trong 3s.
 - **Panel cầu thủ** ở góc dưới-trái: số áo, tên, vị trí, thanh thể lực. Thanh đổi sang vàng khi < 50% và đỏ khi < 30% (mốc PRD làm giảm tốc độ).
-- **Thanh lực sút** hiện cạnh cầu thủ khi giữ D, đầy trong 1s.
+- **Thanh lực** hiện trên đầu cầu thủ khi giữ D (sút, màu chanh, đầy trong 1 s) hoặc S/A (chuyền, xanh dương, đầy trong 0,8 s).
 - **Minimap** góc trên-phải hiện 14 chấm màu đội và bóng trắng.
 - Bàn thắng: chữ "VÀO!" màu chanh quét ngang màn hình 1.2s, rồi về giao bóng.
 - Lần đầu vào trận: hiện dải gợi ý phím điều khiển ở cạnh dưới trong 10s đầu, sau đó ẩn và mở lại được trong menu tạm dừng.
@@ -160,8 +160,8 @@ Khung chung cho các màn ngoài trận: thanh trên cùng cao 56px (logo chữ 
 |---|---|---|
 | Mũi tên | Di chuyển | Di chuyển |
 | E (giữ) | Chạy nước rút | Chạy nước rút |
-| S | Chuyền ngắn sệt | Đổi cầu thủ đang điều khiển (người gần bóng nhất) |
-| A | Chuyền dài bổng | Xoạc |
+| S | Chuyền sệt — giữ nạp lực, nhả để chuyền (bấm nhanh = chuyền ngắn) | Đổi cầu thủ đang điều khiển (người gần bóng nhất) |
+| A | Chuyền bổng — giữ nạp lực, nhả để chuyền | Xoạc |
 | D (giữ để tăng lực) | Sút | Giữ: áp sát người có bóng; vào tầm thì tắc bóng (task 5.15) |
 | W | Chọc khe (Could, task 5.16) | — |
 | Q + W | Chọc khe bổng (Could, task 5.16) | — |

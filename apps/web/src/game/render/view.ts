@@ -2,7 +2,8 @@
  * Tính toán phía hiển thị, thuần (không Three.js): nội suy giữa 2 tick, số áo. Không chứa luật/vật lý.
  */
 import type { SquadSlot } from '@pitch/shared';
-import type { Vec2 } from '@pitch/sim';
+import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS } from '@pitch/sim';
+import type { MatchState, Vec2 } from '@pitch/sim';
 
 /**
  * Dịch chuyển trong 1 tick lớn hơn mức này (m) là dịch chuyển tức thời (đặt bóng, xếp lại đội hình
@@ -27,4 +28,25 @@ export function shirtNumber(slot: SquadSlot): number {
   if (slot === 'GK') return 1;
   const n = Number(slot.slice(1));
   return slot.startsWith('P') ? n + 1 : n + 7;
+}
+
+export interface ChargeMeter {
+  /** Thanh sút (D) hay chuyền sệt (S) / chuyền bổng (A). */
+  kind: 'shot' | 'ground' | 'lob';
+  /** Độ đầy 0…1. */
+  fill: number;
+}
+
+/** Thanh lực trên đầu cầu thủ đang giữ nút sút/chuyền (DESIGN.md §6.2); null khi không nạp. */
+export function chargeMeter(
+  state: Pick<MatchState, 'shotChargeTicks' | 'passCharge'>,
+): ChargeMeter | null {
+  if (state.passCharge) {
+    const fill = Math.min(1, state.passCharge.ticks / PASS_FULL_CHARGE_TICKS);
+    return { kind: state.passCharge.kind, fill };
+  }
+  if (state.shotChargeTicks > 0) {
+    return { kind: 'shot', fill: Math.min(1, state.shotChargeTicks / MAX_CHARGE_TICKS) };
+  }
+  return null;
 }

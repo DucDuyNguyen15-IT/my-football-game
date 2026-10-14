@@ -9,7 +9,7 @@ import type { GraphicsQuality, MatchBridge } from '../bridge';
 import { NO_KEYS, createTapLatch, keyForCode, keysToInput, type KeyState } from '../input/keyboard';
 import { followCamera, initialCamera, type CameraState } from '../render/camera';
 import { COLORS } from '../render/colors';
-import { lerp, lerpPos } from '../render/view';
+import { chargeMeter, lerp, lerpPos } from '../render/view';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
 import { buildPitch } from './pitch';
 import { buildStadium } from './stadium';
@@ -18,6 +18,9 @@ import { buildStadium } from './stadium';
 const MAX_FRAME_SEC = 0.25;
 const MAX_PIXEL_RATIO = { high: 1.5, low: 1 } as const;
 const MARKER_Y = 2.2;
+const CHARGE_BAR_Y = 2.75;
+/** Màu thanh lực: chuyền xanh dương, sút màu chanh (nút chính). */
+const CHARGE_COLORS = { ground: 0x5cc8ff, lob: 0x5cc8ff, shot: COLORS.accent } as const;
 const DEBUG_REFRESH_MS = 250;
 
 /** Giải phóng geometry/material/texture của cả cây (dùng chung thì chỉ giải phóng một lần). */
@@ -54,6 +57,7 @@ export class MatchRenderer {
   private readonly ball: THREE.Mesh;
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
+  private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
 
   private held: KeyState = { ...NO_KEYS };
   private readonly taps = createTapLatch();
@@ -98,7 +102,8 @@ export class MatchRenderer {
     this.ball = kit.createBall();
     this.ballShadow = kit.createBlobShadow();
     this.marker = kit.createMarker();
-    this.scene.add(this.ball, this.ballShadow, this.marker);
+    this.chargeBar = kit.createChargeBar();
+    this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(parent);
@@ -217,6 +222,16 @@ export class MatchRenderer {
     if (controlled) {
       const bob = Math.sin(performance.now() / 180) * 0.08;
       this.marker.position.set(controlled.position.x, MARKER_Y + bob, controlled.position.z);
+    }
+
+    const meter = controlled ? chargeMeter(curr) : null;
+    const bar = this.chargeBar;
+    bar.group.visible = meter !== null;
+    if (meter && controlled) {
+      bar.group.position.set(controlled.position.x, CHARGE_BAR_Y, controlled.position.z);
+      bar.group.quaternion.copy(this.camera.quaternion);
+      bar.fill.scale.x = Math.max(0.001, meter.fill);
+      bar.fillMat.color.setHex(CHARGE_COLORS[meter.kind]);
     }
 
     const ground = lerpPos(prev.ball.pos, curr.ball.pos, alpha);

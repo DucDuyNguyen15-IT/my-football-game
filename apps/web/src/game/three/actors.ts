@@ -11,6 +11,8 @@ import { shirtNumber } from '../render/view';
 export const BALL_DRAW_RADIUS = 0.2;
 const BODY_H = 1.25;
 const LEG_H = 0.55;
+const CHARGE_BAR_W = 1.5;
+const CHARGE_BAR_H = 0.22;
 
 function numberTexture(n: number, ink: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
@@ -107,6 +109,33 @@ export class ActorKit {
     blob.rotation.x = -Math.PI / 2;
     blob.position.y = 0.015;
     return blob;
+  }
+
+  /**
+   * Thanh lực (giữ S/A/D) trên đầu cầu thủ: nền tối + phần đầy co giãn theo trục x từ mép trái.
+   * Nhóm được xoay theo camera mỗi khung hình nên luôn nhìn thẳng.
+   */
+  createChargeBar(): { group: THREE.Group; fill: THREE.Mesh; fillMat: THREE.MeshBasicMaterial } {
+    const group = new THREE.Group();
+    const bg = new THREE.Mesh(
+      new THREE.PlaneGeometry(CHARGE_BAR_W + 0.06, CHARGE_BAR_H + 0.06),
+      new THREE.MeshBasicMaterial({ color: COLORS.bg, transparent: true, opacity: 0.8, depthTest: false }),
+    );
+    // Hình học dời sang phải nửa bề rộng để scale.x co giãn từ mép trái.
+    const fillGeo = new THREE.PlaneGeometry(CHARGE_BAR_W, CHARGE_BAR_H).translate(CHARGE_BAR_W / 2, 0, 0);
+    // Cùng là vật trong suốt với nền thì renderOrder mới quyết định thứ tự vẽ (vật đặc luôn vẽ trước).
+    const fillMat = new THREE.MeshBasicMaterial({
+      color: COLORS.accent,
+      transparent: true,
+      depthTest: false,
+    });
+    const fill = new THREE.Mesh(fillGeo, fillMat);
+    fill.position.set(-CHARGE_BAR_W / 2, 0, 0.001);
+    bg.renderOrder = 10;
+    fill.renderOrder = 11;
+    group.add(bg, fill);
+    group.visible = false;
+    return { group, fill, fillMat };
   }
 
   /** Mũi tên ▼ trên đầu cầu thủ đang điều khiển (DESIGN.md §6.2). */
