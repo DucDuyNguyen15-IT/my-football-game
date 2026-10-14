@@ -9,9 +9,11 @@ import type { GraphicsQuality, MatchBridge } from '../bridge';
 import { NO_KEYS, createTapLatch, keyForCode, keysToInput, type KeyState } from '../input/keyboard';
 import { followCamera, initialCamera, type CameraState } from '../render/camera';
 import { COLORS } from '../render/colors';
+import { animationEvents } from '../render/animation';
 import { chargeMeter, lerp, lerpPos } from '../render/view';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
 import { buildPitch } from './pitch';
+import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
 import { buildStadium } from './stadium';
 
 /** Khung hình bị treo lâu (tab ẩn, debugger) thì bỏ bớt thời gian, không chạy dồn hàng trăm tick. */
@@ -53,7 +55,11 @@ export class MatchRenderer {
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
   private readonly camera = new THREE.PerspectiveCamera(38, 1, 0.5, 400);
-  private readonly actors = new Map<string, THREE.Group>();
+  private readonly actors = new Map<string, THREE.Object3D>();
+  /** Cầu thủ dùng model Mixamo (sau khi nạp xong `player.glb`); trống thì vẽ cầu thủ khối. */
+  private readonly models = new Map<string, ModelActor>();
+  private playerModel: PlayerModel | null = null;
+  private disposed = false;
   private readonly ball: THREE.Mesh;
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
@@ -117,6 +123,27 @@ export class MatchRenderer {
     this.draw(1, 0);
     this.bridge?.onState(this.curr);
     this.raf = requestAnimationFrame(this.frame);
+    void loadPlayerModel().then((model) => {
+      if (model && !this.disposed) this.useModel(model);
+    });
+  }
+
+  /** Thay cầu thủ khối bằng model có hoạt ảnh (nạp xong sau khi trận đã chạy). */
+  private useModel(model: PlayerModel): void {
+    this.playerModel = model;
+    const materials = new ModelMaterials();
+    for (const p of this.curr.players) {
+      const placeholder = this.actors.get(p.id);
+      const actor = new ModelActor(model, p, materials);
+      if (placeholder) {
+        actor.root.position.copy(placeholder.position);
+        actor.root.rotation.y = placeholder.rotation.y;
+        this.scene.remove(placeholder);
+      }
+      this.actors.set(p.id, actor.root);
+      this.models.set(p.id, actor);
+      this.scene.add(actor.root);
+    }
   }
 
   setQuality(quality: GraphicsQuality): void {
@@ -135,12 +162,14 @@ export class MatchRenderer {
   }
 
   dispose(): void {
+    this.disposed = true;
     cancelAnimationFrame(this.raf);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
     this.resizeObserver.disconnect();
     disposeTree(this.scene);
+    if (this.playerModel) disposeTree(this.playerModel.scene);
     this.renderer.dispose();
     // Trình duyệt chỉ cho ~16 WebGL context sống cùng lúc; trả ngay thay vì chờ GC.
     this.renderer.forceContextLoss();
@@ -185,19 +214,21 @@ export class MatchRenderer {
         this.curr = step(this.curr, input);
         this.accumulator -= TICK_DT;
         ticked = true;
+        for (const e of animationEvents(this.prev, this.curr))
+          this.models.get(e.playerId)?.trigger(e.clip);
       }
       if (ticked) {
         this.taps.consume();
         this.bridge?.onState(this.curr);
       }
     }
-    this.draw(this.accumulator / TICK_DT, dt);
+    this.draw(this.accumulator / TICK_DT, dt, this.bridge?.isPaused() ? 0 : dt);
     this.renderer.render(this.scene, this.camera);
     if (this.debug) this.refreshDebug(now);
   };
 
   /** Vẽ trạng thái nội suy: `alpha` = 0 là tick trước, 1 là tick hiện tại. */
-  private draw(alpha: number, dt: number): void {
+  private draw(alpha: number, dt: number, animDt = dt): void {
     const { prev, curr } = this;
     const prevById = new Map(prev.players.map((p) => [p.id, p]));
     const onPitch = new Set<string>();
@@ -208,13 +239,16 @@ export class MatchRenderer {
       onPitch.add(p.id);
       const pos = lerpPos((prevById.get(p.id) ?? p).pos, p.pos, alpha);
       actor.position.set(pos.x, 0, pos.y);
-      actor.rotation.y = headingFromFacing(p.facing);
+      const model = this.models.get(p.id);
+      if (model) model.update(animDt, p, curr, headingFromFacing(p.facing));
+      else actor.rotation.y = headingFromFacing(p.facing);
     }
     // Người bị thẻ đỏ rời sân (tài nguyên dùng chung, giải phóng khi huỷ renderer).
     for (const [id, actor] of this.actors) {
       if (onPitch.has(id)) continue;
       this.scene.remove(actor);
       this.actors.delete(id);
+      this.models.delete(id);
     }
 
     const controlled = this.actors.get(curr.controlledId);

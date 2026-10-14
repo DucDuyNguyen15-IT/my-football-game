@@ -7,6 +7,7 @@
     "node": ">=24"
   },
   "scripts": {
+    "assets": "pnpm --filter @pitch/web assets",
     "dev": "pnpm --parallel --filter @pitch/web --filter @pitch/server dev",
     "build": "pnpm -r build",
     "test": "vitest run",

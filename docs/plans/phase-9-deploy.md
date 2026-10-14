@@ -13,6 +13,7 @@
 - **Xong khi:** một lệnh dựng được toàn hệ thống.
 
 ### 9.2 — Chọn nhà cung cấp & deploy `[ ]`
+- **Lưu ý (2026-10-14, task 5.18d):** `apps/web/public/models/player.glb` không có trong Git (giấy phép Mixamo, repo public). Khi deploy: chạy `pnpm assets` trên máy có `assets-src/mixamo/` rồi **chép tay** file `player.glb` vào thư mục web tĩnh trên server (hoặc mount volume trong Docker) — agent phải hướng dẫn chủ dự án từng bước. Thiếu file thì game vẫn chạy với cầu thủ khối.
 - **Phụ thuộc:** 9.1 · **Model:** strongest
 - **Bối cảnh:** ADR-0007 (đang `proposed`); skill `ecc:deployment-patterns`.
 - **Việc cần làm:** hỏi người dùng chốt ngân sách/nhà cung cấp → cập nhật ADR-0007 thành `accepted` (hoặc ADR mới nếu đổi hướng). Dựng VPS: firewall (chỉ 22/80/443), SSH key, cập nhật tự động; trỏ domain; deploy; cron `pg_dump` hằng ngày ra nơi lưu trữ ngoài + **thử khôi phục** một lần; ghi quy trình deploy/rollback.

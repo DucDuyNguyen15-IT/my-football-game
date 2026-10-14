@@ -44,5 +44,6 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | `pnpm check` | lint + typecheck + test — **phải xanh trước mỗi commit** |
 | `pnpm build` | Build web (`apps/web/dist`) + server (`apps/server/dist`) |
 | `pnpm format` | Prettier |
+| `pnpm assets` | Dựng `apps/web/public/models/player.glb` từ file Mixamo trong `assets-src/mixamo/` (cả hai **không commit** — giấy phép Mixamo, repo public; thiếu file thì trận dùng cầu thủ khối) |
 
 Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất biến chung).
