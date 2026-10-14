@@ -27,6 +27,29 @@ export const PASS_LANE_PENALTY = 0.5;
 /** Chuyền đón trước người nhận đang chạy tối đa chừng này mét. */
 export const PASS_LEAD_MAX = 5;
 
+/*
+ * Lực chuyền (giữ S/A rồi nhả, PRD §5 đổi 2026-10-14): lực 0 = bấm nhanh, chuyền y như trước khi có
+ * thanh lực; lực 1 = ưu tiên người nhận xa hơn, bóng sệt căng hơn, chuyền khoảng trống xa hơn.
+ */
+/** Giữ ngắn hơn chừng này tick vẫn tính là bấm nhanh (lực 0). */
+export const PASS_TAP_TICKS = 6;
+/** Giữ tới chừng này tick (0,8 s) thì đầy thanh lực chuyền. */
+export const PASS_FULL_CHARGE_TICKS = 48;
+/** Lực đầy: ưu tiên người nhận cách chừng này mét. */
+export const PASS_POWER_PREF_DIST = 30;
+/** Lực 0: khoảng cách ưu tiên ngắn nhất (m). */
+const PASS_POWER_MIN_DIST = 8;
+/** Phạt điểm mỗi mét lệch khỏi khoảng cách ưu tiên, nhân với lực. */
+export const PASS_POWER_DIST_WEIGHT = 0.03;
+/** Lực đầy cộng thêm chừng này m/s vào vận tốc bóng sệt khi tới chân người nhận. */
+export const PASS_POWER_ARRIVAL_BONUS = 6;
+
+/** Lực chuyền 0…1 theo số tick đã giữ S/A. */
+export function passPower(chargeTicks: number): number {
+  const t = (chargeTicks - PASS_TAP_TICKS) / (PASS_FULL_CHARGE_TICKS - PASS_TAP_TICKS);
+  return Math.min(1, Math.max(0, t));
+}
+
 /** Khoảng cách từ `p` tới đoạn `a`→`b`; null nếu `p` không nằm giữa hai đầu (trước `a` hoặc sau `b`). */
 function distToLane(p: Vec2, a: Vec2, b: Vec2): number | null {
   const ab = sub(b, a);
@@ -60,7 +83,9 @@ export function choosePassTarget(
   dir: Vec2,
   maxRange = Infinity,
   kind: PassKind = 'ground',
+  power = 0,
 ): PlayerState | null {
+  const prefDist = PASS_POWER_MIN_DIST + (PASS_POWER_PREF_DIST - PASS_POWER_MIN_DIST) * power;
   const unit = normalize(dir);
   let best: PlayerState | null = null;
   let bestScore = -Infinity;
@@ -72,7 +97,8 @@ export function choosePassTarget(
     const cos = dot(unit, to) / dist;
     if (cos < PASS_CONE_COS) continue;
     const blocked = kind === 'ground' ? lanePenalty(players, passer, p.pos) : 0;
-    const score = cos - dist * PASS_DIST_PENALTY - blocked;
+    const reach = power * Math.abs(dist - prefDist) * PASS_POWER_DIST_WEIGHT;
+    const score = cos - dist * PASS_DIST_PENALTY - blocked - reach;
     if (score > bestScore) {
       best = p;
       bestScore = score;
@@ -128,13 +154,13 @@ function expTaylor(x: number): number {
 }
 
 /**
- * Vận tốc ban đầu để bóng lăn `dist` mét rồi còn PASS_ARRIVAL_SPEED. Giải đúng mô hình lăn của
+ * Vận tốc ban đầu để bóng lăn `dist` mét rồi còn `arrival` m/s. Giải đúng mô hình lăn của
  * `physics/ball.ts`: d(v²)/dx = −2(a + k·v²) ⇒ v0² = (va² + a/k)·e^{2k·d} − a/k.
  */
-export function groundPassSpeed(dist: number): number {
+export function groundPassSpeed(dist: number, arrival = PASS_ARRIVAL_SPEED): number {
   const a = ROLL_DECEL;
   const k = AIR_DRAG;
-  const va2 = PASS_ARRIVAL_SPEED * PASS_ARRIVAL_SPEED;
+  const va2 = arrival * arrival;
   return Math.sqrt((va2 + a / k) * expTaylor(2 * k * Math.max(0, dist)) - a / k);
 }
 
@@ -149,6 +175,8 @@ export function passBall(
   kind: PassKind,
   rng: RngState,
   errorMult = 1,
+  /** Lực chuyền 0…1 của người chơi: bóng sệt tới chân nhanh hơn. */
+  passPow = 0,
 ): { ball: BallState; rng: RngState } {
   // Sai số chia cho hệ số này: mệt và errorMult > 1 đều làm sai số lớn hơn.
   const fatigue = fatigueFactor(passer.stamina) / errorMult;
@@ -158,10 +186,16 @@ export function passBall(
   const [dir, r1] = deviate(aim, passAngleErrFor(passer.stats.passing) / fatigue, rng);
   const [g, r2] = nextGaussian(r1);
   const power = Math.max(0.2, 1 + (g * passPowerErrFor(passer.stats.passing)) / fatigue);
+  const arrival = PASS_ARRIVAL_SPEED + PASS_POWER_ARRIVAL_BONUS * passPow;
 
   if (kind === 'ground') {
     return {
-      ball: { pos: from, vel: scale(dir, groundPassSpeed(dist) * power), z: 0, vz: 0 },
+      ball: {
+        pos: from,
+        vel: scale(dir, groundPassSpeed(dist, arrival) * power),
+        z: 0,
+        vz: 0,
+      },
       rng: r2,
     };
   }

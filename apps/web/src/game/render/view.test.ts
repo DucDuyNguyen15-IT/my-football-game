@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SNAP_DISTANCE, lerpPos, shirtNumber } from './view';
+import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS } from '@pitch/sim';
+import { SNAP_DISTANCE, chargeMeter, lerpPos, shirtNumber } from './view';
 
 describe('lerpPos', () => {
   it('nội suy tuyến tính giữa tick trước và tick hiện tại', () => {
@@ -25,5 +26,26 @@ describe('shirtNumber', () => {
     expect(shirtNumber('P6')).toBe(7);
     expect(shirtNumber('B1')).toBe(8);
     expect(shirtNumber('B5')).toBe(12);
+  });
+});
+
+describe('chargeMeter', () => {
+  const none = { shotChargeTicks: 0, passCharge: null };
+
+  it('không nạp lực thì không có thanh', () => {
+    expect(chargeMeter(none)).toBeNull();
+  });
+
+  it('giữ D: thanh sút đầy dần tới MAX_CHARGE_TICKS', () => {
+    expect(chargeMeter({ ...none, shotChargeTicks: MAX_CHARGE_TICKS / 2 })).toEqual({
+      kind: 'shot',
+      fill: 0.5,
+    });
+    expect(chargeMeter({ ...none, shotChargeTicks: MAX_CHARGE_TICKS * 2 })?.fill).toBe(1);
+  });
+
+  it('giữ S/A: thanh chuyền theo số tick đã giữ', () => {
+    const passCharge = { kind: 'lob' as const, ticks: PASS_FULL_CHARGE_TICKS / 4, dir: { x: 1, y: 0 } };
+    expect(chargeMeter({ ...none, passCharge })).toEqual({ kind: 'lob', fill: 0.25 });
   });
 });

@@ -8,7 +8,14 @@ import {
 } from './ai/player';
 import { asKicker, diveStep, diveTarget, resolveSave } from './ai/goalkeeper';
 import { aiMove, arrive, goalSidePoint, thinkTeam } from './ai/team';
-import { choosePassTarget, passBall, passLeadPoint, type PassKind } from './actions/pass';
+import {
+  choosePassTarget,
+  passBall,
+  passLeadPoint,
+  passPower,
+  PASS_FULL_CHARGE_TICKS,
+  type PassKind,
+} from './actions/pass';
 import { attackSign, shootBall, shotPower, shotTarget } from './actions/shoot';
 import {
   isFromBehind,
@@ -136,6 +143,7 @@ function enterDeadBall(
     kickLock: null,
     lastShot: null,
     shotChargeTicks: 0,
+    passCharge: null,
     tackleRecovery: {},
     standTackleCooldown: {},
     controlledId:
@@ -187,6 +195,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     ownerSinceTick: 0,
     kickLock: null,
     shotChargeTicks: 0,
+    passCharge: null,
     controlledId: '',
     input: NO_INPUT,
     ai: { home: null, away: null },
@@ -227,14 +236,19 @@ function kickPass(
   dir: Vec2,
   kind: PassKind,
   rng: RngState,
+  /** Lực chuyền 0…1 (giữ S/A); 0 = bấm nhanh, như bóng chết và trước khi có thanh lực. */
+  power = 0,
 ): { ball: BallState; rng: RngState; receiverId: string | null } {
   const range = kind === 'lob' ? lobRangeFor(passer.stats.passing) : Infinity;
-  const target = choosePassTarget(players, passer, dir, range, kind);
-  const looseDist = kind === 'lob' ? range * LOOSE_LOB_RANGE_FRAC : LOOSE_PASS_DIST;
+  const target = choosePassTarget(players, passer, dir, range, kind, power);
+  const looseDist =
+    kind === 'lob'
+      ? range * (LOOSE_LOB_RANGE_FRAC + (1 - LOOSE_LOB_RANGE_FRAC) * power)
+      : LOOSE_PASS_DIST * (1 + power);
   const to = target
     ? passLeadPoint(from, target, kind)
     : add(from, scale(normalize(dir), looseDist));
-  return { ...passBall(passer, from, to, kind, rng), receiverId: target?.id ?? null };
+  return { ...passBall(passer, from, to, kind, rng, 1, power), receiverId: target?.id ?? null };
 }
 
 /** Khung thành nhà của `team` trong hiệp `half`. */
@@ -364,6 +378,7 @@ function runClock(state: MatchState): MatchState {
     ballOwnerId: null,
     kickLock: null,
     shotChargeTicks: 0,
+    passCharge: null,
     ball: restingBall(state.ball.pos),
   };
 }
@@ -444,6 +459,7 @@ function stepDeadBall(
       kickLock: { playerId: taker.id, untilTick: tick + KICK_LOCK_TICKS },
       lastTouchTeam: restart.team,
       shotChargeTicks: 0,
+      passCharge: null,
       shots: kicked.shot ? addShot(state.shots, restart.team) : state.shots,
       lastShot: shotFrom(kicked.shot, restart.team, tick),
       input,
@@ -478,6 +494,7 @@ function stepDeadBall(
     controlledId,
     ai,
     shotChargeTicks,
+    passCharge: null,
     stoppage: { ...state.stoppage, overrunTicks: state.stoppage.overrunTicks + overrun },
     input,
   };
@@ -497,7 +514,8 @@ function stepPlay(
   pressed: (b: Button) => boolean,
   tick: number,
 ): MatchState {
-  let { ball, rng, kickLock, controlledId, ballOwnerId, shotChargeTicks, shots } = state;
+  let { ball, rng, kickLock, controlledId, ballOwnerId, shotChargeTicks, passCharge, shots } =
+    state;
   let { lastShot, lastTouchTeam } = state;
   const byId = (id: string) => state.players.find((p) => p.id === id);
   const lock = (playerId: string) => ({ playerId, untilTick: tick + KICK_LOCK_TICKS });
@@ -533,23 +551,52 @@ function stepPlay(
   const humanBefore = humanOf(state, controlledId);
   const me = humanBefore === null ? undefined : byId(humanBefore);
   if (me && ballOwnerId === me.id) {
-    const kind: PassKind | null = pressed('pass') ? 'ground' : pressed('lob') ? 'lob' : null;
+    // S/A: bấm bắt đầu nạp lực chuyền, giữ thì lực tăng, nhả mới chuyền (đang nạp sút thì bỏ qua).
+    const startKind: PassKind | null =
+      passCharge || shotChargeTicks > 0
+        ? null
+        : pressed('pass')
+          ? 'ground'
+          : pressed('lob')
+            ? 'lob'
+            : null;
+    const holding = passCharge !== null && input[passCharge.kind === 'ground' ? 'pass' : 'lob'];
+    const moveDir = length(input.move) > 0 ? normalize(input.move) : null;
     const releasedShot = !input.shoot && shotChargeTicks > 0;
     if (losesBallOnTurn(me, input.move)) {
       // Bóng tuột chân, giữ vận tốc đang chạy.
       ballOwnerId = null;
       kickLock = lock(me.id);
       shotChargeTicks = 0;
-    } else if (kind) {
+      passCharge = null;
+    } else if (startKind) {
+      passCharge = { kind: startKind, ticks: 1, dir: moveDir ?? me.facing };
+    } else if (passCharge && holding) {
+      passCharge = {
+        ...passCharge,
+        ticks: Math.min(PASS_FULL_CHARGE_TICKS, passCharge.ticks + 1),
+        dir: moveDir ?? passCharge.dir,
+      };
+    } else if (passCharge) {
       // Chuẩn hoá: độ lớn cần analog chỉ chọn hướng, không làm ngắn đường chuyền vào khoảng trống.
-      const dir = length(input.move) > 0 ? normalize(input.move) : me.facing;
+      const dir = moveDir ?? passCharge.dir;
+      const power = passPower(passCharge.ticks);
       let receiverId: string | null;
-      ({ ball, rng, receiverId } = kickPass(state.players, asKicker(me), ball.pos, dir, kind, rng));
+      ({ ball, rng, receiverId } = kickPass(
+        state.players,
+        asKicker(me),
+        ball.pos,
+        dir,
+        passCharge.kind,
+        rng,
+        power,
+      ));
       // Đổi ngay sang người nhận như FC Online, không chờ bắt được bóng (5.17).
       if (receiverId) controlledId = receiverId;
       ballOwnerId = null;
       kickLock = lock(me.id);
       shotChargeTicks = 0;
+      passCharge = null;
       lastShot = null;
     } else if (input.shoot && (shotChargeTicks > 0 || pressed('shoot'))) {
       // Chỉ nạp lực khi bấm nút sút lúc đang có bóng: giữ nút từ lúc chưa có bóng không thành sút.
@@ -566,6 +613,7 @@ function stepPlay(
     }
   } else {
     shotChargeTicks = 0;
+    passCharge = null;
     // Nút chuyền bổng (A) khi không có bóng = xoạc.
     if (me && !keeperHolds && pressed('lob') && tackleRecovery[me.id] === undefined) {
       const tackle = resolveTackle(state.players, me, ball, ballOwnerId, rng, CONTROL_HEIGHT);
@@ -762,6 +810,7 @@ function stepPlay(
     ballOwnerId,
     kickLock,
     shotChargeTicks,
+    passCharge,
     controlledId,
     tackleRecovery,
     standTackleCooldown,

@@ -116,26 +116,31 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test thuần cho đổi toạ độ sim → thế giới 3D và camera bám bóng; `pnpm dev` đá được 1 trận đủ luồng 5.10; vào/ra `/play` 10 lần không tăng canvas/WebGL context; FPS ≥ 55 trên máy dev ở mức Cao.
 - **Xong khi:** trận chơi được ở góc nhìn 3D, không còn Phaser trong repo.
 
-### 5.18b — Nhân vật low-poly dựng bằng code + hoạt ảnh `[ ]`
-- **Phụ thuộc:** 5.18a · **Model:** strongest
+### 5.18b — Nhân vật low-poly dựng bằng code + hoạt ảnh `[~]`
+- **Phụ thuộc:** 5.18a · **Model:** strongest · _Hoãn 2026-10-14: chủ dự án chọn đi thẳng lên mô hình Mixamo (5.18d); hàm `animationFor` chuyển sang 5.18d._
 - **Bối cảnh:** ADR-0009, `packages/sim/src/types.ts` (vel, facing, kickLock, tackleRecovery), `apps/web/src/game/`.
 - **Việc cần làm:** nhân vật low-poly có khung xương (hông, thân, đầu, tay, chân) dựng từ khối hình; áo/quần/tất theo màu đội, thủ môn màu riêng, số áo sau lưng, tóc/da sinh từ seed (không giống người thật). Hoạt ảnh bằng code: đứng thở, chạy, nước rút, sút/chuyền, xoạc, thủ môn bay người; xoay người mượt theo `facing`, hoà trộn khi đổi hoạt ảnh. Hàm thuần `animationFor(player, state)` chọn hoạt ảnh + pha chạy theo vận tốc. Dùng chung geometry/material giữa 14 cầu thủ.
 - **Kiểm chứng:** test cho `animationFor` (đứng/chạy/nước rút theo tốc độ, sút khi vừa chạm bóng, xoạc khi đang `tackleRecovery`); FPS ≥ 55 ở mức Cao; người dùng xem trên trình duyệt.
 - **Xong khi:** cầu thủ chạy/sút/xoạc nhìn ra động tác, người dùng duyệt.
 
-### 5.18c — HUD hoàn thiện: font, minimap, thanh lực sút `[ ]`
+### 5.18c — HUD hoàn thiện: font, minimap `[ ]`
 - **Phụ thuộc:** 5.18a · **Model:** default
 - **Bối cảnh:** `docs/DESIGN.md` §2 & §6.2, `apps/web/src/features/play/`.
-- **Việc cần làm:** tự host Barlow Condensed + Be Vietnam Pro qua `@fontsource/*` (kéo sớm từ GĐ6); minimap góc trên-phải (14 chấm + bóng, vẽ trên canvas 2D nhỏ, ~10 Hz); thanh lực sút cạnh cầu thủ khi giữ D (từ `shotChargeTicks`); chỉnh bảng tỉ số/panel cầu thủ cho hợp nền 3D.
-- **Kiểm chứng:** test thuần cho đổi toạ độ minimap và tỉ lệ lực sút; người dùng xem trên trình duyệt.
+- **Việc cần làm:** tự host Barlow Condensed + Be Vietnam Pro qua `@fontsource/*` (kéo sớm từ GĐ6); minimap góc trên-phải (14 chấm + bóng, vẽ trên canvas 2D nhỏ, ~10 Hz); _(thanh lực đã làm ở 5.19)_; chỉnh bảng tỉ số/panel cầu thủ cho hợp nền 3D.
+- **Kiểm chứng:** test thuần cho đổi toạ độ minimap; người dùng xem trên trình duyệt.
 - **Xong khi:** HUD đủ các phần DESIGN §6.2.
 
-### 5.18d — Thay nhân vật bằng mô hình glTF + hoạt ảnh `[~]`
-- **Phụ thuộc:** 5.18b, **chủ dự án tải file mô hình/hoạt ảnh** · **Model:** strongest · _Hoãn tới khi có file; agent sẽ liệt kê file cần tải._
+### 5.18d — Thay nhân vật bằng mô hình Mixamo + hoạt ảnh `[~]`
+- **Phụ thuộc:** 5.18a, **chủ dự án tải file Mixamo vào `assets-src/mixamo/`** (danh sách đã gửi 2026-10-14: Y Bot + chạy/nước rút/chuyền/sút/đánh đầu/xoạc/ngã/đứng dậy/thủ môn bắt-bay người-ném) · **Model:** strongest · _Hoãn tới khi có file. Gói Quaternius CC0 đã xem: thiếu sút/chuyền/bay người nên chủ dự án chọn Mixamo. Giấy phép Mixamo: dùng trong game được, không phát tán file gốc → không commit FBX gốc nếu repo public._
 - **Bối cảnh:** ADR-0009.
-- **Việc cần làm:** nạp glTF (rig + clip chạy/sút/xoạc/bay người), `AnimationMixer` hoà trộn, đổi màu áo theo đội, cùng `animationFor` của 5.18b; tải lười chỉ khi vào trận.
+- **Việc cần làm:** đổi FBX → glTF nén (gltf-transform: bỏ clip thừa, nén), nạp rig + clip, `AnimationMixer` hoà trộn, đổi màu áo theo đội + số áo; hàm thuần `animationFor(player, state)` chọn clip (đứng/chạy/nước rút theo tốc độ, chuyền/sút khi vừa chạm bóng, xoạc khi `tackleRecovery`, thủ môn bay người) có test; tải lười chỉ khi vào trận.
 - **Kiểm chứng:** FPS ≥ 55; giấy phép tài nguyên ghi vào `docs/`.
 - **Xong khi:** người dùng duyệt hình ảnh.
+
+### 5.19 — Lực chuyền giữ-nhả + thanh lực `[x]`
+- **Phụ thuộc:** 5.18a · **Model:** strongest · _Thêm 2026-10-14 theo yêu cầu chủ dự án (PRD §5 sửa)._
+- **Việc cần làm:** S/A khi có bóng: bấm bắt đầu nạp (`MatchState.passCharge`), giữ tăng lực (đầy sau `PASS_FULL_CHARGE_TICKS`), nhả mới chuyền; lực 0 (bấm nhanh) giữ nguyên hành vi cũ; lực lớn ưu tiên người nhận xa (`PASS_POWER_PREF_DIST`), bóng sệt căng hơn, chuyền khoảng trống xa hơn. Bóng chết vẫn bấm là chuyền. Thanh lực 3D trên đầu cầu thủ khi giữ S/A/D (`chargeMeter`).
+- **Kiểm chứng:** test sim: giữ chưa chuyền, nhả mới chuyền; bấm nhanh → người gần, đầy thanh → người xa; bóng căng hơn; mất bóng huỷ nạp; không có bóng S vẫn đổi người. Test `chargeMeter`.
 
 ### 5.11 — Thay người khi bóng chết `[ ]`
 - **Phụ thuộc:** 5.8b, 5.10, 5.18c · **Model:** default

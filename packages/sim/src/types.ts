@@ -162,6 +162,11 @@ export interface MatchState {
   kickLock: { playerId: string; untilTick: number } | null;
   /** Số tick người chơi đã giữ nút sút (0 = không nạp lực). */
   shotChargeTicks: number;
+  /**
+   * Người chơi đang giữ S/A để nạp lực chuyền (nhả mới chuyền): loại chuyền, số tick đã giữ, hướng
+   * bấm gần nhất. null khi không nạp.
+   */
+  passCharge: { kind: 'ground' | 'lob'; ticks: number; dir: Vec2 } | null;
   /** Cầu thủ đội nhà người chơi đang điều khiển. */
   controlledId: string;
   /**
