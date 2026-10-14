@@ -102,7 +102,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: đồng đội bị đối thủ chắn đường bị bỏ qua khi có người thoáng tương đương; điểm chuyền nằm trước người nhận đang chạy; sau tick bấm chuyền `controlledId` = người nhận; đối thủ dẫn bóng về khung thành → S chọn hậu vệ đứng chắn chứ không chọn tiền đạo phía sau; AI-vs-AI vẫn ra tỉ số hợp lý (test hiện có xanh).
 - **Xong khi:** người dùng chơi thử thấy chuyền/đổi người "như FC Online".
 
-### 5.10 — HUD & luồng trận `[ ]`
+### 5.10 — HUD & luồng trận `[x]`
 - **Phụ thuộc:** 5.9, 5.5 · **Model:** default
 - **Bối cảnh:** `docs/DESIGN.md` (HUD), PRD §5.
 - **Việc cần làm:** HUD React đè lên canvas: tỉ số, đồng hồ 0'–90', chỉ báo cầu thủ đang điều khiển, thanh thể lực của người đó, thông báo bàn thắng/thẻ phạt. Màn chọn độ khó → trận → nghỉ giữa hiệp → màn kết quả (tỉ số, thẻ phạt). Tạm dừng (Esc khi bóng sống = menu tạm dừng). Tham số chỉ bật khi `import.meta.env.DEV` hoặc `MODE === 'test'`: `?half=<giây>` (hiệp ngắn) và `?autopilot=1` (bật cờ `autopilot` của 5.8a, cần cho E2E ở 8.1) — build production bỏ qua.

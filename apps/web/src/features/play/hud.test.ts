@@ -1,0 +1,104 @@
+import { describe, expect, it } from 'vitest';
+import { createMatch, starterLikeTeam, cpuEasyTeam, type MatchState } from '@pitch/sim';
+import {
+  formatClock,
+  hudEvents,
+  matchOutcome,
+  readDevOptions,
+  sameHud,
+  staminaLevel,
+  toHudSnapshot,
+} from './hud';
+
+const match = (): MatchState =>
+  createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 1 });
+
+describe('formatClock', () => {
+  it('giờ chính thức hiện phút', () => {
+    expect(formatClock({ minute: 0, addedMinute: 0, addedMinutes: null })).toBe("0'");
+    expect(formatClock({ minute: 67, addedMinute: 0, addedMinutes: null })).toBe("67'");
+  });
+  it('bù giờ hiện 45+N / 90+N', () => {
+    expect(formatClock({ minute: 45, addedMinute: 2, addedMinutes: 3 })).toBe("45+2'");
+    expect(formatClock({ minute: 90, addedMinute: 1, addedMinutes: 1 })).toBe("90+1'");
+  });
+});
+
+describe('staminaLevel', () => {
+  it('đổi màu ở mốc 50% và 30% (DESIGN §6.2)', () => {
+    expect(staminaLevel(80)).toBe('ok');
+    expect(staminaLevel(50)).toBe('ok');
+    expect(staminaLevel(49.9)).toBe('low');
+    expect(staminaLevel(30)).toBe('low');
+    expect(staminaLevel(29.9)).toBe('critical');
+  });
+});
+
+describe('matchOutcome', () => {
+  it('theo tỉ số đội nhà', () => {
+    expect(matchOutcome({ home: 2, away: 1 })).toBe('win');
+    expect(matchOutcome({ home: 1, away: 1 })).toBe('draw');
+    expect(matchOutcome({ home: 0, away: 3 })).toBe('loss');
+  });
+});
+
+describe('toHudSnapshot / sameHud', () => {
+  it('lấy cầu thủ đang điều khiển, thể lực làm tròn', () => {
+    const s = match();
+    const hud = toHudSnapshot(s);
+    expect(hud.controlled?.id).toBe(s.controlledId);
+    expect(hud.controlled?.stamina).toBe(100);
+    expect(hud.clock).toBe("0'");
+    expect(hud.score).toEqual({ home: 0, away: 0 });
+  });
+
+  it('thay đổi lẻ trong một tick không làm HUD vẽ lại', () => {
+    const s = match();
+    const a = toHudSnapshot(s);
+    const players = s.players.map((p) => (p.id === s.controlledId ? { ...p, stamina: 99.8 } : p));
+    expect(sameHud(a, toHudSnapshot({ ...s, players, tick: s.tick + 1 }))).toBe(true);
+    expect(sameHud(a, toHudSnapshot({ ...s, score: { home: 1, away: 0 } }))).toBe(false);
+  });
+});
+
+describe('hudEvents', () => {
+  it('báo bàn thắng và thẻ phạt mới', () => {
+    const s = match();
+    const before = toHudSnapshot(s);
+    const victim = s.players.find((p) => p.team === 'away')!;
+    const after = toHudSnapshot({
+      ...s,
+      score: { home: 1, away: 0 },
+      bookings: [{ playerId: victim.id, team: 'away', card: 'yellow', tick: 10 }],
+    });
+    const events = hudEvents(before, after);
+    expect(events.map((e) => e.kind)).toEqual(['goal', 'yellow']);
+    expect(events[0]!.team).toBe('home');
+    expect(events[1]!.text).toContain('Thẻ vàng');
+  });
+
+  it('không có gì đổi thì không có sự kiện', () => {
+    const hud = toHudSnapshot(match());
+    expect(hudEvents(hud, hud)).toEqual([]);
+  });
+});
+
+describe('readDevOptions', () => {
+  const dev = { DEV: true, MODE: 'development' };
+  it('dev: đọc ?half và ?autopilot', () => {
+    expect(readDevOptions('?half=20&autopilot=1', dev)).toEqual({
+      halfLengthSec: 20,
+      autopilot: true,
+    });
+  });
+  it('MODE test cũng đọc', () => {
+    expect(readDevOptions('?half=10', { DEV: false, MODE: 'test' })).toEqual({ halfLengthSec: 10 });
+  });
+  it('bỏ qua giá trị sai', () => {
+    expect(readDevOptions('?half=abc&autopilot=0', dev)).toEqual({});
+    expect(readDevOptions('?half=-5', dev)).toEqual({});
+  });
+  it('production bỏ qua mọi tham số', () => {
+    expect(readDevOptions('?half=20&autopilot=1', { DEV: false, MODE: 'production' })).toEqual({});
+  });
+});
