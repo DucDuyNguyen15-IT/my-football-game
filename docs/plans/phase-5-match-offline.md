@@ -109,8 +109,36 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** đá hết 1 trận với `?half=20` qua đủ các màn; `?autopilot=1&half=10` tự đá hết trận không cần bấm phím; test component cho định dạng đồng hồ; build production không đọc các tham số này.
 - **Xong khi:** một trận có đầu – giữa – cuối rõ ràng.
 
+### 5.18a — Chuyển render trận sang Three.js: sân 3D & camera truyền hình `[ ]`
+- **Phụ thuộc:** 5.10 · **Model:** strongest · _Thêm 2026-10-14: chủ dự án đổi sang 3D (PRD §4.3/§5 sửa, ADR-0009); làm trước 5.11._
+- **Bối cảnh:** ADR-0009, ADR-0003, ARCHITECTURE §2 & §6, `docs/DESIGN.md` §3 (màu sân/đội) & §6.2, `apps/web/src/game/`.
+- **Việc cần làm:** cài `three` (khoá bản cụ thể), gỡ `phaser`. `MatchCanvas` tạo `WebGLRenderer` + scene khi mount, khi unmount dispose geometry/material/texture + `forceContextLoss()`. Vòng lặp accumulator 60 tick/s + nội suy giữ nguyên; input đọc bằng listener `keydown/keyup` trên `window` (giữ `keyboard.ts` và tap latch). Sân 3D: cỏ sọc, vạch phấn, khung thành có cột + lưới, khán đài + đèn pha đơn giản ("Sân đêm"). Camera truyền hình: nhìn chéo từ khán đài, bám bóng theo trục dọc sân, mượt. Cầu thủ tạm: khối trụ màu đội + số áo + bóng đổ; bóng có độ cao `z` và bóng đổ; mũi tên trên đầu người đang điều khiển. Mức đồ hoạ Cao/Thấp (Thấp: tắt bóng đổ, khán đài đơn giản, pixelRatio 1). Overlay FPS ở dev. Cập nhật ARCHITECTURE, DESIGN §6.2, CLAUDE.md, ESLint (chặn `three` trong sim).
+- **Kiểm chứng:** test thuần cho đổi toạ độ sim → thế giới 3D và camera bám bóng; `pnpm dev` đá được 1 trận đủ luồng 5.10; vào/ra `/play` 10 lần không tăng canvas/WebGL context; FPS ≥ 55 trên máy dev ở mức Cao.
+- **Xong khi:** trận chơi được ở góc nhìn 3D, không còn Phaser trong repo.
+
+### 5.18b — Nhân vật low-poly dựng bằng code + hoạt ảnh `[ ]`
+- **Phụ thuộc:** 5.18a · **Model:** strongest
+- **Bối cảnh:** ADR-0009, `packages/sim/src/types.ts` (vel, facing, kickLock, tackleRecovery), `apps/web/src/game/`.
+- **Việc cần làm:** nhân vật low-poly có khung xương (hông, thân, đầu, tay, chân) dựng từ khối hình; áo/quần/tất theo màu đội, thủ môn màu riêng, số áo sau lưng, tóc/da sinh từ seed (không giống người thật). Hoạt ảnh bằng code: đứng thở, chạy, nước rút, sút/chuyền, xoạc, thủ môn bay người; xoay người mượt theo `facing`, hoà trộn khi đổi hoạt ảnh. Hàm thuần `animationFor(player, state)` chọn hoạt ảnh + pha chạy theo vận tốc. Dùng chung geometry/material giữa 14 cầu thủ.
+- **Kiểm chứng:** test cho `animationFor` (đứng/chạy/nước rút theo tốc độ, sút khi vừa chạm bóng, xoạc khi đang `tackleRecovery`); FPS ≥ 55 ở mức Cao; người dùng xem trên trình duyệt.
+- **Xong khi:** cầu thủ chạy/sút/xoạc nhìn ra động tác, người dùng duyệt.
+
+### 5.18c — HUD hoàn thiện: font, minimap, thanh lực sút `[ ]`
+- **Phụ thuộc:** 5.18a · **Model:** default
+- **Bối cảnh:** `docs/DESIGN.md` §2 & §6.2, `apps/web/src/features/play/`.
+- **Việc cần làm:** tự host Barlow Condensed + Be Vietnam Pro qua `@fontsource/*` (kéo sớm từ GĐ6); minimap góc trên-phải (14 chấm + bóng, vẽ trên canvas 2D nhỏ, ~10 Hz); thanh lực sút cạnh cầu thủ khi giữ D (từ `shotChargeTicks`); chỉnh bảng tỉ số/panel cầu thủ cho hợp nền 3D.
+- **Kiểm chứng:** test thuần cho đổi toạ độ minimap và tỉ lệ lực sút; người dùng xem trên trình duyệt.
+- **Xong khi:** HUD đủ các phần DESIGN §6.2.
+
+### 5.18d — Thay nhân vật bằng mô hình glTF + hoạt ảnh `[~]`
+- **Phụ thuộc:** 5.18b, **chủ dự án tải file mô hình/hoạt ảnh** · **Model:** strongest · _Hoãn tới khi có file; agent sẽ liệt kê file cần tải._
+- **Bối cảnh:** ADR-0009.
+- **Việc cần làm:** nạp glTF (rig + clip chạy/sút/xoạc/bay người), `AnimationMixer` hoà trộn, đổi màu áo theo đội, cùng `animationFor` của 5.18b; tải lười chỉ khi vào trận.
+- **Kiểm chứng:** FPS ≥ 55; giấy phép tài nguyên ghi vào `docs/`.
+- **Xong khi:** người dùng duyệt hình ảnh.
+
 ### 5.11 — Thay người khi bóng chết `[ ]`
-- **Phụ thuộc:** 5.8b, 5.10 · **Model:** default
+- **Phụ thuộc:** 5.8b, 5.10, 5.18c · **Model:** default
 - **Bối cảnh:** PRD §5 (Thể lực, Thay người) và tiêu chí F3.
 - **Việc cần làm:** sim: lệnh `substitute(out, in)` chỉ hợp lệ khi `ballDead`/nghỉ giữa hiệp, tối đa 3 lượt, không thay người đã nhận thẻ đỏ; AI tự thay khi cầu thủ < 30% thể lực. Web: menu thay người (Esc/Tab khi bóng chết), trận tạm dừng khi mở.
 - **Kiểm chứng:** test sim: thay khi bóng sống bị từ chối; lượt thứ 4 bị từ chối; người bị đỏ không thay được; AI thay khi < 30%.
