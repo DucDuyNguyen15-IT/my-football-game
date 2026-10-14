@@ -32,10 +32,12 @@ export interface HudSnapshot {
   controlled: { id: string; number: number; position: Position; stamina: number } | null;
   bookings: HudBooking[];
   shots: Score;
+  /** Đá phạt / phạt đền đang chờ thực hiện (sau phạm lỗi), null nếu không có. */
+  foulRestart: { type: 'free_kick' | 'penalty'; team: TeamSide; startTick: number } | null;
 }
 
 export interface HudEvent {
-  kind: 'goal' | 'yellow' | 'red';
+  kind: 'goal' | 'yellow' | 'red' | 'foul';
   team: TeamSide;
   text: string;
 }
@@ -69,6 +71,7 @@ const numberFromId = (playerId: string): number =>
 export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapshot {
   const c = state.players.find((p) => p.id === state.controlledId);
   const clock = formatClock(matchClock(state));
+  const r = state.restart;
   return {
     score: state.score,
     half: state.half,
@@ -90,6 +93,10 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
       clock: prev?.bookings[i]?.clock ?? clock,
     })),
     shots: state.shots,
+    foulRestart:
+      r && (r.type === 'free_kick' || r.type === 'penalty')
+        ? { type: r.type, team: r.team, startTick: r.startTick }
+        : null,
   };
 }
 
@@ -102,12 +109,14 @@ export function sameHud(a: HudSnapshot, b: HudSnapshot): boolean {
     a.phase === b.phase &&
     a.bookings.length === b.bookings.length &&
     a.controlled?.id === b.controlled?.id &&
-    a.controlled?.stamina === b.controlled?.stamina
+    a.controlled?.stamina === b.controlled?.stamina &&
+    a.foulRestart?.startTick === b.foulRestart?.startTick
   );
 }
 
 export const TEAM_LABEL: Record<TeamSide, string> = { home: 'Nhà', away: 'Khách' };
 export const CARD_LABEL = { yellow: 'Thẻ vàng', red: 'Thẻ đỏ' } as const;
+const RESTART_LABEL = { free_kick: 'Đá phạt', penalty: 'Phạt đền' } as const;
 
 /** Sự kiện mới giữa hai snapshot, hiện thành dải dưới bảng tỉ số. */
 export function hudEvents(prev: HudSnapshot, next: HudSnapshot): HudEvent[] {
@@ -122,6 +131,14 @@ export function hudEvents(prev: HudSnapshot, next: HudSnapshot): HudEvent[] {
       kind: b.card,
       team: b.team,
       text: `${b.clock} ${CARD_LABEL[b.card]} · ${TEAM_LABEL[b.team]} #${b.number}`,
+    });
+  }
+  const foul = next.foulRestart;
+  if (foul && foul.startTick !== prev.foulRestart?.startTick) {
+    events.push({
+      kind: 'foul',
+      team: foul.team,
+      text: `${next.clock} ${RESTART_LABEL[foul.type]} · ${TEAM_LABEL[foul.team]}`,
     });
   }
   return events;

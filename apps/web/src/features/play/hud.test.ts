@@ -77,6 +77,23 @@ describe('hudEvents', () => {
     expect(events[1]!.text).toContain('Thẻ vàng');
   });
 
+  it('báo phạm lỗi: phạt đền / đá phạt cho đội nào', () => {
+    const s = match();
+    const before = toHudSnapshot({ ...s, phase: 'play', restart: null });
+    const restart = (type: 'penalty' | 'free_kick') =>
+      toHudSnapshot({
+        ...s,
+        phase: 'dead_ball',
+        restart: { type, team: 'home', spot: { x: 0, y: 0 }, takerId: 'home-P5', startTick: 1 },
+      });
+    expect(hudEvents(before, restart('penalty'))).toEqual([
+      { kind: 'foul', team: 'home', text: "0' Phạt đền · Nhà" },
+    ]);
+    expect(hudEvents(before, restart('free_kick'))[0]?.text).toBe("0' Đá phạt · Nhà");
+    // Cùng tình huống ở snapshot sau không báo lại.
+    expect(hudEvents(restart('penalty'), restart('penalty'))).toEqual([]);
+  });
+
   it('không có gì đổi thì không có sự kiện', () => {
     const hud = toHudSnapshot(match());
     expect(hudEvents(hud, hud)).toEqual([]);

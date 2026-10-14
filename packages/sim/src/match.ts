@@ -33,7 +33,7 @@ import { HALF_LENGTH } from './pitch';
 import { separatePlayers, stepPlayer } from './physics/player';
 import { nextFloat, type RngState, seedRng } from './rng';
 import { advanceClock, RESTART_GRACE_TICKS } from './rules/clock';
-import { judgeFoul } from './rules/fouls';
+import { isKeeperHandling, judgeFoul } from './rules/fouls';
 import {
   chooseDefensiveSwitchTarget,
   chooseSwitchTarget,
@@ -525,6 +525,10 @@ function stepPlay(
         : chooseSwitchTarget(state.players, HUMAN_TEAM, ball.pos, controlledId);
   }
 
+  // Thủ môn đang ôm bóng thì không ai tranh được (người chơi lẫn máy).
+  const ballHolder = ballOwnerId === null ? undefined : byId(ballOwnerId);
+  const keeperHolds = ballHolder !== undefined && isKeeperHandling(ballHolder, state.half);
+
   // 2. Hành động của người dẫn bóng do người chơi điều khiển.
   const humanBefore = humanOf(state, controlledId);
   const me = humanBefore === null ? undefined : byId(humanBefore);
@@ -563,7 +567,7 @@ function stepPlay(
   } else {
     shotChargeTicks = 0;
     // Nút chuyền bổng (A) khi không có bóng = xoạc.
-    if (me && pressed('lob') && tackleRecovery[me.id] === undefined) {
+    if (me && !keeperHolds && pressed('lob') && tackleRecovery[me.id] === undefined) {
       const tackle = resolveTackle(state.players, me, ball, ballOwnerId, rng, CONTROL_HEIGHT);
       rng = tackle.rng;
       const { outcome } = tackle;
@@ -580,6 +584,7 @@ function stepPlay(
       }
     } else if (
       me &&
+      !keeperHolds &&
       input.shoot &&
       tackleRecovery[me.id] === undefined &&
       standTackleCooldown[me.id] === undefined
@@ -629,7 +634,7 @@ function stepPlay(
   // 2c. Người áp sát AI tắc bóng đứng khi bóng vào tầm (không tắc từ phía sau, không tắc thủ môn
   // đang ôm bóng).
   const owned = state.ai && ballOwnerId !== null ? byId(ballOwnerId) : undefined;
-  const victim = owned?.position === 'GK' ? undefined : owned;
+  const victim = owned && !isKeeperHandling(owned, state.half) ? owned : undefined;
   const defendingPlan = victim ? state.ai?.[other(victim.team)]?.plan : undefined;
   const presserId = defendingPlan
     ? Object.entries(defendingPlan.roles).find(([, role]) => role === 'press')?.[0]

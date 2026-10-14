@@ -22,6 +22,14 @@ const FREE_KICK_EDGE_GAP = 0.5;
 
 const other = (team: TeamSide): TeamSide => (team === 'home' ? 'away' : 'home');
 
+/**
+ * Thủ môn giữ bóng trong vòng cấm nhà mình = ôm bóng bằng tay: không ai được tranh bóng (xoạc/tắc
+ * → không có tác dụng, không phạm lỗi). Ra ngoài vòng cấm thì dẫn bóng bằng chân như cầu thủ thường.
+ */
+export function isKeeperHandling(player: PlayerState, half: 1 | 2): boolean {
+  return player.position === 'GK' && isInPenaltyArea(player.pos, -attackSign(player.team, half) as 1 | -1);
+}
+
 /** Cầu thủ đang ở gần và quay mặt về khung thành đối phương (tình huống có cơ hội ghi bàn). */
 export function isFacingGoal(player: PlayerState, half: 1 | 2): boolean {
   const goal = vec2(attackSign(player.team, half) * HALF_LENGTH, 0);
