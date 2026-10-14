@@ -10,7 +10,7 @@ _Tài liệu này mô tả **hình dạng** hệ thống. Số liệu kinh tế 
 Ba nguyên tắc chi phối mọi quyết định bên dưới:
 
 1. **Server quyết định mọi thứ có giá trị**: gacha, ép thẻ, ví xu, thưởng trận. Client chỉ gửi ý định ("mua gói X") và hiển thị kết quả.
-2. **Mô phỏng trận là code thuần, tất định** (`packages/sim`, 60 tick/s, PRNG có seed). Phaser chỉ vẽ lại state; server có thể chạy lại cùng code sau MVP.
+2. **Mô phỏng trận là code thuần, tất định** (`packages/sim`, 60 tick/s, PRNG có seed). Three.js chỉ vẽ lại state (ADR-0009); server có thể chạy lại cùng code sau MVP.
 3. **Một contract cho mỗi ranh giới**: schema Zod trong `packages/shared/src/api` là nguồn sự thật duy nhất cho request/response giữa web và server.
 
 ## 2. Sơ đồ module
@@ -19,7 +19,7 @@ Ba nguyên tắc chi phối mọi quyết định bên dưới:
 flowchart LR
   subgraph Browser["Trình duyệt"]
     UI["apps/web — UI React<br/>(router, màn kho/đội hình/cửa hàng,<br/>TanStack Query)"]
-    GAME["apps/web/src/game — Client game<br/>(Phaser 3: MatchCanvas, MatchScene,<br/>input bàn phím, nội suy render)"]
+    GAME["apps/web/src/game — Client game<br/>(Three.js: MatchCanvas, MatchRenderer,<br/>input bàn phím, nội suy render)"]
     SIM_C["packages/sim<br/>(vật lý, luật, AI, stats→params)"]
     UI -- "mount/unmount<br/>truyền đội hình" --> GAME
     GAME -- "step(state, input)" --> SIM_C
@@ -47,8 +47,8 @@ flowchart LR
 | Module | Vai trò | Được phép import | Cấm |
 |---|---|---|---|
 | `apps/web` (UI) | Màn ngoài trận, gọi API, quản lý cache | `shared`, `sim`, React, TanStack Query, dnd-kit | Tự tính kết quả gacha/ví |
-| `apps/web/src/game` (client game) | Render trận bằng Phaser, đọc input, nội suy giữa 2 tick | `sim`, Phaser | Logic vật lý/luật (phải nằm trong `sim`) |
-| `packages/sim` | `createMatch(setup)`, `step(state, inputs)` thuần; vật lý, luật, AI, thể lực | `shared` | Phaser, React, DOM, `node:*`, `Math.random` (lint chặn) |
+| `apps/web/src/game` (client game) | Render trận 3D bằng Three.js (camera truyền hình), đọc input, nội suy giữa 2 tick | `sim`, Three.js | Logic vật lý/luật (phải nằm trong `sim`) |
+| `packages/sim` | `createMatch(setup)`, `step(state, inputs)` thuần; vật lý, luật, AI, thể lực | `shared` | Three.js/Phaser, React, DOM, `node:*`, `Math.random` (lint chặn) |
 | `packages/shared` | Contract API (Zod), enum, công thức OVR/hệ số sai vị trí, sơ đồ | `zod` | Code chạy I/O |
 | `apps/server` | REST API, session, transaction, CSPRNG | `shared`, `sim`, Fastify, Drizzle, argon2 | `Math.random` (lint chặn) |
 | PostgreSQL | Lưu trữ, ràng buộc toàn vẹn cuối cùng (`CHECK`, `FK`, `UNIQUE`) | — | — |
@@ -387,7 +387,7 @@ sequenceDiagram
 ### 5.2 Trận đấu vs máy (match token)
 
 1. `POST /matches`: khoá `users`, đếm trận có thưởng hôm nay (GMT+7) → `reward_eligible`; sinh token 32 byte, lưu `token_hash`, `seed`, `squad_snapshot`; sinh đội máy theo độ khó (OVR ~60 / ~78, từ `cards`).
-2. Client chạy `sim` với `home`, `away`, `seed`; Phaser render.
+2. Client chạy `sim` với `home`, `away`, `seed`; Three.js render.
 3. `POST /matches/:id/result`: khoá `users` rồi `matches … FOR UPDATE`; nếu `status = finished` và token khớp → trả lại kết quả đã lưu (client retry khi mất response); kiểm `status = started`, `hash(token) = token_hash`, `now - started_at ≥ 6 phút` (cấu hình được cho test), tỉ số ≤ 20, `shootout` chỉ có khi hoà; tính `outcome` + `reward` (`domain/rewards.ts`), đếm lại trần 15 trận theo `reward_day` = ngày GMT+7 của **lúc nộp** trong cùng transaction; cập nhật xu + ledger + nhiệm vụ + analytics; `status = finished`.
 4. Trận bỏ dở không nộp → `expired` sau 2 giờ (dọn lười khi người chơi bắt đầu trận mới).
 
@@ -398,7 +398,7 @@ Cùng khuôn với §5.1: `BEGIN` → khoá `users` → khoá `player_cards` c�
 ## 6. Mô phỏng trận (`packages/sim`)
 
 - API: `createMatch(setup: { home, away, seed, difficulty, halfLengthSec }) → MatchState`; `step(state, inputs: PlayerInput) → MatchState` (thuần, không đọc đồng hồ); `getEvents(state)` cho HUD/âm thanh.
-- Bước cố định `TICK_DT = 1/60`. Client gom thời gian thực vào accumulator, chạy đủ số tick, Phaser nội suy vị trí giữa tick trước và tick hiện tại.
+- Bước cố định `TICK_DT = 1/60`. Client gom thời gian thực vào accumulator, chạy đủ số tick, Three.js nội suy vị trí giữa tick trước và tick hiện tại.
 - PRNG: mulberry32 (hoặc tương đương) có seed, nằm trong state → cùng seed + cùng chuỗi input = cùng kết quả (PRD §5 tiêu chí).
 - Tầng: `physics/` (bóng có độ cao z, ma sát, va chạm cột) · `rules/` (biên, góc, phát bóng, phạm lỗi, thẻ, luân lưu, đồng hồ) · `ai/` (tầng đội: đội hình/trạng thái tấn–thủ; tầng cầu thủ: steering + quyết định chuyền/sút/rê) · `stats/` (chỉ số thẻ → tham số gameplay, thể lực).
 - Test mô phỏng headless bằng Vitest: AI-vs-AI 100 trận, 1.000 cú sút — chạy trong Node, không cần trình duyệt.

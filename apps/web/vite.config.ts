@@ -9,8 +9,8 @@ export default defineConfig({
     proxy: { '/api': 'http://127.0.0.1:3000' },
   },
   build: {
-    // Chunk trận đấu chứa Phaser (~1.2 MB, ADR-0002 đã chấp nhận), chỉ tải khi vào /play.
-    chunkSizeWarningLimit: 1300,
+    // Chunk trận đấu chứa Three.js (~600 KB, ADR-0009), chỉ tải khi vào /play.
+    chunkSizeWarningLimit: 700,
   },
   test: {
     environment: 'node',

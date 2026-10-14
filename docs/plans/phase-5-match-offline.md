@@ -109,7 +109,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** đá hết 1 trận với `?half=20` qua đủ các màn; `?autopilot=1&half=10` tự đá hết trận không cần bấm phím; test component cho định dạng đồng hồ; build production không đọc các tham số này.
 - **Xong khi:** một trận có đầu – giữa – cuối rõ ràng.
 
-### 5.18a — Chuyển render trận sang Three.js: sân 3D & camera truyền hình `[ ]`
+### 5.18a — Chuyển render trận sang Three.js: sân 3D & camera truyền hình `[x]`
 - **Phụ thuộc:** 5.10 · **Model:** strongest · _Thêm 2026-10-14: chủ dự án đổi sang 3D (PRD §4.3/§5 sửa, ADR-0009); làm trước 5.11._
 - **Bối cảnh:** ADR-0009, ADR-0003, ARCHITECTURE §2 & §6, `docs/DESIGN.md` §3 (màu sân/đội) & §6.2, `apps/web/src/game/`.
 - **Việc cần làm:** cài `three` (khoá bản cụ thể), gỡ `phaser`. `MatchCanvas` tạo `WebGLRenderer` + scene khi mount, khi unmount dispose geometry/material/texture + `forceContextLoss()`. Vòng lặp accumulator 60 tick/s + nội suy giữ nguyên; input đọc bằng listener `keydown/keyup` trên `window` (giữ `keyboard.ts` và tap latch). Sân 3D: cỏ sọc, vạch phấn, khung thành có cột + lưới, khán đài + đèn pha đơn giản ("Sân đêm"). Camera truyền hình: nhìn chéo từ khán đài, bám bóng theo trục dọc sân, mượt. Cầu thủ tạm: khối trụ màu đội + số áo + bóng đổ; bóng có độ cao `z` và bóng đổ; mũi tên trên đầu người đang điều khiển. Mức đồ hoạ Cao/Thấp (Thấp: tắt bóng đổ, khán đài đơn giản, pixelRatio 1). Overlay FPS ở dev. Cập nhật ARCHITECTURE, DESIGN §6.2, CLAUDE.md, ESLint (chặn `three` trong sim).

@@ -1,6 +1,6 @@
 /**
  * Map phím → `PlayerInput` (DESIGN.md §6.2, bộ phím kiểu FC Online).
- * Thuần, không import Phaser để test được trong Node; scene đọc trạng thái phím rồi gọi `keysToInput`.
+ * Thuần, không phụ thuộc DOM/Three.js để test được trong Node; renderer gom sự kiện phím rồi gọi `keysToInput`.
  */
 import { NO_INPUT, type PlayerInput } from '@pitch/sim';
 
@@ -28,19 +28,28 @@ export const NO_KEYS: KeyState = Object.freeze({
 });
 
 /**
- * Tên phím theo `Phaser.Input.Keyboard.KeyCodes`. WASD không dùng để di chuyển vì W/A/S/D là phím
- * hành động; không dùng Tab vì nó chuyển focus của trình duyệt.
+ * Mã phím theo `KeyboardEvent.code` (vị trí phím, không phụ thuộc bố cục/Caps Lock). WASD không dùng
+ * để di chuyển vì W/A/S/D là phím hành động; không dùng Tab vì nó chuyển focus của trình duyệt.
  */
 export const CONTROL_KEYS: Readonly<Record<keyof KeyState, string>> = Object.freeze({
-  up: 'UP',
-  down: 'DOWN',
-  left: 'LEFT',
-  right: 'RIGHT',
-  sprint: 'E',
-  pass: 'S',
-  lob: 'A',
-  shoot: 'D',
+  up: 'ArrowUp',
+  down: 'ArrowDown',
+  left: 'ArrowLeft',
+  right: 'ArrowRight',
+  sprint: 'KeyE',
+  pass: 'KeyS',
+  lob: 'KeyA',
+  shoot: 'KeyD',
 });
+
+const BY_CODE = new Map(
+  (Object.entries(CONTROL_KEYS) as [keyof KeyState, string][]).map(([name, code]) => [code, name]),
+);
+
+/** Chức năng của một phím, null nếu không phải phím điều khiển. */
+export function keyForCode(code: string): keyof KeyState | null {
+  return BY_CODE.get(code) ?? null;
+}
 
 /**
  * Hướng di chuyển theo trục màn hình: x sang phải, y xuống dưới — trùng trục sim vì scene vẽ

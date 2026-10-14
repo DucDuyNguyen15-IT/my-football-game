@@ -1,0 +1,213 @@
+/**
+ * Mặt sân 3D: cỏ sọc, vạch phấn, khung thành có cột + lưới. Kích thước lấy từ `@pitch/sim`.
+ * Toạ độ theo `render/camera.ts`: x dọc sân, y độ cao, z = sim y.
+ */
+import * as THREE from 'three';
+import {
+  CENTER_CIRCLE_RADIUS,
+  GOAL_DEPTH,
+  GOAL_HEIGHT,
+  GOAL_WIDTH,
+  HALF_LENGTH,
+  HALF_WIDTH,
+  PENALTY_AREA_DEPTH,
+  PENALTY_AREA_WIDTH,
+  PENALTY_SPOT_DIST,
+  PITCH_LENGTH,
+  PITCH_WIDTH,
+} from '@pitch/sim';
+import { COLORS } from '../render/colors';
+
+/** Dải cỏ ngoài vạch biên. */
+export const RUNOFF_M = 6;
+const STRIPES = 12;
+const LINE_W = 0.12;
+/** Vạch nằm nhích trên mặt cỏ để không nhấp nháy (z-fighting). */
+const LINE_Y = 0.012;
+const POST_R = 0.07;
+
+function flat(geometry: THREE.BufferGeometry, material: THREE.Material, y: number): THREE.Mesh {
+  const mesh = new THREE.Mesh(geometry, material);
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = y;
+  return mesh;
+}
+
+/** Vạch thẳng từ (x1, z1) tới (x2, z2) trên mặt cỏ. */
+function line(x1: number, z1: number, x2: number, z2: number, mat: THREE.Material): THREE.Mesh {
+  const len = Math.hypot(x2 - x1, z2 - z1);
+  const mesh = flat(new THREE.PlaneGeometry(len + LINE_W, LINE_W), mat, LINE_Y);
+  mesh.position.set((x1 + x2) / 2, LINE_Y, (z1 + z2) / 2);
+  mesh.rotation.z = -Math.atan2(z2 - z1, x2 - x1);
+  return mesh;
+}
+
+function rect(x1: number, z1: number, x2: number, z2: number, mat: THREE.Material): THREE.Mesh[] {
+  return [
+    line(x1, z1, x2, z1, mat),
+    line(x1, z2, x2, z2, mat),
+    line(x1, z1, x1, z2, mat),
+    line(x2, z1, x2, z2, mat),
+  ];
+}
+
+/** Ô lưới vẽ trên canvas, lặp lại trên các mặt lưới khung thành. */
+function netTexture(): THREE.CanvasTexture {
+  const size = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(0, 0, size, size);
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
+/** Mặt lưới tứ giác qua 4 đỉnh [x, y, z] (theo thứ tự vòng), ô lưới ~25 cm. */
+function netQuad(pts: [number, number, number][], tex: THREE.Texture): THREE.Mesh {
+  const [a, b, , d] = pts as [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
+  const dist = (p: THREE.Vector3Tuple, q: THREE.Vector3Tuple) =>
+    Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
+  const u = dist(a, b) / 0.25;
+  const v = dist(a, d) / 0.25;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, u, 0, u, v, 0, v], 2));
+  geo.setIndex([0, 1, 2, 0, 2, 3]);
+  const mat = new THREE.MeshBasicMaterial({
+    map: tex,
+    transparent: true,
+    opacity: 0.55,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+  });
+  return new THREE.Mesh(geo, mat);
+}
+
+function post(len: number, mat: THREE.Material): THREE.Mesh {
+  const mesh = new THREE.Mesh(new THREE.CylinderGeometry(POST_R, POST_R, len, 10), mat);
+  mesh.castShadow = true;
+  return mesh;
+}
+
+/** Khung thành ở đầu sân `side` (+1 phải, −1 trái), miệng khung nằm trên vạch cuối. */
+function goal(side: 1 | -1, tex: THREE.Texture): THREE.Group {
+  const g = new THREE.Group();
+  const white = new THREE.MeshLambertMaterial({ color: 0xffffff });
+  const hw = GOAL_WIDTH / 2;
+  const x = side * HALF_LENGTH;
+  const back = side * (HALF_LENGTH + GOAL_DEPTH);
+
+  for (const z of [-hw, hw]) {
+    const p = post(GOAL_HEIGHT, white);
+    p.position.set(x, GOAL_HEIGHT / 2, z);
+    g.add(p);
+    // Thanh đỡ lưới (mảnh hơn), từ đỉnh cột xuống mép sau của lưới.
+    const drop = GOAL_HEIGHT * 0.7;
+    const stay = post(Math.hypot(GOAL_DEPTH, drop), white);
+    stay.scale.set(0.5, 1, 0.5);
+    stay.position.set((x + back) / 2, GOAL_HEIGHT - drop / 2, z);
+    stay.rotation.z = side * Math.atan2(GOAL_DEPTH, drop);
+    g.add(stay);
+  }
+  const bar = post(GOAL_WIDTH + POST_R * 2, white);
+  bar.rotation.x = Math.PI / 2;
+  bar.position.set(x, GOAL_HEIGHT, 0);
+  g.add(bar);
+
+  // Lưới: mặt nghiêng từ xà xuống mép sau (cao 30%), mặt sau thấp, hai mặt bên.
+  const lowBack = GOAL_HEIGHT * 0.3;
+  g.add(
+    netQuad(
+      [
+        [x, GOAL_HEIGHT, -hw],
+        [x, GOAL_HEIGHT, hw],
+        [back, lowBack, hw],
+        [back, lowBack, -hw],
+      ],
+      tex,
+    ),
+    netQuad(
+      [
+        [back, lowBack, -hw],
+        [back, lowBack, hw],
+        [back, 0, hw],
+        [back, 0, -hw],
+      ],
+      tex,
+    ),
+  );
+  for (const z of [-hw, hw]) {
+    g.add(
+      netQuad(
+        [
+          [x, GOAL_HEIGHT, z],
+          [back, lowBack, z],
+          [back, 0, z],
+          [x, 0, z],
+        ],
+        tex,
+      ),
+    );
+  }
+  return g;
+}
+
+export function buildPitch(): THREE.Group {
+  const g = new THREE.Group();
+  const grassA = new THREE.MeshLambertMaterial({ color: COLORS.pitchA });
+  const grassB = new THREE.MeshLambertMaterial({ color: COLORS.pitchB });
+
+  const runoff = flat(
+    new THREE.PlaneGeometry(PITCH_LENGTH + RUNOFF_M * 2, PITCH_WIDTH + RUNOFF_M * 2),
+    grassA,
+    0,
+  );
+  runoff.receiveShadow = true;
+  g.add(runoff);
+  const band = PITCH_LENGTH / STRIPES;
+  const stripeGeo = new THREE.PlaneGeometry(band, PITCH_WIDTH);
+  for (let i = 0; i < STRIPES; i++) {
+    const s = flat(stripeGeo, i % 2 === 0 ? grassA : grassB, 0.004);
+    s.position.x = -HALF_LENGTH + band * (i + 0.5);
+    s.receiveShadow = true;
+    g.add(s);
+  }
+
+  const chalk = new THREE.MeshBasicMaterial({ color: COLORS.pitchLine });
+  g.add(...rect(-HALF_LENGTH, -HALF_WIDTH, HALF_LENGTH, HALF_WIDTH, chalk));
+  g.add(line(0, -HALF_WIDTH, 0, HALF_WIDTH, chalk));
+  g.add(
+    flat(
+      new THREE.RingGeometry(
+        CENTER_CIRCLE_RADIUS - LINE_W / 2,
+        CENTER_CIRCLE_RADIUS + LINE_W / 2,
+        72,
+      ),
+      chalk,
+      LINE_Y,
+    ),
+  );
+  const spotGeo = new THREE.CircleGeometry(0.18, 16);
+  g.add(flat(spotGeo, chalk, LINE_Y));
+
+  const tex = netTexture();
+  for (const side of [-1, 1] as const) {
+    const xLine = side * HALF_LENGTH;
+    const xBox = side * (HALF_LENGTH - PENALTY_AREA_DEPTH);
+    const hw = PENALTY_AREA_WIDTH / 2;
+    g.add(line(xBox, -hw, xBox, hw, chalk));
+    g.add(line(xLine, -hw, xBox, -hw, chalk));
+    g.add(line(xLine, hw, xBox, hw, chalk));
+    const spot = flat(spotGeo, chalk, LINE_Y);
+    spot.position.x = side * (HALF_LENGTH - PENALTY_SPOT_DIST);
+    g.add(spot);
+    g.add(goal(side, tex));
+  }
+  return g;
+}

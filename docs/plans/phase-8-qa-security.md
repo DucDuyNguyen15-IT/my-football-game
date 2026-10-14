@@ -22,7 +22,7 @@
 ### 8.3 — Hiệu năng `[ ]`
 - **Phụ thuộc:** 8.1 · **Model:** default
 - **Bối cảnh:** PRD §10 (≥ 55 FPS TB, laptop tầm trung, GPU tích hợp); agent `ecc:performance-optimizer`.
-- **Việc cần làm:** đo FPS trung bình/1% thấp nhất cả trận trên Chrome; đo kích thước bundle (Phaser tách chunk, chỉ tải khi vào trận); đo p95 `POST /packs/:code/open` dưới tải nhẹ (autocannon, 20 kết nối); kiểm rò bộ nhớ vào/ra trận 20 lần. Tối ưu điểm nghẽn.
+- **Việc cần làm:** đo FPS trung bình/1% thấp nhất cả trận trên Chrome; đo kích thước bundle (Three.js tách chunk, chỉ tải khi vào trận); đo p95 `POST /packs/:code/open` dưới tải nhẹ (autocannon, 20 kết nối); kiểm rò bộ nhớ vào/ra trận 20 lần. Tối ưu điểm nghẽn.
 - **Kiểm chứng:** số đo trước/sau ghi vào QA-REPORT.
 - **Xong khi:** ≥ 55 FPS TB; không rò bộ nhớ.
 

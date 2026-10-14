@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty } from '@pitch/shared';
 import { cpuEasyTeam, cpuHardTeam, starterLikeTeam, type MatchSetup } from '@pitch/sim';
 import { MatchCanvas } from '../../game/MatchCanvas';
-import type { MatchBridge } from '../../game/scenes/MatchScene';
+import type { GraphicsQuality, MatchBridge } from '../../game/bridge';
 import {
   hudEvents,
   readDevOptions,
@@ -25,6 +25,24 @@ const GOAL_BANNER_MS = 1200;
 const HINTS_SHOW_MS = 10_000;
 /** Dừng lại một chút sau tiếng còi hết trận rồi mới sang màn kết quả. */
 const FULL_TIME_HOLD_MS = 1500;
+const QUALITY_KEY = 'pitch.gfx';
+
+/** Mức đồ hoạ nhớ theo trình duyệt (tiện ích riêng của người chơi; bị chặn storage thì dùng Cao). */
+function loadQuality(): GraphicsQuality {
+  try {
+    return localStorage.getItem(QUALITY_KEY) === 'low' ? 'low' : 'high';
+  } catch {
+    return 'high';
+  }
+}
+
+function saveQuality(q: GraphicsQuality): void {
+  try {
+    localStorage.setItem(QUALITY_KEY, q);
+  } catch {
+    // Không lưu được thì chỉ áp dụng cho trận này.
+  }
+}
 
 type Stage =
   | { kind: 'select' }
@@ -110,6 +128,7 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
   const [goalBanner, setGoalBanner] = useState(0);
   const [hints, setHints] = useState(true);
   const [paused, setPausedState] = useState(false);
+  const [quality, setQuality] = useState<GraphicsQuality>(loadQuality);
   // Scene đọc cờ tạm dừng mỗi khung hình nên giữ thêm bản ref (không chờ React render).
   const pausedRef = useRef(false);
   const lastHud = useRef<HudSnapshot | null>(null);
@@ -177,7 +196,7 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
 
   return (
     <>
-      <MatchCanvas setup={setup} bridge={bridge} />
+      <MatchCanvas setup={setup} bridge={bridge} quality={quality} />
       {hud && (
         <div className="hud">
           <div className="hud-top">
@@ -197,7 +216,17 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
         </div>
       )}
       {hud?.phase === 'half_time' && !autopilot && !paused && <HalfTimeOverlay hud={hud} />}
-      {paused && <PauseMenu onResume={() => setPaused(false)} onQuit={onQuit} />}
+      {paused && (
+        <PauseMenu
+          quality={quality}
+          onQuality={(q) => {
+            setQuality(q);
+            saveQuality(q);
+          }}
+          onResume={() => setPaused(false)}
+          onQuit={onQuit}
+        />
+      )}
     </>
   );
 }

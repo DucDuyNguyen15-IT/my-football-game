@@ -1,5 +1,5 @@
 {
-  "$comment": "Bản JSON của apps/web/src/styles/tokens.css — dùng cho Phaser (HUD, sân, màu đội) và công cụ. Giữ đồng bộ với file CSS. Giải thích: docs/DESIGN.md §3.",
+  "$comment": "Bản JSON của apps/web/src/styles/tokens.css — dùng cho phần vẽ trận Three.js (sân, màu đội) và công cụ. Giữ đồng bộ với file CSS. Giải thích: docs/DESIGN.md §3.",
   "color": {
     "bg": "#0a1310",
     "surface": { "1": "#111d18", "2": "#182822", "3": "#213530" },

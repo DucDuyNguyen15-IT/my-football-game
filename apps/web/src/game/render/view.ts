@@ -1,5 +1,5 @@
 /**
- * Tính toán phía hiển thị, thuần (không Phaser): nội suy giữa 2 tick, số áo. Không chứa luật/vật lý.
+ * Tính toán phía hiển thị, thuần (không Three.js): nội suy giữa 2 tick, số áo. Không chứa luật/vật lý.
  */
 import type { SquadSlot } from '@pitch/shared';
 import type { Vec2 } from '@pitch/sim';

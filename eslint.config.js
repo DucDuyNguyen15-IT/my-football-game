@@ -18,14 +18,17 @@ export default tseslint.config(
     rules: reactHooks.configs.recommended.rules,
   },
   {
-    // ADR-0001/0002: sim là TS thuần, không được phụ thuộc Phaser, React hay DOM.
+    // ADR-0001/0009: sim là TS thuần, không được phụ thuộc engine vẽ (Three.js), React hay DOM.
     files: ['packages/sim/**/*.ts'],
     rules: {
       'no-restricted-imports': [
         'error',
         {
           patterns: [
-            { group: ['phaser', 'phaser/*'], message: 'packages/sim không được import Phaser.' },
+            {
+              group: ['three', 'three/*', 'phaser', 'phaser/*'],
+              message: 'packages/sim không được import engine vẽ (Three.js/Phaser).',
+            },
             {
               group: ['react', 'react-dom', 'react/*'],
               message: 'packages/sim không được import React.',
