@@ -1,7 +1,7 @@
 import { FORMATION_LINES, type Formation, type SquadSlot } from '@pitch/shared';
 import type { PassKind } from '../actions/pass';
 import { attackSign } from '../actions/shoot';
-import { add, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
+import { add, dot, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import {
   CENTER_CIRCLE_RADIUS,
   HALF_LENGTH,
@@ -135,9 +135,15 @@ export function holdRestart(
     const d = sub(p.pos, restart.spot);
     const dist = length(d);
     if (dist >= clearance) return p;
-    // Trùng điểm đặt bóng thì lùi về phía khung thành nhà mình.
+    // Trùng điểm đặt bóng thì lùi về phía khung thành nhà mình. Bỏ phần vận tốc hướng vào bóng để
+    // người đang đi trượt men theo vòng, không bị đẩy qua đẩy lại (giật).
     const dir = dist > 0 ? scale(d, 1 / dist) : vec2(-attackSign(p.team, half), 0);
-    return { ...p, pos: add(restart.spot, scale(dir, clearance)) };
+    const inward = Math.min(0, dot(p.vel, dir));
+    return {
+      ...p,
+      pos: add(restart.spot, scale(dir, clearance)),
+      vel: sub(p.vel, scale(dir, inward)),
+    };
   });
 }
 
