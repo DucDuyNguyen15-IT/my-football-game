@@ -134,7 +134,8 @@
   border: 1px solid var(--c-line);
   border-radius: var(--radius-md);
   background: var(--c-scrim);
-  box-shadow: var(--shadow-1);
+  box-shadow: var(--shadow-2);
+  backdrop-filter: blur(6px);
   text-align: center;
 }
 .hud-score {
@@ -204,6 +205,16 @@
   color: var(--c-team-away);
 }
 
+.hud-minimap {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-4);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+  background: var(--c-scrim);
+  box-shadow: var(--shadow-1);
+}
+
 .hud-player {
   position: absolute;
   bottom: var(--sp-4);
@@ -213,6 +224,8 @@
   border: 1px solid var(--c-line);
   border-radius: var(--radius-md);
   background: var(--c-scrim);
+  box-shadow: var(--shadow-2);
+  backdrop-filter: blur(6px);
 }
 .hud-player-head {
   display: flex;

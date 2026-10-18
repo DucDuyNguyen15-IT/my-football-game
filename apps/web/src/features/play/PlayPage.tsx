@@ -1,7 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty } from '@pitch/shared';
-import { cpuEasyTeam, cpuHardTeam, starterLikeTeam, type MatchSetup } from '@pitch/sim';
+import {
+  cpuEasyTeam,
+  cpuHardTeam,
+  starterLikeTeam,
+  type MatchSetup,
+  type MatchState,
+} from '@pitch/sim';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsQuality, MatchBridge } from '../../game/bridge';
 import {
@@ -12,7 +18,7 @@ import {
   type DevOptions,
   type HudSnapshot,
 } from './hud';
-import { EventStrip, PlayerPanel, Scoreboard, type ShownEvent } from './MatchHud';
+import { EventStrip, Minimap, PlayerPanel, Scoreboard, type ShownEvent } from './MatchHud';
 import { DifficultySelect, HalfTimeOverlay, KeyHints, PauseMenu, ResultScreen } from './screens';
 import '../../styles/tokens.css';
 import './play.css';
@@ -132,6 +138,8 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
   // Scene đọc cờ tạm dừng mỗi khung hình nên giữ thêm bản ref (không chờ React render).
   const pausedRef = useRef(false);
   const lastHud = useRef<HudSnapshot | null>(null);
+  // State mới nhất cho minimap (tự vẽ ~10 Hz, không qua React state).
+  const latestState = useRef<MatchState | null>(null);
   const onEndRef = useRef(onEnd);
   useEffect(() => {
     onEndRef.current = onEnd;
@@ -175,6 +183,7 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
     return {
       isPaused: () => pausedRef.current,
       onState: (state) => {
+        latestState.current = state;
         const last = lastHud.current;
         const snap = toHudSnapshot(state, last ?? undefined);
         if (last && sameHud(last, snap)) return;
@@ -203,6 +212,7 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
             <Scoreboard hud={hud} />
             <EventStrip events={events} />
           </div>
+          <Minimap stateRef={latestState} />
           <PlayerPanel controlled={autopilot ? null : hud.controlled} />
           <p className="hud-pause-hint">
             <kbd>Esc</kbd> Tạm dừng

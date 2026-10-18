@@ -123,7 +123,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test cho `animationFor` (đứng/chạy/nước rút theo tốc độ, sút khi vừa chạm bóng, xoạc khi đang `tackleRecovery`); FPS ≥ 55 ở mức Cao; người dùng xem trên trình duyệt.
 - **Xong khi:** cầu thủ chạy/sút/xoạc nhìn ra động tác, người dùng duyệt.
 
-### 5.18c — HUD hoàn thiện: font, minimap `[ ]`
+### 5.18c — HUD hoàn thiện: font, minimap `[x]`
 - **Phụ thuộc:** 5.18a · **Model:** default
 - **Bối cảnh:** `docs/DESIGN.md` §2 & §6.2, `apps/web/src/features/play/`.
 - **Việc cần làm:** tự host Barlow Condensed + Be Vietnam Pro qua `@fontsource/*` (kéo sớm từ GĐ6); minimap góc trên-phải (14 chấm + bóng, vẽ trên canvas 2D nhỏ, ~10 Hz); _(thanh lực đã làm ở 5.19)_; chỉnh bảng tỉ số/panel cầu thủ cho hợp nền 3D.
