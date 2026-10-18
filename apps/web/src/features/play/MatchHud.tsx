@@ -1,9 +1,21 @@
 /**
- * HUD trong trận (DESIGN.md §6.2), DOM đè lên canvas: bảng tỉ số, dải sự kiện, panel cầu thủ.
- * Chỉ hiển thị `HudSnapshot`; không gọi sim.
+ * HUD trong trận (DESIGN.md §6.2), DOM đè lên canvas: bảng tỉ số, dải sự kiện, panel cầu thủ,
+ * minimap. Chỉ hiển thị `HudSnapshot` / state mới nhất; không gọi sim.
  */
+import { useEffect, useRef } from 'react';
+import { HALF_LENGTH, HALF_WIDTH, PENALTY_AREA_DEPTH, PENALTY_AREA_WIDTH } from '@pitch/sim';
+import type { MatchState } from '@pitch/sim';
+import { COLORS } from '../../game/render/colors';
 import type { HudEvent, HudSnapshot } from './hud';
 import { staminaLevel } from './hud';
+import {
+  MINIMAP_H,
+  MINIMAP_HZ,
+  MINIMAP_W,
+  minimapFrame,
+  toMinimap,
+  type MinimapFrame,
+} from './minimap';
 
 const POSITION_NAME = { GK: 'Thủ môn', DF: 'Hậu vệ', MF: 'Tiền vệ', FW: 'Tiền đạo' } as const;
 
@@ -77,5 +89,85 @@ export function PlayerPanel({ controlled }: { controlled: HudSnapshot['controlle
         </span>
       </div>
     </div>
+  );
+}
+
+const css = (n: number) => `#${n.toString(16).padStart(6, '0')}`;
+const TEAM_CSS = { home: css(COLORS.team.home), away: css(COLORS.team.away) } as const;
+
+/** Vạch sân: khung, đường giữa sân, hai vòng cấm. */
+function drawPitch(ctx: CanvasRenderingContext2D): void {
+  const a = toMinimap({ x: -HALF_LENGTH, y: -HALF_WIDTH });
+  const b = toMinimap({ x: HALF_LENGTH, y: HALF_WIDTH });
+  ctx.strokeStyle = 'rgb(232 240 230 / 0.45)';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(a.x, a.y, b.x - a.x, b.y - a.y);
+  const mid = toMinimap({ x: 0, y: 0 });
+  ctx.beginPath();
+  ctx.moveTo(mid.x, a.y);
+  ctx.lineTo(mid.x, b.y);
+  ctx.stroke();
+  for (const side of [-1, 1]) {
+    const p = toMinimap({ x: side * HALF_LENGTH, y: -PENALTY_AREA_WIDTH / 2 });
+    const q = toMinimap({
+      x: side * (HALF_LENGTH - PENALTY_AREA_DEPTH),
+      y: PENALTY_AREA_WIDTH / 2,
+    });
+    ctx.strokeRect(Math.min(p.x, q.x), p.y, Math.abs(q.x - p.x), q.y - p.y);
+  }
+}
+
+function drawFrame(ctx: CanvasRenderingContext2D, frame: MinimapFrame): void {
+  ctx.clearRect(0, 0, MINIMAP_W, MINIMAP_H);
+  drawPitch(ctx);
+  for (const p of frame.players) {
+    ctx.beginPath();
+    ctx.arc(p.x, p.y, p.controlled ? 4 : 3, 0, Math.PI * 2);
+    ctx.fillStyle = TEAM_CSS[p.team];
+    ctx.fill();
+    if (p.controlled) {
+      ctx.strokeStyle = COLORS.text;
+      ctx.lineWidth = 1.5;
+      ctx.stroke();
+    }
+  }
+  ctx.beginPath();
+  ctx.arc(frame.ball.x, frame.ball.y, 2.5, 0, Math.PI * 2);
+  ctx.fillStyle = '#ffffff';
+  ctx.fill();
+  ctx.strokeStyle = COLORS.bgCss;
+  ctx.lineWidth = 1;
+  ctx.stroke();
+}
+
+/**
+ * Minimap góc trên-phải: 14 chấm màu đội + bóng trắng, vẽ trên canvas 2D nhỏ ~10 lần/giây từ state
+ * mới nhất (`stateRef`, renderer cập nhật mỗi khung hình) — không qua React state.
+ */
+export function Minimap({ stateRef }: { stateRef: { readonly current: MatchState | null } }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    const ctx = canvas?.getContext('2d');
+    if (!canvas || !ctx) return;
+    const dpr = Math.min(2, window.devicePixelRatio || 1);
+    canvas.width = Math.round(MINIMAP_W * dpr);
+    canvas.height = Math.round(MINIMAP_H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    const draw = () => {
+      const state = stateRef.current;
+      if (state) drawFrame(ctx, minimapFrame(state));
+    };
+    draw();
+    const id = window.setInterval(draw, 1000 / MINIMAP_HZ);
+    return () => window.clearInterval(id);
+  }, [stateRef]);
+  return (
+    <canvas
+      ref={canvasRef}
+      className="hud-minimap"
+      style={{ width: MINIMAP_W, height: MINIMAP_H }}
+      aria-hidden="true"
+    />
   );
 }

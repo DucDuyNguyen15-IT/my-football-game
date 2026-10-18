@@ -11,6 +11,8 @@
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@fontsource/barlow-condensed": "5.3.0",
+    "@fontsource/be-vietnam-pro": "5.3.0",
     "@pitch/shared": "workspace:*",
     "@pitch/sim": "workspace:*",
     "react": "^19.3.0",

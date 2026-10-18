@@ -17,19 +17,28 @@ const LEG_H = 0.55;
 const CHARGE_BAR_W = 1.5;
 const CHARGE_BAR_H = 0.22;
 
+const NUMBER_FONT = 'bold 44px "Barlow Condensed", "Arial Narrow", sans-serif';
+
 export function numberTexture(n: number, ink: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');
   canvas.width = canvas.height = 64;
   const ctx = canvas.getContext('2d');
-  if (ctx) {
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  if (!ctx) return tex;
+  const draw = () => {
+    ctx.clearRect(0, 0, 64, 64);
     ctx.fillStyle = ink;
-    ctx.font = 'bold 44px "Barlow Condensed", "Arial Narrow", sans-serif';
+    ctx.font = NUMBER_FONT;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(n), 32, 34);
-  }
-  const tex = new THREE.CanvasTexture(canvas);
-  tex.colorSpace = THREE.SRGBColorSpace;
+    tex.needsUpdate = true;
+  };
+  draw();
+  // Font tự host chưa tải xong thì vẽ tạm bằng font dự phòng, tải xong vẽ lại.
+  if (!document.fonts.check(NUMBER_FONT))
+    void document.fonts.load(NUMBER_FONT).then(draw, () => {});
   return tex;
 }
 
@@ -122,10 +131,19 @@ export class ActorKit {
     const group = new THREE.Group();
     const bg = new THREE.Mesh(
       new THREE.PlaneGeometry(CHARGE_BAR_W + 0.06, CHARGE_BAR_H + 0.06),
-      new THREE.MeshBasicMaterial({ color: COLORS.bg, transparent: true, opacity: 0.8, depthTest: false }),
+      new THREE.MeshBasicMaterial({
+        color: COLORS.bg,
+        transparent: true,
+        opacity: 0.8,
+        depthTest: false,
+      }),
     );
     // Hình học dời sang phải nửa bề rộng để scale.x co giãn từ mép trái.
-    const fillGeo = new THREE.PlaneGeometry(CHARGE_BAR_W, CHARGE_BAR_H).translate(CHARGE_BAR_W / 2, 0, 0);
+    const fillGeo = new THREE.PlaneGeometry(CHARGE_BAR_W, CHARGE_BAR_H).translate(
+      CHARGE_BAR_W / 2,
+      0,
+      0,
+    );
     // Cùng là vật trong suốt với nền thì renderOrder mới quyết định thứ tự vẽ (vật đặc luôn vẽ trước).
     const fillMat = new THREE.MeshBasicMaterial({
       color: COLORS.accent,

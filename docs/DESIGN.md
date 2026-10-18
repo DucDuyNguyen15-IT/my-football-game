@@ -23,7 +23,7 @@ Nguồn spec: `docs/PRD.md`. Token chạy thật: [`apps/web/src/styles/tokens.c
 | Hiển thị | **Barlow Condensed** 600/700 | OVR, tỉ số, đồng hồ, tiêu đề, nhãn viết hoa, giá xu. Font hẹp kiểu bảng tỉ số sân vận động, chữ số rõ |
 | Nội dung | **Be Vietnam Pro** 400/500/600 | Văn bản, nút, form, tên cầu thủ. Thiết kế cho tiếng Việt nên dấu không đè lên nhau |
 
-- Cả hai font đều giấy phép OFL và hỗ trợ tiếng Việt. Ở GĐ6 sẽ **tự host** qua `@fontsource/*`, không gọi Google Fonts ở bản chạy thật (nhanh hơn, không lộ IP người chơi). Prototype tạm dùng Google Fonts.
+- Cả hai font đều giấy phép OFL và hỗ trợ tiếng Việt. **Tự host** qua `@fontsource/*` (nạp ở `apps/web/src/main.tsx`, task 5.18c), không gọi Google Fonts ở bản chạy thật (nhanh hơn, không lộ IP người chơi). Prototype HTML trong `docs/design/` vẫn dùng Google Fonts.
 - Số luôn dùng `font-variant-numeric: tabular-nums` để đồng hồ và xu không bị nhảy khi giá trị đổi.
 - Thang cỡ chữ: 12 / 14 / 16 / 20 / 28 / 40 / 64 px. Văn bản tối thiểu 14px, nhãn phụ 12px chỉ dùng cho chữ in hoa có giãn chữ (`--tracking-caps`).
 
@@ -150,7 +150,7 @@ Khung chung cho các màn ngoài trận: thanh trên cùng cao 56px (logo chữ 
 - **Bảng tỉ số** ở giữa phía trên: ô màu đội, tỉ số Barlow 40px, hiệp + phút (0'–90'). Các sự kiện (bàn thắng, thẻ, thay người) hiện thành dải nhỏ dưới bảng tỉ số trong 3s.
 - **Panel cầu thủ** ở góc dưới-trái: số áo, tên, vị trí, thanh thể lực. Thanh đổi sang vàng khi < 50% và đỏ khi < 30% (mốc PRD làm giảm tốc độ).
 - **Thanh lực** hiện trên đầu cầu thủ khi giữ D (sút, màu chanh, đầy trong 1 s) hoặc S/A (chuyền, xanh dương, đầy trong 0,8 s).
-- **Minimap** góc trên-phải hiện 14 chấm màu đội và bóng trắng.
+- **Minimap** góc trên-phải (180 × 120 px, canvas 2D vẽ lại 10 lần/giây) hiện 14 chấm màu đội, người đang điều khiển có viền trắng, bóng trắng; cùng hướng với camera.
 - Bàn thắng: chữ "VÀO!" màu chanh quét ngang màn hình 1.2s, rồi về giao bóng.
 - Lần đầu vào trận: hiện dải gợi ý phím điều khiển ở cạnh dưới trong 10s đầu, sau đó ẩn và mở lại được trong menu tạm dừng.
 
