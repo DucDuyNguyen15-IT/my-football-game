@@ -42,6 +42,48 @@ export function numberTexture(n: number, ink: string): THREE.CanvasTexture {
   return tex;
 }
 
+/**
+ * Hoa văn bóng: các mảng tối rải đều trên ảnh trải phẳng (equirectangular) — đủ để thấy bóng lăn
+ * và xoáy. Ở hai cực mảng bị kéo dài theo ảnh trải phẳng, nhỏ quá nên không thấy.
+ */
+function ballTexture(): THREE.CanvasTexture {
+  const w = 128;
+  const h = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    ctx.fillStyle = '#f4f6f2';
+    ctx.fillRect(0, 0, w, h);
+    ctx.fillStyle = '#1b2420';
+    const rows = [
+      { y: 14, n: 5, off: 0 },
+      { y: 32, n: 5, off: 0.5 },
+      { y: 50, n: 5, off: 0 },
+    ];
+    for (const r of rows) {
+      for (let i = 0; i < r.n; i++) {
+        const x = ((i + r.off) / r.n) * w;
+        ctx.beginPath();
+        // Ngũ giác.
+        for (let k = 0; k < 5; k++) {
+          const a = (k / 5) * Math.PI * 2 - Math.PI / 2;
+          const px = x + Math.cos(a) * 7;
+          const py = r.y + Math.sin(a) * 6;
+          if (k === 0) ctx.moveTo(px, py);
+          else ctx.lineTo(px, py);
+        }
+        ctx.closePath();
+        ctx.fill();
+      }
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  return tex;
+}
+
 export class ActorKit {
   private readonly torso = new THREE.CylinderGeometry(0.26, 0.22, BODY_H - LEG_H, 12);
   private readonly legs = new THREE.CylinderGeometry(0.2, 0.17, LEG_H, 10);
@@ -100,8 +142,8 @@ export class ActorKit {
 
   createBall(): THREE.Mesh {
     const ball = new THREE.Mesh(
-      new THREE.SphereGeometry(BALL_DRAW_RADIUS, 16, 12),
-      new THREE.MeshLambertMaterial({ color: 0xffffff, emissive: 0x333333 }),
+      new THREE.SphereGeometry(BALL_DRAW_RADIUS, 24, 16),
+      new THREE.MeshLambertMaterial({ map: ballTexture(), emissive: 0x333333 }),
     );
     ball.castShadow = true;
     return ball;

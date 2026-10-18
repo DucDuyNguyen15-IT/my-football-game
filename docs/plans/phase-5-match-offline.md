@@ -142,6 +142,11 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Việc cần làm:** S/A khi có bóng: bấm bắt đầu nạp (`MatchState.passCharge`), giữ tăng lực (đầy sau `PASS_FULL_CHARGE_TICKS`), nhả mới chuyền; lực 0 (bấm nhanh) giữ nguyên hành vi cũ; lực lớn ưu tiên người nhận xa (`PASS_POWER_PREF_DIST`), bóng sệt căng hơn, chuyền khoảng trống xa hơn. Bóng chết vẫn bấm là chuyền. Thanh lực 3D trên đầu cầu thủ khi giữ S/A/D (`chargeMeter`).
 - **Kiểm chứng:** test sim: giữ chưa chuyền, nhả mới chuyền; bấm nhanh → người gần, đầy thanh → người xa; bóng căng hơn; mất bóng huỷ nạp; không có bóng S vẫn đổi người. Test `chargeMeter`.
 
+### 5.20 — Đồ hoạ mức Cao đẹp hơn `[x]`
+- **Phụ thuộc:** 5.18a · **Model:** default · _Thêm 2026-10-19 theo yêu cầu chủ dự án: mức Thấp giữ cho máy trung bình, mức Cao làm đẹp cho máy mạnh._
+- **Việc đã làm:** cấu hình từng mức trong `apps/web/src/game/render/quality.ts` (có test). Cao: hậu kỳ (bloom nửa độ phân giải cho đèn pha, tone mapping ACES, SMAA), bóng đổ mềm 2048, 4 đèn spot rọi từ cột đèn, bầu trời đêm có sao, mái khán đài có dải đèn. Cả hai mức: cỏ có vân, bóng có hoa văn và xoay khi lăn.
+- **Kiểm chứng:** máy dev (DPR 1,25): Thấp ~180 FPS, Cao ~88 FPS (MSAA 4× trên render target từng làm tụt còn ~52 nên đổi sang SMAA).
+
 ### 5.11 — Thay người khi bóng chết `[x]`
 - **Phụ thuộc:** 5.8b, 5.10, 5.18c · **Model:** default
 - **Bối cảnh:** PRD §5 (Thể lực, Thay người) và tiêu chí F3.
