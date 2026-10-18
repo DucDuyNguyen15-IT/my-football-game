@@ -26,6 +26,12 @@ export const PASS_LANE_WIDTH = 1.5;
 export const PASS_LANE_PENALTY = 0.5;
 /** Chuyền đón trước người nhận đang chạy tối đa chừng này mét. */
 export const PASS_LEAD_MAX = 5;
+/**
+ * Hỗ trợ chuyền của người chơi: chọn đồng đội gần nhất theo hướng bấm (phạt khoảng cách mạnh hơn,
+ * không né đối thủ chắn đường — bấm hướng nào chuyền người đó) và bóng đi chuẩn hơn (sai số × hệ số).
+ */
+export const PASS_ASSIST_DIST_PENALTY = 0.025;
+export const PASS_ASSIST_ERROR_MULT = 0.3;
 
 /*
  * Lực chuyền (giữ S/A rồi nhả, PRD §5 đổi 2026-10-14): lực 0 = bấm nhanh, chuyền y như trước khi có
@@ -75,7 +81,7 @@ function lanePenalty(players: readonly PlayerState[], passer: PlayerState, to: V
 /**
  * Đồng đội tốt nhất theo hướng `dir`: trong hình nón ±60°, điểm = cos(góc lệch) − phạt khoảng cách
  * − phạt đối thủ chắn đường (chỉ chuyền sệt; chuyền bổng bay qua đầu). Null nếu không có ai
- * (trong tầm `maxRange`).
+ * (trong tầm `maxRange`). `assisted` (người chơi chuyền): ưu tiên người gần, không né đối thủ.
  */
 export function choosePassTarget(
   players: readonly PlayerState[],
@@ -84,7 +90,9 @@ export function choosePassTarget(
   maxRange = Infinity,
   kind: PassKind = 'ground',
   power = 0,
+  assisted = false,
 ): PlayerState | null {
+  const distPenalty = assisted ? PASS_ASSIST_DIST_PENALTY : PASS_DIST_PENALTY;
   const prefDist = PASS_POWER_MIN_DIST + (PASS_POWER_PREF_DIST - PASS_POWER_MIN_DIST) * power;
   const unit = normalize(dir);
   let best: PlayerState | null = null;
@@ -96,9 +104,9 @@ export function choosePassTarget(
     if (dist === 0 || dist > maxRange) continue;
     const cos = dot(unit, to) / dist;
     if (cos < PASS_CONE_COS) continue;
-    const blocked = kind === 'ground' ? lanePenalty(players, passer, p.pos) : 0;
+    const blocked = kind === 'ground' && !assisted ? lanePenalty(players, passer, p.pos) : 0;
     const reach = power * Math.abs(dist - prefDist) * PASS_POWER_DIST_WEIGHT;
-    const score = cos - dist * PASS_DIST_PENALTY - blocked - reach;
+    const score = cos - dist * distPenalty - blocked - reach;
     if (score > bestScore) {
       best = p;
       bestScore = score;
@@ -111,7 +119,7 @@ export function choosePassTarget(
  * Thời gian (s) bóng đi hết `dist` mét. Sệt: tích phân từng tick đúng mô hình lăn của
  * `physics/ball.ts` (chỉ + − × ÷, tất định). Bổng: thời gian bay (không cản) + lăn nốt phần còn lại.
  */
-function passTravelTime(dist: number, kind: PassKind): number {
+export function passTravelTime(dist: number, kind: PassKind): number {
   if (kind === 'lob') {
     const v = Math.sqrt((LOB_CARRY * dist * GRAVITY) / 2) * LOB_DRAG_COMP;
     return (2 * v) / GRAVITY + ((1 - LOB_CARRY) * dist) / Math.max(1, v / 2);

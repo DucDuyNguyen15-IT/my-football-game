@@ -10,13 +10,15 @@ import {
   PENALTY_AREA_DEPTH,
 } from '../pitch';
 import type { PlayerState, Restart, RestartType, TeamSide } from '../types';
+import { TICK_RATE } from '../tick';
 import { RESTART_GRACE_TICKS } from './clock';
 import { DRIBBLE_OFFSET } from './possession';
 
 /*
  * Bóng chết (PRD §5, đơn giản hoá): bóng ra ngoài → ném biên / phạt góc / phát bóng, bàn thắng →
- * giao bóng. Bóng tự đặt vào chỗ, người thực hiện đứng sẵn sau bóng; đội người bấm chuyền để tiếp tục,
- * đội máy tự thực hiện sau RESTART_DELAY_TICKS.
+ * giao bóng. Bóng tự đặt vào chỗ; người thực hiện tự đi ra sau bóng, đối phương lùi ra xa (giao bóng
+ * thì đặt sẵn). Mọi người vào vị trí rồi đội người mới bấm chuyền được, đội máy tự thực hiện sau
+ * RESTART_DELAY_TICKS.
  */
 
 /** Đội máy tự thực hiện bóng chết sau chừng này tick (3 s). */
@@ -27,6 +29,12 @@ export const RESTART_CLEARANCE = 5;
 export const GOAL_KICK_DIST = 5;
 /** Ném biên sát góc: bóng đặt cách vạch cuối ít nhất chừng này mét. */
 const THROW_IN_END_GAP = 1;
+/** Đi về vị trí thực hiện lại bóng: cách chỗ cần đứng không quá chừng này (m) thì coi như đã tới. */
+export const RESTART_SETTLE_DIST = 0.3;
+/** Đi mãi chưa tới (bị chen) sau chừng này tick thì đặt luôn vào vị trí. */
+export const RESTART_SETUP_MAX_TICKS = 8 * TICK_RATE;
+/** Ném biên: bóng rời tay ở trên đầu, cao chừng này mét. */
+export const THROW_IN_RELEASE_Z = 2;
 /** Phạt góc nhắm vào điểm giữa vòng cấm, cách vạch cuối chừng này mét. */
 const CORNER_AIM_DEPTH = 7;
 /** Phạt đền: thủ môn đội phòng ngự đứng giữa khung thành, cách vạch cuối chừng này mét. */
@@ -73,7 +81,7 @@ export function decideRestart(
 }
 
 /** Hướng người thực hiện quay mặt lúc đặt bóng (cũng là hướng chuyền mặc định). */
-function restartFacing(plan: RestartPlan, half: 1 | 2): Vec2 {
+export function restartFacing(plan: RestartPlan, half: 1 | 2): Vec2 {
   const { spot } = plan;
   switch (plan.type) {
     case 'throw_in':
@@ -153,16 +161,44 @@ function holdPenalty(p: PlayerState, restart: Restart, goalSide: 1 | -1): Player
   };
 }
 
-/** Chọn người thực hiện, đặt người đó sau bóng, dẹp đối phương ra xa. */
+/** Chọn người thực hiện (chưa ai di chuyển). */
+export function createRestart(
+  players: readonly PlayerState[],
+  plan: RestartPlan,
+  startTick: number,
+): Restart {
+  return { ...plan, takerId: chooseTaker(players, plan).id, startTick };
+}
+
+/** Chọn người thực hiện, đặt ngay người đó sau bóng, dẹp đối phương ra xa (giao bóng). */
 export function setupRestart(
   players: readonly PlayerState[],
   plan: RestartPlan,
   half: 1 | 2,
   startTick: number,
 ): { players: PlayerState[]; restart: Restart } {
-  const taker = chooseTaker(players, plan);
-  const restart: Restart = { ...plan, takerId: taker.id, startTick };
+  const restart = createRestart(players, plan, startTick);
   return { players: holdRestart(players, restart, half, restartFacing(plan, half)), restart };
+}
+
+/**
+ * Chỗ từng người còn phải đi tới trước khi thực hiện (người thực hiện ra sau bóng, đối phương ra
+ * ngoài khoảng cách tối thiểu, phạt đền thì ra ngoài vòng cấm) — chỉ người còn cách chỗ đó quá
+ * RESTART_SETTLE_DIST. Rỗng = mọi người đã vào vị trí, được thực hiện.
+ */
+export function restartTargets(
+  players: readonly PlayerState[],
+  restart: Restart,
+  half: 1 | 2,
+  aim: Vec2 = ZERO,
+): Map<string, Vec2> {
+  const held = holdRestart(players, restart, half, aim);
+  const targets = new Map<string, Vec2>();
+  players.forEach((p, i) => {
+    const to = held[i]!.pos;
+    if (length(sub(to, p.pos)) > RESTART_SETTLE_DIST) targets.set(p.id, to);
+  });
+  return targets;
 }
 
 /** Toạ độ x của từng tuyến khi giao bóng, nhìn từ đội tấn công về +x. */

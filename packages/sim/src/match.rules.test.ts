@@ -3,7 +3,11 @@ import { cpuEasyTeam, starterLikeTeam } from './fixtures/demoTeams';
 import { createMatch, step } from './match';
 import { length, sub, vec2, ZERO, type Vec2 } from './math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from './pitch';
-import { RESTART_DELAY_TICKS } from './rules/restarts';
+import {
+  RESTART_DELAY_TICKS,
+  RESTART_SETTLE_DIST,
+  RESTART_SETUP_MAX_TICKS,
+} from './rules/restarts';
 import { TICK_RATE } from './tick';
 import {
   NO_INPUT,
@@ -156,6 +160,8 @@ describe('thực hiện lại bóng', () => {
     expect(after.phase).toBe('play');
     expect(length(after.ball.vel)).toBeGreaterThan(0);
     expect(after.lastTouchTeam).toBe('away');
+    // Ném biên: bóng rời tay trên đầu, không lăn từ chân.
+    expect(after.ball.z).toBeGreaterThan(1.5);
   });
 
   it('đội người: không bấm thì chờ mãi, bấm J thì chuyền đi', () => {
@@ -167,8 +173,29 @@ describe('thực hiện lại bóng', () => {
     expect(taken.kickLock?.playerId).toBe(dead.restart!.takerId);
   });
 
-  it('khi chờ, người thực hiện đứng yên tại bóng; hướng bấm chỉ xoay hướng chuyền', () => {
+  it('bóng chết: người thực hiện đi bộ tới bóng (không dịch chuyển tức thì), tới nơi mới thực hiện được', () => {
     const dead = homeCorner();
+    const taker = playerOf(dead, dead.restart!.takerId);
+    const far = length(sub(taker.pos, dead.restart!.spot));
+    expect(far).toBeGreaterThan(2);
+    // Chưa tới bóng thì bấm chuyền cũng chưa đá.
+    expect(step(dead, J).phase).toBe('dead_ball');
+    let s = dead;
+    let maxStepM = 0;
+    for (let i = 0; i < RESTART_SETUP_MAX_TICKS - 1; i++) {
+      const next = step(s, NO_INPUT);
+      const d = length(sub(playerOf(next, taker.id).pos, playerOf(s, taker.id).pos));
+      maxStepM = Math.max(maxStepM, d);
+      s = next;
+    }
+    // Chạy nhanh nhất ~0,15 m/tick, cộng bước đứng vào chỗ cuối cùng ≤ RESTART_SETTLE_DIST: không nhảy cóc.
+    expect(maxStepM).toBeLessThan(0.15 + RESTART_SETTLE_DIST);
+    expect(length(sub(playerOf(s, taker.id).pos, dead.restart!.spot))).toBeLessThan(1);
+    expect(step(s, J).phase).toBe('play');
+  });
+
+  it('khi chờ, người thực hiện đứng yên tại bóng; hướng bấm chỉ xoay hướng chuyền', () => {
+    const dead = repeat(homeCorner(), NO_INPUT, RESTART_SETUP_MAX_TICKS);
     const taker = playerOf(dead, dead.restart!.takerId);
     const turned = repeat(dead, press({ move: vec2(-1, 0) }), 30);
     const after = playerOf(turned, taker.id);

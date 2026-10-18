@@ -2,7 +2,8 @@ import { FORMATION_LINES, type Formation, type SquadSlot } from '@pitch/shared';
 import { attackSign } from '../actions/shoot';
 import { add, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from '../pitch';
-import { CONTAIN_DIST } from '../stats/params';
+import { isKeeperHandling } from '../rules/fouls';
+import { CONTAIN_DIST, KEEPER_PRESS_GAP } from '../stats/params';
 import { keeperTarget } from './goalkeeper';
 import { supportSpot } from './player';
 import type { BallState, PlayerState, TeamSide } from '../types';
@@ -248,7 +249,10 @@ export function goalSidePoint(of: Vec2, team: TeamSide, half: 1 | 2, gap: number
   return add(of, scale(normalize(sub(ownGoal, of)), gap));
 }
 
-/** Vị trí mục tiêu của cầu thủ AI trong tick này theo vai; null nếu không có vai. */
+/**
+ * Vị trí mục tiêu của cầu thủ AI trong tick này theo vai; null nếu không có vai. `backPass`: xem
+ * `MatchState.backPass`.
+ */
 export function aiTarget(
   player: PlayerState,
   plan: TeamPlan,
@@ -256,6 +260,7 @@ export function aiTarget(
   ball: BallState,
   ballOwnerId: string | null,
   half: 1 | 2,
+  backPass: TeamSide | null = null,
 ): Vec2 | null {
   const role = plan.roles[player.id];
   const anchor = plan.anchors[player.id];
@@ -271,7 +276,9 @@ export function aiTarget(
         const lead = Math.min(CHASE_LEAD_MAX_SEC, dist(player.pos, ball.pos) / CHASE_SPEED_GUESS);
         target = add(ball.pos, scale(ball.vel, lead));
       } else if (owner.team !== player.team) {
-        target = goalSide(owner.pos, CONTAIN_DIST);
+        // Thủ môn đang ôm bóng: không được cản, đứng chờ ở xa.
+        const gap = isKeeperHandling(owner, half, backPass) ? KEEPER_PRESS_GAP : CONTAIN_DIST;
+        target = goalSide(owner.pos, gap);
       } else {
         // Đội mình vừa giành bóng, chưa kịp lập lại kế hoạch.
         target = anchor;
@@ -293,7 +300,7 @@ export function aiTarget(
       target = plan.mode === 'attack' ? supportSpot(anchor, player.team, players) : anchor;
       break;
     case 'keep':
-      target = keeperTarget(player, ball, players, ballOwnerId, half);
+      target = keeperTarget(player, ball, players, ballOwnerId, half, !plan.deadBall);
       break;
   }
   return clampToPitch(target, TARGET_MARGIN);
@@ -319,8 +326,9 @@ export function aiMove(
   ballOwnerId: string | null,
   half: 1 | 2,
   aggression: number,
+  backPass: TeamSide | null = null,
 ): AiMove {
-  const target = aiTarget(player, plan, players, ball, ballOwnerId, half);
+  const target = aiTarget(player, plan, players, ball, ballOwnerId, half, backPass);
   if (!target) return { move: ZERO, sprint: false };
   return arrive(player, target, plan.roles[player.id] === 'press' && aggression >= 0.5);
 }

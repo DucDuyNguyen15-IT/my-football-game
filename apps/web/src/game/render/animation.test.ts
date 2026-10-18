@@ -13,6 +13,7 @@ import {
   WALK_MAX_SPEED,
   animationEvents,
   diveClip,
+  heldBall,
   locomotionFor,
 } from './animation';
 
@@ -82,6 +83,31 @@ describe('locomotionFor', () => {
   });
 });
 
+describe('heldBall', () => {
+  it('thủ môn giữ bóng trong vòng cấm nhà → cầm tay; ra ngoài vòng cấm → không', () => {
+    const s = { ...base(), ballOwnerId: 'home-GK' };
+    expect(heldBall(s)).toEqual({ playerId: 'home-GK', grip: 'keeper' });
+    expect(heldBall(withPlayer(s, 'home-GK', { pos: v(0, 0) }))).toBeNull();
+    expect(heldBall({ ...base(), ballOwnerId: 'home-P3' })).toBeNull();
+  });
+
+  it('chờ ném biên: tới điểm ném rồi mới cầm bóng qua đầu, đang đi tới thì bóng còn ở vạch', () => {
+    const restart = {
+      type: 'throw_in',
+      team: 'home',
+      spot: v(0, 34),
+      takerId: 'home-P3',
+      startTick: 0,
+    };
+    const s = { ...base(), restart } as MatchState;
+    expect(heldBall(withPlayer(s, 'home-P3', { pos: v(0, 33.4) }))).toEqual({
+      playerId: 'home-P3',
+      grip: 'throw_in',
+    });
+    expect(heldBall(withPlayer(s, 'home-P3', { pos: v(0, 25) }))).toBeNull();
+  });
+});
+
 describe('diveClip', () => {
   it('thủ môn lao nhanh sang ngang khi bóng tự do sau cú sút đối phương → bay người đúng phía', () => {
     const s0 = { ...base(), ballOwnerId: null, lastShot: { team: 'home' as const, tick: 0 } };
@@ -132,6 +158,33 @@ describe('animationEvents', () => {
     const pen = restart('penalty');
     const penShot = after(pen, { lastShot: { team: 'home', tick: pen.tick + 1 } });
     expect(animationEvents(pen, penShot)[0]?.clip).toBe('penalty');
+  });
+
+  it('thủ môn lấy đà: phát clip ném/phát bóng lúc bắt đầu, lúc nhả bóng không phát lại', () => {
+    const GK = 'home-GK';
+    const prev = { ...base(), ballOwnerId: GK };
+    const windup = (style: 'throw' | 'kick'): MatchState => ({
+      ...prev,
+      tick: prev.tick + 1,
+      windup: {
+        playerId: GK,
+        releaseTick: prev.tick + 31,
+        style,
+        kick: { type: 'assisted', kind: 'ground', dir: v(1, 0), power: 0 },
+      },
+    });
+    expect(animationEvents(prev, windup('throw'))).toEqual([{ playerId: GK, clip: 'gk_throw' }]);
+    expect(animationEvents(prev, windup('kick'))).toEqual([{ playerId: GK, clip: 'gk_kick' }]);
+    const holding = windup('throw');
+    expect(animationEvents(holding, { ...holding, tick: holding.tick + 1 })).toEqual([]);
+    const released: MatchState = {
+      ...holding,
+      tick: holding.tick + 30,
+      windup: null,
+      ballOwnerId: null,
+      kickLock: { playerId: GK, untilTick: holding.tick + 42 },
+    };
+    expect(animationEvents(holding, released)).toEqual([]);
   });
 
   const tackled = (
