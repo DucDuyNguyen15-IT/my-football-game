@@ -142,7 +142,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Việc cần làm:** S/A khi có bóng: bấm bắt đầu nạp (`MatchState.passCharge`), giữ tăng lực (đầy sau `PASS_FULL_CHARGE_TICKS`), nhả mới chuyền; lực 0 (bấm nhanh) giữ nguyên hành vi cũ; lực lớn ưu tiên người nhận xa (`PASS_POWER_PREF_DIST`), bóng sệt căng hơn, chuyền khoảng trống xa hơn. Bóng chết vẫn bấm là chuyền. Thanh lực 3D trên đầu cầu thủ khi giữ S/A/D (`chargeMeter`).
 - **Kiểm chứng:** test sim: giữ chưa chuyền, nhả mới chuyền; bấm nhanh → người gần, đầy thanh → người xa; bóng căng hơn; mất bóng huỷ nạp; không có bóng S vẫn đổi người. Test `chargeMeter`.
 
-### 5.11 — Thay người khi bóng chết `[ ]`
+### 5.11 — Thay người khi bóng chết `[x]`
 - **Phụ thuộc:** 5.8b, 5.10, 5.18c · **Model:** default
 - **Bối cảnh:** PRD §5 (Thể lực, Thay người) và tiêu chí F3.
 - **Việc cần làm:** sim: lệnh `substitute(out, in)` chỉ hợp lệ khi `ballDead`/nghỉ giữa hiệp, tối đa 3 lượt, không thay người đã nhận thẻ đỏ; AI tự thay khi cầu thủ < 30% thể lực. Web: menu thay người (Esc/Tab khi bóng chết), trận tạm dừng khi mở.

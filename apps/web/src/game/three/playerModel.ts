@@ -17,7 +17,7 @@ import {
   type HeldBall,
 } from '../render/animation';
 import { COLORS } from '../render/colors';
-import { shirtNumber } from '../render/view';
+import { playerNumber } from '../render/view';
 import { numberTexture } from './actors';
 
 export const PLAYER_MODEL_URL = '/models/player.glb';
@@ -145,7 +145,7 @@ export class ModelActor {
       // Khung bao của skinned mesh không theo hoạt ảnh: tắt cắt khung để không biến mất khi ngã.
       o.frustumCulled = false;
     });
-    this.attachNumber(shirtNumber(p.slot));
+    this.attachNumber(playerNumber(p.id));
     this.speeds = model.speeds;
     this.spine = this.root.getObjectByName('mixamorigSpine');
     const right = this.root.getObjectByName('mixamorigRightHand');

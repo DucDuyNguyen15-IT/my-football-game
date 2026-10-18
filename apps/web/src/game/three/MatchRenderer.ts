@@ -4,7 +4,15 @@
  * 1/60 s, rồi vẽ nội suy giữa tick trước và tick hiện tại (ARCHITECTURE §6).
  */
 import * as THREE from 'three';
-import { TICK_DT, createMatch, step, type MatchSetup, type MatchState } from '@pitch/sim';
+import {
+  TICK_DT,
+  createMatch,
+  step,
+  substitute,
+  type MatchSetup,
+  type MatchState,
+  type PlayerState,
+} from '@pitch/sim';
 import type { GraphicsQuality, MatchBridge } from '../bridge';
 import { NO_KEYS, createTapLatch, keyForCode, keysToInput, type KeyState } from '../input/keyboard';
 import { followCamera, initialCamera, type CameraState } from '../render/camera';
@@ -65,6 +73,8 @@ export class MatchRenderer {
   /** Cầu thủ dùng model Mixamo (sau khi nạp xong `player.glb`); trống thì vẽ cầu thủ khối. */
   private readonly models = new Map<string, ModelActor>();
   private playerModel: PlayerModel | null = null;
+  private readonly kit = new ActorKit();
+  private modelMaterials: ModelMaterials | null = null;
   private disposed = false;
   private readonly ball: THREE.Mesh;
   private readonly ballShadow: THREE.Mesh;
@@ -110,12 +120,8 @@ export class MatchRenderer {
     this.scene.add(sun);
 
     this.scene.add(buildPitch(), buildStadium());
-    const kit = new ActorKit();
-    for (const p of this.curr.players) {
-      const actor = kit.createPlayer(p);
-      this.actors.set(p.id, actor);
-      this.scene.add(actor);
-    }
+    for (const p of this.curr.players) this.addActor(p);
+    const { kit } = this;
     this.ball = kit.createBall();
     this.ballShadow = kit.createBlobShadow();
     this.marker = kit.createMarker();
@@ -139,10 +145,39 @@ export class MatchRenderer {
     });
   }
 
+  /** Nhân vật cho cầu thủ mới xuất hiện (đầu trận, người vào thay): model nếu đã nạp, không thì khối. */
+  private addActor(p: PlayerState): THREE.Object3D {
+    let root: THREE.Object3D;
+    if (this.playerModel && this.modelMaterials) {
+      const actor = new ModelActor(this.playerModel, p, this.modelMaterials);
+      this.models.set(p.id, actor);
+      root = actor.root;
+    } else {
+      root = this.kit.createPlayer(p);
+    }
+    this.actors.set(p.id, root);
+    this.scene.add(root);
+    return root;
+  }
+
+  /** Lệnh từ React (thay người) áp vào sim; lệnh sai luật bị sim từ chối, bỏ qua. */
+  private applyCommands(): void {
+    const commands = this.bridge?.takeCommands?.() ?? [];
+    if (commands.length === 0) return;
+    for (const c of commands) {
+      const r = substitute(this.curr, 'home', c.outId, c.benchSlot);
+      if (r.ok) this.curr = r.state;
+    }
+    // Người vào đứng đúng chỗ người ra: không nội suy từ tick trước.
+    this.prev = this.curr;
+    this.bridge?.onState(this.curr);
+  }
+
   /** Thay cầu thủ khối bằng model có hoạt ảnh (nạp xong sau khi trận đã chạy). */
   private useModel(model: PlayerModel): void {
     this.playerModel = model;
     const materials = new ModelMaterials();
+    this.modelMaterials = materials;
     for (const p of this.curr.players) {
       const placeholder = this.actors.get(p.id);
       const actor = new ModelActor(model, p, materials);
@@ -211,6 +246,7 @@ export class MatchRenderer {
     this.raf = requestAnimationFrame(this.frame);
     const dt = this.lastTime === 0 ? 0 : Math.min((now - this.lastTime) / 1000, MAX_FRAME_SEC);
     this.lastTime = now;
+    this.applyCommands();
 
     if (this.bridge?.isPaused()) {
       // Tạm dừng: không chạy sim, không dồn thời gian; phím bấm trong menu không tính vào trận.
@@ -245,8 +281,7 @@ export class MatchRenderer {
     const onPitch = new Set<string>();
 
     for (const p of curr.players) {
-      const actor = this.actors.get(p.id);
-      if (!actor) continue;
+      const actor = this.actors.get(p.id) ?? this.addActor(p);
       onPitch.add(p.id);
       const pos = lerpPos((prevById.get(p.id) ?? p).pos, p.pos, alpha);
       actor.position.set(pos.x, 0, pos.y);
@@ -254,7 +289,7 @@ export class MatchRenderer {
       if (model) model.update(animDt, p, curr, headingFromFacing(p.facing));
       else actor.rotation.y = headingFromFacing(p.facing);
     }
-    // Người bị thẻ đỏ rời sân (tài nguyên dùng chung, giải phóng khi huỷ renderer).
+    // Người bị thẻ đỏ / bị thay rời sân (tài nguyên dùng chung, giải phóng khi huỷ renderer).
     for (const [id, actor] of this.actors) {
       if (onPitch.has(id)) continue;
       this.scene.remove(actor);

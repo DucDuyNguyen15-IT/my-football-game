@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { createMatch, starterLikeTeam, cpuEasyTeam, type MatchState } from '@pitch/sim';
+import { createMatch, starterLikeTeam, cpuEasyTeam, substitute, type MatchState } from '@pitch/sim';
 import {
+  canSwap,
   formatClock,
   hudEvents,
   matchOutcome,
   readDevOptions,
   sameHud,
   staminaLevel,
+  subOptions,
   toHudSnapshot,
 } from './hud';
 
@@ -117,5 +119,35 @@ describe('readDevOptions', () => {
   });
   it('production bỏ qua mọi tham số', () => {
     expect(readDevOptions('?half=20&autopilot=1', { DEV: false, MODE: 'production' })).toEqual({});
+  });
+});
+
+describe('thay người trên HUD', () => {
+  it('báo sự kiện thay người với số áo người vào/ra, giảm lượt còn lại', () => {
+    const s = match();
+    const before = toHudSnapshot(s);
+    const r = substitute(s, 'home', 'home-P2', 'B1');
+    if (!r.ok) throw new Error('phải hợp lệ');
+    const after = toHudSnapshot(r.state, before);
+    expect(after.subsLeft).toBe(2);
+    expect(sameHud(before, after)).toBe(false);
+    const [e] = hudEvents(before, after);
+    expect(e).toMatchObject({ kind: 'sub', team: 'home' });
+    expect(e!.text).toContain('#8 vào, #3 ra');
+  });
+
+  it('subOptions: 7 người trên sân và dự bị đội nhà; người vào mang số áo của mình', () => {
+    const r = substitute(match(), 'home', 'home-P2', 'B1');
+    if (!r.ok) throw new Error('phải hợp lệ');
+    const o = subOptions(r.state);
+    expect(o.onPitch).toHaveLength(7);
+    expect(o.onPitch.find((p) => p.id === 'home-B1')!.number).toBe(8);
+    expect(o.bench.some((b) => b.slot === 'B1')).toBe(false);
+  });
+
+  it('canSwap: thủ môn chỉ đổi thủ môn', () => {
+    expect(canSwap('GK', 'GK')).toBe(true);
+    expect(canSwap('GK', 'DF')).toBe(false);
+    expect(canSwap('MF', 'FW')).toBe(true);
   });
 });

@@ -3,9 +3,16 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { Difficulty } from '@pitch/shared';
+import type { Difficulty, SquadSlot } from '@pitch/shared';
 import type { GraphicsQuality } from '../../game/bridge';
-import { CARD_LABEL, TEAM_LABEL, matchOutcome, type HudSnapshot } from './hud';
+import {
+  CARD_LABEL,
+  TEAM_LABEL,
+  canSwap,
+  matchOutcome,
+  type HudSnapshot,
+  type SubOptions,
+} from './hud';
 
 const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
   ['Mũi tên', 'Di chuyển', 'Di chuyển'],
@@ -97,18 +104,97 @@ export function HalfTimeOverlay({ hud }: { hud: HudSnapshot }) {
   );
 }
 
+export interface PauseSubs {
+  /** Bóng chết — chỉ khi đó mới được thay (PRD §5). */
+  allowed: boolean;
+  left: number;
+  options: SubOptions;
+  onSubstitute: (outId: string, benchSlot: SquadSlot) => void;
+}
+
+/** Chọn người ra (trên sân) và người vào (dự bị) rồi xác nhận. */
+export function SubstitutionPanel({ subs, onBack }: { subs: PauseSubs; onBack: () => void }) {
+  const [outId, setOutId] = useState<string | null>(null);
+  const [inSlot, setInSlot] = useState<SquadSlot | null>(null);
+  const out = subs.options.onPitch.find((p) => p.id === outId);
+  const incoming = subs.options.bench.find((b) => b.slot === inSlot);
+  const mismatch =
+    out !== undefined && incoming !== undefined && !canSwap(out.position, incoming.position);
+  const valid = out !== undefined && incoming !== undefined && !mismatch && subs.left > 0;
+  return (
+    <>
+      <p className="subs-left">Còn {subs.left} lượt thay người</p>
+      <div className="subs">
+        <fieldset className="subs-col">
+          <legend>Ra sân</legend>
+          {subs.options.onPitch.map((p) => (
+            <label key={p.id} className="subs-item">
+              <input
+                type="radio"
+                name="sub-out"
+                checked={outId === p.id}
+                onChange={() => setOutId(p.id)}
+              />
+              <span className="subs-num">{p.number}</span>
+              <span className="subs-pos">{p.position}</span>
+              <span className="subs-stamina">{p.stamina}%</span>
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="subs-col">
+          <legend>Vào sân</legend>
+          {subs.options.bench.length === 0 && <p className="subs-empty">Hết dự bị</p>}
+          {subs.options.bench.map((b) => (
+            <label key={b.slot} className="subs-item">
+              <input
+                type="radio"
+                name="sub-in"
+                checked={inSlot === b.slot}
+                onChange={() => setInSlot(b.slot)}
+              />
+              <span className="subs-num">{b.number}</span>
+              <span className="subs-pos">{b.position}</span>
+            </label>
+          ))}
+        </fieldset>
+      </div>
+      {mismatch && <p className="subs-warn">Thủ môn chỉ thay được bằng thủ môn.</p>}
+      <div className="menu menu--row">
+        <button type="button" className="btn btn--ghost" onClick={onBack}>
+          Quay lại
+        </button>
+        <button
+          type="button"
+          className="btn btn--primary"
+          disabled={!valid}
+          onClick={() => {
+            if (!out || !incoming) return;
+            subs.onSubstitute(out.id, incoming.slot);
+            setOutId(null);
+            setInSlot(null);
+          }}
+        >
+          Thay người
+        </button>
+      </div>
+    </>
+  );
+}
+
 export function PauseMenu({
   quality,
   onQuality,
   onResume,
   onQuit,
+  subs,
 }: {
   quality: GraphicsQuality;
   onQuality: (q: GraphicsQuality) => void;
   onResume: () => void;
   onQuit: () => void;
+  subs: PauseSubs;
 }) {
-  const [view, setView] = useState<'menu' | 'controls' | 'confirm'>('menu');
+  const [view, setView] = useState<'menu' | 'controls' | 'confirm' | 'subs'>('menu');
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <div className="panel">
@@ -120,6 +206,20 @@ export function PauseMenu({
             <button type="button" className="btn btn--primary" autoFocus onClick={onResume}>
               Tiếp tục
             </button>
+            <button
+              type="button"
+              className="btn btn--ghost"
+              disabled={!subs.allowed || subs.left === 0}
+              aria-describedby={subs.allowed ? undefined : 'subs-hint'}
+              onClick={() => setView('subs')}
+            >
+              Thay người ({subs.left} lượt)
+            </button>
+            {!subs.allowed && (
+              <p id="subs-hint" className="menu-hint">
+                Chỉ thay người khi bóng chết
+              </p>
+            )}
             <button type="button" className="btn btn--ghost" onClick={() => setView('controls')}>
               Phím điều khiển
             </button>
@@ -136,6 +236,7 @@ export function PauseMenu({
             </button>
           </div>
         )}
+        {view === 'subs' && <SubstitutionPanel subs={subs} onBack={() => setView('menu')} />}
         {view === 'controls' && (
           <>
             <ControlsTable />

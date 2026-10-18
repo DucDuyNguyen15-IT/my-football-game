@@ -60,6 +60,18 @@
 .btn--primary:hover {
   background: var(--c-accent-hover);
 }
+/* Mờ hẳn và không phản hồi khi bị khoá (DESIGN §6.2: thay người khi bóng sống). */
+.btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  transform: none;
+}
+.btn:disabled:hover {
+  background: transparent;
+}
+.btn--primary:disabled:hover {
+  background: var(--c-accent);
+}
 .btn--danger {
   border-color: var(--c-danger);
   color: var(--c-danger);
@@ -481,4 +493,73 @@
   .btn {
     transition: none;
   }
+}
+
+/* Thay người trong menu tạm dừng (task 5.11). */
+.menu-hint {
+  margin: calc(-1 * var(--sp-1)) 0 0;
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+.subs-left {
+  margin: 0 0 var(--sp-3);
+  color: var(--c-text-muted);
+}
+.subs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-4);
+  margin-bottom: var(--sp-4);
+}
+.subs-col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: var(--sp-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+}
+.subs-col legend {
+  padding: 0 var(--sp-1);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.subs-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+}
+.subs-item:hover,
+.subs-item:has(input:checked) {
+  background: var(--c-surface-2);
+}
+.subs-num {
+  min-width: 2ch;
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.subs-pos {
+  flex: 1;
+  color: var(--c-text-muted);
+}
+.subs-stamina {
+  font-variant-numeric: tabular-nums;
+}
+.subs-empty,
+.subs-warn {
+  margin: 0;
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+}
+.subs-warn {
+  color: var(--c-warning);
 }

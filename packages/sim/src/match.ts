@@ -49,6 +49,7 @@ import { nextFloat, type RngState, seedRng } from './rng';
 import { TICK_DT } from './tick';
 import { advanceClock, RESTART_GRACE_TICKS } from './rules/clock';
 import { isKeeperHandling, judgeFoul } from './rules/fouls';
+import { autoSubstitute } from './rules/substitution';
 import {
   chooseDefensiveSwitchTarget,
   chooseSwitchTarget,
@@ -220,6 +221,8 @@ export function createMatch(setup: MatchSetup): MatchState {
     lastTackle: null,
     standTackleCooldown: {},
     bench: { home: benchOf(home), away: benchOf(away) },
+    subsUsed: { home: 0, away: 0 },
+    substitutions: [],
     ballOwnerId: null,
     ownerSinceTick: 0,
     kickLock: null,
@@ -436,10 +439,15 @@ export function step(state: MatchState, rawInput: PlayerInput): MatchState {
     const waiting = { ...state, tick, input };
     return pressed('pass') || state.autopilot ? startSecondHalf(waiting, tick) : waiting;
   }
-  const next = state.restart
-    ? stepDeadBall(state, input, pressed, tick)
-    : stepPlay(state, input, pressed, tick);
-  return runClock(next);
+  const next = runClock(
+    state.restart
+      ? stepDeadBall(state, input, pressed, tick)
+      : stepPlay(state, input, pressed, tick),
+  );
+  if (!next.ballDead || state.ballDead) return next;
+  // Bóng vừa chết: đội máy (và đội người chơi khi tự đá) thay cầu thủ kiệt sức.
+  const cpu = autoSubstitute(next, other(HUMAN_TEAM));
+  return next.autopilot ? autoSubstitute(cpu, HUMAN_TEAM) : cpu;
 }
 
 /** Đồng hồ chạy thêm một tick; hết hiệp thì sang nghỉ giữa hiệp hoặc hết trận. */

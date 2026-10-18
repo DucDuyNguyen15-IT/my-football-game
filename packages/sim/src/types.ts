@@ -95,6 +95,14 @@ export interface Booking {
   tick: number;
 }
 
+/** Một lượt thay người (task 5.11). */
+export interface Substitution {
+  team: TeamSide;
+  outId: string;
+  inId: string;
+  tick: number;
+}
+
 /** Tình huống bóng chết đang chờ thực hiện. */
 export interface Restart {
   type: RestartType;
@@ -194,7 +202,12 @@ export interface MatchState {
   } | null;
   /** Người vừa tắc đứng trượt: chưa tắc lại được trước tick này (vẫn di chuyển bình thường). */
   standTackleCooldown: Record<string, number>;
+  /** Dự bị còn ngồi ghế (người đã vào sân bị bỏ khỏi đây). */
   bench: Record<TeamSide, MatchPlayerSetup[]>;
+  /** Số lượt thay người đã dùng (tối đa 3, `rules/substitution.ts`). */
+  subsUsed: Record<TeamSide, number>;
+  /** Các lượt thay người theo thứ tự (cho HUD và màn kết quả). */
+  substitutions: Substitution[];
   /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */
   ballOwnerId: string | null;
   /** Tick `ballOwnerId` đổi lần cuối (AI dùng để biết đã giữ bóng bao lâu). */
