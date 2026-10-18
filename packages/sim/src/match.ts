@@ -220,6 +220,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     shots: { home: 0, away: 0 },
     lastShot: null,
     autopilot: setup.autopilot ?? false,
+    homeAi: setup.homeAi ?? 'teammate',
     formations: { home: home.formation, away: away.formation },
     kickoffTeam,
     ball: restingBall(ZERO),
@@ -347,7 +348,7 @@ const ownGoalOf = (team: TeamSide, half: 1 | 2): Vec2 =>
 
 /** Đội máy theo mức độ khó; cầu thủ AI cùng đội người chơi dùng profile đồng đội. */
 const aiProfile = (state: MatchState, team: TeamSide): AiProfile =>
-  team === HUMAN_TEAM ? AI_PROFILES.teammate : AI_PROFILES[state.difficulty];
+  team === HUMAN_TEAM ? AI_PROFILES[state.homeAi] : AI_PROFILES[state.difficulty];
 
 /** Cầu thủ đang nhận input của người chơi; null khi autopilot (AI điều khiển cả đội). */
 const humanOf = (state: MatchState, controlledId: string): string | null =>

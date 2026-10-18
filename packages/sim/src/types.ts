@@ -22,6 +22,8 @@ export interface MatchSetup {
   halfLengthSec?: number;
   /** AI điều khiển luôn đội người chơi, bỏ qua input (test cân bằng, E2E). Mặc định tắt. */
   autopilot?: boolean;
+  /** Hồ sơ AI của đội người chơi: `proxy` khi chạy cân bằng (task 5.13). Mặc định `teammate`. */
+  homeAi?: 'teammate' | 'proxy';
 }
 
 export interface PlayerState {
@@ -194,6 +196,8 @@ export interface MatchState {
   } | null;
   /** AI điều khiển luôn đội người chơi, input bị bỏ qua. */
   autopilot: boolean;
+  /** Hồ sơ AI của đội người chơi (`MatchSetup.homeAi`). */
+  homeAi: 'teammate' | 'proxy';
   formations: Record<TeamSide, Formation>;
   kickoffTeam: TeamSide;
   ball: BallState;
