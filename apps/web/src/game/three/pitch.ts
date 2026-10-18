@@ -70,7 +70,12 @@ function netTexture(): THREE.CanvasTexture {
 
 /** Mặt lưới tứ giác qua 4 đỉnh [x, y, z] (theo thứ tự vòng), ô lưới ~25 cm. */
 function netQuad(pts: [number, number, number][], tex: THREE.Texture): THREE.Mesh {
-  const [a, b, , d] = pts as [THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple, THREE.Vector3Tuple];
+  const [a, b, , d] = pts as [
+    THREE.Vector3Tuple,
+    THREE.Vector3Tuple,
+    THREE.Vector3Tuple,
+    THREE.Vector3Tuple,
+  ];
   const dist = (p: THREE.Vector3Tuple, q: THREE.Vector3Tuple) =>
     Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
   const u = dist(a, b) / 0.25;
@@ -158,19 +163,59 @@ function goal(side: 1 | -1, tex: THREE.Texture): THREE.Group {
   return g;
 }
 
+/** Vân cỏ: nhiễu sáng-tối nhỏ (gần trắng) nhân với màu sọc, PRNG cố định. Lặp mỗi GRASS_TILE_M mét. */
+const GRASS_TILE_M = 4;
+function grassTexture(): THREE.CanvasTexture {
+  const size = 256;
+  const canvas = document.createElement('canvas');
+  canvas.width = canvas.height = size;
+  const ctx = canvas.getContext('2d');
+  let seed = 3;
+  const rand = () => {
+    seed = (seed * 1103515245 + 12345) % 2147483648;
+    return seed / 2147483648;
+  };
+  if (ctx) {
+    ctx.fillStyle = '#e6e6e6';
+    ctx.fillRect(0, 0, size, size);
+    for (let i = 0; i < 9000; i++) {
+      const v = Math.floor(200 + rand() * 55);
+      ctx.fillStyle = `rgb(${v},${v},${v})`;
+      // Ngọn cỏ: vệt dọc mảnh.
+      ctx.fillRect(rand() * size, rand() * size, 1, 2 + rand() * 3);
+    }
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** Cỏ theo mét: UV = toạ độ / GRASS_TILE_M để vân không bị kéo giãn theo kích thước mảnh. */
+function grassMaterial(color: number, map: THREE.Texture, w: number, h: number) {
+  const tex = map.clone();
+  tex.repeat.set(w / GRASS_TILE_M, h / GRASS_TILE_M);
+  tex.needsUpdate = true;
+  return new THREE.MeshLambertMaterial({ color, map: tex });
+}
+
 export function buildPitch(): THREE.Group {
   const g = new THREE.Group();
-  const grassA = new THREE.MeshLambertMaterial({ color: COLORS.pitchA });
-  const grassB = new THREE.MeshLambertMaterial({ color: COLORS.pitchB });
+  const grass = grassTexture();
+  const band = PITCH_LENGTH / STRIPES;
+  const grassA = grassMaterial(COLORS.pitchA, grass, band, PITCH_WIDTH);
+  const grassB = grassMaterial(COLORS.pitchB, grass, band, PITCH_WIDTH);
+  const runoffW = PITCH_LENGTH + RUNOFF_M * 2;
+  const runoffH = PITCH_WIDTH + RUNOFF_M * 2;
 
   const runoff = flat(
-    new THREE.PlaneGeometry(PITCH_LENGTH + RUNOFF_M * 2, PITCH_WIDTH + RUNOFF_M * 2),
-    grassA,
+    new THREE.PlaneGeometry(runoffW, runoffH),
+    grassMaterial(COLORS.pitchA, grass, runoffW, runoffH),
     0,
   );
   runoff.receiveShadow = true;
   g.add(runoff);
-  const band = PITCH_LENGTH / STRIPES;
   const stripeGeo = new THREE.PlaneGeometry(band, PITCH_WIDTH);
   for (let i = 0; i < STRIPES; i++) {
     const s = flat(stripeGeo, i % 2 === 0 ? grassA : grassB, 0.004);

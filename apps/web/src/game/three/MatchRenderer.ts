@@ -22,11 +22,14 @@ import { chargeMeter, lerp, lerpPos } from '../render/view';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
 import { buildPitch } from './pitch';
 import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
-import { buildStadium } from './stadium';
+import { buildRoofs, buildStadium } from './stadium';
+import { buildFloodSpots, buildSky, createPostFx, type PostFx } from './effects';
+import { pixelRatioFor, QUALITY } from '../render/quality';
 
 /** Khung hình bị treo lâu (tab ẩn, debugger) thì bỏ bớt thời gian, không chạy dồn hàng trăm tick. */
 const MAX_FRAME_SEC = 0.25;
-const MAX_PIXEL_RATIO = { high: 1.5, low: 1 } as const;
+/** Độ phơi sáng khi tone mapping ACES (mức Cao) — giữ màu đội gần token thiết kế. */
+const TONE_EXPOSURE = 1.15;
 const MARKER_Y = 2.2;
 const CHARGE_BAR_Y = 2.75;
 /** Màu thanh lực: chuyền xanh dương, sút màu chanh (nút chính). */
@@ -77,6 +80,13 @@ export class MatchRenderer {
   private modelMaterials: ModelMaterials | null = null;
   private disposed = false;
   private readonly ball: THREE.Mesh;
+  /** Vị trí bóng khung hình trước, để xoay bóng theo quãng đường lăn. */
+  private readonly ballLast = new THREE.Vector3();
+  private readonly sun: THREE.DirectionalLight;
+  /** Bầu trời, mái khán đài, đèn spot: chỉ hiện ở mức Cao. */
+  private readonly highOnly: { sky: THREE.Object3D; roofs: THREE.Object3D; spots: THREE.Object3D };
+  private readonly postFx: PostFx;
+  private quality: GraphicsQuality = 'high';
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
   private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
@@ -104,7 +114,7 @@ export class MatchRenderer {
       antialias: true,
       powerPreference: 'high-performance',
     });
-    this.renderer.shadowMap.type = THREE.PCFShadowMap;
+    this.renderer.toneMappingExposure = TONE_EXPOSURE;
     this.renderer.domElement.style.display = 'block';
     parent.appendChild(this.renderer.domElement);
 
@@ -116,10 +126,17 @@ export class MatchRenderer {
     sun.position.set(-18, 40, 22);
     sun.castShadow = true;
     sun.shadow.mapSize.set(1024, 1024);
+    // Bóng đổ mềm: bias nhỏ tránh sọc trên cỏ, normalBias tránh "bóng tách chân".
+    sun.shadow.bias = -0.0004;
+    sun.shadow.normalBias = 0.02;
     Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 28, bottom: -28, far: 120 });
+    this.sun = sun;
     this.scene.add(sun);
 
     this.scene.add(buildPitch(), buildStadium());
+    this.highOnly = { sky: buildSky(), roofs: buildRoofs(), spots: buildFloodSpots() };
+    this.scene.add(this.highOnly.sky, this.highOnly.roofs, this.highOnly.spots);
+    this.postFx = createPostFx(this.renderer, this.scene, this.camera);
     for (const p of this.curr.players) this.addActor(p);
     const { kit } = this;
     this.ball = kit.createBall();
@@ -193,11 +210,33 @@ export class MatchRenderer {
   }
 
   setQuality(quality: GraphicsQuality): void {
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, MAX_PIXEL_RATIO[quality]));
-    const shadows = quality === 'high';
-    if (this.renderer.shadowMap.enabled !== shadows) {
-      this.renderer.shadowMap.enabled = shadows;
-      // Material phải biên dịch lại shader khi bật/tắt shadow map.
+    this.quality = quality;
+    const q = QUALITY[quality];
+    const { renderer, sun } = this;
+    renderer.setPixelRatio(pixelRatioFor(quality, window.devicePixelRatio));
+    const shadowType = q.softShadows ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    const toneMapping = q.postFx ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
+    const recompile =
+      renderer.shadowMap.enabled !== q.shadows ||
+      renderer.shadowMap.type !== shadowType ||
+      renderer.toneMapping !== toneMapping;
+    renderer.shadowMap.enabled = q.shadows;
+    renderer.shadowMap.type = shadowType;
+    renderer.toneMapping = toneMapping;
+    if (sun.shadow.mapSize.x !== q.shadowMapSize) {
+      sun.shadow.mapSize.set(q.shadowMapSize, q.shadowMapSize);
+      // Map cũ đúng kích thước cũ: bỏ đi để Three.js tạo lại.
+      sun.shadow.map?.dispose();
+      sun.shadow.map = null;
+    }
+    this.highOnly.sky.visible = q.skyAndRoof;
+    this.highOnly.roofs.visible = q.skyAndRoof;
+    this.highOnly.spots.visible = q.floodSpots;
+    // Có vòm trời thì sương mù xa hơn để không phủ mất khán đài.
+    if (this.scene.fog instanceof THREE.Fog) this.scene.fog.far = q.skyAndRoof ? 220 : 140;
+    this.postFx.setBloom(q.bloomStrength);
+    if (recompile) {
+      // Material phải biên dịch lại shader khi đổi shadow map / tone mapping.
       this.scene.traverse((obj) => {
         if (!(obj instanceof THREE.Mesh)) return;
         const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -214,6 +253,7 @@ export class MatchRenderer {
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
     this.resizeObserver.disconnect();
+    this.postFx.dispose();
     disposeTree(this.scene);
     if (this.playerModel) disposeTree(this.playerModel.scene);
     this.renderer.dispose();
@@ -270,7 +310,8 @@ export class MatchRenderer {
       }
     }
     this.draw(this.accumulator / TICK_DT, dt, this.bridge?.isPaused() ? 0 : dt);
-    this.renderer.render(this.scene, this.camera);
+    if (QUALITY[this.quality].postFx) this.postFx.render();
+    else this.renderer.render(this.scene, this.camera);
     if (this.debug) this.refreshDebug(now);
   };
 
@@ -332,6 +373,13 @@ export class MatchRenderer {
     } else {
       this.ball.position.copy(this.ballTarget);
     }
+    const moved = this.ball.position.clone().sub(this.ballLast).setY(0);
+    const dist = moved.length();
+    if (dist > 1e-4 && dist < 2) {
+      const axis = new THREE.Vector3(moved.z, 0, -moved.x).normalize();
+      this.ball.rotateOnWorldAxis(axis, dist / BALL_DRAW_RADIUS);
+    }
+    this.ballLast.copy(this.ball.position);
     const drawnZ = Math.max(0, this.ball.position.y - BALL_DRAW_RADIUS);
     this.ballShadow.position.set(this.ball.position.x, 0.015, this.ball.position.z);
     this.ballShadow.scale.setScalar(1 / (1 + drawnZ * 0.35));
@@ -362,6 +410,7 @@ export class MatchRenderer {
     const h = this.parent.clientHeight;
     if (w === 0 || h === 0) return;
     this.renderer.setSize(w, h);
+    this.postFx.setSize(w, h, this.renderer.getPixelRatio());
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
   }
