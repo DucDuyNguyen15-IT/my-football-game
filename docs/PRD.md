@@ -112,7 +112,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - [ ] Bóng qua hết vạch biên dọc → ném biên cho đội không chạm bóng cuối; qua vạch cuối sân → phạt góc hoặc phát bóng đúng luật (test tự động cho cả 3 trường hợp).
 - [ ] Xoạc không chạm bóng trước → phạm lỗi, đá phạt; phạm lỗi trong vòng cấm → phạt đền; vàng thứ 2 → đỏ và cầu thủ rời sân (test tự động).
 - [ ] Hòa sau 2 hiệp → luân lưu 5 lượt, rồi sudden death cho tới khi có kết quả.
-- [ ] Thay người chỉ mở được khi bóng chết, tối đa 3 lượt, cầu thủ bị thẻ đỏ không được thay.
+- [x] Thay người chỉ mở được khi bóng chết, tối đa 3 lượt, cầu thủ bị thẻ đỏ không được thay.
 - [ ] Mức Khó cho tỉ lệ thắng của máy cao hơn Dễ rõ rệt: mô phỏng AI-vs-AI 100 trận, đội "người" dùng đội khởi đầu, thắng máy Dễ ≥ 60% số trận và thắng máy Khó ≤ 30%.
 - [ ] Cùng một tình huống sút, cầu thủ Sút 90 vào khung thành nhiều hơn cầu thủ Sút 55 ít nhất 25 điểm % (mô phỏng 1.000 cú sút).
 

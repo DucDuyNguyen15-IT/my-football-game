@@ -9,12 +9,14 @@ import {
   type MatchState,
 } from '@pitch/sim';
 import { MatchCanvas } from '../../game/MatchCanvas';
-import type { GraphicsQuality, MatchBridge } from '../../game/bridge';
+import type { GraphicsQuality, MatchBridge, MatchCommand } from '../../game/bridge';
 import {
   hudEvents,
   readDevOptions,
   sameHud,
+  subOptions,
   toHudSnapshot,
+  type SubOptions,
   type DevOptions,
   type HudSnapshot,
 } from './hud';
@@ -140,6 +142,8 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
   const lastHud = useRef<HudSnapshot | null>(null);
   // State mới nhất cho minimap (tự vẽ ~10 Hz, không qua React state).
   const latestState = useRef<MatchState | null>(null);
+  // Lệnh thay người chờ renderer áp vào sim ở khung hình kế tiếp.
+  const commands = useRef<MatchCommand[]>([]);
   const onEndRef = useRef(onEnd);
   useEffect(() => {
     onEndRef.current = onEnd;
@@ -163,9 +167,12 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
 
   useEffect(() => later(HINTS_SHOW_MS, () => setHints(false)), [later]);
 
+  const [subs, setSubs] = useState<SubOptions>({ onPitch: [], bench: [] });
   const setPaused = useCallback((value: boolean) => {
     pausedRef.current = value;
     setPausedState(value);
+    // Menu thay người đọc đội hình lúc mở (trận đứng yên khi tạm dừng).
+    if (value && latestState.current) setSubs(subOptions(latestState.current));
   }, []);
 
   useEffect(() => {
@@ -182,12 +189,15 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
     let nextId = 1;
     return {
       isPaused: () => pausedRef.current,
+      takeCommands: () => commands.current.splice(0),
       onState: (state) => {
         latestState.current = state;
         const last = lastHud.current;
         const snap = toHudSnapshot(state, last ?? undefined);
         if (last && sameHud(last, snap)) return;
         lastHud.current = snap;
+        // Vừa thay người trong menu: cập nhật danh sách.
+        if (pausedRef.current) setSubs(subOptions(state));
         setHud(snap);
         for (const e of last ? hudEvents(last, snap) : []) {
           const shown = { ...e, id: nextId++ };
@@ -235,6 +245,13 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
           }}
           onResume={() => setPaused(false)}
           onQuit={onQuit}
+          subs={{
+            allowed: hud?.ballDead === true && hud.phase !== 'full_time',
+            left: hud?.subsLeft ?? 0,
+            options: subs,
+            onSubstitute: (outId, benchSlot) =>
+              commands.current.push({ type: 'substitute', outId, benchSlot }),
+          }}
         />
       )}
     </>

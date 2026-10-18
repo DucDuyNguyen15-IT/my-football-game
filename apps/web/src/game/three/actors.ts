@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 import type { PlayerState } from '@pitch/sim';
 import { COLORS } from '../render/colors';
-import { shirtNumber } from '../render/view';
+import { playerNumber } from '../render/view';
 
 /**
  * Bóng thật bán kính 0,11 m; vẽ to hơn chút cho dễ nhìn ở góc truyền hình nhưng vẫn cân với cầu thủ
@@ -89,7 +89,7 @@ export class ActorKit {
     const nose = new THREE.Mesh(this.nose, this.skin);
     nose.position.set(0, BODY_H + 0.15, 0.15);
     // Số áo sau lưng (−z cục bộ), quay ra sau.
-    const num = new THREE.Mesh(this.backPlate, this.numberMat(shirtNumber(p.slot)));
+    const num = new THREE.Mesh(this.backPlate, this.numberMat(playerNumber(p.id)));
     num.position.set(0, torso.position.y + 0.05, -0.25);
     num.rotation.y = Math.PI;
 

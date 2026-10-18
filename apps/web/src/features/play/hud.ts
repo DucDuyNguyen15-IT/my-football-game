@@ -4,13 +4,14 @@
  */
 import type { Position, SquadSlot } from '@pitch/shared';
 import {
+  MAX_SUBS,
   matchClock,
   type MatchClock,
   type MatchPhase,
   type MatchState,
   type TeamSide,
 } from '@pitch/sim';
-import { shirtNumber } from '../../game/render/view';
+import { playerNumber, shirtNumber } from '../../game/render/view';
 
 export type Score = Record<TeamSide, number>;
 export type StaminaLevel = 'ok' | 'low' | 'critical';
@@ -24,6 +25,13 @@ export interface HudBooking {
   clock: string;
 }
 
+export interface HudSub {
+  team: TeamSide;
+  inNumber: number;
+  outNumber: number;
+  clock: string;
+}
+
 export interface HudSnapshot {
   score: Score;
   half: 1 | 2;
@@ -34,10 +42,15 @@ export interface HudSnapshot {
   shots: Score;
   /** Đá phạt / phạt đền đang chờ thực hiện (sau phạm lỗi), null nếu không có. */
   foulRestart: { type: 'free_kick' | 'penalty'; team: TeamSide; startTick: number } | null;
+  /** Bóng chết (được thay người). */
+  ballDead: boolean;
+  /** Số lượt thay người đội nhà còn lại. */
+  subsLeft: number;
+  substitutions: HudSub[];
 }
 
 export interface HudEvent {
-  kind: 'goal' | 'yellow' | 'red' | 'foul';
+  kind: 'goal' | 'yellow' | 'red' | 'foul' | 'sub';
   team: TeamSide;
   text: string;
 }
@@ -60,10 +73,6 @@ export function matchOutcome(score: Score): Outcome {
   return score.home === score.away ? 'draw' : 'loss';
 }
 
-/** Id cầu thủ là `${team}-${slot}`; người bị thẻ đỏ đã rời `players` nên lấy số áo từ id. */
-const numberFromId = (playerId: string): number =>
-  shirtNumber(playerId.slice(playerId.indexOf('-') + 1) as SquadSlot);
-
 /**
  * `prev` để giữ phút đã ghi của thẻ cũ (thẻ trong sim chỉ có `tick`, không có phút hiển thị);
  * thẻ mới lấy phút hiện tại.
@@ -80,7 +89,7 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
     controlled: c
       ? {
           id: c.id,
-          number: shirtNumber(c.slot),
+          number: playerNumber(c.id),
           position: c.position,
           stamina: Math.round(c.stamina),
         }
@@ -89,9 +98,17 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
       playerId: b.playerId,
       team: b.team,
       card: b.card,
-      number: numberFromId(b.playerId),
+      number: playerNumber(b.playerId),
       clock: prev?.bookings[i]?.clock ?? clock,
     })),
+    substitutions: state.substitutions.map((s, i) => ({
+      team: s.team,
+      inNumber: playerNumber(s.inId),
+      outNumber: playerNumber(s.outId),
+      clock: prev?.substitutions[i]?.clock ?? clock,
+    })),
+    ballDead: state.ballDead,
+    subsLeft: MAX_SUBS - state.subsUsed.home,
     shots: state.shots,
     foulRestart:
       r && (r.type === 'free_kick' || r.type === 'penalty')
@@ -110,7 +127,9 @@ export function sameHud(a: HudSnapshot, b: HudSnapshot): boolean {
     a.bookings.length === b.bookings.length &&
     a.controlled?.id === b.controlled?.id &&
     a.controlled?.stamina === b.controlled?.stamina &&
-    a.foulRestart?.startTick === b.foulRestart?.startTick
+    a.foulRestart?.startTick === b.foulRestart?.startTick &&
+    a.ballDead === b.ballDead &&
+    a.substitutions.length === b.substitutions.length
   );
 }
 
@@ -131,6 +150,13 @@ export function hudEvents(prev: HudSnapshot, next: HudSnapshot): HudEvent[] {
       kind: b.card,
       team: b.team,
       text: `${b.clock} ${CARD_LABEL[b.card]} · ${TEAM_LABEL[b.team]} #${b.number}`,
+    });
+  }
+  for (const s of next.substitutions.slice(prev.substitutions.length)) {
+    events.push({
+      kind: 'sub',
+      team: s.team,
+      text: `${s.clock} Thay người · ${TEAM_LABEL[s.team]} #${s.inNumber} vào, #${s.outNumber} ra`,
     });
   }
   const foul = next.foulRestart;
@@ -161,3 +187,31 @@ export function readDevOptions(search: string, env: { DEV: boolean; MODE: string
   if (params.get('autopilot') === '1') opts.autopilot = true;
   return opts;
 }
+
+export interface SubOptions {
+  onPitch: { id: string; number: number; position: Position; stamina: number }[];
+  bench: { slot: SquadSlot; number: number; position: Position }[];
+}
+
+/** Người trên sân và dự bị của đội nhà cho menu thay người. */
+export function subOptions(state: MatchState): SubOptions {
+  return {
+    onPitch: state.players
+      .filter((p) => p.team === 'home')
+      .map((p) => ({
+        id: p.id,
+        number: playerNumber(p.id),
+        position: p.position,
+        stamina: Math.round(p.stamina),
+      })),
+    bench: state.bench.home.map((b) => ({
+      slot: b.slot,
+      number: shirtNumber(b.slot),
+      position: b.position,
+    })),
+  };
+}
+
+/** Thủ môn chỉ đổi thủ môn, cầu thủ ngoài sân chỉ đổi cầu thủ ngoài sân (luật trong sim). */
+export const canSwap = (out: Position, incoming: Position): boolean =>
+  (out === 'GK') === (incoming === 'GK');

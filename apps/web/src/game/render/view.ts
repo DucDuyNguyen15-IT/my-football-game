@@ -30,6 +30,14 @@ export function shirtNumber(slot: SquadSlot): number {
   return slot.startsWith('P') ? n + 1 : n + 7;
 }
 
+/**
+ * Số áo theo id cầu thủ (`${đội}-${ô}`): người vào thay mang ô sơ đồ của người ra (`slot`) nhưng giữ
+ * số áo của mình; người bị thẻ đỏ đã rời sân cũng tra được.
+ */
+export function playerNumber(playerId: string): number {
+  return shirtNumber(playerId.slice(playerId.indexOf('-') + 1) as SquadSlot);
+}
+
 export interface ChargeMeter {
   /** Thanh sút (D) hay chuyền sệt (S) / chuyền bổng (A). */
   kind: 'shot' | 'ground' | 'lob';
