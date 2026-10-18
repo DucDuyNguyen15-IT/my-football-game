@@ -142,6 +142,11 @@ export const GK_CATCH_SPEED_PENALTY = 0.015;
 export const GK_CATCH_EASY_SPEED = 15;
 /** Tốc độ lao người cản phá (m/s), không bị giới hạn gia tốc. */
 export const GK_DIVE_SPEED = 6;
+/**
+ * Thủ môn ném bóng / phát bóng: lấy đà chừng này tick (0,5 s) rồi bóng mới rời tay/chân — khớp
+ * đoạn vung tay của clip `gk_throw` và đoạn bước lên sút của `gk_kick` (`apps/web/.../playerModel.ts`).
+ */
+export const KEEPER_WINDUP_TICKS = 30;
 
 export const keeperReactionTicks = (reflexes: number): number =>
   Math.round(statScale(reflexes, ...GK_REACTION_TICKS_RANGE));
@@ -165,6 +170,8 @@ export function keeperCatchChance(handling: number, ballSpeed: number): number {
 export const AI_STAND_TACKLE_COOLDOWN_TICKS = 60;
 /** Áp sát (giữ D, AI người áp sát): đứng cách người dẫn bóng chừng này (m), phía khung thành nhà. */
 export const CONTAIN_DIST = 1.2;
+/** Thủ môn ôm bóng trong vòng cấm: người áp sát đối phương đứng chờ cách chừng này mét (không cản ném/phát bóng). */
+export const KEEPER_PRESS_GAP = 8;
 /** Giữ D: hướng người chơi bấm được cộng vào hướng tự chạy với trọng số này. */
 export const CONTAIN_STEER_WEIGHT = 0.6;
 

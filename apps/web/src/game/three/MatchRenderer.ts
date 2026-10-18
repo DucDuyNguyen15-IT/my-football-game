@@ -9,7 +9,7 @@ import type { GraphicsQuality, MatchBridge } from '../bridge';
 import { NO_KEYS, createTapLatch, keyForCode, keysToInput, type KeyState } from '../input/keyboard';
 import { followCamera, initialCamera, type CameraState } from '../render/camera';
 import { COLORS } from '../render/colors';
-import { animationEvents } from '../render/animation';
+import { animationEvents, heldBall, type HeldBall } from '../render/animation';
 import { chargeMeter, lerp, lerpPos } from '../render/view';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
 import { buildPitch } from './pitch';
@@ -24,6 +24,12 @@ const CHARGE_BAR_Y = 2.75;
 /** Màu thanh lực: chuyền xanh dương, sút màu chanh (nút chính). */
 const CHARGE_COLORS = { ground: 0x5cc8ff, lob: 0x5cc8ff, shot: COLORS.accent } as const;
 const DEBUG_REFRESH_MS = 250;
+/** Bóng trượt giữa tay và vị trí sim trong chừng này giây (lúc bắt / ném), không nhảy cóc. */
+const BALL_BLEND_SEC = 0.12;
+/** Cầu thủ khối (chưa có model): bóng cầm tay trước người chừng này mét, cao ngang ngực / trên đầu. */
+const HELD_BALL_AHEAD = 0.35;
+const CHEST_BALL_Y = 1.1;
+const OVERHEAD_BALL_Y = 2.1;
 
 /** Giải phóng geometry/material/texture của cả cây (dùng chung thì chỉ giải phóng một lần). */
 function disposeTree(root: THREE.Object3D): void {
@@ -64,6 +70,11 @@ export class MatchRenderer {
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
   private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
+  /** Bóng chuyển giữa tay và vị trí sim: trượt từ `ballBlendFrom` trong BALL_BLEND_SEC. */
+  private ballInHands = false;
+  private ballBlend = 0;
+  private readonly ballBlendFrom = new THREE.Vector3();
+  private readonly ballTarget = new THREE.Vector3();
 
   private held: KeyState = { ...NO_KEYS };
   private readonly taps = createTapLatch();
@@ -270,14 +281,45 @@ export class MatchRenderer {
 
     const ground = lerpPos(prev.ball.pos, curr.ball.pos, alpha);
     const z = Math.max(0, lerp(prev.ball.z, curr.ball.z, alpha));
-    this.ball.position.set(ground.x, BALL_DRAW_RADIUS + z, ground.y);
-    this.ballShadow.position.set(ground.x, 0.015, ground.y);
-    this.ballShadow.scale.setScalar(1 / (1 + z * 0.35));
+    // Sim đặt bóng ở chân người giữ; thủ môn ôm bóng / người ném biên thì vẽ bóng trong tay.
+    const held = heldBall(curr);
+    const inHands = held !== null && this.handBall(held, this.ballTarget);
+    if (!inHands) this.ballTarget.set(ground.x, BALL_DRAW_RADIUS + z, ground.y);
+    if (inHands !== this.ballInHands) {
+      this.ballInHands = inHands;
+      this.ballBlendFrom.copy(this.ball.position);
+      this.ballBlend = BALL_BLEND_SEC;
+    }
+    this.ballBlend = Math.max(0, this.ballBlend - dt);
+    if (this.ballBlend > 0) {
+      const t = 1 - this.ballBlend / BALL_BLEND_SEC;
+      this.ball.position.lerpVectors(this.ballBlendFrom, this.ballTarget, t);
+    } else {
+      this.ball.position.copy(this.ballTarget);
+    }
+    const drawnZ = Math.max(0, this.ball.position.y - BALL_DRAW_RADIUS);
+    this.ballShadow.position.set(this.ball.position.x, 0.015, this.ball.position.z);
+    this.ballShadow.scale.setScalar(1 / (1 + drawnZ * 0.35));
 
     if (dt > 0) this.cam = followCamera(this.cam, ground, dt);
     const { pos, look } = this.cam;
     this.camera.position.set(pos.x, pos.y, pos.z);
     this.camera.lookAt(look.x, look.y, look.z);
+  }
+
+  /** Điểm bóng trong tay người cầm: theo xương tay của model, cầu thủ khối thì trước ngực/trên đầu. */
+  private handBall(held: HeldBall, out: THREE.Vector3): boolean {
+    if (this.models.get(held.playerId)?.ballInHands(out)) return true;
+    const actor = this.actors.get(held.playerId);
+    const p = this.curr.players.find((q) => q.id === held.playerId);
+    if (!actor || !p) return false;
+    const y = held.grip === 'throw_in' ? OVERHEAD_BALL_Y : CHEST_BALL_Y;
+    out.set(
+      actor.position.x + p.facing.x * HELD_BALL_AHEAD,
+      y,
+      actor.position.z + p.facing.y * HELD_BALL_AHEAD,
+    );
+    return true;
   }
 
   private resize(): void {

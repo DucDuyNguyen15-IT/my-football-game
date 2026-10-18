@@ -11,7 +11,7 @@ import {
   keeperSaveChance,
 } from '../stats/params';
 import type { BallState, PlayerState } from '../types';
-import { asKicker, diveTarget, keeperTarget, resolveSave } from './goalkeeper';
+import { asKicker, diveTarget, keeperContact, keeperTarget, resolveSave } from './goalkeeper';
 
 /*
  * Thủ môn đội nhà giữ khung thành phía −x (hiệp 1). Đội khách tấn công về −x.
@@ -83,6 +83,12 @@ describe('keeperTarget — chọn vị trí', () => {
     expect(length(sub(t, at))).toBeLessThan(1.5);
   });
 
+  it('bóng chết trong vòng cấm (collect = false) → không ra nhặt bóng, đứng chọn vị trí', () => {
+    const at = vec2(GOAL_X + 7, -3);
+    const t = keeperTarget(gkWith(), ball(at), players(), null, 1, false);
+    expect(length(sub(t, at))).toBeGreaterThan(3);
+  });
+
   it('hiệp 2 đổi sân: thủ môn đội nhà giữ khung thành phía +x', () => {
     const gk = gkWith({}, vec2(HALF_LENGTH - 1, 0));
     const t = keeperTarget(gk, ball(vec2(0, 0)), players(), null, 2);
@@ -92,11 +98,18 @@ describe('keeperTarget — chọn vị trí', () => {
 
 describe('diveTarget', () => {
   it('bóng bay về khung thành → điểm cắt ngang đường thủ môn đứng', () => {
-    const gk = gkWith();
+    const gk = gkWith({ positioning: 99 });
     const t = diveTarget(gk, ball(vec2(GOAL_X + 15, 0), vec2(-20, 2)), 1);
     expect(t).not.toBeNull();
     expect(t!.x).toBeCloseTo(gk.pos.x, 9);
-    expect(t!.y).toBeCloseTo(1.4, 1);
+    expect(t!.y).toBeCloseTo(1.4, 9);
+  });
+
+  it('Vị trí thấp đổ người quá đà ra phía bóng đi chéo', () => {
+    const shot = ball(vec2(GOAL_X + 15, 0), vec2(-20, 2));
+    const good = diveTarget(gkWith({ positioning: 99 }), shot, 1)!;
+    const poor = diveTarget(gkWith({ positioning: 40 }), shot, 1)!;
+    expect(poor.y).toBeGreaterThan(good.y);
   });
 
   it('bóng đi ra xa khung thành hoặc chệch hẳn → null', () => {
@@ -119,6 +132,50 @@ describe('resolveSave', () => {
       return n;
     };
     expect(catches(90)).toBeGreaterThan(catches(50));
+  });
+});
+
+describe('keeperContact — bóng trúng phần nào', () => {
+  const diving = (vy: number) => ({ ...gkWith(), vel: vec2(0, vy) });
+
+  it('lao người: bóng phía trước hướng lao trúng tay, phía sau trúng chân, giữa trúng thân', () => {
+    const at = (y: number) => ball(vec2(GOAL_X + 1.3, y), vec2(-18, 0), 0.5);
+    expect(keeperContact(diving(6), at(0.8), true)).toBe('hands');
+    expect(keeperContact(diving(6), at(-0.8), true)).toBe('legs');
+    expect(keeperContact(diving(6), at(0), true)).toBe('body');
+    expect(keeperContact(diving(-6), at(-0.8), true)).toBe('hands');
+  });
+
+  it('đứng đón: bóng cao hoặc ngay trước mặt thì tay, bóng sệt lệch sang thì chân', () => {
+    const gk = gkWith();
+    expect(keeperContact(gk, ball(vec2(GOAL_X + 1.3, 0.9), ZERO, 1.2), true)).toBe('hands');
+    expect(keeperContact(gk, ball(vec2(GOAL_X + 1.3, 0), ZERO, 0), true)).toBe('hands');
+    expect(keeperContact(gk, ball(vec2(GOAL_X + 1.3, 0.9), ZERO, 0), true)).toBe('legs');
+  });
+
+  it('chưa kịp phản ứng: bóng thấp trúng chân, bóng cao trúng thân', () => {
+    const gk = gkWith();
+    expect(keeperContact(gk, ball(vec2(GOAL_X + 1.3, 0), ZERO, 0.1), false)).toBe('legs');
+    expect(keeperContact(gk, ball(vec2(GOAL_X + 1.3, 0), ZERO, 1), false)).toBe('body');
+  });
+});
+
+describe('resolveSave theo chỗ chạm', () => {
+  const shot = ball(vec2(GOAL_X + 1.5, 0.3), vec2(-18, 0), 0.5);
+  const catches = (contact: 'hands' | 'body' | 'legs') => {
+    let n = 0;
+    for (let seed = 1; seed <= 1000; seed++) {
+      const r = resolveSave(gkWith({ handling: 90 }), shot, seedRng(seed), 1, contact);
+      if (r.outcome === 'catch') n++;
+      else expect(r.ball.vel.x).toBeGreaterThan(0);
+    }
+    return n;
+  };
+
+  it('trúng chân luôn văng ra; trúng tay bắt dính nhiều hơn trúng thân', () => {
+    expect(catches('legs')).toBe(0);
+    expect(catches('hands')).toBeGreaterThan(catches('body'));
+    expect(catches('body')).toBeGreaterThan(0);
   });
 });
 

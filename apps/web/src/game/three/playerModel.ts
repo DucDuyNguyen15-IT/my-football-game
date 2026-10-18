@@ -8,7 +8,14 @@ import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { MatchState, PlayerState } from '@pitch/sim';
-import { diveClip, locomotionFor, type ClipName, type ClipSpeeds } from '../render/animation';
+import {
+  diveClip,
+  heldBall,
+  locomotionFor,
+  type ClipName,
+  type ClipSpeeds,
+  type HeldBall,
+} from '../render/animation';
 import { COLORS } from '../render/colors';
 import { shirtNumber } from '../render/view';
 import { numberTexture } from './actors';
@@ -61,13 +68,17 @@ interface OneShot {
  * ngắn trước lúc chạm (đo tốc độ bàn chân): chuyền chạm ~0,23 s, sút ~0,45 s, phạt đền ~0,75 s.
  * Xoạc nằm xuống ~0,5 s, nằm tới ~0,95 s, đứng dậy xong 1,77 s — phát vừa khung 1,2 s sim khoá
  * (`TACKLE_RECOVERY_TICKS`); ngã + đứng dậy vừa 1,5 s (`VICTIM_FALL_TICKS`).
+ * Ném biên: hai tay giơ bóng qua đầu 1,0–1,5 s, thả bóng ~1,55 s — chờ ném thì đứng ở 1,2 s
+ * (`THROW_IN_HOLD_SEC`), ném thì phát từ nhịp vung ra trước.
+ * Thủ môn: sim lấy đà KEEPER_WINDUP_TICKS (0,5 s) rồi mới nhả bóng, clip phát từ lúc bắt đầu lấy đà
+ * nên `start` = khung chạm − 0,5 s × `speed`: ném rời tay ~1,55 s, phát bóng chạm chân ~2,12 s.
  */
 const ONE_SHOT: Partial<Record<ClipName, OneShot>> = {
   pass: { start: 0.1, speed: 1.5 },
   shot: { start: 0.3, speed: 1.6 },
   penalty: { start: 0.6, speed: 1.5 },
   header: { start: 0.45, speed: 1.3 },
-  throw_in: { start: 1.1, speed: 1.3 },
+  throw_in: { start: 1.4, speed: 1.3 },
   tackle: { start: 0, speed: 1.5 },
   trip: { start: 0, speed: 1.5, next: 'get_up' },
   stumble: { start: 0, speed: 1.2, source: 'trip', stop: 0.35 },
@@ -75,8 +86,8 @@ const ONE_SHOT: Partial<Record<ClipName, OneShot>> = {
   gk_catch: { start: 0.1, speed: 1.2 },
   gk_dive_left: { start: 0.35, speed: 1.4 },
   gk_dive_right: { start: 0.35, speed: 1.4 },
-  gk_throw: { start: 0.8, speed: 1.3 },
-  gk_kick: { start: 1.2, speed: 1.3 },
+  gk_throw: { start: 0.9, speed: 1.3 },
+  gk_kick: { start: 1.47, speed: 1.3 },
 };
 const FADE_SEC = 0.15;
 /** Clip nằm sân: sim đã cho chạy lại (hết khoá, bóng sống) mà còn phát thì cắt về chạy. */
@@ -84,6 +95,12 @@ const GROUNDED = new Set<ClipName>(['tackle', 'trip', 'get_up']);
 const MOVING_SPEED = 1;
 /** Clip chạy tiến (cùng kiểu chu kỳ bước): đổi qua lại thì giữ pha. */
 const STRIDE = new Set<ClipName>(['walk', 'jog', 'run']);
+/** Khung của clip `throw_in` giữ nguyên lúc chờ ném: hai tay cầm bóng trên đầu. */
+const THROW_IN_HOLD_SEC = 1.2;
+/** Hai bàn tay gần hơn chừng này (m) thì bóng nằm giữa hai tay; xa hơn thì kẹp bên tay phải. */
+const TWO_HAND_GRIP = 0.45;
+/** Bóng lệch khỏi cổ tay ra ngoài chừng này (m) để nằm trong lòng bàn tay, không lún vào người. */
+const PALM_OFFSET = 0.12;
 /** Tốc độ xoay người về hướng mặt (1/s), tránh giật khi sim đổi hướng tức thì. */
 const TURN_RATE = 12;
 
@@ -103,15 +120,20 @@ export class ModelMaterials {
 }
 
 const wrapAngle = (a: number) => Math.atan2(Math.sin(a), Math.cos(a));
+const tmpHand = new THREE.Vector3();
+const isThrowing = (held: HeldBall | null, p: PlayerState) =>
+  held?.grip === 'throw_in' && held.playerId === p.id;
 
 export class ModelActor {
   readonly root: THREE.Object3D;
   private readonly mixer: THREE.AnimationMixer;
   private readonly actions = new Map<ClipName, THREE.AnimationAction>();
   private loop: THREE.AnimationAction | null = null;
-  private oneShot: { clip: ClipName; action: THREE.AnimationAction } | null = null;
+  /** `hold`: khung đứng yên (chờ ném biên) — hết cảnh thì nhả. */
+  private oneShot: { clip: ClipName; action: THREE.AnimationAction; hold?: true } | null = null;
   private readonly speeds: ClipSpeeds;
   private readonly spine: THREE.Object3D | undefined;
+  private readonly hands: readonly [THREE.Object3D, THREE.Object3D] | null;
 
   constructor(model: PlayerModel, p: PlayerState, materials: ModelMaterials) {
     this.root = cloneSkinned(model.scene);
@@ -126,6 +148,9 @@ export class ModelActor {
     this.attachNumber(shirtNumber(p.slot));
     this.speeds = model.speeds;
     this.spine = this.root.getObjectByName('mixamorigSpine');
+    const right = this.root.getObjectByName('mixamorigRightHand');
+    const left = this.root.getObjectByName('mixamorigLeftHand');
+    this.hands = right && left ? [right, left] : null;
 
     this.mixer = new THREE.AnimationMixer(this.root);
     for (const [name, clip] of model.clips) {
@@ -163,6 +188,14 @@ export class ModelActor {
     const cfg = ONE_SHOT[clip] ?? { start: 0, speed: 1 };
     const action = this.actions.get(cfg.source ?? clip);
     if (!action) return;
+    if (this.oneShot?.action === action) {
+      // Đang đứng ở khung giữ của chính clip này (chờ ném biên): chạy tiếp, không trộn với chính nó.
+      action.paused = false;
+      action.timeScale = cfg.speed;
+      action.time = Math.min(cfg.start, action.getClip().duration * 0.9);
+      this.oneShot = { clip, action };
+      return;
+    }
     this.oneShot?.action.fadeOut(FADE_SEC);
     action.reset();
     action.setLoop(THREE.LoopOnce, 1);
@@ -175,15 +208,54 @@ export class ModelActor {
     this.oneShot = { clip, action };
   }
 
+  /** Đứng yên ở giây `time` của `clip` (tư thế giữ bóng) tới khi `trigger` chạy tiếp hoặc hết cảnh. */
+  private holdPose(clip: ClipName, time: number): void {
+    const action = this.actions.get(clip);
+    if (!action || this.oneShot?.action === action) return;
+    this.oneShot?.action.fadeOut(FADE_SEC);
+    action.reset();
+    action.setLoop(THREE.LoopOnce, 1);
+    action.clampWhenFinished = true;
+    action.time = time;
+    action.paused = true;
+    action.fadeIn(FADE_SEC).play();
+    this.loop?.fadeOut(FADE_SEC);
+    this.loop = null;
+    this.oneShot = { clip, action, hold: true };
+  }
+
+  /**
+   * Điểm bóng nằm trong tay (toạ độ thế giới), gọi sau `update` của khung hình. Hai tay khép (bắt
+   * bóng, ném biên) thì giữa hai tay; tay buông thì kẹp bên tay phải. False nếu model thiếu xương tay.
+   */
+  ballInHands(out: THREE.Vector3): boolean {
+    if (!this.hands) return false;
+    const [right, left] = this.hands;
+    right.getWorldPosition(out);
+    left.getWorldPosition(tmpHand);
+    if (out.distanceTo(tmpHand) < TWO_HAND_GRIP) {
+      out.add(tmpHand).multiplyScalar(0.5);
+      return true;
+    }
+    // Đẩy bóng ra ngoài theo phương ngang từ trục người tới tay phải.
+    this.root.getWorldPosition(tmpHand);
+    tmpHand.set(out.x - tmpHand.x, 0, out.z - tmpHand.z);
+    if (tmpHand.lengthSq() > 0) out.addScaledVector(tmpHand.normalize(), PALM_OFFSET);
+    return true;
+  }
+
   /** Mỗi khung hình: xoay người, chọn clip lặp theo vận tốc, chạy mixer. `dt` = 0 khi tạm dừng. */
   update(dt: number, p: PlayerState, state: MatchState, heading: number): void {
     const turn = wrapAngle(heading - this.root.rotation.y);
     this.root.rotation.y += turn * Math.min(1, TURN_RATE * dt);
 
-    if (this.oneShot && this.shouldEnd(this.oneShot, p, state)) {
+    const held = heldBall(state);
+    const throwing = isThrowing(held, p);
+    if (this.oneShot && this.shouldEnd(this.oneShot, p, state, throwing)) {
       this.oneShot.action.fadeOut(FADE_SEC);
       this.oneShot = null;
     }
+    if (throwing) this.holdPose('throw_in', THROW_IN_HOLD_SEC);
     if (!this.oneShot) {
       const dive = diveClip(p, state);
       if (dive) this.trigger(dive);
@@ -214,10 +286,12 @@ export class ModelActor {
 
   /** Clip một lần đã tới điểm dừng (`stop`), hoặc nằm sân mà sim đã cho chạy lại. */
   private shouldEnd(
-    shot: { clip: ClipName; action: THREE.AnimationAction },
+    shot: { clip: ClipName; action: THREE.AnimationAction; hold?: true },
     p: PlayerState,
     state: MatchState,
+    throwing: boolean,
   ): boolean {
+    if (shot.hold) return !throwing;
     const stop = ONE_SHOT[shot.clip]?.stop;
     if (stop !== undefined && shot.action.time >= stop) return true;
     return (

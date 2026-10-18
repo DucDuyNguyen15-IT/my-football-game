@@ -107,6 +107,33 @@ export interface Restart {
   startTick: number;
 }
 
+/**
+ * Cú ném/phát bóng thủ môn đã chọn lúc bắt đầu lấy đà. Đích chuyền tính lại lúc bóng rời đi theo vị
+ * trí đồng đội khi đó: `assisted` = người chơi bấm hướng (hỗ trợ chuyền), `pass`/`shoot` = AI.
+ */
+export type WindupKick =
+  | { type: 'assisted'; kind: 'ground' | 'lob'; dir: Vec2; power: number }
+  | { type: 'pass'; kind: 'ground' | 'lob'; to: Vec2; targetId: string | null }
+  | { type: 'shoot'; target: Vec2; power: number };
+
+/**
+ * Thủ môn đang lấy đà ném (`throw`) hoặc phát bóng (`kick`): bóng còn trong tay/chân tới
+ * `releaseTick` mới bay đi (để hoạt ảnh kịp vung tay/chân).
+ */
+export interface Windup {
+  playerId: string;
+  releaseTick: number;
+  style: 'throw' | 'kick';
+  kick: WindupKick;
+}
+
+/** Người nhận đường chuyền của người chơi: tự chạy tới `point` đón bóng tới `untilTick`. */
+export interface PassReceiver {
+  playerId: string;
+  point: Vec2;
+  untilTick: number;
+}
+
 /** Thời gian bị mất trong hiệp hiện tại, dùng để tính bù giờ. */
 export interface Stoppage {
   /** Số tick chờ thực hiện bóng chết vượt quá thời gian cho phép. */
@@ -183,6 +210,16 @@ export interface MatchState {
   passCharge: { kind: 'ground' | 'lob'; ticks: number; dir: Vec2 } | null;
   /** Cầu thủ đội nhà người chơi đang điều khiển. */
   controlledId: string;
+  /** Thủ môn đang lấy đà ném/phát bóng; null khi không. */
+  windup: Windup | null;
+  /** Người chơi vừa chuyền cho đồng đội: người nhận tự chạy đón; null khi không. */
+  passReceiver: PassReceiver | null;
+  /**
+   * Luật chuyền về: đội có cầu thủ (không phải thủ môn) vừa cố ý đá/ném bóng đi mà chưa ai khác chạm
+   * — thủ môn đội đó không được bắt bằng tay, nhận được thì giữ bằng chân tới khi bóng rời chân.
+   * null khi không.
+   */
+  backPass: TeamSide | null;
   /**
    * Kế hoạch AI tầng đội của từng đội (null = chưa lập). Cả trường null = tắt AI, mọi cầu thủ
    * không do người chơi điều khiển đứng yên — chỉ dùng trong test cơ chế.

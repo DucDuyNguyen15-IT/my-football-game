@@ -39,3 +39,5 @@ CLEAR_PROMPT.md
 # File gốc Mixamo: giấy phép không cho phát tán, repo public (ADR-0009, task 5.18d)
 assets-src/mixamo/
 apps/web/public/models/player.glb
+# Dữ liệu cầu thủ tham khảo (có tên thật) — chỉ dùng lấy mẫu chỉ số, không phát tán
+assets-src/dls/

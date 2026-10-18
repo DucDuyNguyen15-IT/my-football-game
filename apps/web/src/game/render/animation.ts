@@ -3,9 +3,16 @@
  * - `locomotionFor`: clip lặp theo vận tốc so với hướng mặt (đứng / chạy / lùi / ngang).
  * - `animationEvents`: clip một lần khi có sự kiện giữa 2 tick (chuyền, sút, xoạc, ngã, vấp, bắt bóng…).
  * - `diveClip`: thủ môn đang lao người cản phá.
+ * - `heldBall`: ai đang cầm bóng bằng tay (thủ môn trong vòng cấm, người chờ ném biên).
  * Tên clip khớp `CLIPS` trong `scripts/build-player-model.mjs`.
  */
-import type { MatchState, PlayerState } from '@pitch/sim';
+import {
+  DRIBBLE_OFFSET,
+  isKeeperHandling,
+  RESTART_SETTLE_DIST,
+  type MatchState,
+  type PlayerState,
+} from '@pitch/sim';
 
 export type ClipName =
   | 'idle'
@@ -137,7 +144,6 @@ function kickClip(prev: MatchState, curr: MatchState, kicker: string): ClipName 
   if (restart === 'goal_kick' && isKeeper) return 'gk_kick';
   if (prev.ball.z > HEADER_MIN_Z) return 'header';
   if (curr.lastShot?.tick === curr.tick) return 'shot';
-  if (isKeeper && prev.ballOwnerId === kicker) return 'gk_throw';
   return 'pass';
 }
 
@@ -151,9 +157,17 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     (prev.kickLock?.playerId !== lock.playerId || prev.kickLock.untilTick !== lock.untilTick);
   if (lock && newLock && curr.ballOwnerId === null) {
     const kicker = lock.playerId;
-    if (prev.ballOwnerId === kicker || prev.restart?.takerId === kicker) {
+    // Thủ môn lấy đà xong: clip đã phát từ lúc bắt đầu lấy đà.
+    const windupDone = prev.windup?.playerId === kicker;
+    if (!windupDone && (prev.ballOwnerId === kicker || prev.restart?.takerId === kicker)) {
       events.push({ playerId: kicker, clip: kickClip(prev, curr, kicker) });
     }
+  }
+
+  // Thủ môn bắt đầu lấy đà ném / phát bóng (sim nhả bóng sau KEEPER_WINDUP_TICKS).
+  const w = curr.windup;
+  if (w && (prev.windup?.playerId !== w.playerId || prev.windup.releaseTick !== w.releaseTick)) {
+    events.push({ playerId: w.playerId, clip: w.style === 'throw' ? 'gk_throw' : 'gk_kick' });
   }
 
   // Xoạc (A): người xoạc nằm trượt; trúng bóng thì người bị xoạc ngã hoặc vấp.
@@ -192,4 +206,33 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     events.push({ playerId: keeper.id, clip: 'gk_catch' });
   }
   return events;
+}
+
+/** Người ném biên cách điểm ném không quá chừng này (m) thì đã cầm bóng lên. */
+const THROW_IN_GRAB_DIST = DRIBBLE_OFFSET + RESTART_SETTLE_DIST;
+
+/** Người cầm bóng bằng tay: `throw_in` = giơ qua đầu chờ ném, `keeper` = thủ môn ôm bóng. */
+export interface HeldBall {
+  playerId: string;
+  grip: 'throw_in' | 'keeper';
+}
+
+/**
+ * Bóng đang nằm trong tay ai (sim vẫn đặt bóng ở chân người giữ, renderer vẽ lại vào tay): người
+ * chờ ném biên, hoặc thủ môn giữ bóng trong vòng cấm nhà. Null nếu không ai cầm.
+ */
+export function heldBall(state: MatchState): HeldBall | null {
+  const r = state.restart;
+  if (r?.type === 'throw_in') {
+    // Người ném còn đang đi tới chỗ ném thì bóng vẫn nằm ở vạch.
+    const taker = state.players.find((p) => p.id === r.takerId);
+    const near =
+      taker && Math.hypot(taker.pos.x - r.spot.x, taker.pos.y - r.spot.y) <= THROW_IN_GRAB_DIST;
+    return near ? { playerId: r.takerId, grip: 'throw_in' } : null;
+  }
+  const ownerId = state.ballOwnerId;
+  const owner = ownerId === null ? undefined : state.players.find((p) => p.id === ownerId);
+  if (owner && isKeeperHandling(owner, state.half, state.backPass))
+    return { playerId: owner.id, grip: 'keeper' };
+  return null;
 }
