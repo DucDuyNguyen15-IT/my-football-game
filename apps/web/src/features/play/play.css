@@ -563,3 +563,49 @@
 .subs-warn {
   color: var(--c-warning);
 }
+
+/* Luân lưu (task 5.12): chấm từng lượt dưới bảng tỉ số. */
+.hud-shootout {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-1);
+}
+.hud-shootout-label {
+  color: var(--c-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--fs-md);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  font-variant-numeric: tabular-nums;
+}
+.hud-kicks {
+  display: inline-flex;
+  gap: 4px;
+}
+.hud-kick {
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid var(--c-text-muted);
+  border-radius: 50%;
+}
+.hud-kick--scored {
+  border-color: var(--c-accent);
+  background: var(--c-accent);
+}
+.hud-kick--missed {
+  border-color: var(--c-danger);
+  background: var(--c-danger);
+}
+.hud-event--shootout {
+  border-left-color: var(--c-info);
+}
+.result-shootout {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}

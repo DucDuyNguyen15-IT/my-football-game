@@ -18,6 +18,7 @@ export * from './fixtures/demoTeams';
 export * from './actions/tackle';
 export * from './rules/fouls';
 export * from './rules/substitution';
+export * from './rules/shootout';
 export * from './ai/team';
 export * from './ai/difficulty';
 export * from './ai/player';

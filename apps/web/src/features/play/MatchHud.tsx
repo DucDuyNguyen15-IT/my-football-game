@@ -7,7 +7,7 @@ import { HALF_LENGTH, HALF_WIDTH, PENALTY_AREA_DEPTH, PENALTY_AREA_WIDTH } from 
 import type { MatchState } from '@pitch/sim';
 import { COLORS } from '../../game/render/colors';
 import type { HudEvent, HudSnapshot } from './hud';
-import { staminaLevel } from './hud';
+import { shootoutScore, staminaLevel } from './hud';
 import {
   MINIMAP_H,
   MINIMAP_HZ,
@@ -37,9 +37,42 @@ export function Scoreboard({ hud }: { hud: HudSnapshot }) {
           KHÁCH <span aria-hidden="true">■</span>
         </span>
       </div>
-      <div className="hud-clock">
-        H{hud.half} <span className="hud-clock-min">{hud.clock}</span>
-      </div>
+      {hud.shootout ? (
+        <ShootoutRow shootout={hud.shootout} />
+      ) : (
+        <div className="hud-clock">
+          H{hud.half} <span className="hud-clock-min">{hud.clock}</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+const MAX_DOTS = 5;
+
+/** Một chấm mỗi lượt sút (đủ 5 chấm, chưa sút thì rỗng); sudden death thì hiện thêm chấm. */
+function KickDots({ kicks, team }: { kicks: boolean[]; team: 'home' | 'away' }) {
+  const n = Math.max(MAX_DOTS, kicks.length);
+  return (
+    <span className={`hud-kicks hud-kicks--${team}`}>
+      {Array.from({ length: n }, (_, i) => {
+        const k = kicks[i];
+        const state = k === undefined ? 'pending' : k ? 'scored' : 'missed';
+        return <span key={i} className={`hud-kick hud-kick--${state}`} />;
+      })}
+    </span>
+  );
+}
+
+export function ShootoutRow({ shootout }: { shootout: NonNullable<HudSnapshot['shootout']> }) {
+  const score = shootoutScore(shootout);
+  return (
+    <div className="hud-shootout" aria-label={`Luân lưu: Nhà ${score.home}, Khách ${score.away}`}>
+      <KickDots kicks={shootout.home} team="home" />
+      <span className="hud-shootout-label">
+        Luân lưu {score.home}–{score.away}
+      </span>
+      <KickDots kicks={shootout.away} team="away" />
     </div>
   );
 }

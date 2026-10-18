@@ -81,7 +81,7 @@ export const NO_INPUT: PlayerInput = Object.freeze({
  * Giai đoạn của trận. `kickoff`/`dead_ball`: bóng đặt sẵn chờ thực hiện; `half_time`: chờ người chơi
  * bấm chuyền để đá hiệp 2; `full_time`: hết trận, `step` không làm gì nữa.
  */
-export type MatchPhase = 'kickoff' | 'play' | 'dead_ball' | 'half_time' | 'full_time';
+export type MatchPhase = 'kickoff' | 'play' | 'dead_ball' | 'half_time' | 'shootout' | 'full_time';
 
 export type RestartType = 'kickoff' | 'throw_in' | 'corner' | 'goal_kick' | 'free_kick' | 'penalty';
 
@@ -93,6 +93,18 @@ export interface Booking {
   team: TeamSide;
   card: CardColor;
   tick: number;
+}
+
+/** Luân lưu (task 5.12): kết quả từng lượt (true = vào) và lượt đang sút. */
+export interface Shootout {
+  home: boolean[];
+  away: boolean[];
+  /** Đội sút trước mỗi vòng. */
+  first: TeamSide;
+  /** Đội đang sút lượt hiện tại. */
+  kicking: TeamSide;
+  /** Tick bóng rời chân ở lượt hiện tại; null khi người sút chưa sút. */
+  kickTick: number | null;
 }
 
 /** Một lượt thay người (task 5.11). */
@@ -174,7 +186,12 @@ export interface MatchState {
   /** Số cú sút (cả sút phạt, phạt đền) — cho màn kết quả và cân chỉnh. */
   shots: Record<TeamSide, number>;
   /** Cú sút đang bay (thủ môn đội kia phản ứng tính từ `tick`); null khi bóng đã được chạm/chết. */
-  lastShot: { team: TeamSide; tick: number } | null;
+  lastShot: {
+    team: TeamSide;
+    tick: number;
+    /** Phạt đền: thủ môn đoán sai hướng thì lao ngay về điểm này, bỏ qua đường bóng thật. */
+    keeperGuess?: Vec2;
+  } | null;
   /** AI điều khiển luôn đội người chơi, input bị bỏ qua. */
   autopilot: boolean;
   formations: Record<TeamSide, Formation>;
@@ -208,6 +225,8 @@ export interface MatchState {
   subsUsed: Record<TeamSide, number>;
   /** Các lượt thay người theo thứ tự (cho HUD và màn kết quả). */
   substitutions: Substitution[];
+  /** Luân lưu khi hoà sau 2 hiệp; null nếu không có. Giữ lại sau khi hết trận cho màn kết quả. */
+  shootout: Shootout | null;
   /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */
   ballOwnerId: string | null;
   /** Tick `ballOwnerId` đổi lần cuối (AI dùng để biết đã giữ bóng bao lâu). */

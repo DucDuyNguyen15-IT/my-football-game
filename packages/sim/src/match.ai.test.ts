@@ -40,7 +40,9 @@ describe('AI đội trong trận', () => {
     const outside = new Map<string, number>();
     let worstOutside = 0;
     let pressChecks = 0;
-    for (let i = 0; i < 20_000 && s.phase !== 'full_time'; i++) {
+    // Hoà thì sang luân lưu — đã có test riêng (rules/shootout.test.ts), dừng ở đó.
+    const over = (x: typeof s) => x.phase === 'full_time' || x.phase === 'shootout';
+    for (let i = 0; i < 20_000 && !over(s); i++) {
       s = step(s, botInput(s));
       for (const p of s.players) {
         // Người ném biên/đá phạt góc đứng sau vạch là đúng luật.
@@ -63,7 +65,7 @@ describe('AI đội trong trận', () => {
         }
       }
     }
-    expect(s.phase).toBe('full_time');
+    expect(over(s)).toBe(true);
     expect(worstOutside).toBeLessThanOrEqual(2 * TICK_RATE);
     expect(pressChecks).toBeGreaterThan(0);
   });

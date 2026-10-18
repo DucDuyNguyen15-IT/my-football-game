@@ -7,6 +7,8 @@ import {
   matchOutcome,
   readDevOptions,
   sameHud,
+  shootoutOutcome,
+  shootoutScore,
   staminaLevel,
   subOptions,
   toHudSnapshot,
@@ -149,5 +151,33 @@ describe('thay người trên HUD', () => {
     expect(canSwap('GK', 'GK')).toBe(true);
     expect(canSwap('GK', 'DF')).toBe(false);
     expect(canSwap('MF', 'FW')).toBe(true);
+  });
+});
+
+describe('luân lưu trên HUD', () => {
+  const withShootout = (home: boolean[], away: boolean[], turn: 'home' | 'away' | null = null) => {
+    const s = match();
+    return toHudSnapshot({
+      ...s,
+      phase: turn ? 'shootout' : 'full_time',
+      restart: turn ? s.restart && { ...s.restart, team: turn } : null,
+      shootout: { home, away, first: 'home', kicking: turn ?? 'home', kickTick: null },
+    });
+  };
+
+  it('báo từng lượt vào / hỏng', () => {
+    const before = withShootout([true], [], 'away');
+    const after = withShootout([true], [false], 'home');
+    expect(sameHud(before, after)).toBe(false);
+    const [e] = hudEvents(before, after);
+    expect(e).toMatchObject({ kind: 'shootout', team: 'away', text: 'Luân lưu · Khách: Hỏng' });
+  });
+
+  it('kết quả: trận vẫn hoà, kèm thắng/thua luân lưu', () => {
+    const hud = withShootout([true, true, true], [false, false, false]);
+    expect(shootoutScore(hud.shootout!)).toEqual({ home: 3, away: 0 });
+    expect(shootoutOutcome(hud)).toBe('win');
+    expect(shootoutOutcome(withShootout([false, false, false], [true, true, true]))).toBe('loss');
+    expect(shootoutOutcome(toHudSnapshot(match()))).toBeNull();
   });
 });

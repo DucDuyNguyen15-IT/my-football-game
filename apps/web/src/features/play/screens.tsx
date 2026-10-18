@@ -10,6 +10,8 @@ import {
   TEAM_LABEL,
   canSwap,
   matchOutcome,
+  shootoutOutcome,
+  shootoutScore,
   type HudSnapshot,
   type SubOptions,
 } from './hud';
@@ -45,6 +47,15 @@ export function ControlsTable() {
         ))}
       </tbody>
     </table>
+  );
+}
+
+/** Lượt sút luân lưu của người chơi: nhắc cách sút. */
+export function ShootoutHint() {
+  return (
+    <p className="hud-hints" role="status">
+      Lượt bạn sút: <kbd>Mũi tên</kbd> chọn góc · giữ <kbd>D</kbd> rồi nhả để sút
+    </p>
   );
 }
 
@@ -275,8 +286,12 @@ export function PauseMenu({
 
 const OUTCOME_LABEL = { win: 'Thắng', draw: 'Hòa', loss: 'Thua' } as const;
 
+const SHOOTOUT_LABEL = { win: 'Thắng luân lưu', loss: 'Thua luân lưu' } as const;
+
 export function ResultScreen({ hud, onRematch }: { hud: HudSnapshot; onRematch: () => void }) {
   const outcome = matchOutcome(hud.score);
+  const shootout = shootoutOutcome(hud);
+  const pens = hud.shootout && shootoutScore(hud.shootout);
   return (
     <section className="screen" aria-labelledby="result-title">
       <p className="overlay-kicker">Hết trận</p>
@@ -287,6 +302,11 @@ export function ResultScreen({ hud, onRematch }: { hud: HudSnapshot; onRematch: 
         <span className="hud-team--home">■ NHÀ</span> {hud.score.home} – {hud.score.away}{' '}
         <span className="hud-team--away">KHÁCH ■</span>
       </p>
+      {shootout && pens && (
+        <p className={`result-shootout result-outcome--${shootout}`}>
+          {SHOOTOUT_LABEL[shootout]} {pens.home} – {pens.away}
+        </p>
+      )}
       <p className="result-shots">
         Cú sút: {hud.shots.home} – {hud.shots.away}
       </p>

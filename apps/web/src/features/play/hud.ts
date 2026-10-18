@@ -6,6 +6,7 @@ import type { Position, SquadSlot } from '@pitch/shared';
 import {
   MAX_SUBS,
   matchClock,
+  shootoutWinner,
   type MatchClock,
   type MatchPhase,
   type MatchState,
@@ -47,10 +48,12 @@ export interface HudSnapshot {
   /** Số lượt thay người đội nhà còn lại. */
   subsLeft: number;
   substitutions: HudSub[];
+  /** Luân lưu: kết quả từng lượt, đội đang chờ sút (null khi bóng đang bay / đã xong). */
+  shootout: { home: boolean[]; away: boolean[]; turn: TeamSide | null } | null;
 }
 
 export interface HudEvent {
-  kind: 'goal' | 'yellow' | 'red' | 'foul' | 'sub';
+  kind: 'goal' | 'yellow' | 'red' | 'foul' | 'sub' | 'shootout';
   team: TeamSide;
   text: string;
 }
@@ -109,6 +112,11 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
     })),
     ballDead: state.ballDead,
     subsLeft: MAX_SUBS - state.subsUsed.home,
+    shootout: state.shootout && {
+      home: state.shootout.home,
+      away: state.shootout.away,
+      turn: state.restart ? state.shootout.kicking : null,
+    },
     shots: state.shots,
     foulRestart:
       r && (r.type === 'free_kick' || r.type === 'penalty')
@@ -129,8 +137,26 @@ export function sameHud(a: HudSnapshot, b: HudSnapshot): boolean {
     a.controlled?.stamina === b.controlled?.stamina &&
     a.foulRestart?.startTick === b.foulRestart?.startTick &&
     a.ballDead === b.ballDead &&
-    a.substitutions.length === b.substitutions.length
+    a.substitutions.length === b.substitutions.length &&
+    kicksTaken(a) === kicksTaken(b) &&
+    a.shootout?.turn === b.shootout?.turn
   );
+}
+
+const kicksTaken = (h: HudSnapshot): number =>
+  h.shootout ? h.shootout.home.length + h.shootout.away.length : -1;
+
+/** Số bàn luân lưu mỗi đội. */
+export function shootoutScore(s: { home: boolean[]; away: boolean[] }): Score {
+  return { home: s.home.filter(Boolean).length, away: s.away.filter(Boolean).length };
+}
+
+/** Đội nhà thắng/thua luân lưu (kết quả trận vẫn là Hoà, PRD §5); null nếu không có luân lưu. */
+export function shootoutOutcome(hud: HudSnapshot): 'win' | 'loss' | null {
+  if (!hud.shootout) return null;
+  const winner = shootoutWinner(hud.shootout);
+  if (!winner) return null;
+  return winner === 'home' ? 'win' : 'loss';
 }
 
 export const TEAM_LABEL: Record<TeamSide, string> = { home: 'Nhà', away: 'Khách' };
@@ -158,6 +184,17 @@ export function hudEvents(prev: HudSnapshot, next: HudSnapshot): HudEvent[] {
       team: s.team,
       text: `${s.clock} Thay người · ${TEAM_LABEL[s.team]} #${s.inNumber} vào, #${s.outNumber} ra`,
     });
+  }
+  for (const team of ['home', 'away'] as const) {
+    const kicks = next.shootout?.[team] ?? [];
+    const before = prev.shootout?.[team].length ?? 0;
+    for (const scored of kicks.slice(before)) {
+      events.push({
+        kind: 'shootout',
+        team,
+        text: `Luân lưu · ${TEAM_LABEL[team]}: ${scored ? 'Vào!' : 'Hỏng'}`,
+      });
+    }
   }
   const foul = next.foulRestart;
   if (foul && foul.startTick !== prev.foulRestart?.startTick) {

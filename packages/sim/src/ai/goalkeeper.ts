@@ -12,7 +12,12 @@ import {
 } from '../math/vec2';
 import { GOAL_WIDTH, HALF_LENGTH, isInPenaltyArea } from '../pitch';
 import { nextFloat, type RngState } from '../rng';
-import { GK_DIVE_SPEED, keeperCatchChance, keeperPositionAccuracy } from '../stats/params';
+import {
+  GK_DIVE_SPEED,
+  keeperCatchChance,
+  keeperPenaltyGuessChance,
+  keeperPositionAccuracy,
+} from '../stats/params';
 import { TICK_DT } from '../tick';
 import type { BallState, PlayerState } from '../types';
 
@@ -136,6 +141,32 @@ export function diveTarget(gk: PlayerState, ball: BallState, half: 1 | 2): Vec2 
   const misread = 1 + (1 - keeperPositionAccuracy(gk.stats.positioning)) * DIVE_MISREAD;
   const y = ball.pos.y + (yAt(planeX) - ball.pos.y) * misread;
   return vec2(planeX, clamp(y, -DIVE_MAX_Y, DIVE_MAX_Y));
+}
+
+/** Phạt đền đoán sai: lao về phía cột bên kia, cách tâm khung thành chừng này mét. */
+const PENALTY_WRONG_Y = GOAL_WIDTH / 2 - 0.6;
+/** Bóng đi gần như thẳng giữa (|vy| nhỏ hơn mức này) thì đoán sai = lao sang một bên bất kỳ. */
+const CENTRAL_VY = 0.3;
+
+/**
+ * Thủ môn đoán hướng quả phạt đền lúc bóng rời chân (task 5.12): đúng (theo Phản xạ) → null, phản xạ
+ * như thường; sai → điểm lao người ở phía ngược với hướng bóng. PRNG tiến 1 hoặc 2 lần.
+ */
+export function penaltyGuess(
+  gk: PlayerState,
+  ball: BallState,
+  rng: RngState,
+): { guess: Vec2 | null; rng: RngState } {
+  const [roll, r1] = nextFloat(rng);
+  if (roll < keeperPenaltyGuessChance(gk.stats.reflexes)) return { guess: null, rng: r1 };
+  let side = -Math.sign(ball.vel.y);
+  let r = r1;
+  if (Math.abs(ball.vel.y) < CENTRAL_VY) {
+    const [coin, r2] = nextFloat(r1);
+    side = coin < 0.5 ? -1 : 1;
+    r = r2;
+  }
+  return { guess: vec2(gk.pos.x, side * PENALTY_WRONG_Y), rng: r };
 }
 
 /** Một tick lao người tới `target` với GK_DIVE_SPEED (không giới hạn gia tốc). */
