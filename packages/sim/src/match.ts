@@ -6,7 +6,14 @@ import {
   decideRestartKick,
   type CarrierAction,
 } from './ai/player';
-import { asKicker, diveStep, diveTarget, keeperContact, resolveSave } from './ai/goalkeeper';
+import {
+  asKicker,
+  diveStep,
+  diveTarget,
+  keeperContact,
+  penaltyGuess,
+  resolveSave,
+} from './ai/goalkeeper';
 import { aiMove, arrive, goalSidePoint, thinkTeam } from './ai/team';
 import {
   choosePassTarget,
@@ -43,13 +50,14 @@ import {
   type Vec2,
 } from './math/vec2';
 import { exitEvent, stepBall, type BallEvent } from './physics/ball';
-import { HALF_LENGTH } from './pitch';
+import { HALF_LENGTH, PENALTY_SPOT_DIST } from './pitch';
 import { separatePlayers, stepPlayer } from './physics/player';
 import { nextFloat, type RngState, seedRng } from './rng';
 import { TICK_DT } from './tick';
 import { advanceClock, RESTART_GRACE_TICKS } from './rules/clock';
 import { isKeeperHandling, judgeFoul } from './rules/fouls';
 import { autoSubstitute } from './rules/substitution';
+import { nextShooter, SHOOTOUT_KICK_TICKS, shooterFor, shootoutWinner } from './rules/shootout';
 import {
   chooseDefensiveSwitchTarget,
   chooseSwitchTarget,
@@ -223,6 +231,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     bench: { home: benchOf(home), away: benchOf(away) },
     subsUsed: { home: 0, away: 0 },
     substitutions: [],
+    shootout: null,
     ballOwnerId: null,
     ownerSinceTick: 0,
     kickLock: null,
@@ -439,6 +448,7 @@ export function step(state: MatchState, rawInput: PlayerInput): MatchState {
     const waiting = { ...state, tick, input };
     return pressed('pass') || state.autopilot ? startSecondHalf(waiting, tick) : waiting;
   }
+  if (state.phase === 'shootout') return stepShootout(state, input, pressed, tick);
   const next = runClock(
     state.restart
       ? stepDeadBall(state, input, pressed, tick)
@@ -450,16 +460,24 @@ export function step(state: MatchState, rawInput: PlayerInput): MatchState {
   return next.autopilot ? autoSubstitute(cpu, HUMAN_TEAM) : cpu;
 }
 
-/** Đồng hồ chạy thêm một tick; hết hiệp thì sang nghỉ giữa hiệp hoặc hết trận. */
+/**
+ * Đồng hồ chạy thêm một tick; hết hiệp thì sang nghỉ giữa hiệp, hết trận, hoặc luân lưu nếu hoà
+ * sau hiệp 2.
+ */
 function runClock(state: MatchState): MatchState {
   const halfTick = state.halfTick + 1;
   const clock = advanceClock(halfTick, state.halfLengthSec, state.stoppage, state.addedMinutes);
   if (!clock.halfOver) return { ...state, halfTick, addedMinutes: clock.addedMinutes };
+  const ended = { ...state, halfTick, addedMinutes: clock.addedMinutes };
+  if (state.half === 1) return whistle(ended, 'half_time');
+  return state.score.home === state.score.away ? enterShootout(ended) : whistle(ended, 'full_time');
+}
+
+/** Còi nghỉ giữa hiệp / hết trận: bóng chết tại chỗ, huỷ mọi thao tác đang dở. */
+function whistle(state: MatchState, phase: 'half_time' | 'full_time'): MatchState {
   return {
     ...state,
-    halfTick,
-    addedMinutes: clock.addedMinutes,
-    phase: state.half === 1 ? 'half_time' : 'full_time',
+    phase,
     ballDead: true,
     restart: null,
     ballOwnerId: null,
@@ -471,6 +489,77 @@ function runClock(state: MatchState): MatchState {
     backPass: null,
     ball: restingBall(state.ball.pos),
   };
+}
+
+/** Hoà sau 2 hiệp: vào luân lưu, đội nhà sút trước. */
+function enterShootout(state: MatchState): MatchState {
+  const shootout = {
+    home: [],
+    away: [],
+    first: 'home' as const,
+    kicking: 'home' as const,
+    kickTick: null,
+  };
+  return setupShootoutKick({ ...state, shootout }, state.tick);
+}
+
+/**
+ * Đặt lượt sút kế: phạt đền về khung thành đội sút tấn công ở hiệp 2, người sút theo thứ tự
+ * `shooterFor`. Lượt của đội người chơi thì người chơi cầm người sút.
+ */
+function setupShootoutKick(state: MatchState, tick: number): MatchState {
+  const so = state.shootout!;
+  const team = nextShooter(so, so.first);
+  const taker = shooterFor(state.players, team, so[team].length);
+  const spot = vec2(attackSign(team, state.half) * (HALF_LENGTH - PENALTY_SPOT_DIST), 0);
+  const dead = enterDeadBall(state, state.players, { type: 'penalty', team, spot }, tick);
+  return {
+    ...dead,
+    phase: 'shootout',
+    restart: { ...dead.restart!, takerId: taker.id },
+    controlledId: team === HUMAN_TEAM ? taker.id : dead.controlledId,
+    shootout: { ...so, kicking: team, kickTick: null },
+  };
+}
+
+/**
+ * Một tick luân lưu: chờ sút như phạt đền (`stepDeadBall`), rồi cho bóng chạy (`stepPlay`) tới khi
+ * phân định lượt: vào lưới, hoặc hỏng.
+ * Bàn luân lưu và cú sút không tính vào tỉ số / thống kê trận. Đồng hồ không chạy.
+ */
+function stepShootout(
+  state: MatchState,
+  input: PlayerInput,
+  pressed: (b: Button) => boolean,
+  tick: number,
+): MatchState {
+  const so = state.shootout!;
+  if (state.restart) {
+    const next = stepDeadBall(state, input, pressed, tick);
+    const kicked = next.restart === null;
+    return {
+      ...next,
+      phase: 'shootout',
+      shots: state.shots,
+      shootout: kicked ? { ...so, kickTick: tick } : so,
+    };
+  }
+  const next = stepPlay(state, input, pressed, tick);
+  const team = so.kicking;
+  const scored = next.score[team] > state.score[team];
+  // Hỏng: bóng ra ngoài (sang bóng chết), thủ môn chạm/bắt (đội kia chạm cuối), có người khống
+  // chế bóng bật ra, hoặc quá lâu.
+  const over =
+    scored ||
+    next.phase !== 'shootout' ||
+    next.lastTouchTeam !== team ||
+    next.ballOwnerId !== null ||
+    tick - (so.kickTick ?? tick) >= SHOOTOUT_KICK_TICKS;
+  if (!over) return { ...next, phase: 'shootout', shots: state.shots };
+  const tally = { ...so, [team]: [...so[team], scored] };
+  const after: MatchState = { ...next, score: state.score, shots: state.shots, shootout: tally };
+  if (shootoutWinner(tally) === null) return setupShootoutKick(after, tick);
+  return whistle({ ...after, ball: restingBall(after.ball.pos) }, 'full_time');
 }
 
 /** Hiệp 2: đổi sân, đội không giao bóng hiệp 1 giao bóng, đồng hồ và bù giờ về 0. */
@@ -561,6 +650,14 @@ function stepDeadBall(
   }
 
   if (kicked) {
+    // Phạt đền: thủ môn đội kia đoán hướng ngay lúc sút.
+    let lastShot = shotFrom(kicked.shot, restart.team, tick);
+    const keeper = state.players.find((p) => p.position === 'GK' && p.team !== restart.team);
+    if (restart.type === 'penalty' && lastShot && keeper) {
+      const g = penaltyGuess(keeper, kicked.ball, kicked.rng);
+      kicked = { ...kicked, rng: g.rng };
+      if (g.guess) lastShot = { ...lastShot, keeperGuess: g.guess };
+    }
     // Ném biên bằng tay: bóng rời tay trên đầu chứ không lăn từ chân.
     const ball =
       restart.type === 'throw_in' ? { ...kicked.ball, z: THROW_IN_RELEASE_Z } : kicked.ball;
@@ -587,7 +684,7 @@ function stepDeadBall(
       shotChargeTicks: 0,
       passCharge: null,
       shots: kicked.shot ? addShot(state.shots, restart.team) : state.shots,
-      lastShot: shotFrom(kicked.shot, restart.team, tick),
+      lastShot,
       input,
     };
   }
@@ -924,10 +1021,12 @@ function stepPlay(
     shot !== null &&
     shot.team !== gk.team &&
     tick - shot.tick >= keeperReactionTicks(gk.stats.reflexes);
-  const diving = (p: PlayerState) =>
-    state.ai && p.position === 'GK' && ballOwnerId === null && reacted(p)
-      ? diveTarget(p, ball, state.half)
-      : null;
+  const diving = (p: PlayerState) => {
+    if (!state.ai || p.position !== 'GK' || ballOwnerId !== null) return null;
+    // Phạt đền đoán sai hướng: lao ngay về phía đã đoán.
+    if (shot?.keeperGuess && shot.team !== p.team) return shot.keeperGuess;
+    return reacted(p) ? diveTarget(p, ball, state.half) : null;
+  };
   // Người nhận đường chuyền của người chơi tự chạy tới chỗ bóng tới, tới khi có người giữ bóng.
   if (
     passReceiver &&

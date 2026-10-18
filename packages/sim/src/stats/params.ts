@@ -151,6 +151,14 @@ export const KEEPER_WINDUP_TICKS = 30;
 export const keeperReactionTicks = (reflexes: number): number =>
   Math.round(statScale(reflexes, ...GK_REACTION_TICKS_RANGE));
 
+/**
+ * Phạt đền: xác suất thủ môn đoán đúng hướng (theo Phản xạ). Đoán đúng thì phản xạ như bóng sống,
+ * đoán sai thì lao nhầm phía — tỉ lệ thành bàn ~70–80% như thực tế.
+ */
+export const GK_PENALTY_GUESS_RANGE = [0.15, 0.35] as const;
+export const keeperPenaltyGuessChance = (reflexes: number): number =>
+  statScale(reflexes, ...GK_PENALTY_GUESS_RANGE);
+
 export const keeperSaveChance = (reflexes: number): number =>
   statScale(reflexes, ...GK_SAVE_CHANCE_RANGE);
 

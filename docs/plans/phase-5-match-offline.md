@@ -154,7 +154,7 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test sim: thay khi bóng sống bị từ chối; lượt thứ 4 bị từ chối; người bị đỏ không thay được; AI thay khi < 30%.
 - **Xong khi:** tiêu chí F3 có test xanh.
 
-### 5.12 — Luân lưu `[ ]`
+### 5.12 — Luân lưu `[x]`
 - **Phụ thuộc:** 5.8b · **Model:** default
 - **Bối cảnh:** PRD §5 ("Hòa sau 2 hiệp"), §7.1 (kết quả thắng/thua luân lưu).
 - **Việc cần làm:** sim: phase `shootout` — 5 lượt mỗi đội, kết thúc sớm khi không thể gỡ, rồi sudden death; người sút do người chơi (chọn hướng + lực) hoặc AI; thủ môn AI đoán hướng theo Phản xạ. Kết quả trận: `win|draw|loss` + `shootout?: {home, away}`. Web: màn luân lưu và hiển thị kết quả.

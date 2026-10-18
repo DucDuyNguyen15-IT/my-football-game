@@ -259,7 +259,8 @@ describe('hiệp và đồng hồ', () => {
   });
 
   it('trận đủ 2 × 180 s: hết giờ hiệp 2 → full_time; sau đó step không đổi gì', () => {
-    const s2 = step(firstHalf(), J);
+    // Không hoà (hoà thì luân lưu — rules/shootout.test.ts).
+    const s2 = { ...step(firstHalf(), J), score: { home: 1, away: 0 } };
     const end = repeat(s2, NO_INPUT, HALF_TICKS);
     expect(end.phase).toBe('full_time');
     expect(end.halfTick).toBe(HALF_TICKS);
@@ -267,6 +268,13 @@ describe('hiệp và đồng hồ', () => {
     expect(step(end, J)).toEqual(end);
     const almost = repeat(s2, NO_INPUT, HALF_TICKS - 1);
     expect(almost.phase).not.toBe('full_time');
+  });
+
+  it('hoà khi hết hiệp 2 → luân lưu, đồng hồ dừng', () => {
+    const s2 = step(firstHalf(), J);
+    const end = repeat(s2, NO_INPUT, HALF_TICKS);
+    expect(end.phase).toBe('shootout');
+    expect(step(end, NO_INPUT).halfTick).toBe(end.halfTick);
   });
 
   it('chờ giao bóng quá 3 s bị tính bù giờ: hiệp kéo dài thêm đúng số phút bù', () => {

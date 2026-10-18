@@ -21,7 +21,14 @@ import {
   type HudSnapshot,
 } from './hud';
 import { EventStrip, Minimap, PlayerPanel, Scoreboard, type ShownEvent } from './MatchHud';
-import { DifficultySelect, HalfTimeOverlay, KeyHints, PauseMenu, ResultScreen } from './screens';
+import {
+  DifficultySelect,
+  HalfTimeOverlay,
+  KeyHints,
+  PauseMenu,
+  ResultScreen,
+  ShootoutHint,
+} from './screens';
 import '../../styles/tokens.css';
 import './play.css';
 
@@ -227,7 +234,11 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
           <p className="hud-pause-hint">
             <kbd>Esc</kbd> Tạm dừng
           </p>
-          {hints && !autopilot && <KeyHints />}
+          {hud.shootout?.turn === 'home' && !autopilot ? (
+            <ShootoutHint />
+          ) : (
+            hints && !autopilot && <KeyHints />
+          )}
         </div>
       )}
       {goalBanner > 0 && (
@@ -246,7 +257,7 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
           onResume={() => setPaused(false)}
           onQuit={onQuit}
           subs={{
-            allowed: hud?.ballDead === true && hud.phase !== 'full_time',
+            allowed: hud?.ballDead === true && hud.phase !== 'full_time' && hud.shootout === null,
             left: hud?.subsLeft ?? 0,
             options: subs,
             onSubstitute: (outId, benchSlot) =>

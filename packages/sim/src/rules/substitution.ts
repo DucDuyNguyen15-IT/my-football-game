@@ -13,7 +13,12 @@ export const MAX_SUBS = 3;
 export const AI_SUB_STAMINA = 30;
 
 export type SubRejection =
-  'ball_live' | 'no_subs_left' | 'not_on_pitch' | 'not_on_bench' | 'keeper_mismatch';
+  | 'ball_live'
+  | 'shootout'
+  | 'no_subs_left'
+  | 'not_on_pitch'
+  | 'not_on_bench'
+  | 'keeper_mismatch';
 
 export type SubResult = { ok: true; state: MatchState } | { ok: false; reason: SubRejection };
 
@@ -24,6 +29,8 @@ function rejection(
   outId: string,
   benchSlot: SquadSlot,
 ): SubRejection | null {
+  // Luân lưu không thay người (cả lúc chờ sút, bóng vẫn chết).
+  if (state.shootout) return 'shootout';
   if (!state.ballDead || state.phase === 'full_time') return 'ball_live';
   if (state.subsUsed[team] >= MAX_SUBS) return 'no_subs_left';
   const out = state.players.find((p) => p.id === outId && p.team === team);

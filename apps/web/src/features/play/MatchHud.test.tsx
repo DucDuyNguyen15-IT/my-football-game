@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { PlayerPanel, Scoreboard } from './MatchHud';
 import type { HudSnapshot } from './hud';
-import { PauseMenu, SubstitutionPanel, type PauseSubs } from './screens';
+import { MemoryRouter } from 'react-router';
+import { PauseMenu, ResultScreen, SubstitutionPanel, type PauseSubs } from './screens';
 
 const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
   score: { home: 2, away: 1 },
@@ -16,6 +17,7 @@ const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
   ballDead: false,
   subsLeft: 3,
   substitutions: [],
+  shootout: null,
   ...over,
 });
 
@@ -83,5 +85,35 @@ describe('menu thay người', () => {
     expect(html).toContain('25%');
     expect(html).toContain('Còn 2 lượt');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Thay người<\/button>/);
+  });
+});
+
+describe('Scoreboard khi luân lưu', () => {
+  it('thay đồng hồ bằng hàng chấm luân lưu', () => {
+    const html = renderToStaticMarkup(
+      <Scoreboard hud={hud({ shootout: { home: [true, false], away: [true], turn: 'away' } })} />,
+    );
+    expect(html).toContain('Luân lưu 1–1');
+    expect(html.match(/hud-kick--scored/g)).toHaveLength(2);
+    expect(html.match(/hud-kick--missed/g)).toHaveLength(1);
+    expect(html).not.toContain('H2');
+  });
+});
+
+describe('ResultScreen', () => {
+  it('hoà có luân lưu: hiện Hoà kèm Thắng luân lưu', () => {
+    const html = renderToStaticMarkup(
+      <MemoryRouter>
+        <ResultScreen
+          hud={hud({
+            score: { home: 1, away: 1 },
+            phase: 'full_time',
+            shootout: { home: [true, true, true], away: [false, false, false], turn: null },
+          })}
+          onRematch={() => {}}
+        />
+      </MemoryRouter>,
+    );
+    expect(html).toContain('Thắng luân lưu 3 – 0');
   });
 });
