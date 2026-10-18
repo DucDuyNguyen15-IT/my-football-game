@@ -3,6 +3,7 @@ import { attackSign } from '../actions/shoot';
 import { add, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from '../pitch';
 import { isKeeperHandling } from '../rules/fouls';
+import { RESTART_CLEARANCE } from '../rules/restarts';
 import { CONTAIN_DIST, KEEPER_PRESS_GAP } from '../stats/params';
 import { keeperTarget } from './goalkeeper';
 import { supportSpot } from './player';
@@ -55,6 +56,11 @@ export interface TeamPlanInput {
   aggression: number;
   controlledId: string | null;
 }
+
+/** Bóng chết của đối phương: AI đứng cách bóng chừng này (m), xa hơn khoảng cách luật một chút. */
+const DEAD_BALL_KEEP_OFF = RESTART_CLEARANCE + 0.5;
+/** Bóng chết của đội mình: đồng đội (trừ người thực hiện) đứng cách bóng ít nhất chừng này (m). */
+const DEAD_BALL_TEAMMATE_GAP = 2.5;
 
 /** Toạ độ x tương đối của từng tuyến khi bóng ở giữa sân, chế độ chuyển trạng thái. */
 const LINE_X = { DF: -15, MF: -5, FW: 5 } as const;
@@ -302,6 +308,17 @@ export function aiTarget(
     case 'keep':
       target = keeperTarget(player, ball, players, ballOwnerId, half, !plan.deadBall);
       break;
+  }
+  // Bóng chết: đối phương đứng ngoài khoảng cách tối thiểu (không chạy vào rồi bị luật đẩy ra mỗi
+  // tick — giật); đồng đội không chen vào người thực hiện đang đứng yên sau bóng.
+  if (plan.deadBall) {
+    const keepOff = plan.mode === 'defend' ? DEAD_BALL_KEEP_OFF : DEAD_BALL_TEAMMATE_GAP;
+    const away = sub(target, ball.pos);
+    const d = length(away);
+    if (d < keepOff) {
+      const dir = d > 0 ? scale(away, 1 / d) : vec2(-attackSign(player.team, half), 0);
+      target = add(ball.pos, scale(dir, keepOff));
+    }
   }
   return clampToPitch(target, TARGET_MARGIN);
 }
