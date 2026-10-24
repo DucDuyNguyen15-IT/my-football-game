@@ -72,7 +72,7 @@
 - **Kiểm chứng:** test integration: không đủ xu → 409, xu/hộp/kho không đổi; gửi lại cùng key → cùng kết quả, chỉ trừ xu một lần; **2 request song song** (khác key) khi chỉ đủ xu cho 1 → đúng 1 thành công, số dư ≥ 0; **2 request song song cùng key** → một kết quả; dùng `free_credit` → giá 0, credit − 1, không có dòng ledger; tổng ledger = `coins`; không đặt `ENABLE_DEV_ROUTES` → `/dev/grant-coins` 404.
 - **Xong khi:** mọi tiêu chí F5 phía server có test.
 
-### 6.6 — Web nền: router, API client, đăng nhập `[ ]`
+### 6.6 — Web nền: router, API client, đăng nhập `[x]`
 - **Phụ thuộc:** 6.3b, **GĐ4 xong** · **Song song với:** 6.4–6.5 · **Model:** default
 - **Bối cảnh:** ADR-0003; ARCHITECTURE §2.1 (cấu trúc web), §4.1; `docs/DESIGN.md` (tokens); `apps/web/src/api/client.ts`.
 - **Việc cần làm:** cài `@tanstack/react-query` và `react-router` (nếu 5.9 chưa cài). `api/client.ts`: `apiFetch(path, schema, init)` — `credentials: 'include'`, request đổi dữ liệu luôn gửi JSON (tối thiểu `{}`), parse `{data}` bằng schema, ném `ApiClientError(code)` từ `ApiError`. Hook `useMe`. Màn đăng ký/đăng nhập, layout + menu (Đá với máy, Cửa hàng, Kho thẻ, Đội hình), chặn route khi chưa đăng nhập. Áp design tokens.
