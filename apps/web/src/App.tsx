@@ -15,7 +15,7 @@ export function App() {
 
   return (
     <main>
-      <h1>Pitch Cards</h1>
+      <h1>MFG</h1>
       <p>Server: {status}</p>
       <p>
         <Link to="/play">Đá vs máy</Link>

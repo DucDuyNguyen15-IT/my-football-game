@@ -1,4 +1,4 @@
-# PRD — Game bóng đá web (tên tạm: "Pitch Cards")
+# PRD — Game bóng đá web: MFG (My Football Game)
 
 _Phiên bản 1.0 — 2026-10-09 — Trạng thái: DRAFT, cần kiểm chứng bằng playtest._
 _Nguồn: `docs/research.md` (Giai đoạn 1), phương án MVP **B — Cân bằng** (`docs/PROGRESS.md`), hỏi đáp với chủ dự án._
@@ -314,7 +314,7 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 
 ## 12. Câu hỏi mở
 
-- [ ] Tên chính thức của game (đang dùng tên tạm "Pitch Cards").
+- [x] Tên chính thức của game: **MFG** (My Football Game) — chốt 2026-10-25.
 - [ ] Phím điều khiển chi tiết. Chốt ở Giai đoạn 4 sau khi thử prototype.
 - [x] Ảnh đại diện thẻ: avatar vector sinh từ `avatar_seed` (DESIGN.md §4).
 - [ ] OVR đội máy (~60 / ~78) và độ trễ phản ứng AI cần cân chỉnh qua playtest.

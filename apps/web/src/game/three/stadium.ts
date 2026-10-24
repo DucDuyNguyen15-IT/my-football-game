@@ -145,7 +145,7 @@ export function standRows(): {
 
 /** Chữ trên bảng LED: thương hiệu hư cấu + tên trường/tác giả (theo yêu cầu chủ dự án). */
 const AD_BRANDS = [
-  'PITCH CARDS',
+  'MFG',
   'HCMUS',
   'ZOLTRA',
   'NGUYỄN ĐỨC DUY',

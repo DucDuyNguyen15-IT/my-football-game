@@ -298,6 +298,19 @@ describe('step — chuyền', () => {
     expect(released.controlledId).toBe('home-P2');
   });
 
+  it('thủ môn ném tay: bóng rời tay ở độ cao vai và bay lên, rồi người nhận vẫn bắt được', () => {
+    const gkAt = vec2(-HALF_LENGTH + 3, 0);
+    const s0 = scenario({ 'home-GK': gkAt, 'home-P2': vec2(-15, 0) }, 'home-GK', 'home-GK');
+    const s1 = tap(s0, press({ pass: true, move: vec2(1, 0) }));
+    const released = repeat(s1, NO_INPUT, KEEPER_WINDUP_TICKS);
+    expect(released.ballOwnerId).toBeNull();
+    expect(released.ball.z).toBeGreaterThan(1.2);
+    expect(released.ball.vz).toBeGreaterThan(0);
+    let c = released;
+    for (let i = 0; i < 3 * 60 && c.ballOwnerId === null; i++) c = step(c, NO_INPUT);
+    expect(c.ballOwnerId).toBe('home-P2');
+  });
+
   it('bấm J: bóng rời chân, đồng đội 15 m nhận bóng và người chơi chuyển sang điều khiển người đó', () => {
     const s1 = tap(scenario(at, 'home-P1'), press({ pass: true }));
     expect(s1.ballOwnerId).toBeNull();

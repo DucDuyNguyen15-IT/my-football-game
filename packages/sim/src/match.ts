@@ -41,6 +41,7 @@ import {
 import {
   add,
   clampLength,
+  dot,
   length,
   normalize,
   scale,
@@ -306,6 +307,26 @@ function kickPass(
   return { ...passBall(passer, from, to, kind, rng, errorMult, power), receiver };
 }
 
+/** AI chỉ đá khi hướng đá lệch hướng mặt không quá ~80° (cos); lệch hơn thì xoay người trước. */
+export const AI_KICK_FACING_COS = 0.2;
+/** Độ lớn cần analog khi AI xoay người để đá (chậm lại, giữ bóng trong chân). */
+const AI_TURN_MOVE = 0.3;
+
+/** Hướng cần xoay tới trước khi đá, hoặc null nếu đã đủ thẳng hướng mặt. */
+function kickAim(
+  carrier: PlayerState,
+  action: Exclude<CarrierAction, { type: 'dribble' }>,
+): Vec2 | null {
+  const to = sub(action.type === 'shoot' ? action.target : action.to, carrier.pos);
+  if (length(to) === 0) return null;
+  const dir = normalize(to);
+  return dot(dir, carrier.facing) >= AI_KICK_FACING_COS ? null : dir;
+}
+
+/** Thủ môn ném tay: bóng rời tay ở độ cao vai (m) với vận tốc đứng hướng lên (m/s). */
+export const THROW_RELEASE_HEIGHT = 1.5;
+export const THROW_RELEASE_VZ = 2;
+
 /** Thủ môn bắt đầu lấy đà: bóng rời tay/chân sau KEEPER_WINDUP_TICKS. */
 const startWindup = (
   playerId: string,
@@ -319,6 +340,20 @@ const startWindup = (
  * thêm trong lúc lấy đà). `receiver` chỉ có với cú chuyền của người chơi.
  */
 function releaseWindup(
+  state: MatchState,
+  players: readonly PlayerState[],
+  windup: Windup,
+  from: Vec2,
+  rng: RngState,
+  tick: number,
+): { ball: BallState; rng: RngState; shot: boolean; receiver: PassReceiver | null } {
+  const kick = releaseWindupKick(state, players, windup, from, rng, tick);
+  if (windup.style !== 'throw') return kick;
+  // Ném tay: bóng rời tay ở độ cao vai, bay lên một chút rồi rơi xuống lăn tiếp.
+  return { ...kick, ball: { ...kick.ball, z: THROW_RELEASE_HEIGHT, vz: THROW_RELEASE_VZ } };
+}
+
+function releaseWindupKick(
   state: MatchState,
   players: readonly PlayerState[],
   windup: Windup,
@@ -947,8 +982,12 @@ function stepPlay(
       heldTicks: ballOwnerId === state.ballOwnerId ? tick - state.ownerSinceTick : 0,
       minHoldTicks: AI_MIN_HOLD_TICKS,
     });
+    const aim = action.type === 'dribble' ? null : kickAim(aiCarrier, action);
     if (action.type === 'dribble') {
       carrierMove = { id: aiCarrier.id, move: action.move, sprint: action.sprint };
+    } else if (aim && !isKeeperHandling(aiCarrier, state.half, backPass)) {
+      // Hướng đá lệch quá xa hướng mặt (chuyền về sau): xoay người trước, tick sau mới đá.
+      carrierMove = { id: aiCarrier.id, move: scale(aim, AI_TURN_MOVE), sprint: false };
     } else {
       if (isKeeperHandling(aiCarrier, state.half, backPass)) {
         const style = action.type === 'pass' && action.kind === 'ground' ? 'throw' : 'kick';

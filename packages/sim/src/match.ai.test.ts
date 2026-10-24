@@ -130,3 +130,31 @@ describe('AI đội trong trận', () => {
     expect(JSON.parse(JSON.stringify(a))).toEqual(a);
   });
 });
+
+describe('AI chuyền/sút phải xoay người trước', () => {
+  it('cầu thủ AI (không phải thủ môn) không đá bóng về phía sau lưng mình', () => {
+    let s = createMatch({ ...setup, halfLengthSec: 60, autopilot: true });
+    let kicks = 0;
+    let worstCos = 1;
+    for (let i = 0; i < 20_000 && s.phase !== 'full_time' && s.phase !== 'shootout'; i++) {
+      const prev = s;
+      s = step(s, NO_INPUT);
+      const kicker = prev.players.find((p) => p.id === prev.ballOwnerId);
+      const kicked =
+        prev.phase === 'play' &&
+        s.phase === 'play' &&
+        kicker !== undefined &&
+        kicker.position !== 'GK' &&
+        s.ballOwnerId === null &&
+        s.kickLock?.playerId === kicker.id &&
+        s.lastTackle?.tick !== prev.tick &&
+        length(s.ball.vel) > 1;
+      if (!kicked) continue;
+      kicks++;
+      const dir = normalize(s.ball.vel);
+      worstCos = Math.min(worstCos, dir.x * kicker.facing.x + dir.y * kicker.facing.y);
+    }
+    expect(kicks).toBeGreaterThan(20);
+    expect(worstCos).toBeGreaterThan(-0.25);
+  });
+});
