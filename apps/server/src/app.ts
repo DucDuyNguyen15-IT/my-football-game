@@ -7,6 +7,8 @@ import { AppError, registerErrors } from './plugins/errors';
 import { registerAuth } from './plugins/auth';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCardRoutes } from './routes/cards';
+import { registerDevRoutes } from './routes/dev';
+import { registerPackRoutes } from './routes/packs';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -21,6 +23,8 @@ export interface BuildAppOptions {
   /** Đồng hồ nghiệp vụ; mặc định đồng hồ thật. */
   clock?: Clock;
   logger?: FastifyServerOptions['logger'];
+  /** Đăng ký `/api/v1/dev/*` (từ `ENABLE_DEV_ROUTES=1`); mặc định tắt. */
+  enableDevRoutes?: boolean;
 }
 
 /** Tạo instance Fastify. Tách khỏi `server.ts` để test bằng `app.inject()` mà không mở cổng. */
@@ -46,6 +50,8 @@ export function buildApp(opts: BuildAppOptions = {}) {
     registerAuth(app);
     registerAuthRoutes(app);
     registerCardRoutes(app);
+    registerPackRoutes(app);
+    if (opts.enableDevRoutes) registerDevRoutes(app);
   }
 
   return app;

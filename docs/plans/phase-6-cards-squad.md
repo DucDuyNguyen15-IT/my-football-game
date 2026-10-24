@@ -65,7 +65,7 @@
   - `cryptoRng` gọi `crypto.randomInt` (spy).
 - **Xong khi:** tiêu chí ROADMAP "test phân phối tỉ lệ rơi" xanh.
 
-### 6.5 — API gói thẻ + ví + idempotency `[ ]`
+### 6.5 — API gói thẻ + ví + idempotency `[x]`
 - **Phụ thuộc:** 6.3b, 6.4 · **Model:** strongest
 - **Bối cảnh:** ARCHITECTURE §3.4 (khoá), §4.3 #11–12, §5.1 (sơ đồ tuần tự — làm đúng từng bước), §8 (`ENABLE_DEV_ROUTES`); PRD §6.3 tiêu chí F5, §7.4; `apps/server/src/domain/{gacha,rng}.ts`, `src/services/cards.ts` (cache theo độ hiếm).
 - **Việc cần làm:** contract `api/packs.ts`; `services/wallet.ts` `applyCoinDelta(tx, userId, amount, type, ref)` (yêu cầu đã khoá `users`, ghi `coin_transactions` với `balance_after`); `services/packs.ts` theo §5.1; `GET /packs`, `POST /packs/:code/open` (header `Idempotency-Key` uuid bắt buộc; cùng key khác body → 409); ghi `analytics_events` `pack_open`. Route dev `POST /dev/grant-coins` **chỉ đăng ký khi `ENABLE_DEV_ROUTES=1`**, đi qua `applyCoinDelta` với loại `admin_adjust`.

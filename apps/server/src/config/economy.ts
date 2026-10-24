@@ -30,9 +30,12 @@ export const STARTER_SQUAD = {
   ],
 } as const;
 
-/** Gói thẻ (PRD §6.3). `guarantee`: gói 5 bảo đảm ≥ 1 Bạc+ khi hộp còn. */
+/**
+ * Gói thẻ (PRD §6.3). `guarantee`: gói 5 bảo đảm ≥ 1 Bạc+ khi hộp còn. `freeCredit`: mở được bằng
+ * lượt miễn phí `users.free_pack5_credits` (quà tân thủ).
+ */
 export const PACKS = {
-  pack1: { size: 1, price: 100, guarantee: false },
-  pack5: { size: 5, price: 450, guarantee: true },
+  pack1: { size: 1, price: 100, guarantee: false, freeCredit: false },
+  pack5: { size: 5, price: 450, guarantee: true, freeCredit: true },
 } as const;
 export type PackCode = keyof typeof PACKS;

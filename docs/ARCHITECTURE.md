@@ -184,7 +184,7 @@ Bán thẻ / làm nguyên liệu ép → **xoá dòng**. Lịch sử nằm ở `
 | pack_code | text | `pack1` / `pack5` (khớp config) |
 | payment | text | `coins` / `free_credit` |
 | price | integer | Số xu đã trừ (0 nếu dùng lượt miễn phí) |
-| result | jsonb | `[{ playerCardId, cardId, rarity }]` — trả lại nguyên văn khi request lặp |
+| result | jsonb | Nguyên `data` của response lần đầu (`{ cards, box, balance, freePack5Credits }`) — trả lại nguyên văn khi request lặp (task 6.5) |
 | box_cycle | integer | Hộp nào được bốc (kiểm toán) |
 | created_at | timestamptz | index `(user_id, created_at)` |
 
