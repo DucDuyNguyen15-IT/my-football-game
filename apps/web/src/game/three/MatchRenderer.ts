@@ -14,7 +14,14 @@ import {
   type PlayerState,
 } from '@pitch/sim';
 import type { GraphicsSettings, MatchBridge } from '../bridge';
-import { NO_KEYS, createTapLatch, keyForCode, keysToInput, type KeyState } from '../input/keyboard';
+import {
+  CONTROL_KEYS,
+  NO_KEYS,
+  createTapLatch,
+  keyForCode,
+  keysToInput,
+  type KeyState,
+} from '../input/keyboard';
 import { followCamera, initialCamera, type CameraState } from '../render/camera';
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
@@ -332,8 +339,8 @@ export class MatchRenderer {
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     const name = keyForCode(e.code);
     if (this.replay) {
-      // Đang phát lại: phím bất kỳ để bỏ qua, không tính vào trận.
-      this.skipReplay = true;
+      // Đang phát lại: S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
+      if (e.code === CONTROL_KEYS.pass) this.skipReplay = true;
       if (name) e.preventDefault();
       return;
     }
@@ -469,7 +476,7 @@ export class MatchRenderer {
     const el = document.createElement('div');
     el.innerHTML =
       '<b style="letter-spacing:.12em">● PHÁT LẠI</b>' +
-      '<div style="opacity:.7;font-size:12px;margin-top:2px">Bấm phím bất kỳ để bỏ qua</div>';
+      '<div style="opacity:.7;font-size:12px;margin-top:2px">Bấm S để bỏ qua</div>';
     Object.assign(el.style, {
       position: 'absolute',
       left: '20px',
