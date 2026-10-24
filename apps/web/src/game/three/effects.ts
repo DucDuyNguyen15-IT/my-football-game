@@ -4,6 +4,7 @@
  */
 import * as THREE from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { GTAOPass } from 'three/addons/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
@@ -19,6 +20,32 @@ const SPOT_INTENSITY = 1800;
 const SPOT_ANGLE = 0.42;
 
 /** Vòm trời: chuyển màu từ chân trời xanh lục tối lên đỉnh gần đen, rắc sao (PRNG cố định). */
+/** Đổi màu vòm trời (chân trời → đỉnh) và bật/tắt sao theo thời điểm trận. */
+export function setSkyLook(
+  sky: THREE.Object3D,
+  horizon: number,
+  zenith: number,
+  stars: boolean,
+): void {
+  const [dome, points] = sky.children;
+  if (dome instanceof THREE.Mesh && dome.material instanceof THREE.ShaderMaterial) {
+    const u = dome.material.uniforms as Record<string, { value: THREE.Color }>;
+    u.horizon?.value.setHex(horizon);
+    u.zenith?.value.setHex(zenith);
+  }
+  if (points) points.visible = stars;
+}
+
+/** Cường độ đèn spot rọi sân theo thời điểm (0 = tắt hẳn, như ban ngày). */
+export function setFloodScale(spots: THREE.Object3D, scale: number): void {
+  for (const o of spots.children) {
+    if (o instanceof THREE.SpotLight) {
+      o.intensity = SPOT_INTENSITY * scale;
+      o.visible = scale > 0;
+    }
+  }
+}
+
 export function buildSky(): THREE.Group {
   const g = new THREE.Group();
   const dome = new THREE.Mesh(
@@ -88,6 +115,8 @@ export interface PostFx {
   render(): void;
   setSize(width: number, height: number, pixelRatio: number): void;
   setBloom(strength: number): void;
+  /** Che bóng môi trường GTAO (chạy nửa độ phân giải). */
+  setAo(on: boolean): void;
   dispose(): void;
 }
 
@@ -102,6 +131,13 @@ export function createPostFx(
 ): PostFx {
   const composer = new EffectComposer(renderer);
   composer.addPass(new RenderPass(scene, camera));
+  // GTAO: tối nhẹ chỗ chân cầu thủ chạm cỏ, khe khán đài, chân khung thành.
+  const ao = new GTAOPass(scene, camera, 1, 1);
+  ao.updateGtaoMaterial({ radius: 0.6, distanceExponent: 1.5, thickness: 1, samples: 8 });
+  ao.updatePdMaterial({ samples: 8, rings: 2 });
+  ao.blendIntensity = 0.8;
+  ao.enabled = false;
+  composer.addPass(ao);
   const bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0, BLOOM_RADIUS, BLOOM_THRESHOLD);
   composer.addPass(bloom);
   composer.addPass(new OutputPass());
@@ -114,12 +150,17 @@ export function createPostFx(
       composer.setSize(w, h);
       // Bloom vốn mờ: chạy ở nửa độ phân giải gần như không khác mà rẻ hơn 4 lần.
       bloom.setSize((w * ratio) / 2, (h * ratio) / 2);
+      ao.setSize((w * ratio) / 2, (h * ratio) / 2);
     },
     setBloom: (strength) => {
       bloom.strength = strength;
       bloom.enabled = strength > 0;
     },
+    setAo: (on) => {
+      ao.enabled = on;
+    },
     dispose: () => {
+      ao.dispose();
       bloom.dispose();
       smaa.dispose();
       composer.dispose();

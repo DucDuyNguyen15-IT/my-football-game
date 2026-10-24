@@ -18,7 +18,6 @@ describe('mức đồ hoạ', () => {
       'skyAndRoof',
       'grass3d',
       'crowd',
-      'ssao',
     ] as const) {
       expect(low[k]).toBe(false);
       expect(high[k]).toBe(true);
@@ -26,6 +25,7 @@ describe('mức đồ hoạ', () => {
     expect(high.shadowMapSize).toBeGreaterThan(low.shadowMapSize);
     expect(high.maxPixelRatio).toBeGreaterThan(low.maxPixelRatio);
     expect(high.bloomStrength).toBeGreaterThan(0);
+    expect(low.ssao).toBe(false);
   });
 
   it('pixel ratio theo màn hình nhưng có trần, không dưới 1', () => {
@@ -48,7 +48,7 @@ describe('tuỳ chỉnh đồ hoạ', () => {
   });
 
   it('tắt hậu kỳ thì tắt luôn bloom và SSAO; bật hậu kỳ trên Thấp thì có bloom', () => {
-    const off = resolveQuality({ ...DEFAULT_GRAPHICS, overrides: { postFx: false } });
+    const off = resolveQuality({ ...DEFAULT_GRAPHICS, overrides: { postFx: false, ssao: true } });
     expect(off.bloomStrength).toBe(0);
     expect(off.ssao).toBe(false);
     const on = resolveQuality({ ...DEFAULT_GRAPHICS, preset: 'low', overrides: { postFx: true } });

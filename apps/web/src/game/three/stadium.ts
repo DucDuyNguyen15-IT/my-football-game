@@ -186,16 +186,34 @@ export function standRows(): {
   return rows;
 }
 
-/** Thương hiệu hư cấu trên bảng LED (không dùng thương hiệu thật). */
-const AD_BRANDS = ['PITCH CARDS', 'ZOLTRA', 'KIVEX', 'NORDA FIZZ', 'QUANTO BANK', 'VELIRO'];
-const AD_COLORS = ['#c8f031', '#3fa9f5', '#ff7a45', '#edf2ec', '#7b5cff', '#3dd68c'];
+/** Chữ trên bảng LED: thương hiệu hư cấu + tên trường/tác giả (theo yêu cầu chủ dự án). */
+const AD_BRANDS = [
+  'PITCH CARDS',
+  'HCMUS',
+  'ZOLTRA',
+  'NGUYỄN ĐỨC DUY',
+  'KIVEX',
+  'DUCKDEE',
+  'NORDA FIZZ',
+  'QUANTO BANK',
+];
+const AD_COLORS = [
+  '#c8f031',
+  '#3fa9f5',
+  '#ff7a45',
+  '#edf2ec',
+  '#7b5cff',
+  '#3dd68c',
+  '#ffc23d',
+  '#5cc8ff',
+];
 const BOARD_H = 0.9;
 /** Bảng quảng cáo cách vạch biên / vạch cuối chừng này mét. */
 const BOARD_GAP = 3;
 const AD_SCROLL_PER_SEC = 0.02;
 
 function adTexture(): THREE.CanvasTexture {
-  const w = 2048;
+  const w = 4096;
   const h = 64;
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -237,7 +255,8 @@ export function buildAdBoards(): { object: THREE.Object3D; update(timeSec: numbe
   const maps: THREE.Texture[] = [];
   for (const { len, pos, rot } of sides) {
     const map = tex.clone();
-    map.repeat.set(len / 40, 1);
+    // Mỗi chữ ~6,7 m bảng.
+    map.repeat.set(len / (AD_BRANDS.length * 6.7), 1);
     map.needsUpdate = true;
     maps.push(map);
     const board = new THREE.Mesh(new THREE.BoxGeometry(len, BOARD_H, 0.15), [

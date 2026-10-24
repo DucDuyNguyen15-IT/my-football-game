@@ -25,7 +25,15 @@ import { buildPitch, NetRig } from './pitch';
 import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
 import { buildAdBoards, buildRoofs, buildStadium } from './stadium';
 import { buildCrowd, type Crowd } from './crowd';
-import { buildFloodSpots, buildSky, createPostFx, type PostFx } from './effects';
+import {
+  buildFloodSpots,
+  buildSky,
+  createPostFx,
+  setFloodScale,
+  setSkyLook,
+  type PostFx,
+} from './effects';
+import { LIGHTING } from '../render/lighting';
 import {
   DEFAULT_GRAPHICS,
   pixelRatioFor,
@@ -93,6 +101,7 @@ export class MatchRenderer {
   /** Vị trí bóng khung hình trước, để xoay bóng theo quãng đường lăn. */
   private readonly ballLast = new THREE.Vector3();
   private readonly sun: THREE.DirectionalLight;
+  private readonly hemi: THREE.HemisphereLight;
   /** Bầu trời, mái khán đài, đèn spot: chỉ hiện ở mức Cao. */
   private readonly highOnly: { sky: THREE.Object3D; roofs: THREE.Object3D; spots: THREE.Object3D };
   private readonly postFx: PostFx;
@@ -134,7 +143,8 @@ export class MatchRenderer {
 
     this.scene.background = new THREE.Color(COLORS.bg);
     this.scene.fog = new THREE.Fog(COLORS.bg, 70, 140);
-    this.scene.add(new THREE.HemisphereLight(0xcfe3ff, 0x0b1a10, 1.1));
+    this.hemi = new THREE.HemisphereLight(0xcfe3ff, 0x0b1a10, 1.1);
+    this.scene.add(this.hemi);
     // "Đèn pha" chính: chiếu chéo từ trên cao, đổ bóng cầu thủ xuống cỏ.
     const sun = new THREE.DirectionalLight(0xfff4e0, 2.4);
     sun.position.set(-18, 40, 22);
@@ -256,6 +266,8 @@ export class MatchRenderer {
     // Có vòm trời thì sương mù xa hơn để không phủ mất khán đài.
     if (this.scene.fog instanceof THREE.Fog) this.scene.fog.far = q.skyAndRoof ? 220 : 140;
     this.postFx.setBloom(q.bloomStrength);
+    this.postFx.setAo(q.ssao);
+    this.applyLighting(graphics);
     if (recompile) {
       // Material phải biên dịch lại shader khi đổi shadow map / tone mapping.
       this.scene.traverse((obj) => {
@@ -265,6 +277,23 @@ export class MatchRenderer {
       });
     }
     this.resize();
+  }
+
+  /** Ánh sáng theo thời điểm trận (đêm / hoàng hôn / ngày). */
+  private applyLighting(graphics: GraphicsSettings): void {
+    const l = LIGHTING[graphics.timeOfDay];
+    const { scene, hemi, sun } = this;
+    if (scene.background instanceof THREE.Color) scene.background.setHex(l.background);
+    // Sương mù cùng màu chân trời để khán đài tan vào nền.
+    scene.fog?.color.setHex(this.q.skyAndRoof ? l.skyHorizon : l.background);
+    hemi.color.setHex(l.hemiSky);
+    hemi.groundColor.setHex(l.hemiGround);
+    hemi.intensity = l.hemiIntensity;
+    sun.color.setHex(l.sunColor);
+    sun.intensity = l.sunIntensity;
+    sun.position.set(...l.sunPos);
+    setSkyLook(this.highOnly.sky, l.skyHorizon, l.skyZenith, l.stars);
+    setFloodScale(this.highOnly.spots, l.floodScale);
   }
 
   dispose(): void {

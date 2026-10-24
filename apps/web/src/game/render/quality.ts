@@ -1,7 +1,7 @@
 /**
  * Cấu hình đồ hoạ (ADR-0009), thuần (không Three.js) để test. Hai preset — Thấp: cho máy trung bình,
- * không bóng đổ thật, không hậu kỳ; Cao: bóng đổ mềm, đèn pha rọi, bloom, bầu trời, khán giả, cỏ 3D,
- * SSAO — và người chơi bật/tắt riêng từng chi tiết đè lên preset (task 5.21).
+ * không bóng đổ thật, không hậu kỳ; Cao: bóng đổ mềm, đèn pha rọi, bloom, bầu trời, khán giả, cỏ 3D
+ * — và người chơi bật/tắt riêng từng chi tiết đè lên preset (task 5.21).
  */
 import type { GraphicsQuality, GraphicsSettings, GraphicsToggle, TimeOfDay } from '../bridge';
 
@@ -57,7 +57,8 @@ export const QUALITY: Record<GraphicsQuality, QualitySettings> = {
     skyAndRoof: true,
     grass3d: true,
     crowd: true,
-    ssao: true,
+    // Tốn ~25% FPS trên GPU tích hợp (Intel UHD: 75 → 57): để người chơi máy mạnh tự bật.
+    ssao: false,
     replay: true,
   },
 };
