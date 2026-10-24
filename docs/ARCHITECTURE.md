@@ -1,4 +1,4 @@
-# Kiến trúc — Pitch Cards
+# Kiến trúc — MFG (My Football Game)
 
 _Phiên bản 1.0 — 2026-10-10 — Giai đoạn 3. Nguồn: `docs/PRD.md`, ADR-0001…0007._
 _Tài liệu này mô tả **hình dạng** hệ thống. Số liệu kinh tế (giá, tỉ lệ, thưởng) nằm trong PRD và file config server, không lặp lại ở đây._

@@ -21,3 +21,8 @@ Ghi ý tưởng vào đây thay vì làm ngay. Xem xét lại khi lập kế ho�
 | Thanh lực cho chuyền S/A (giữ để tăng lực chuyền) như FC Online — hiện sim chỉ nạp lực cho sút D | Người dùng | 5 | Cần đổi sim (`PlayerInput`/`actions/pass.ts`); thanh lực sút D đã có trong HUD 5.10 (DESIGN §6.2). Cân nhắc khi lập kế hoạch sau 5.10 |
 | Hoạt ảnh xoạc phạm lỗi: sim chuyển sang bóng chết và dời cầu thủ về vị trí đá phạt ngay tick phạm lỗi, nên clip xoạc/ngã phát ở chỗ mới — cân nhắc quãng dừng ngắn (~1 s) trước khi xếp lại vị trí | Agent | 5 | Cùng chỗ với quãng ăn mừng bàn thắng (5.5) |
 | Clip đi bộ: Soccer Game Pack chỉ có `jog`; `pnpm assets` tự nhận `walking.fbx` (Y Bot, bỏ "In Place") trong `assets-src/mixamo/` nếu có (`Running.fbx` đã có) | Người dùng | 5 | Người dùng tải từ Mixamo |
+| Dòng sự kiện bằng chữ kiểu bình luận viên (bàn thắng, thẻ, cứu thua…) | Người dùng | 5 | Người dùng · 2026-10-25 |
+| Thống kê sau trận: kiểm soát bóng, cú sút, bản đồ nhiệt | Người dùng | 5 | Người dùng · 2026-10-25; sim cần ghi thêm số liệu theo tick |
+| Lưu highlight và chọn góc camera khi phát lại | Người dùng | 5 | Người dùng · 2026-10-25; mở rộng `render/replay.ts` |
+| Ăn mừng bàn thắng theo thẻ cầu thủ | Người dùng | 5 | Người dùng · 2026-10-25; cần hoạt ảnh Mixamo riêng |
+| Tuỳ chọn tốc độ trận (độ dài hiệp / tốc độ mô phỏng) | Người dùng | 5 | Người dùng · 2026-10-25 |

@@ -7,6 +7,7 @@ import {
   HALF_LENGTH,
   HALF_WIDTH,
   isInPenaltyArea,
+  isInsidePitch,
   PENALTY_AREA_DEPTH,
 } from '../pitch';
 import type { PlayerState, Restart, RestartType, TeamSide } from '../types';
@@ -137,7 +138,11 @@ export function holdRestart(
     if (dist >= clearance) return p;
     // Trùng điểm đặt bóng thì lùi về phía khung thành nhà mình. Bỏ phần vận tốc hướng vào bóng để
     // người đang đi trượt men theo vòng, không bị đẩy qua đẩy lại (giật).
-    const dir = dist > 0 ? scale(d, 1 / dist) : vec2(-attackSign(p.team, half), 0);
+    const radial = dist > 0 ? scale(d, 1 / dist) : vec2(-attackSign(p.team, half), 0);
+    // Bóng sát vạch (ném biên gần góc): lùi ra ngoài sân thì lùi vào phía giữa sân thay vì thế.
+    const dir = isInsidePitch(add(restart.spot, scale(radial, clearance)))
+      ? radial
+      : normalize(sub(ZERO, restart.spot));
     const inward = Math.min(0, dot(p.vel, dir));
     return {
       ...p,

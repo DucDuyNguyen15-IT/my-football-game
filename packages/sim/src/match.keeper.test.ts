@@ -77,7 +77,8 @@ describe('thủ môn cản phá', () => {
     expect(good.goal).toBeLessThan(poor.goal);
     // Không phải cú nào cũng cản được.
     expect(good.goal).toBeGreaterThan(0);
-  });
+    // 1000 cú sút: chạy song song cả repo trên máy yếu có lúc quá 5 s mặc định.
+  }, 30_000);
 });
 
 describe('thủ môn có bóng', () => {

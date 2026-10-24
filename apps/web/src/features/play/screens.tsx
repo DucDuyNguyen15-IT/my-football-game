@@ -77,7 +77,7 @@ export function KeyHints() {
 
 const DIFFICULTIES: ReadonlyArray<{ value: Difficulty; label: string; hint: string }> = [
   { value: 'easy', label: 'Dễ', hint: 'Máy phản ứng chậm, chuyền và sút kém chính xác' },
-  { value: 'hard', label: 'Khó', hint: 'Máy phản ứng nhanh, dâng cao và áp sát gắt' },
+  { value: 'hard', label: 'Khó', hint: 'Máy phản ứng nhanh, chuyền và sút chính xác hơn' },
 ];
 
 export function DifficultySelect({ onPick }: { onPick: (d: Difficulty) => void }) {
