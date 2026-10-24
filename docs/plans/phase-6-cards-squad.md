@@ -5,7 +5,7 @@
 **Tài liệu nền:** `docs/ARCHITECTURE.md` §3 (schema), §4 (API), §5 (luồng server); `docs/PRD.md` §6.
 **Tiên quyết:** Postgres 16 (Docker Desktop hoặc bản cài). Lý do đưa tài khoản cơ bản vào đây: `docs/plans/README.md` mục "Điều chỉnh".
 
-**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2, 6.3a, 6.3b, 6.4, 6.5, 6.6. Tiếp theo: **6.7** (cửa hàng + mở thẻ; API `GET /packs`, `POST /packs/:code/open` đã có, schema ở `packages/shared/src/api/packs.ts`). Chơi thử có xu: chạy server với `ENABLE_DEV_ROUTES=1` rồi `POST /api/v1/dev/grant-coins {amount}`. `pack_openings.result` lưu nguyên response để trả lại khi lặp key; hết lượt miễn phí trả 409 `insufficient_coins`. Đăng ký cần danh mục thẻ trong DB (`db:seed`) vì 11 thẻ khởi đầu tham chiếu `cards.id` — nhớ chạy seed khi deploy (GĐ9). Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
+**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2, 6.3a, 6.3b, 6.4, 6.5, 6.6, 6.7. Tiếp theo: **6.8** (kho + bán). Đã có ở web: `<CardView>` (`apps/web/src/components/card/`, tra mẫu thẻ bằng `useCardCatalog()` ở `api/cards.ts`), query key `['player-cards']` đã được invalidate sau mở gói. Nhãn "MỚI" ở màn mở thẻ chưa làm (cần `GET /player-cards` để biết thẻ đã có) — thêm khi làm 6.8. Chơi thử có xu: chạy server với `ENABLE_DEV_ROUTES=1` rồi `POST /api/v1/dev/grant-coins {amount}`. `pack_openings.result` lưu nguyên response để trả lại khi lặp key; hết lượt miễn phí trả 409 `insufficient_coins`. Đăng ký cần danh mục thẻ trong DB (`db:seed`) vì 11 thẻ khởi đầu tham chiếu `cards.id` — nhớ chạy seed khi deploy (GĐ9). Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
 **Chờ người dùng chơi thử (cơ chế mới cuối GĐ5):** thủ môn ném tay từ vai; AI xoay người trước khi chuyền về sau; chọc khe W / Q+W; người nhận chạy đón theo đường bóng thật (cả đường chuyền của máy); thủ môn AI đội mình ném/phát thì tự chuyển điều khiển sang người nhận.
 
 ---
@@ -80,7 +80,7 @@
 - **Kiểm chứng:** test client: response sai schema → lỗi rõ ràng; POST không body vẫn gửi `{}`; thủ công: đăng ký → vào menu, F5 vẫn đăng nhập, đăng xuất về màn đăng nhập.
 - **Xong khi:** người chơi đăng ký/đăng nhập được trên web.
 
-### 6.7 — Cửa hàng, màn mở thẻ, component thẻ `[ ]`
+### 6.7 — Cửa hàng, màn mở thẻ, component thẻ `[x]`
 - **Phụ thuộc:** 6.5, 6.6 · **Model:** default
 - **Bối cảnh:** `docs/DESIGN.md` (màn mở thẻ — prototype đã duyệt ở GĐ4, màu độ hiếm, ảnh đại diện); ARCHITECTURE §4.3 #6, #11–12; PRD §6.1 (thẻ gồm gì), §6.3 (UI hiển thị phiếu còn lại, tỉ lệ kế tiếp, cảnh báo hộp chỉ còn Đồng).
 - **Việc cần làm:** `<CardView>` dùng chung (tên, biệt danh, vị trí, OVR, chỉ số, cấp +, ảnh đại diện sinh từ `avatar_seed`, màu theo độ hiếm) — 6.8 và 6.10 tái dùng. Màn Cửa hàng: số phiếu còn theo độ hiếm, tỉ lệ lần bốc kế, nút gói 1/gói 5, lượt miễn phí. Mỗi lần bấm sinh `crypto.randomUUID()` làm Idempotency-Key, **giữ nguyên khi retry**; khoá nút trong khi chờ. Animation lật thẻ theo độ hiếm. Sau khi mở: invalidate `me`, `packs`, `player-cards` — không tải lại trang.

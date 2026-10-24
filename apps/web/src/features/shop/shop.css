@@ -1,0 +1,593 @@
+/* Cửa hàng + màn mở thẻ (DESIGN.md §6.3, §6.6) — theo prototype docs/design/prototypes/pack-opening.html. */
+
+/* ---------- Cửa hàng ---------- */
+.shop {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) 1fr;
+  gap: var(--sp-5);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .shop {
+    grid-template-columns: 1fr;
+  }
+}
+.shop__packs {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: var(--sp-5);
+}
+.shop-pack {
+  display: flex;
+  gap: var(--sp-4);
+  align-items: flex-start;
+}
+.shop-pack__info {
+  display: grid;
+  gap: var(--sp-3);
+  justify-items: start;
+}
+.shop-pack__info .panel__title {
+  margin: 0;
+}
+.shop-pack__art {
+  flex: none;
+  width: 84px;
+  aspect-ratio: 5 / 7;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(
+    0 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% 100%,
+    10px 100%,
+    0 calc(100% - 10px)
+  );
+  background:
+    linear-gradient(
+      135deg,
+      transparent 70%,
+      var(--r-bronze-base) 70% 74%,
+      var(--r-silver-base) 74% 78%,
+      var(--r-gold-base) 78% 82%,
+      var(--r-legend-base) 82% 86%,
+      transparent 86%
+    ),
+    linear-gradient(160deg, #1b2c25, #0e1814);
+  box-shadow: inset 0 0 0 2px var(--c-line-strong);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-2xl);
+}
+.shop-pack__warn {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-left: 3px solid var(--c-warning);
+  background: rgb(255 194 61 / 0.08);
+  color: var(--c-warning);
+  font-size: var(--fs-sm);
+}
+.shop-pack__free {
+  display: grid;
+  gap: var(--sp-2);
+  color: var(--c-accent);
+  font-weight: var(--fw-semibold);
+}
+.shop__error {
+  grid-column: 1 / -1;
+  margin: 0;
+  color: var(--c-danger);
+}
+
+.buy {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  flex-wrap: wrap;
+}
+.buy__short {
+  color: var(--c-danger);
+  font-size: var(--fs-sm);
+}
+.buy .btn {
+  position: relative;
+}
+.buy .btn[aria-busy='true'] > :not(.spinner) {
+  visibility: hidden;
+}
+.buy .btn .spinner {
+  position: absolute;
+  inset: 0;
+  margin: auto;
+}
+.price {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-variant-numeric: tabular-nums;
+}
+.price .coin__icon {
+  border-color: currentColor;
+  background: linear-gradient(currentColor, currentColor) center / 2px 8px no-repeat;
+}
+
+/* ---------- Thanh hộp phiếu ---------- */
+.box {
+  display: grid;
+  gap: var(--sp-3);
+}
+.box__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.box__total b {
+  color: var(--c-text);
+}
+.box__rows {
+  display: grid;
+  gap: var(--sp-3);
+}
+.box--row {
+  max-width: 1100px;
+  margin: 0 auto var(--sp-6);
+  padding: var(--sp-4) var(--sp-5) 0;
+  border-top: 2px solid var(--c-line);
+}
+.box--row .box__rows {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+@media (max-width: 860px) {
+  .box--row .box__rows {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+.box__row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 2px var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.box__label {
+  color: var(--hi);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-md);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.box__count {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-lg);
+  font-variant-numeric: tabular-nums;
+}
+.box__bar {
+  grid-column: 1 / -1;
+  position: relative;
+  height: 6px;
+  background: var(--c-surface-3);
+}
+.box__bar i {
+  position: absolute;
+  inset: 0 auto 0 0;
+  background: var(--base);
+  transition: width 600ms var(--ease-out);
+}
+.box__odds {
+  grid-column: 1 / -1;
+  color: var(--c-text-muted);
+}
+.box__odds b {
+  color: var(--c-text);
+  font-variant-numeric: tabular-nums;
+}
+.box__note {
+  font-size: var(--fs-xs);
+}
+.box__warn {
+  margin: 0;
+  color: var(--c-warning);
+  font-size: var(--fs-sm);
+}
+
+/* ---------- Màn mở thẻ ---------- */
+.opening {
+  --cw: clamp(112px, 15.5vw, var(--card-w-lg));
+}
+.opening__bar {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+}
+.opening__back {
+  justify-self: start;
+  background: none;
+  border: 0;
+  padding: var(--sp-2) 0;
+  color: var(--c-text-muted);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.opening__back:hover {
+  color: var(--c-text);
+}
+.opening__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xl);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+.stage {
+  position: relative;
+  min-height: calc(var(--cw) * 1.4 + 160px);
+  display: grid;
+  place-items: center;
+  padding: var(--sp-6) 0;
+}
+/* Không tạo stacking context: thẻ đang lật (.top) phải nổi trên lớp tối toàn màn. */
+.stage__inner {
+  position: relative;
+}
+.stage__halfway {
+  position: absolute;
+  inset: 50% 0 auto;
+  height: 2px;
+  background: var(--c-line);
+}
+.stage__circle {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  height: calc(100% - 40px);
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border: 2px solid var(--c-line);
+  border-radius: 50%;
+}
+.stage__spot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 8px;
+  height: 8px;
+  translate: -50% -50%;
+  border-radius: 50%;
+  background: var(--c-line-strong);
+}
+.reveal-scrim {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-overlay);
+  background: var(--c-scrim);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 500ms var(--ease-out);
+}
+.reveal-scrim.on {
+  opacity: 1;
+}
+
+/* Gói */
+.pack {
+  position: relative;
+  width: calc(var(--cw) * 1.05);
+  aspect-ratio: 5 / 7;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--c-text);
+  cursor: pointer;
+  animation: pack-breathe 2.6s ease-in-out infinite;
+}
+.pack:hover {
+  animation-play-state: paused;
+}
+@keyframes pack-breathe {
+  50% {
+    transform: translateY(-6px) scale(1.015);
+  }
+}
+.pack__half {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 50% 56%,
+      transparent 25%,
+      var(--c-line-strong) 25.6%,
+      var(--c-line-strong) 26.6%,
+      transparent 27.2%
+    ),
+    linear-gradient(
+      transparent calc(56% - 1px),
+      var(--c-line-strong) calc(56% - 1px),
+      var(--c-line-strong) calc(56% + 1px),
+      transparent calc(56% + 1px)
+    ),
+    linear-gradient(
+      135deg,
+      transparent 72%,
+      var(--r-bronze-base) 72% 75%,
+      var(--r-silver-base) 75% 78%,
+      var(--r-gold-base) 78% 81%,
+      var(--r-legend-base) 81% 84%,
+      transparent 84%
+    ),
+    linear-gradient(160deg, #1b2c25, #0e1814);
+  box-shadow: inset 0 0 0 2px var(--c-line-strong);
+}
+.pack__top {
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--card-notch)) 0,
+    100% var(--card-notch),
+    100% 22%,
+    92% 25%,
+    84% 21%,
+    76% 26%,
+    68% 22%,
+    60% 25%,
+    52% 21%,
+    44% 26%,
+    36% 22%,
+    28% 25%,
+    20% 21%,
+    12% 26%,
+    4% 22%,
+    0 24%
+  );
+}
+.pack__bot {
+  clip-path: polygon(
+    0 24%,
+    4% 22%,
+    12% 26%,
+    20% 21%,
+    28% 25%,
+    36% 22%,
+    44% 26%,
+    52% 21%,
+    60% 25%,
+    68% 22%,
+    76% 26%,
+    84% 21%,
+    92% 25%,
+    100% 22%,
+    100% 100%,
+    var(--card-notch) 100%,
+    0 calc(100% - var(--card-notch))
+  );
+}
+.pack__brand {
+  position: absolute;
+  top: 7%;
+  left: 10%;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  letter-spacing: 0.3em;
+  color: var(--c-text-muted);
+}
+.pack__label {
+  position: absolute;
+  inset: 15% 0 auto;
+  text-align: center;
+  pointer-events: none;
+}
+.pack__size {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: calc(var(--cw) * 0.2);
+  line-height: 1;
+}
+.pack__note {
+  display: block;
+  margin-top: 6px;
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+}
+
+/* Hàng thẻ */
+.reveal-row {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+  max-width: 1100px;
+}
+.reveal-slot {
+  position: relative;
+  width: var(--cw);
+  aspect-ratio: 5 / 7;
+  perspective: 1100px;
+}
+.reveal-slot.top {
+  z-index: calc(var(--z-overlay) + 1);
+}
+.reveal-mover,
+.reveal-shaker,
+.reveal-flipper {
+  position: absolute;
+  inset: 0;
+}
+.reveal-flipper {
+  transform-style: preserve-3d;
+}
+.reveal-flipper.flipped {
+  transform: rotateY(180deg);
+}
+.reveal-face {
+  position: absolute;
+  inset: 0;
+  backface-visibility: hidden;
+}
+.reveal-front {
+  transform: rotateY(180deg);
+}
+.reveal-front .card {
+  --card-w: 100%;
+}
+.reveal-back {
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  cursor: pointer;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--card-notch)) 0,
+    100% var(--card-notch),
+    100% 100%,
+    var(--card-notch) 100%,
+    0 calc(100% - var(--card-notch))
+  );
+  background:
+    radial-gradient(
+      circle at 50% 50%,
+      transparent 21%,
+      #2f463c 21.8%,
+      #2f463c 23%,
+      transparent 23.8%
+    ),
+    linear-gradient(
+      transparent calc(50% - 1px),
+      #2f463c calc(50% - 1px),
+      #2f463c calc(50% + 1px),
+      transparent calc(50% + 1px)
+    ),
+    repeating-linear-gradient(0deg, #15241e 0 18px, #13211b 18px 36px);
+  box-shadow: inset 0 0 0 2px #2f463c;
+}
+.reveal-back:hover {
+  filter: brightness(1.15);
+}
+.reveal-slot.hint .reveal-back {
+  box-shadow:
+    inset 0 0 0 2px var(--base),
+    inset 0 0 18px var(--glow);
+}
+.reveal-mark {
+  position: absolute;
+  inset: auto 0 10%;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.3em;
+  color: var(--c-text-faint);
+}
+.reveal-aura {
+  position: absolute;
+  inset: -22%;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(closest-side, var(--glow), transparent 75%);
+  opacity: 0;
+}
+.reveal-slot.hint .reveal-aura {
+  opacity: 0.55;
+  animation: reveal-pulse 1.6s ease-in-out infinite;
+}
+@keyframes reveal-pulse {
+  50% {
+    opacity: 0.9;
+    transform: scale(1.06);
+  }
+}
+.reveal-ring {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 100%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  border: 3px solid var(--hi);
+  border-radius: 50%;
+  opacity: 0;
+  pointer-events: none;
+}
+.reveal-spark {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 7px;
+  height: 7px;
+  margin: -3.5px;
+  background: var(--hi);
+  pointer-events: none;
+  transform: rotate(45deg);
+}
+.reveal-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 320%;
+  aspect-ratio: 1;
+  translate: -50% -50%;
+  pointer-events: none;
+  opacity: 0;
+  background: repeating-conic-gradient(
+    from 0deg,
+    rgb(155 107 255 / 0.45) 0deg 5deg,
+    transparent 5deg 15deg
+  );
+  mask: radial-gradient(closest-side, #000 18%, transparent 75%);
+}
+
+.opening__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-4);
+  min-height: 64px;
+  padding-bottom: var(--sp-5);
+}
+.opening__hint {
+  color: var(--c-text-muted);
+  font-size: var(--fs-sm);
+}
+.opening__hint kbd {
+  padding: 0 6px;
+  border: 1px solid var(--c-line-strong);
+  border-bottom-width: 2px;
+  border-radius: var(--radius-md);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  color: var(--c-text);
+}
+.opening__summary {
+  width: 100%;
+  margin: 0;
+  text-align: center;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xl);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+
+html.tab-hidden .pack,
+html.tab-hidden .reveal-slot.hint .reveal-aura {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pack,
+  .reveal-slot.hint .reveal-aura,
+  .spinner {
+    animation: none;
+  }
+}

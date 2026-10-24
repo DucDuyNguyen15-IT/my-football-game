@@ -1,0 +1,244 @@
+/* <CardView> (DESIGN.md §3.2, §4) — theo prototype docs/design/prototypes/pack-opening.html. */
+@property --foil-angle {
+  syntax: '<angle>';
+  inherits: false;
+  initial-value: 0deg;
+}
+
+/* Biến độ hiếm dùng chung: thẻ, thanh hộp phiếu, hào quang. */
+.r-bronze {
+  --base: var(--r-bronze-base);
+  --hi: var(--r-bronze-hi);
+  --lo: var(--r-bronze-lo);
+  --glow: var(--r-bronze-glow);
+}
+.r-silver {
+  --base: var(--r-silver-base);
+  --hi: var(--r-silver-hi);
+  --lo: var(--r-silver-lo);
+  --glow: var(--r-silver-glow);
+}
+.r-gold {
+  --base: var(--r-gold-base);
+  --hi: var(--r-gold-hi);
+  --lo: var(--r-gold-lo);
+  --glow: var(--r-gold-glow);
+}
+.r-legend {
+  --base: var(--r-legend-base);
+  --hi: var(--r-legend-hi);
+  --lo: var(--r-legend-lo);
+  --glow: var(--r-legend-glow);
+}
+
+.card {
+  --notch: var(--card-notch);
+  position: relative;
+  width: var(--card-w, var(--card-w-md));
+  aspect-ratio: 5 / 7;
+  padding: 3px;
+  container-type: inline-size;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--notch)) 0,
+    100% var(--notch),
+    100% 100%,
+    var(--notch) 100%,
+    0 calc(100% - var(--notch))
+  );
+  background: var(--frame, var(--base));
+  color: var(--c-text);
+  user-select: none;
+}
+.card--lg {
+  --card-w: var(--card-w-lg);
+}
+.card--md {
+  --card-w: var(--card-w-md);
+}
+.card--sm {
+  --card-w: var(--card-w-sm);
+  --notch: 9px;
+}
+.r-bronze.card {
+  --frame: linear-gradient(150deg, var(--hi), var(--base) 45%, #7a4523);
+}
+.r-silver.card {
+  --frame: repeating-linear-gradient(135deg, var(--hi) 0 3px, var(--base) 3px 7px);
+}
+.r-gold.card {
+  --frame: linear-gradient(150deg, var(--hi), var(--base) 40%, #9a7412 70%, var(--hi));
+}
+.r-legend.card {
+  --frame: conic-gradient(from var(--foil-angle), #9b6bff, #46e0d0, #ff6bd5, #ffe48a, #9b6bff);
+  animation: card-foil 6s linear infinite;
+}
+@keyframes card-foil {
+  to {
+    --foil-angle: 360deg;
+  }
+}
+
+.card__body {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 7cqw 7cqw 5cqw;
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--notch) + 1px) 0,
+    100% calc(var(--notch) - 1px),
+    100% 100%,
+    calc(var(--notch) - 1px) 100%,
+    0 calc(100% - var(--notch) + 1px)
+  );
+  background: radial-gradient(
+    120% 70% at 50% 0%,
+    color-mix(in srgb, var(--base) 28%, var(--lo)),
+    var(--lo) 70%
+  );
+}
+.r-gold .card__body {
+  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hi) 60%, transparent);
+}
+.card__ovr {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 21cqw;
+  line-height: 0.85;
+  color: var(--hi);
+  font-variant-numeric: tabular-nums;
+}
+.card__pos {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: 9cqw;
+  letter-spacing: var(--tracking-caps);
+}
+.card__pips {
+  position: absolute;
+  top: 8cqw;
+  right: 12cqw;
+  color: var(--hi);
+  font-size: 6cqw;
+  letter-spacing: 0.5cqw;
+}
+.card__new {
+  position: absolute;
+  top: 18cqw;
+  right: 8cqw;
+  padding: 0.5cqw 2.5cqw;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 6.5cqw;
+  letter-spacing: var(--tracking-caps);
+}
+.card__avatar {
+  width: 56%;
+  aspect-ratio: 1;
+  margin: -10cqw auto 0;
+}
+.card__avatar .avatar {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.card__name {
+  margin-top: 1cqw;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 12.5cqw;
+  line-height: 1;
+  text-transform: uppercase;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card__sub {
+  margin-bottom: 2cqw;
+  font-size: 5.6cqw;
+  color: var(--c-text-muted);
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.card__stats {
+  margin-top: auto;
+  padding-top: 3cqw;
+  border-top: 1px solid color-mix(in srgb, var(--base) 45%, transparent);
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  row-gap: 1cqw;
+}
+.card__stat {
+  display: flex;
+  justify-content: center;
+  gap: 1.5cqw;
+  font-family: var(--font-display);
+  font-size: 7.4cqw;
+}
+.card__stat b {
+  font-weight: var(--fw-bold);
+  font-variant-numeric: tabular-nums;
+}
+.card__stat span {
+  color: var(--c-text-muted);
+  font-weight: var(--fw-medium);
+}
+.card__tier {
+  margin-top: 2cqw;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: 5.6cqw;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--hi);
+}
+.card--sm .card__tier {
+  margin-top: auto;
+}
+.card--sm .card__sub {
+  display: none;
+}
+.card--sm .card__name {
+  font-size: 15cqw;
+}
+.card__level {
+  position: absolute;
+  right: 6cqw;
+  bottom: 5cqw;
+  padding: 0 2cqw;
+  background: var(--hi);
+  color: var(--lo);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 8cqw;
+}
+.card__sheen {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 65%
+  );
+  transform: translateX(-130%);
+}
+
+html.tab-hidden .r-legend.card {
+  animation-play-state: paused;
+}
+@media (prefers-reduced-motion: reduce) {
+  .r-legend.card {
+    animation: none;
+  }
+}
