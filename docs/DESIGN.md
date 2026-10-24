@@ -163,8 +163,8 @@ Khung chung cho các màn ngoài trận: thanh trên cùng cao 56px (logo chữ 
 | S | Chuyền sệt — giữ nạp lực, nhả để chuyền (bấm nhanh = chuyền ngắn) | Đổi cầu thủ đang điều khiển (người gần bóng nhất) |
 | A | Chuyền bổng — giữ nạp lực, nhả để chuyền | Xoạc |
 | D (giữ để tăng lực) | Sút | Giữ: áp sát người có bóng; vào tầm thì tắc bóng (task 5.15) |
-| W | Chọc khe (Could, task 5.16) | — |
-| Q + W | Chọc khe bổng (Could, task 5.16) | — |
+| W | Chọc khe | — |
+| Q + W | Chọc khe bổng | — |
 | Esc | Tạm dừng | Tạm dừng |
 
 - Bóng chết: S/A để chuyền; đá phạt và phạt đền giữ-thả D để sút (phạt đền chỉ sút). Nghỉ giữa hiệp: S để đá hiệp 2.

@@ -182,7 +182,8 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test cấu hình preset/tuỳ chỉnh trong `quality.test.ts`; đo FPS: Cao (bật hết) ≥ 55 trên máy dev, Thấp không tụt so với 5.20.
 - **Xong khi:** mọi chi tiết trên có công tắc riêng, preset hoạt động, FPS đạt.
 
-### 5.16 — Chọc khe W / Q+W (Could) `[ ]`
+### 5.16 — Chọc khe W / Q+W (Could) `[x]`
+- _Xong (2026-10-25): `through`/`modifier` trong `PlayerInput`, `throughPass` (`match.ts`) chuyền tới trước người nhận `THROUGH_LEAD` = 6 m theo hướng tấn công, Q+W bổng; phím W/Q ở web + bảng phím. Bấm nhanh (không nạp lực)._
 - **Phụ thuộc:** 5.4 · **Model:** default
 - **Bối cảnh:** PRD §5 (dòng "Điều khiển"), DESIGN §6.2, `packages/sim/src/actions/pass.ts`, `src/match.ts`, `src/types.ts`.
 - **Việc cần làm:** thêm nút `through` (W) và `modifier` (Q) vào `PlayerInput`; chọc khe = chuyền sệt tới **điểm phía trước** đồng đội theo hướng tấn công (dẫn theo tốc độ chạy), Q+W = chọc khe bổng qua đầu hậu vệ; sai số theo Chuyền. Có thể hoãn nếu trễ.

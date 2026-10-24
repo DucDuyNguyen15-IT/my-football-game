@@ -67,6 +67,10 @@ export interface PlayerInput {
   sprint: boolean;
   /** Nút đổi người riêng (không gắn phím mặc định; dùng cho AI/test). */
   switch: boolean;
+  /** W: chọc khe sệt; giữ thêm Q (`modifier`) = chọc khe bổng (task 5.16). */
+  through: boolean;
+  /** Q (giữ): phím phụ, đổi W thành chọc khe bổng. */
+  modifier: boolean;
 }
 
 /** Đóng băng vì được nhiều state dùng chung tham chiếu. */
@@ -77,6 +81,8 @@ export const NO_INPUT: PlayerInput = Object.freeze({
   shoot: false,
   sprint: false,
   switch: false,
+  through: false,
+  modifier: false,
 });
 
 /**

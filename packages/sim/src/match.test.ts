@@ -424,6 +424,32 @@ describe('step — lực chuyền (giữ S/A, nhả mới chuyền)', () => {
   });
 });
 
+describe('step — chọc khe (W, Q+W)', () => {
+  const at = { 'home-P1': ZERO, 'home-P2': vec2(12, 5) };
+
+  it('W: chuyền sệt tới điểm phía trước người nhận theo hướng tấn công', () => {
+    const s1 = step(scenario(at, 'home-P1'), press({ through: true, move: vec2(1, 0.4) }));
+    expect(s1.ballOwnerId).toBeNull();
+    expect(s1.controlledId).toBe('home-P2');
+    expect(s1.passReceiver?.playerId).toBe('home-P2');
+    expect(s1.passReceiver!.point.x).toBeGreaterThan(12 + 3);
+    expect(s1.ball.z).toBe(0);
+    expect(s1.ball.vel.x).toBeGreaterThan(0);
+  });
+
+  it('Q+W: chọc khe bổng bay qua đầu hậu vệ đứng chắn', () => {
+    const crowded = { ...at, 'away-P6': vec2(6, 2.5) };
+    let s = step(
+      scenario(crowded, 'home-P1'),
+      press({ through: true, modifier: true, move: vec2(1, 0.4) }),
+    );
+    expect(s.passReceiver?.playerId).toBe('home-P2');
+    while (s.ball.pos.x < 6) s = step(s, NO_INPUT);
+    expect(s.ball.z).toBeGreaterThan(1);
+    expect(s.ballOwnerId).toBeNull();
+  });
+});
+
 describe('step — sút', () => {
   const at = { 'home-P1': vec2(10, 0) };
 
