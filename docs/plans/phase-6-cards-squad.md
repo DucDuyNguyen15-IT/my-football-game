@@ -5,7 +5,7 @@
 **Tài liệu nền:** `docs/ARCHITECTURE.md` §3 (schema), §4 (API), §5 (luồng server); `docs/PRD.md` §6.
 **Tiên quyết:** Postgres 16 (Docker Desktop hoặc bản cài). Lý do đưa tài khoản cơ bản vào đây: `docs/plans/README.md` mục "Điều chỉnh".
 
-**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2, 6.3a, 6.3b. Tiếp theo: **6.4**. Đăng ký cần danh mục thẻ trong DB (`db:seed`) vì 11 thẻ khởi đầu tham chiếu `cards.id` — nhớ chạy seed khi deploy (GĐ9). Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
+**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2, 6.3a, 6.3b, 6.4. Tiếp theo: **6.5**. Đăng ký cần danh mục thẻ trong DB (`db:seed`) vì 11 thẻ khởi đầu tham chiếu `cards.id` — nhớ chạy seed khi deploy (GĐ9). Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
 **Chờ người dùng chơi thử (cơ chế mới cuối GĐ5):** thủ môn ném tay từ vai; AI xoay người trước khi chuyền về sau; chọc khe W / Q+W; người nhận chạy đón theo đường bóng thật (cả đường chuyền của máy); thủ môn AI đội mình ném/phát thì tự chuyển điều khiển sang người nhận.
 
 ---
@@ -54,7 +54,7 @@
 - **Kiểm chứng:** test integration: đăng ký → đúng 11 thẻ, hộp 58/30/10/2, 1 lượt miễn phí, đội hình hợp lệ; đăng ký trùng tên (khác hoa thường) → 409 `username_taken` và không tạo dữ liệu thừa; username/password sai định dạng → 400.
 - **Xong khi:** tiêu chí PRD "tài khoản mới nhận đúng 11 thẻ + 1 gói 5, đúng một lần" có test.
 
-### 6.4 — Domain gacha (thuần) `[ ]`
+### 6.4 — Domain gacha (thuần) `[x]`
 - **Phụ thuộc:** 6.1a (chỉ cần config) · **Song song với:** 6.1b–6.3b · **Model:** strongest
 - **Bối cảnh:** PRD §6.3 + tiêu chí F5; ARCHITECTURE §5.1 (mục "drawTickets").
 - **Việc cần làm:** `src/config/economy.ts` phần gói/hộp (`pack1` 100 xu ×1, `pack5` 450 xu ×5 có bảo đảm, hộp 2/10/30/58). `src/domain/gacha.ts`: `drawTickets(box, size, { guarantee }, rng)` trả về độ hiếm + hộp mới (tự làm mới khi hết, kể cả giữa gói 5); `nextOdds(box)`; `pickCard(cardsByRarity, rarity, rng)`. `rng` là tham số `(maxExclusive) => int`; `src/domain/rng.ts` export `cryptoRng` (bọc `crypto.randomInt`) cho production.
