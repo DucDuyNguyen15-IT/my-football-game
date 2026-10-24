@@ -79,7 +79,8 @@ describe('autopilot', () => {
       b = step(b, { ...NO_INPUT, move: vec2(1, 0), pass: i % 7 === 0, shoot: i % 11 < 5 });
     }
     expect(b).toEqual(a);
-  });
+    // Hai trận đủ giờ: máy tải nặng có lúc quá 5 s mặc định.
+  }, 30_000);
 
   it('mặc định tắt: đội nhà chờ người chơi giao bóng', () => {
     let s = createMatch({ home: starterLikeTeam, away: cpuEasyTeam, seed: 1, difficulty: 'easy' });

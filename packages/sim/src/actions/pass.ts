@@ -1,8 +1,8 @@
 import { add, clampLength, dot, length, normalize, scale, sub, type Vec2 } from '../math/vec2';
-import { AIR_DRAG, GRAVITY, ROLL_DECEL } from '../physics/ball';
+import { AIR_DRAG, GRAVITY, ROLL_DECEL, stepBall } from '../physics/ball';
 import { nextGaussian, type RngState } from '../rng';
 import { TICK_DT } from '../tick';
-import { fatigueFactor, passAngleErrFor, passPowerErrFor } from '../stats/params';
+import { fatigueFactor, passAngleErrFor, passPowerErrFor, sprintSpeedFor } from '../stats/params';
 import type { BallState, PlayerState } from '../types';
 import { deviate } from './aim';
 
@@ -210,4 +210,29 @@ export function passBall(
   // Góc bay 45°: tầm bay (không cản) = 2·v²/g.
   const v = Math.sqrt((LOB_CARRY * dist * GRAVITY) / 2) * LOB_DRAG_COMP * power;
   return { ball: { pos: from, vel: scale(dir, v), z: 0, vz: v }, rng: r2 };
+}
+
+/** Dự đoán đường bóng tối đa chừng này tick (3 s) khi tìm chỗ đón. */
+export const INTERCEPT_HORIZON_TICKS = 180;
+/** Dự đoán theo bước thô chừng này tick một bước (đủ chính xác cho chỗ đón, rẻ hơn 4 lần). */
+const INTERCEPT_STEP_TICKS = 4;
+/** Người nhận chỉ đạt chừng này phần tốc độ nước rút trung bình (còn tăng tốc, đổi hướng). */
+const INTERCEPT_SPEED_FRAC = 0.8;
+
+/**
+ * Chỗ người nhận nên chạy tới để đón bóng: điểm sớm nhất trên đường bóng thật (bóng đã thấp hơn
+ * `controlHeight`) mà người đó chạy tới kịp; không kịp chỗ nào thì chỗ bóng dừng / ra ngoài sân.
+ */
+export function interceptPoint(ball: BallState, player: PlayerState, controlHeight: number): Vec2 {
+  const dt = TICK_DT * INTERCEPT_STEP_TICKS;
+  const reach = sprintSpeedFor(player.stats.pace) * INTERCEPT_SPEED_FRAC * dt;
+  let b = ball;
+  for (let n = 1; n * INTERCEPT_STEP_TICKS <= INTERCEPT_HORIZON_TICKS; n++) {
+    const next = stepBall(b, 'home', dt);
+    if (next.events.length > 0) break;
+    if (next.ball === b) break; // bóng đã nằm yên
+    b = next.ball;
+    if (b.z <= controlHeight && length(sub(b.pos, player.pos)) <= reach * n) return b.pos;
+  }
+  return b.pos;
 }

@@ -284,6 +284,50 @@ describe('step — chuyền', () => {
     expect(s2.ballOwnerId).toBe('home-P2');
   });
 
+  it('người nhận chạy theo đường bóng thật (bóng lệch hướng dự định) tới chỗ bóng lăn tới', () => {
+    const s1 = tap(scenario(at, 'home-P1'), press({ pass: true, move: vec2(1, 0) }));
+    expect(s1.passReceiver?.playerId).toBe('home-P2');
+    // Bóng lệch ~25° so với đường chuyền dự định (sai số lớn).
+    const v = s1.ball.vel;
+    const c = Math.cos(0.45);
+    const sn = Math.sin(0.45);
+    const skewed = {
+      ...s1,
+      ball: { ...s1.ball, vel: vec2(v.x * c - v.y * sn, v.x * sn + v.y * c) },
+    };
+    let s = skewed;
+    for (let i = 0; i < 4 * 60 && s.ballOwnerId === null; i++) s = step(s, NO_INPUT);
+    expect(s.ballOwnerId).toBe('home-P2');
+  });
+
+  it('đường chuyền của máy cũng có người nhận chạy đón bóng', () => {
+    // Đội máy tấn công về −x: chỉ away-P2 đứng phía trước, đồng đội khác ở sau lưng.
+    const s0 = scenario(
+      {
+        'away-P1': ZERO,
+        'away-P2': vec2(-12, 4),
+        'away-P3': vec2(18, -10),
+        'away-P4': vec2(18, 10),
+        'away-P5': vec2(22, 0),
+        'away-P6': vec2(15, -15),
+        'away-GK': vec2(27, 0),
+        // Đội người chơi ở xa sau lưng, không kịp áp sát.
+        ...Object.fromEntries([2, 3, 4, 5, 6].map((n) => [`home-P${n}`, vec2(28, -15 + 5 * n)])),
+        // Người chơi đứng chắn trước mặt: máy bị áp sát nên chuyền.
+        'home-P1': vec2(-2.5, -1),
+      },
+      'away-P1',
+      'home-P1',
+    );
+    let s = s0;
+    for (let i = 0; i < 3 * 60 && s.ballOwnerId === 'away-P1'; i++) s = step(s, NO_INPUT);
+    expect(s.ballOwnerId).toBeNull();
+    const receiverId = s.passReceiver?.playerId;
+    expect(receiverId?.startsWith('away-')).toBe(true);
+    for (let i = 0; i < 4 * 60 && s.ballOwnerId === null; i++) s = step(s, NO_INPUT);
+    expect(s.ballOwnerId).toBe(receiverId);
+  });
+
   it('thủ môn ôm bóng chuyền: lấy đà KEEPER_WINDUP_TICKS rồi bóng mới rời tay', () => {
     const gkAt = vec2(-HALF_LENGTH + 3, 0);
     const s0 = scenario({ 'home-GK': gkAt, 'home-P2': vec2(-15, 0) }, 'home-GK', 'home-GK');
