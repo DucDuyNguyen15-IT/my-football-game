@@ -15,3 +15,16 @@ export interface MatchBridge {
 
 /** Mức đồ hoạ (ADR-0009): Thấp tắt bóng đổ thật, giảm độ phân giải cho máy yếu. */
 export type GraphicsQuality = 'high' | 'low';
+
+/** Chi tiết đồ hoạ người chơi bật/tắt riêng (task 5.21). */
+export type GraphicsToggle =
+  'shadows' | 'postFx' | 'ssao' | 'floodSpots' | 'skyAndRoof' | 'grass3d' | 'crowd' | 'replay';
+
+export type TimeOfDay = 'night' | 'dusk' | 'day';
+
+/** Cài đặt đồ hoạ: preset + phần bật/tắt đè lên preset + thời điểm trận. */
+export interface GraphicsSettings {
+  preset: GraphicsQuality;
+  overrides: Partial<Record<GraphicsToggle, boolean>>;
+  timeOfDay: TimeOfDay;
+}

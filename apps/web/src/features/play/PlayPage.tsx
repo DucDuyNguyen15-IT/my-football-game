@@ -9,7 +9,8 @@ import {
   type MatchState,
 } from '@pitch/sim';
 import { MatchCanvas } from '../../game/MatchCanvas';
-import type { GraphicsQuality, MatchBridge, MatchCommand } from '../../game/bridge';
+import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
+import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
 import {
   hudEvents,
   readDevOptions,
@@ -42,18 +43,18 @@ const HINTS_SHOW_MS = 10_000;
 const FULL_TIME_HOLD_MS = 1500;
 const QUALITY_KEY = 'pitch.gfx';
 
-/** Mức đồ hoạ nhớ theo trình duyệt (tiện ích riêng của người chơi; bị chặn storage thì dùng Cao). */
-function loadQuality(): GraphicsQuality {
+/** Cài đặt đồ hoạ nhớ theo trình duyệt (tiện ích riêng của người chơi; bị chặn storage thì dùng mặc định). */
+function loadGraphics(): GraphicsSettings {
   try {
-    return localStorage.getItem(QUALITY_KEY) === 'low' ? 'low' : 'high';
+    return parseGraphicsSettings(localStorage.getItem(QUALITY_KEY));
   } catch {
-    return 'high';
+    return DEFAULT_GRAPHICS;
   }
 }
 
-function saveQuality(q: GraphicsQuality): void {
+function saveGraphics(g: GraphicsSettings): void {
   try {
-    localStorage.setItem(QUALITY_KEY, q);
+    localStorage.setItem(QUALITY_KEY, JSON.stringify(g));
   } catch {
     // Không lưu được thì chỉ áp dụng cho trận này.
   }
@@ -143,7 +144,7 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
   const [goalBanner, setGoalBanner] = useState(0);
   const [hints, setHints] = useState(true);
   const [paused, setPausedState] = useState(false);
-  const [quality, setQuality] = useState<GraphicsQuality>(loadQuality);
+  const [graphics, setGraphics] = useState<GraphicsSettings>(loadGraphics);
   // Scene đọc cờ tạm dừng mỗi khung hình nên giữ thêm bản ref (không chờ React render).
   const pausedRef = useRef(false);
   const lastHud = useRef<HudSnapshot | null>(null);
@@ -222,7 +223,7 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
 
   return (
     <>
-      <MatchCanvas setup={setup} bridge={bridge} quality={quality} />
+      <MatchCanvas setup={setup} bridge={bridge} graphics={graphics} />
       {hud && (
         <div className="hud">
           <div className="hud-top">
@@ -249,10 +250,10 @@ function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }
       {hud?.phase === 'half_time' && !autopilot && !paused && <HalfTimeOverlay hud={hud} />}
       {paused && (
         <PauseMenu
-          quality={quality}
-          onQuality={(q) => {
-            setQuality(q);
-            saveQuality(q);
+          graphics={graphics}
+          onGraphics={(g) => {
+            setGraphics(g);
+            saveGraphics(g);
           }}
           onResume={() => setPaused(false)}
           onQuit={onQuit}

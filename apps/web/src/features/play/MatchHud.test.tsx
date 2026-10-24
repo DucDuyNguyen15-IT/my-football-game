@@ -3,7 +3,14 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { PlayerPanel, Scoreboard } from './MatchHud';
 import type { HudSnapshot } from './hud';
 import { MemoryRouter } from 'react-router';
-import { PauseMenu, ResultScreen, SubstitutionPanel, type PauseSubs } from './screens';
+import { DEFAULT_GRAPHICS } from '../../game/render/quality';
+import {
+  GraphicsPanel,
+  PauseMenu,
+  ResultScreen,
+  SubstitutionPanel,
+  type PauseSubs,
+} from './screens';
 
 const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
   score: { home: 2, away: 1 },
@@ -62,8 +69,8 @@ describe('menu thay người', () => {
   it('bóng sống: nút thay người mờ kèm lời nhắc', () => {
     const html = renderToStaticMarkup(
       <PauseMenu
-        quality="high"
-        onQuality={noop}
+        graphics={DEFAULT_GRAPHICS}
+        onGraphics={noop}
         onResume={noop}
         onQuit={noop}
         subs={subs(false)}
@@ -75,7 +82,13 @@ describe('menu thay người', () => {
 
   it('bóng chết: nút thay người bật', () => {
     const html = renderToStaticMarkup(
-      <PauseMenu quality="high" onQuality={noop} onResume={noop} onQuit={noop} subs={subs(true)} />,
+      <PauseMenu
+        graphics={DEFAULT_GRAPHICS}
+        onGraphics={noop}
+        onResume={noop}
+        onQuit={noop}
+        subs={subs(true)}
+      />,
     );
     expect(html).not.toMatch(/disabled=""[^>]*>Thay người/);
   });
@@ -115,5 +128,22 @@ describe('ResultScreen', () => {
       </MemoryRouter>,
     );
     expect(html).toContain('Thắng luân lưu 3 – 0');
+  });
+
+  it('menu đồ hoạ: preset Cao chọn sẵn; tắt hậu kỳ thì SSAO bị khoá', () => {
+    const noop = () => {};
+    const html = renderToStaticMarkup(
+      <GraphicsPanel graphics={DEFAULT_GRAPHICS} onChange={noop} onBack={noop} />,
+    );
+    expect(html).toContain('Khán giả');
+    expect(html).toContain('Hoàng hôn');
+    const off = renderToStaticMarkup(
+      <GraphicsPanel
+        graphics={{ ...DEFAULT_GRAPHICS, overrides: { postFx: false } }}
+        onChange={noop}
+        onBack={noop}
+      />,
+    );
+    expect(off).toMatch(/disabled=""[^>]*\/>Che bóng môi trường/);
   });
 });
