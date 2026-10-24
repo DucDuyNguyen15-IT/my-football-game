@@ -169,7 +169,8 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test `balance.slow.test.ts` khẳng định ngưỡng — loại khỏi `pnpm test` mặc định (`exclude` trong config sim), chạy bằng `pnpm --filter @pitch/sim test:slow`; ghi số FPS đo được vào `docs/PROGRESS.md`.
 - **Xong khi:** đạt 3 tiêu chí ROADMAP GĐ5 → tick ROADMAP, cập nhật CLAUDE.md, PROGRESS.
 
-### 5.21 — Đồ hoạ chi tiết hơn + tuỳ chọn bật/tắt từng chi tiết `[ ]`
+### 5.21 — Đồ hoạ chi tiết hơn + tuỳ chọn bật/tắt từng chi tiết `[~]`
+- _Đang làm (2026-10-25): xong a) menu Đồ hoạ (preset + bật/tắt từng mục + thời điểm, lưu localStorage), b) cỏ 3D + sọc + cung vòng cấm/phạt góc + lưới rung, c) áo/quần/tất/da/tóc theo vùng, d) khán giả ảnh động (người dùng không muốn model từng người) + bảng LED (có chữ HCMUS, NGUYỄN ĐỨC DUY, DUCKDEE theo yêu cầu), e) đêm/hoàng hôn/ngày + SSAO (tắt mặc định: Intel UHD 75→57 FPS). Cao bật hết trừ SSAO ~80–90 FPS. **Còn lại:** f) replay quay chậm sau bàn thắng (toggle `replay` đã có trong menu, chưa làm gì). Sau 5.21, sửa 2 lỗi người dùng báo: (1) thủ môn ném tay — bóng phải rời tay ở độ cao vai và bay lên (`releaseWindup` style `throw` đang thả bóng z=0 vận tốc sệt); (2) AI chuyền về sau phải xoay người trước (`decideCarrier`/nhánh 2b `match.ts`, facing theo vận tốc ở `physics/player.ts`). Việc nhỏ: mô tả nút KHÓ ở màn chọn độ khó còn ghi "dâng cao và áp sát gắt" (hồ sơ mới aggression 0.4); test `apps/server` health thỉnh thoảng timeout 5 s khi máy tải nặng._
 - **Phụ thuộc:** 5.13, 5.20 · **Model:** default · _Thêm 2026-10-25 theo yêu cầu chủ dự án: máy người chơi đủ mạnh, muốn đẹp hơn; người chơi tự tắt chi tiết nếu giật._
 - **Bối cảnh:** ADR-0009, `apps/web/src/game/render/quality.ts`, `apps/web/src/game/three/*`. Chỉ render (web), không đụng `packages/sim` ngoài việc đọc trạng thái.
 - **Việc cần làm:**
