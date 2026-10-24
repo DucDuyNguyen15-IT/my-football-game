@@ -20,7 +20,8 @@ import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
 import { chargeMeter, lerp, lerpPos } from '../render/view';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
-import { buildPitch } from './pitch';
+import { buildGrass, type Grass } from './grass';
+import { buildPitch, NetRig } from './pitch';
 import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
 import { buildRoofs, buildStadium } from './stadium';
 import { buildFloodSpots, buildSky, createPostFx, type PostFx } from './effects';
@@ -46,6 +47,9 @@ const BALL_BLEND_SEC = 0.12;
 const HELD_BALL_AHEAD = 0.35;
 const CHEST_BALL_Y = 1.1;
 const OVERHEAD_BALL_Y = 2.1;
+
+const isGoal = (a: MatchState, b: MatchState): boolean =>
+  b.score.home + b.score.away > a.score.home + a.score.away;
 
 /** Giải phóng geometry/material/texture của cả cây (dùng chung thì chỉ giải phóng một lần). */
 function disposeTree(root: THREE.Object3D): void {
@@ -91,6 +95,8 @@ export class MatchRenderer {
   /** Bầu trời, mái khán đài, đèn spot: chỉ hiện ở mức Cao. */
   private readonly highOnly: { sky: THREE.Object3D; roofs: THREE.Object3D; spots: THREE.Object3D };
   private readonly postFx: PostFx;
+  private readonly nets = new NetRig();
+  private readonly grass: Grass;
   private q: QualitySettings = resolveQuality(DEFAULT_GRAPHICS);
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
@@ -138,7 +144,9 @@ export class MatchRenderer {
     this.sun = sun;
     this.scene.add(sun);
 
-    this.scene.add(buildPitch(), buildStadium());
+    this.scene.add(buildPitch(this.nets), buildStadium());
+    this.grass = buildGrass();
+    this.scene.add(this.grass.object);
     this.highOnly = { sky: buildSky(), roofs: buildRoofs(), spots: buildFloodSpots() };
     this.scene.add(this.highOnly.sky, this.highOnly.roofs, this.highOnly.spots);
     this.postFx = createPostFx(this.renderer, this.scene, this.camera);
@@ -237,6 +245,7 @@ export class MatchRenderer {
     this.highOnly.sky.visible = q.skyAndRoof;
     this.highOnly.roofs.visible = q.skyAndRoof;
     this.highOnly.spots.visible = q.floodSpots;
+    this.grass.object.visible = q.grass3d;
     // Có vòm trời thì sương mù xa hơn để không phủ mất khán đài.
     if (this.scene.fog instanceof THREE.Fog) this.scene.fog.far = q.skyAndRoof ? 220 : 140;
     this.postFx.setBloom(q.bloomStrength);
@@ -308,6 +317,7 @@ export class MatchRenderer {
         ticked = true;
         for (const e of animationEvents(this.prev, this.curr))
           this.models.get(e.playerId)?.trigger(e.clip);
+        if (isGoal(this.prev, this.curr)) this.onGoal();
       }
       if (ticked) {
         this.taps.consume();
@@ -319,6 +329,13 @@ export class MatchRenderer {
     else this.renderer.render(this.scene, this.camera);
     if (this.debug) this.refreshDebug(now);
   };
+
+  /** Bàn thắng vừa được ghi (tick này): lưới rung ở khung thành bóng vào. */
+  private onGoal(): void {
+    const { ball } = this.curr;
+    const side = ball.pos.x >= 0 ? 1 : -1;
+    this.nets.hit(side, new THREE.Vector3(ball.pos.x, BALL_DRAW_RADIUS + ball.z, ball.pos.y));
+  }
 
   /** Vẽ trạng thái nội suy: `alpha` = 0 là tick trước, 1 là tick hiện tại. */
   private draw(alpha: number, dt: number, animDt = dt): void {
@@ -391,6 +408,8 @@ export class MatchRenderer {
 
     if (dt > 0) this.cam = followCamera(this.cam, ground, dt);
     const { pos, look } = this.cam;
+    this.nets.update(animDt);
+    if (this.grass.object.visible) this.grass.update(look.x, look.z, performance.now() / 1000);
     this.camera.position.set(pos.x, pos.y, pos.z);
     this.camera.lookAt(look.x, look.y, look.z);
   }
