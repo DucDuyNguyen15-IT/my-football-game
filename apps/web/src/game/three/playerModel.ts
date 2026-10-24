@@ -16,6 +16,7 @@ import {
   type ClipSpeeds,
   type HeldBall,
 } from '../render/animation';
+import { bodyRegion, kitColors } from '../render/kit';
 import { COLORS } from '../render/colors';
 import { playerNumber } from '../render/view';
 import { numberTexture } from './actors';
@@ -44,10 +45,66 @@ export async function loadPlayerModel(): Promise<PlayerModel | null> {
       const s = (o.userData as { clipSpeeds?: ClipSpeeds }).clipSpeeds;
       if (s) speeds = s;
     });
+    tagBodyRegions(gltf.scene);
     return { scene: gltf.scene, clips: new Map(gltf.animations.map((a) => [a.name, a])), speeds };
   } catch {
     return null;
   }
+}
+
+/**
+ * Gắn thuộc tính `aRegion` (vùng áo/quần/tất/da/tóc/giày, `render/kit.ts`) cho từng đỉnh theo vị
+ * trí ở tư thế gốc. Geometry dùng chung cho mọi bản sao nên chỉ tính một lần lúc nạp.
+ */
+function tagBodyRegions(scene: THREE.Object3D): void {
+  scene.updateMatrixWorld(true);
+  const v = new THREE.Vector3();
+  scene.traverse((o) => {
+    if (!(o instanceof THREE.SkinnedMesh)) return;
+    o.skeleton.update();
+    const count = (o.geometry as THREE.BufferGeometry).getAttribute('position').count;
+    const region = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      o.getVertexPosition(i, v).applyMatrix4(o.matrixWorld);
+      region[i] = bodyRegion(v.x, v.y);
+    }
+    o.geometry.setAttribute('aRegion', new THREE.BufferAttribute(region, 1));
+  });
+}
+
+/** Material tô màu theo vùng: bảng màu `palette` (thứ tự REGION) đè lên màu gốc. */
+function kitMaterial(palette: readonly number[]): THREE.MeshLambertMaterial {
+  const m = new THREE.MeshLambertMaterial();
+  const pal = palette.map((c) => new THREE.Color(c));
+  m.onBeforeCompile = (shader) => {
+    shader.uniforms.uPal = { value: pal };
+    shader.vertexShader = shader.vertexShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+attribute float aRegion;
+varying float vRegion;`,
+      )
+      .replace(
+        '#include <begin_vertex>',
+        `#include <begin_vertex>
+vRegion = aRegion;`,
+      );
+    shader.fragmentShader = shader.fragmentShader
+      .replace(
+        '#include <common>',
+        `#include <common>
+uniform vec3 uPal[${pal.length}];
+varying float vRegion;`,
+      )
+      .replace(
+        'vec4 diffuseColor = vec4( diffuse, opacity );',
+        'vec4 diffuseColor = vec4( uPal[int(vRegion + 0.5)], opacity );',
+      );
+  };
+  // Mọi bộ quần áo cùng một chương trình shader, chỉ khác uniform.
+  m.customProgramCacheKey = () => 'kit';
+  return m;
 }
 
 interface OneShot {
@@ -104,16 +161,16 @@ const PALM_OFFSET = 0.12;
 /** Tốc độ xoay người về hướng mặt (1/s), tránh giật khi sim đổi hướng tức thì. */
 const TURN_RATE = 12;
 
-/** Material dùng chung cho mọi cầu thủ cùng màu áo. */
+/** Material dùng chung cho mọi cầu thủ cùng bộ màu (áo, quần, tất, da, tóc). */
 export class ModelMaterials {
-  private readonly bodies = new Map<number, THREE.MeshLambertMaterial>();
-  readonly joints = new THREE.MeshLambertMaterial({ color: COLORS.shorts });
+  private readonly kits = new Map<string, THREE.MeshLambertMaterial>();
 
-  body(color: number): THREE.MeshLambertMaterial {
-    let m = this.bodies.get(color);
+  kit(palette: readonly number[]): THREE.MeshLambertMaterial {
+    const key = palette.join(',');
+    let m = this.kits.get(key);
     if (!m) {
-      m = new THREE.MeshLambertMaterial({ color });
-      this.bodies.set(color, m);
+      m = kitMaterial(palette);
+      this.kits.set(key, m);
     }
     return m;
   }
@@ -137,10 +194,10 @@ export class ModelActor {
 
   constructor(model: PlayerModel, p: PlayerState, materials: ModelMaterials) {
     this.root = cloneSkinned(model.scene);
-    const color = p.position === 'GK' ? COLORS.keeper[p.team] : COLORS.team[p.team];
+    const material = materials.kit(kitColors(p.team, p.position === 'GK', p.id));
     this.root.traverse((o) => {
       if (!(o instanceof THREE.SkinnedMesh)) return;
-      o.material = o.name.includes('Joints') ? materials.joints : materials.body(color);
+      o.material = material;
       o.castShadow = true;
       // Khung bao của skinned mesh không theo hoạt ảnh: tắt cắt khung để không biến mất khi ngã.
       o.frustumCulled = false;
