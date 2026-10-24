@@ -945,7 +945,7 @@ function stepPlay(
       players: state.players,
       half: state.half,
       heldTicks: ballOwnerId === state.ballOwnerId ? tick - state.ownerSinceTick : 0,
-      minHoldTicks: Math.max(AI_MIN_HOLD_TICKS, profile.reactionDelayTicks),
+      minHoldTicks: AI_MIN_HOLD_TICKS,
     });
     if (action.type === 'dribble') {
       carrierMove = { id: aiCarrier.id, move: action.move, sprint: action.sprint };
