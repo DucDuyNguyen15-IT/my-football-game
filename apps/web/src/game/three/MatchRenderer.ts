@@ -13,7 +13,7 @@ import {
   type MatchState,
   type PlayerState,
 } from '@pitch/sim';
-import type { GraphicsQuality, MatchBridge } from '../bridge';
+import type { GraphicsSettings, MatchBridge } from '../bridge';
 import { NO_KEYS, createTapLatch, keyForCode, keysToInput, type KeyState } from '../input/keyboard';
 import { followCamera, initialCamera, type CameraState } from '../render/camera';
 import { COLORS } from '../render/colors';
@@ -24,7 +24,12 @@ import { buildPitch } from './pitch';
 import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
 import { buildRoofs, buildStadium } from './stadium';
 import { buildFloodSpots, buildSky, createPostFx, type PostFx } from './effects';
-import { pixelRatioFor, QUALITY } from '../render/quality';
+import {
+  DEFAULT_GRAPHICS,
+  pixelRatioFor,
+  resolveQuality,
+  type QualitySettings,
+} from '../render/quality';
 
 /** Khung hình bị treo lâu (tab ẩn, debugger) thì bỏ bớt thời gian, không chạy dồn hàng trăm tick. */
 const MAX_FRAME_SEC = 0.25;
@@ -86,7 +91,7 @@ export class MatchRenderer {
   /** Bầu trời, mái khán đài, đèn spot: chỉ hiện ở mức Cao. */
   private readonly highOnly: { sky: THREE.Object3D; roofs: THREE.Object3D; spots: THREE.Object3D };
   private readonly postFx: PostFx;
-  private quality: GraphicsQuality = 'high';
+  private q: QualitySettings = resolveQuality(DEFAULT_GRAPHICS);
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
   private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
@@ -105,7 +110,7 @@ export class MatchRenderer {
     private readonly parent: HTMLElement,
     setup: MatchSetup,
     private readonly bridge?: MatchBridge,
-    quality: GraphicsQuality = 'high',
+    graphics: GraphicsSettings = DEFAULT_GRAPHICS,
   ) {
     this.curr = createMatch(setup);
     this.prev = this.curr;
@@ -147,7 +152,7 @@ export class MatchRenderer {
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(parent);
-    this.setQuality(quality);
+    this.setGraphics(graphics);
 
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
@@ -209,11 +214,11 @@ export class MatchRenderer {
     }
   }
 
-  setQuality(quality: GraphicsQuality): void {
-    this.quality = quality;
-    const q = QUALITY[quality];
+  setGraphics(graphics: GraphicsSettings): void {
+    const q = resolveQuality(graphics);
+    this.q = q;
     const { renderer, sun } = this;
-    renderer.setPixelRatio(pixelRatioFor(quality, window.devicePixelRatio));
+    renderer.setPixelRatio(pixelRatioFor(q, window.devicePixelRatio));
     const shadowType = q.softShadows ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
     const toneMapping = q.postFx ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     const recompile =
@@ -310,7 +315,7 @@ export class MatchRenderer {
       }
     }
     this.draw(this.accumulator / TICK_DT, dt, this.bridge?.isPaused() ? 0 : dt);
-    if (QUALITY[this.quality].postFx) this.postFx.render();
+    if (this.q.postFx) this.postFx.render();
     else this.renderer.render(this.scene, this.camera);
     if (this.debug) this.refreshDebug(now);
   };

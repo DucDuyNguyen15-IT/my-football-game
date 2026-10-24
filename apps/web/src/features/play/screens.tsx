@@ -4,7 +4,13 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import type { Difficulty, SquadSlot } from '@pitch/shared';
-import type { GraphicsQuality } from '../../game/bridge';
+import type { GraphicsSettings } from '../../game/bridge';
+import {
+  GRAPHICS_TOGGLES,
+  TIMES_OF_DAY,
+  resolveQuality,
+  toggleGraphics,
+} from '../../game/render/quality';
 import {
   CARD_LABEL,
   TEAM_LABEL,
@@ -192,20 +198,99 @@ export function SubstitutionPanel({ subs, onBack }: { subs: PauseSubs; onBack: (
   );
 }
 
+const PRESET_LABEL = { low: 'Thấp', high: 'Cao' } as const;
+
+function graphicsLabel(g: GraphicsSettings): string {
+  return Object.keys(g.overrides).length > 0 ? 'Tuỳ chỉnh' : PRESET_LABEL[g.preset];
+}
+
+/**
+ * Cài đặt đồ hoạ (task 5.21): chọn preset rồi bật/tắt riêng từng chi tiết; chọn lại preset thì xoá
+ * phần tuỳ chỉnh. Áp dụng ngay, không tạo lại trận.
+ */
+export function GraphicsPanel({
+  graphics,
+  onChange,
+  onBack,
+}: {
+  graphics: GraphicsSettings;
+  onChange: (g: GraphicsSettings) => void;
+  onBack: () => void;
+}) {
+  const q = resolveQuality(graphics);
+  return (
+    <>
+      <div className="subs">
+        <fieldset className="subs-col">
+          <legend>Mức</legend>
+          {(['low', 'high'] as const).map((preset) => (
+            <label key={preset} className="subs-item">
+              <input
+                type="radio"
+                name="gfx-preset"
+                checked={graphics.preset === preset && Object.keys(graphics.overrides).length === 0}
+                onChange={() => onChange({ ...graphics, preset, overrides: {} })}
+              />
+              {PRESET_LABEL[preset]}
+            </label>
+          ))}
+        </fieldset>
+        <fieldset className="subs-col">
+          <legend>Thời điểm</legend>
+          {TIMES_OF_DAY.map((t) => (
+            <label key={t.key} className="subs-item">
+              <input
+                type="radio"
+                name="gfx-time"
+                checked={graphics.timeOfDay === t.key}
+                onChange={() => onChange({ ...graphics, timeOfDay: t.key })}
+              />
+              {t.label}
+            </label>
+          ))}
+        </fieldset>
+      </div>
+      <fieldset className="subs-col gfx-toggles">
+        <legend>Chi tiết</legend>
+        {GRAPHICS_TOGGLES.map((t) => {
+          // SSAO chạy trong hậu kỳ: tắt hậu kỳ thì SSAO mờ đi.
+          const blocked = t.key === 'ssao' && !q.postFx;
+          return (
+            <label key={t.key} className="subs-item">
+              <input
+                type="checkbox"
+                checked={q[t.key]}
+                disabled={blocked}
+                onChange={(e) => onChange(toggleGraphics(graphics, t.key, e.target.checked))}
+              />
+              {t.label}
+            </label>
+          );
+        })}
+      </fieldset>
+      <div className="menu menu--row">
+        <button type="button" className="btn btn--ghost" autoFocus onClick={onBack}>
+          Quay lại
+        </button>
+      </div>
+    </>
+  );
+}
+
 export function PauseMenu({
-  quality,
-  onQuality,
+  graphics,
+  onGraphics,
   onResume,
   onQuit,
   subs,
 }: {
-  quality: GraphicsQuality;
-  onQuality: (q: GraphicsQuality) => void;
+  graphics: GraphicsSettings;
+  onGraphics: (g: GraphicsSettings) => void;
   onResume: () => void;
   onQuit: () => void;
   subs: PauseSubs;
 }) {
-  const [view, setView] = useState<'menu' | 'controls' | 'confirm' | 'subs'>('menu');
+  const [view, setView] = useState<'menu' | 'controls' | 'confirm' | 'subs' | 'graphics'>('menu');
   return (
     <div className="overlay" role="dialog" aria-modal="true" aria-labelledby="pause-title">
       <div className="panel">
@@ -234,13 +319,8 @@ export function PauseMenu({
             <button type="button" className="btn btn--ghost" onClick={() => setView('controls')}>
               Phím điều khiển
             </button>
-            <button
-              type="button"
-              className="btn btn--ghost"
-              aria-pressed={quality === 'low'}
-              onClick={() => onQuality(quality === 'high' ? 'low' : 'high')}
-            >
-              Đồ hoạ: {quality === 'high' ? 'Cao' : 'Thấp'}
+            <button type="button" className="btn btn--ghost" onClick={() => setView('graphics')}>
+              Đồ hoạ: {graphicsLabel(graphics)}
             </button>
             <button type="button" className="btn btn--danger" onClick={() => setView('confirm')}>
               Bỏ trận
@@ -248,6 +328,9 @@ export function PauseMenu({
           </div>
         )}
         {view === 'subs' && <SubstitutionPanel subs={subs} onBack={() => setView('menu')} />}
+        {view === 'graphics' && (
+          <GraphicsPanel graphics={graphics} onChange={onGraphics} onBack={() => setView('menu')} />
+        )}
         {view === 'controls' && (
           <>
             <ControlsTable />
