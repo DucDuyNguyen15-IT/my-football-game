@@ -2,7 +2,8 @@ import type { Difficulty } from '@pitch/shared';
 
 /*
  * Tham số AI theo mức độ khó (PRD §5): Dễ phản ứng chậm, sai số chuyền/sút lớn; Khó phản ứng nhanh.
- * Cân chỉnh ở task 5.13 (mục tiêu: người thắng Dễ ≥ 60%, thắng Khó ≤ 30%).
+ * Cân chỉnh ở task 5.13 (mục tiêu: người thắng Dễ ≥ 60%, thắng Khó ≤ 30%). Khó đã mạnh nhờ chỉ số
+ * (OVR ~78) nên giữ `aggression` < 0.5: từ 0.5 người áp sát chạy nước rút, trận thành mưa bàn.
  */
 
 export interface AiProfile {
@@ -22,8 +23,8 @@ export interface AiProfile {
  * (task 5.13) — mô phỏng người chơi trung bình, nằm giữa Dễ và Khó.
  */
 export const AI_PROFILES: Record<Difficulty | 'teammate' | 'proxy', AiProfile> = {
-  easy: { reactionDelayTicks: 30, passErrorMult: 1.8, shotErrorMult: 1.6, aggression: 0.3 },
-  hard: { reactionDelayTicks: 8, passErrorMult: 1, shotErrorMult: 1, aggression: 0.8 },
+  easy: { reactionDelayTicks: 30, passErrorMult: 2.5, shotErrorMult: 2.5, aggression: 0.2 },
+  hard: { reactionDelayTicks: 12, passErrorMult: 1.3, shotErrorMult: 1.3, aggression: 0.4 },
   teammate: { reactionDelayTicks: 10, passErrorMult: 1.2, shotErrorMult: 1.2, aggression: 0.5 },
   proxy: { reactionDelayTicks: 16, passErrorMult: 1.35, shotErrorMult: 1.3, aggression: 0.55 },
 };

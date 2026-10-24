@@ -161,8 +161,8 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: hoà → vào luân lưu; dừng sớm đúng (VD 3–0 sau 3 lượt); sudden death tới khi có kết quả; 1.000 loạt luân lưu AI luôn kết thúc.
 - **Xong khi:** tiêu chí "Hòa sau 2 hiệp" có test xanh.
 
-### 5.13 — Cân chỉnh độ khó & hiệu năng `[~]`
-- _Đang làm (2026-10-19): đã có `src/balance.ts`, `pnpm --filter @pitch/sim balance [n]`, `test:slow`, hồ sơ `proxy`, `MatchSetup.homeAi`. Mốc 100 trận với tham số gốc: thắng Dễ 27% (bàn 64–69), thắng Khó 2% (bàn 126–744). Thử easy{45,2.2,2.2,0.2}/hard{12,1.25,1.3,0.65}/proxy{12,1.15,1.1,0.55}: Dễ 27% (81–129), Khó 2% (121–688) — không đủ; tham số AI ít tác dụng, nên xem tới chênh chỉ số (57 vs 60 vs 78) → tham số gameplay trong `stats/params.ts`. Còn lại: chỉnh tới khi đạt ngưỡng, đo FPS, ghi PROGRESS._
+### 5.13 — Cân chỉnh độ khó & hiệu năng `[x]`
+- **Kết quả (2026-10-25):** 100 trận/mức, seed 1–100: thắng Dễ **65%** (T65/H30/B5, bàn 111–14), thắng Khó **23%** (T23/H21/B56, bàn 211–297); `test:slow` xanh. Đòn bẩy chính là `aggression` (từ 0.5 người áp sát chạy nước rút → mưa bàn) và sai số AI; độ trễ phản ứng từng ngược chiều vì nó cũng là thời gian AI giữ bóng tối thiểu (giữ lâu = rê nhiều = mạnh hơn) → tách ra, giữ bóng dùng `AI_MIN_HOLD_TICKS` cố định. Hồ sơ mới: easy{30, 2.5, 2.5, 0.2}, hard{12, 1.3, 1.3, 0.4}. FPS: chỉ đổi sim nên dùng số đo 5.20 (Cao ~88, Thấp ~180 FPS, 14 cầu thủ) ≥ 55.
 - **Phụ thuộc:** 5.11, 5.12 · **Model:** strongest
 - **Bối cảnh:** PRD §5 tiêu chí (AI-vs-AI 100 trận, ≥ 55 FPS), §10.
 - **Việc cần làm:** script `pnpm --filter @pitch/sim balance` chạy headless 100 trận (danh sách **seed cố định**): `starterLikeTeam` điều khiển bởi hồ sơ AI `proxy` (hồ sơ riêng mô phỏng người chơi trung bình, nằm giữa Dễ và Khó, định nghĩa trong `ai/difficulty.ts`) vs `cpuEasyTeam` (AI Dễ) và vs `cpuHardTeam` (AI Khó); in tỉ lệ thắng. Chỉnh hằng số ở `stats/params.ts` và `ai/difficulty.ts` tới khi **thắng Dễ ≥ 60%, thắng Khó ≤ 30%**. Đo FPS trên Chrome (Performance panel hoặc overlay dev) với 14 cầu thủ, 1 trận đủ; tối ưu nếu < 55. (Chạy lại với dữ liệu thật ở 6.11.)
