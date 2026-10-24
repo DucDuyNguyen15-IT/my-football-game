@@ -4,6 +4,8 @@ import { systemClock, type Clock } from './clock';
 import type { Db } from './db/client';
 import { pingDb, registerDb } from './plugins/db';
 import { AppError, registerErrors } from './plugins/errors';
+import { registerAuth } from './plugins/auth';
+import { registerAuthRoutes } from './routes/auth';
 import { registerCardRoutes } from './routes/cards';
 
 declare module 'fastify' {
@@ -40,7 +42,11 @@ export function buildApp(opts: BuildAppOptions = {}) {
     return { data: { status: 'ok' } };
   });
 
-  if (app.hasDecorator('db')) registerCardRoutes(app);
+  if (app.hasDecorator('db')) {
+    registerAuth(app);
+    registerAuthRoutes(app);
+    registerCardRoutes(app);
+  }
 
   return app;
 }

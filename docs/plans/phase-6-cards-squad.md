@@ -5,7 +5,7 @@
 **Tài liệu nền:** `docs/ARCHITECTURE.md` §3 (schema), §4 (API), §5 (luồng server); `docs/PRD.md` §6.
 **Tiên quyết:** Postgres 16 (Docker Desktop hoặc bản cài). Lý do đưa tài khoản cơ bản vào đây: `docs/plans/README.md` mục "Điều chỉnh".
 
-**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2. Tiếp theo: **6.3a**. Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
+**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2, 6.3a. Tiếp theo: **6.3b**. Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
 **Chờ người dùng chơi thử (cơ chế mới cuối GĐ5):** thủ môn ném tay từ vai; AI xoay người trước khi chuyền về sau; chọc khe W / Q+W; người nhận chạy đón theo đường bóng thật (cả đường chuyền của máy); thủ môn AI đội mình ném/phát thì tự chuyển điều khiển sang người nhận.
 
 ---
@@ -40,7 +40,7 @@
 - **Kiểm chứng:** test: đếm theo độ hiếm/vị trí; mọi OVR nằm trong khoảng của độ hiếm; `ovr` trong seed = `computeOvr`; tên không trùng; `effectiveStats` áp cấp + và −15% đúng, không vượt 99; response `GET /cards` parse được bằng schema. Người dùng xem nhanh 20 tên ngẫu nhiên để duyệt "quen tai".
 - **Xong khi:** seed tất định, test xanh.
 
-### 6.3a — Phiên đăng nhập & plugin xác thực `[ ]`
+### 6.3a — Phiên đăng nhập & plugin xác thực `[x]`
 - **Phụ thuộc:** 6.1b · **Model:** strongest
 - **Bối cảnh:** ADR-0004 (session cookie, argon2); ARCHITECTURE §3.2 `users`, `sessions`; §4.1 (cookie, Origin, Content-Type, body `{}`); §4.3 #3–5; §7.
 - **Việc cần làm:** contract `api/auth.ts`, `api/me.ts`; cài `argon2`, `@fastify/cookie`; `plugins/auth.ts` (đọc cookie `sid`, tra `sessions` theo SHA-256 token, gắn `request.user`; `requireAuth`); kiểm `Origin` + `Content-Type: application/json` cho request đổi dữ liệu; `services/auth.ts` (`hashPassword`, `verifyPassword`, `createSession`, `destroySession`); `POST /auth/login`, `POST /auth/logout`, `GET /me`. (Tạo user tạm bằng helper test cho tới 6.3b.)

@@ -300,9 +300,10 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | HTTP | `code` | Khi nào |
 |---|---|---|
 | 400 | `validation_error` | Body/query sai schema (kèm `details[]`) |
+| 415 | `validation_error` | Request đổi dữ liệu thiếu `Content-Type: application/json` |
 | 401 | `unauthenticated` | Thiếu/hết hạn phiên |
 | 401 | `invalid_credentials` | Sai tên đăng nhập hoặc mật khẩu (không nói rõ cái nào) |
-| 403 | `forbidden` | Không phải admin; tác động lên tài nguyên của người khác |
+| 403 | `forbidden` | Không phải admin; `Origin` không khớp host (tài nguyên của người khác trả 404, xem §7) |
 | 404 | `not_found` | Tài nguyên không tồn tại **hoặc không thuộc người gọi** (không lộ sự tồn tại) |
 | 409 | `username_taken` | Đăng ký trùng tên |
 | 409 | `insufficient_coins` | Không đủ xu |
