@@ -262,7 +262,6 @@ export class MatchRenderer {
     this.highOnly.roofs.visible = q.skyAndRoof;
     this.highOnly.spots.visible = q.floodSpots;
     this.grass.object.visible = q.grass3d;
-    this.crowd.object.visible = q.crowd;
     // Có vòm trời thì sương mù xa hơn để không phủ mất khán đài.
     if (this.scene.fog instanceof THREE.Fog) this.scene.fog.far = q.skyAndRoof ? 220 : 140;
     this.postFx.setBloom(q.bloomStrength);
@@ -448,7 +447,7 @@ export class MatchRenderer {
     this.nets.update(animDt);
     const timeSec = performance.now() / 1000;
     if (this.grass.object.visible) this.grass.update(look.x, look.z, timeSec);
-    if (this.crowd.object.visible) this.crowd.update(animDt, timeSec);
+    this.crowd.update(animDt, timeSec, this.q.crowd);
     this.boards.update(timeSec);
     this.camera.position.set(pos.x, pos.y, pos.z);
     this.camera.lookAt(look.x, look.y, look.z);
