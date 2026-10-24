@@ -1,4 +1,5 @@
 export * from './domain';
+export * from './avatar';
 export * from './api/common';
 export * from './api/auth';
 export * from './api/cards';

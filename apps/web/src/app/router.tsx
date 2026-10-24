@@ -3,6 +3,7 @@ import { createBrowserRouter, Navigate } from 'react-router';
 import { AuthPage } from '../features/auth/AuthPage';
 import { ComingSoon, HomePage } from '../features/home/HomePage';
 import { IntroGate } from '../features/intro/IntroGate';
+import { ShopPage } from '../features/shop/ShopPage';
 import { AppLayout, RequireAuth } from './AppLayout';
 
 // Three.js (~600 KB) chỉ tải khi vào trận.
@@ -30,7 +31,7 @@ export const router = createBrowserRouter([
             element: <AppLayout />,
             children: [
               { index: true, element: <HomePage /> },
-              { path: '/shop', element: <ComingSoon title="Cửa hàng" /> },
+              { path: '/shop', element: <ShopPage /> },
               { path: '/collection', element: <ComingSoon title="Kho thẻ" /> },
               { path: '/squad', element: <ComingSoon title="Đội hình" /> },
             ],
