@@ -36,6 +36,7 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | Lệnh (chạy ở gốc repo) | Tác dụng |
 |---|---|
 | `pnpm install` | Cài dependency cho toàn monorepo |
+| `docker compose -f docker-compose.dev.yml up -d` | Bật Postgres 16 dev (DB `pitch` + `pitch_test`); test server cần nó chạy. Biến môi trường mẫu: `.env.example` (thiếu thì dùng giá trị dev) |
 | `pnpm dev` | Chạy web (Vite :5173, proxy `/api` → :3000) + server (Fastify :3000, tự reload) |
 | `pnpm test` | Chạy toàn bộ test Vitest (mọi package) — `pnpm test:watch` để chạy theo dõi |
 | `pnpm --filter @pitch/sim exec vitest run` | Chỉ test một package (thay `@pitch/sim` bằng `@pitch/server`, `@pitch/web`, `@pitch/shared`) |

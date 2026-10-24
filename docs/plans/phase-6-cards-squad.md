@@ -7,7 +7,7 @@
 
 ---
 
-### 6.1a — Hạ tầng server: Postgres dev, env, plugin, đồng hồ `[ ]`
+### 6.1a — Hạ tầng server: Postgres dev, env, plugin, đồng hồ `[x]`
 - **Phụ thuộc:** — · **Model:** default
 - **Bối cảnh:** ADR-0004, ADR-0005; ARCHITECTURE §3.4 (đoạn "Thời gian nghiệp vụ"), §4.1–4.2, §8; `apps/server/src/app.ts`; `packages/shared/src/api/common.ts`.
 - **Việc cần làm:**

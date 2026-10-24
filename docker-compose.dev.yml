@@ -1,0 +1,22 @@
+# Postgres cho dev và test (task 6.1a): `docker compose -f docker-compose.dev.yml up -d`.
+# Tạo hai DB: `pitch` (dev) và `pitch_test` (Vitest). Chỉ dùng trên máy dev — mật khẩu không bí mật.
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: pitch
+      POSTGRES_PASSWORD: pitch
+      POSTGRES_DB: pitch
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/postgres-init:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U pitch']
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
