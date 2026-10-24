@@ -14,6 +14,8 @@ export interface KeyState {
   pass: boolean;
   lob: boolean;
   shoot: boolean;
+  through: boolean;
+  modifier: boolean;
 }
 
 export const NO_KEYS: KeyState = Object.freeze({
@@ -25,6 +27,8 @@ export const NO_KEYS: KeyState = Object.freeze({
   pass: false,
   lob: false,
   shoot: false,
+  through: false,
+  modifier: false,
 });
 
 /**
@@ -40,6 +44,8 @@ export const CONTROL_KEYS: Readonly<Record<keyof KeyState, string>> = Object.fre
   pass: 'KeyS',
   lob: 'KeyA',
   shoot: 'KeyD',
+  through: 'KeyW',
+  modifier: 'KeyQ',
 });
 
 const BY_CODE = new Map(
@@ -67,6 +73,8 @@ export function keysToInput(keys: KeyState): PlayerInput {
     shoot: keys.shoot,
     sprint: keys.sprint,
     switch: false,
+    through: keys.through,
+    modifier: keys.modifier,
   };
 }
 

@@ -28,6 +28,8 @@ const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
   ['S', 'Chuyền sệt', 'Đổi cầu thủ'],
   ['A', 'Chuyền bổng', 'Xoạc'],
   ['D (giữ)', 'Sút (giữ để tăng lực)', 'Áp sát / tắc bóng'],
+  ['W', 'Chọc khe', '—'],
+  ['Q + W', 'Chọc khe bổng', '—'],
   ['Esc', 'Tạm dừng', 'Tạm dừng'],
 ];
 
@@ -70,7 +72,8 @@ export function KeyHints() {
   return (
     <p className="hud-hints">
       <kbd>Mũi tên</kbd> di chuyển · <kbd>E</kbd> nước rút · <kbd>S</kbd> chuyền / đổi người ·{' '}
-      <kbd>A</kbd> chuyền bổng / xoạc · <kbd>D</kbd> sút / áp sát · <kbd>Esc</kbd> tạm dừng
+      <kbd>A</kbd> chuyền bổng / xoạc · <kbd>D</kbd> sút / áp sát · <kbd>W</kbd> chọc khe ·{' '}
+      <kbd>Esc</kbd> tạm dừng
     </p>
   );
 }

@@ -46,7 +46,7 @@ describe('keysToInput', () => {
 });
 
 describe('CONTROL_KEYS', () => {
-  it('bộ phím FC Online theo KeyboardEvent.code: mũi tên + E/S/A/D', () => {
+  it('bộ phím FC Online theo KeyboardEvent.code: mũi tên + E/S/A/D + W/Q', () => {
     expect(CONTROL_KEYS).toEqual({
       up: 'ArrowUp',
       down: 'ArrowDown',
@@ -56,14 +56,25 @@ describe('CONTROL_KEYS', () => {
       pass: 'KeyS',
       lob: 'KeyA',
       shoot: 'KeyD',
+      through: 'KeyW',
+      modifier: 'KeyQ',
     });
   });
 
   it('keyForCode tra ngược mã phím → chức năng, phím lạ → null', () => {
     expect(keyForCode('KeyS')).toBe('pass');
     expect(keyForCode('ArrowLeft')).toBe('left');
-    expect(keyForCode('KeyW')).toBeNull();
+    expect(keyForCode('KeyW')).toBe('through');
+    expect(keyForCode('KeyZ')).toBeNull();
     expect(keyForCode('Escape')).toBeNull();
+  });
+});
+
+describe('keysToInput — chọc khe', () => {
+  it('W = chọc khe, Q giữ kèm = phím phụ (chọc khe bổng)', () => {
+    const input = keysToInput(keys({ through: true, modifier: true }));
+    expect(input.through).toBe(true);
+    expect(input.modifier).toBe(true);
   });
 });
 

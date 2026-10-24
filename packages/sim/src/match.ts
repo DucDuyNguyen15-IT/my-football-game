@@ -260,6 +260,8 @@ function sanitizeInput(input: PlayerInput): PlayerInput {
     shoot: !!input.shoot,
     sprint: !!input.sprint,
     switch: !!input.switch,
+    through: !!input.through,
+    modifier: !!input.modifier,
   };
 }
 
@@ -326,6 +328,37 @@ function kickAim(
 /** Thủ môn ném tay: bóng rời tay ở độ cao vai (m) với vận tốc đứng hướng lên (m/s). */
 export const THROW_RELEASE_HEIGHT = 1.5;
 export const THROW_RELEASE_VZ = 2;
+
+/** Chọc khe: bóng tới trước người nhận chừng này mét theo hướng tấn công (task 5.16). */
+export const THROUGH_LEAD = 6;
+
+/**
+ * Người chơi chọc khe (W / Q+W): như `kickPass` nhưng đích là khoảng trống phía trước người nhận theo
+ * hướng tấn công `attack`, người nhận chạy đón. Không có ai trong hướng thì chuyền vào khoảng trống.
+ */
+function throughPass(
+  players: readonly PlayerState[],
+  passer: PlayerState,
+  from: Vec2,
+  dir: Vec2,
+  kind: PassKind,
+  attack: 1 | -1,
+  rng: RngState,
+  tick: number,
+): { ball: BallState; rng: RngState; receiver: PassReceiver | null } {
+  const range = kind === 'lob' ? lobRangeFor(passer.stats.passing) : Infinity;
+  const target = choosePassTarget(players, passer, dir, range, kind, 0, true);
+  if (!target) return kickPass(players, passer, from, dir, kind, rng, tick);
+  const lead = add(passLeadPoint(from, target, kind), vec2(attack * THROUGH_LEAD, 0));
+  const to = vec2(Math.max(-HALF_LENGTH + 1, Math.min(HALF_LENGTH - 1, lead.x)), lead.y);
+  const travelTicks = Math.ceil(passTravelTime(length(sub(to, from)), kind) / TICK_DT);
+  const receiver = {
+    playerId: target.id,
+    point: to,
+    untilTick: tick + travelTicks + RECEIVE_GRACE_TICKS,
+  };
+  return { ...passBall(passer, from, to, kind, rng, PASS_ASSIST_ERROR_MULT), receiver };
+}
 
 /** Thủ môn bắt đầu lấy đà: bóng rời tay/chân sau KEEPER_WINDUP_TICKS. */
 const startWindup = (
@@ -857,6 +890,18 @@ function stepPlay(
       shotChargeTicks = 0;
       passCharge = null;
       backPass = null;
+    } else if (pressed('through') && !passCharge && shotChargeTicks === 0 && !keeperHolds) {
+      const kind: PassKind = input.modifier ? 'lob' : 'ground';
+      const dir = moveDir ?? me.facing;
+      const attack = attackSign(me.team, state.half);
+      const kick = throughPass(state.players, asKicker(me), ball.pos, dir, kind, attack, rng, tick);
+      ({ ball, rng } = kick);
+      if (kick.receiver) controlledId = kick.receiver.playerId;
+      passReceiver = kick.receiver;
+      ballOwnerId = null;
+      kickLock = lock(me.id);
+      lastShot = null;
+      backPass = kickedBy(me);
     } else if (startKind) {
       passCharge = { kind: startKind, ticks: 1, dir: moveDir ?? me.facing };
     } else if (passCharge && holding) {
