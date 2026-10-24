@@ -1,11 +1,11 @@
-import { MatchTeamSetup, isStarterSlot, overall, type Position } from '@pitch/shared';
+import { MatchTeamSetup, isStarterSlot, computeOvr, type Position } from '@pitch/shared';
 import { describe, expect, it } from 'vitest';
 import { cpuEasyTeam, cpuHardTeam, starterLikeTeam } from './demoTeams';
 
 const ovrs = (team: MatchTeamSetup, starters = true) =>
   team.players
     .filter((p) => isStarterSlot(p.slot) === starters)
-    .map((p) => overall(p.position, p.stats));
+    .map((p) => computeOvr(p.position, p.stats));
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length;
 const countPositions = (team: MatchTeamSetup) => {
   const c: Record<Position, number> = { GK: 0, DF: 0, MF: 0, FW: 0 };
