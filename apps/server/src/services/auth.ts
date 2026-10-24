@@ -2,9 +2,15 @@ import { createHash, randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
 import { and, eq, gt, sql } from 'drizzle-orm';
 import type { Me } from '@pitch/shared';
-import { MATCH_REWARD_DAILY_CAP } from '../config/economy';
+import {
+  BOX_COMPOSITION,
+  MATCH_REWARD_DAILY_CAP,
+  STARTER_FREE_PACK5,
+  STARTER_SQUAD,
+} from '../config/economy';
 import type { Db } from '../db/client';
-import { sessions, users } from '../db/schema';
+import { packBoxes, playerCards, sessions, squads, squadSlots, users } from '../db/schema';
+import { AppError } from '../plugins/errors';
 
 /** Hạn phiên 30 ngày, gia hạn trượt (ARCHITECTURE §4.1). */
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -88,4 +94,71 @@ export function toMe(user: UserRow): Me {
     rewardedMatchesToday: 0,
     rewardedMatchesLimit: MATCH_REWARD_DAILY_CAP,
   };
+}
+
+function isUniqueViolation(err: unknown, constraint: string): boolean {
+  for (let e: unknown = err; e instanceof Error; e = e.cause) {
+    const pg = e as Error & { code?: string; constraint?: string };
+    if (pg.code === '23505' && pg.constraint === constraint) return true;
+  }
+  return false;
+}
+
+/**
+ * Đăng ký trong **một transaction** (ARCHITECTURE §4.3 #2): user + hộp 100 phiếu + 11 thẻ khởi đầu +
+ * đội hình 2-3-1 xếp sẵn + lượt gói 5 miễn phí. Trùng tên (không phân biệt hoa thường) → 409.
+ */
+export async function registerUser(
+  db: Db,
+  input: { username: string; password: string; email?: string | undefined },
+  now: Date,
+): Promise<UserRow> {
+  const passwordHash = await hashPassword(input.password);
+  try {
+    return await db.transaction(async (tx) => {
+      const [user] = await tx
+        .insert(users)
+        .values({
+          username: input.username,
+          passwordHash,
+          email: input.email ?? null,
+          freePack5Credits: STARTER_FREE_PACK5,
+        })
+        .returning();
+      const userId = user!.id;
+      await tx.insert(packBoxes).values({
+        userId,
+        bronzeLeft: BOX_COMPOSITION.bronze,
+        silverLeft: BOX_COMPOSITION.silver,
+        goldLeft: BOX_COMPOSITION.gold,
+        legendLeft: BOX_COMPOSITION.legend,
+        updatedAt: now,
+      });
+      const owned = await tx
+        .insert(playerCards)
+        .values(
+          STARTER_SQUAD.slots.map(([, cardId]) => ({
+            userId,
+            cardId,
+            source: 'starter' as const,
+            acquiredAt: now,
+          })),
+        )
+        .returning({ id: playerCards.id });
+      await tx
+        .insert(squads)
+        .values({ userId, formation: STARTER_SQUAD.formation, updatedAt: now });
+      await tx
+        .insert(squadSlots)
+        .values(
+          STARTER_SQUAD.slots.map(([slot], i) => ({ userId, slot, playerCardId: owned[i]!.id })),
+        );
+      return user!;
+    });
+  } catch (err) {
+    if (isUniqueViolation(err, 'users_username_lower_uq')) {
+      throw new AppError('username_taken', 409, 'Tên đăng nhập đã có người dùng');
+    }
+    throw err;
+  }
 }

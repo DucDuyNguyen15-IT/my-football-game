@@ -5,7 +5,7 @@
 **Tài liệu nền:** `docs/ARCHITECTURE.md` §3 (schema), §4 (API), §5 (luồng server); `docs/PRD.md` §6.
 **Tiên quyết:** Postgres 16 (Docker Desktop hoặc bản cài). Lý do đưa tài khoản cơ bản vào đây: `docs/plans/README.md` mục "Điều chỉnh".
 
-**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2, 6.3a. Tiếp theo: **6.3b**. Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
+**Tiến độ (2026-10-25):** xong 6.1a, 6.1b, 6.2, 6.3a, 6.3b. Tiếp theo: **6.4**. Đăng ký cần danh mục thẻ trong DB (`db:seed`) vì 11 thẻ khởi đầu tham chiếu `cards.id` — nhớ chạy seed khi deploy (GĐ9). Sinh lại danh mục thẻ: `pnpm --filter @pitch/server cards:generate` (test kiểm file seed khớp bộ sinh). Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
 **Chờ người dùng chơi thử (cơ chế mới cuối GĐ5):** thủ môn ném tay từ vai; AI xoay người trước khi chuyền về sau; chọc khe W / Q+W; người nhận chạy đón theo đường bóng thật (cả đường chuyền của máy); thủ môn AI đội mình ném/phát thì tự chuyển điều khiển sang người nhận.
 
 ---
@@ -47,7 +47,7 @@
 - **Kiểm chứng:** test: sai mật khẩu → 401 `invalid_credentials`; `/me` không cookie → 401; logout → cookie cũ hết dùng; request đổi dữ liệu thiếu JSON content-type hoặc sai Origin → bị từ chối; DB chỉ chứa hash token, mật khẩu dạng argon2id.
 - **Xong khi:** đăng nhập/đăng xuất/me chạy với user tạo sẵn.
 
-### 6.3b — Đăng ký + quà tân thủ `[ ]`
+### 6.3b — Đăng ký + quà tân thủ `[x]`
 - **Phụ thuộc:** 6.2, 6.3a · **Model:** strongest
 - **Bối cảnh:** ARCHITECTURE §3.2 `users`, `pack_boxes`, `player_cards`, `squads`/`squad_slots`; §3.4; §4.3 #2; PRD §7.1 (quà tân thủ) + tiêu chí F9; `apps/server/src/services/{auth,cards}.ts`.
 - **Việc cần làm:** `POST /auth/register` trong **một transaction**: tạo user, hộp 100 phiếu theo config, 11 thẻ Đồng khởi đầu cố định (1 GK, 3 DF, 4 MF, 3 FW — danh sách `cardId` cố định trong config, chọn từ seed), đội hình 2-3-1 xếp sẵn 7 chính + 4 dự bị, `free_pack5_credits = 1`; đặt cookie phiên.
