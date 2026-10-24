@@ -116,9 +116,9 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 **Phạm vi gợi ý:** sân, bóng có vật lý, di chuyển/chuyền/sút, đổi cầu thủ điều khiển, AI đối thủ cơ bản, thủ môn, bàn thắng, đồng hồ trận, màn kết quả. **Chưa** cần thẻ hay tài khoản.
 
 **Hoàn thành khi:**
-- [ ] Đá hết 1 trận với máy mà không lỗi
-- [ ] Logic trận đấu có unit test
-- [ ] Chạy ổn ≥ 50 FPS trên laptop thường
+- [x] Đá hết 1 trận với máy mà không lỗi
+- [x] Logic trận đấu có unit test
+- [x] Chạy ổn ≥ 50 FPS trên laptop thường (Intel UHD: mức Cao ~80–90 FPS, 2026-10-25)
 
 ---
 

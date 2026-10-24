@@ -4,6 +4,12 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
+## Giai đoạn 5 — MVP lõi: trận đấu offline (2026-10-25) ✅
+- `packages/sim` tất định 60 tick/s: vật lý bóng 3D, cầu thủ theo chỉ số + thể lực, chuyền giữ-nhả có thanh lực, sút, chọc khe W/Q+W, xoạc/tắc/phạm lỗi/thẻ, bóng chết, luân lưu, thay người, AI 2 tầng + thủ môn, 2 mức khó cân chỉnh bằng mô phỏng (5.13). ~490 test Vitest.
+- Render chuyển từ Phaser sang **Three.js** (ADR-0009): sân 3D camera truyền hình, cầu thủ Mixamo (không commit file, thiếu thì dùng khối), HUD React + minimap, menu Đồ hoạ (preset, đêm/hoàng hôn/ngày, SSAO tắt mặc định), khán giả ảnh động, replay quay chậm sau bàn thắng (S bỏ qua). Mức Cao ~80–90 FPS trên Intel UHD.
+- Đổi tên game thành **MFG** (My Football Game), giữ package `@pitch/*`. Cuối giai đoạn: thủ môn ném tay từ vai, AI xoay người trước khi chuyền về sau, người nhận chạy đón theo đường bóng thật (cả máy).
+- Còn dở: 5.18b `[~]` (đã thay bằng Mixamo 5.18d), 5.14 hướng dẫn trận đầu hoãn sang 7.6. Cơ chế mới chờ người dùng chơi thử. Tiếp theo: Giai đoạn 6 — `docs/plans/phase-6-cards-squad.md`.
+
 ## Giai đoạn 4 — Thiết kế UI/UX (2026-10-10) ✅
 - Viết `docs/DESIGN.md`: phong cách "Sân đêm" (nền xanh đen, chữ trắng phấn, nút chanh, vạch kẻ sân làm khung UI, thẻ vát góc), font Barlow Condensed + Be Vietnam Pro, phác thảo 6 màn (menu, HUD, mở thẻ, kho, đội hình, cửa hàng).
 - Design tokens: `apps/web/src/styles/tokens.css` + `docs/design/design-tokens.json` (cho Phaser). Màu độ hiếm Đồng/Bạc/Vàng/HT kèm nhãn + số ◆ + kiểu khung để không chỉ dựa vào màu; tương phản chữ đạt AA.
