@@ -190,5 +190,9 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test: điểm rơi chọc khe nằm trước người nhận theo hướng tấn công; chọc khe bổng có `z` > tầm khống chế khi qua người chắn.
 - **Xong khi:** W/Q+W hoạt động, có test.
 
+### 5.22 — Người nhận chạy đón theo đường bóng thật `[x]`
+- **Phụ thuộc:** 5.17 · Yêu cầu người dùng 2026-10-25: chuyền thì người được chuyền biết chạy về chỗ bóng lăn/rơi tới.
+- _Xong (2026-10-25): `interceptPoint` (`actions/pass.ts`) dự đoán đường bóng thật (bước thô 4 tick, tối đa 3 s), chọn điểm sớm nhất bóng thấp hơn tầm khống chế mà người nhận chạy kịp; người nhận chạy tới điểm đó mỗi tick thay vì điểm dự định. Đường chuyền của AI (kể cả thủ môn) cũng có `passReceiver`; thủ môn AI đội người chơi ném/phát thì người chơi điều khiển luôn người nhận._
+
 ### 5.14 — Hướng dẫn trận đầu (F14, Could) `[~]`
 - Hoãn sang 7.6 (onboarding) để làm một lần cùng luồng người chơi mới.
