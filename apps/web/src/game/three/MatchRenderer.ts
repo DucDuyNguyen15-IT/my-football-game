@@ -23,7 +23,8 @@ import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
 import { buildGrass, type Grass } from './grass';
 import { buildPitch, NetRig } from './pitch';
 import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
-import { buildRoofs, buildStadium } from './stadium';
+import { buildAdBoards, buildRoofs, buildStadium } from './stadium';
+import { buildCrowd, type Crowd } from './crowd';
 import { buildFloodSpots, buildSky, createPostFx, type PostFx } from './effects';
 import {
   DEFAULT_GRAPHICS,
@@ -97,6 +98,8 @@ export class MatchRenderer {
   private readonly postFx: PostFx;
   private readonly nets = new NetRig();
   private readonly grass: Grass;
+  private readonly crowd: Crowd;
+  private readonly boards: ReturnType<typeof buildAdBoards>;
   private q: QualitySettings = resolveQuality(DEFAULT_GRAPHICS);
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
@@ -147,6 +150,9 @@ export class MatchRenderer {
     this.scene.add(buildPitch(this.nets), buildStadium());
     this.grass = buildGrass();
     this.scene.add(this.grass.object);
+    this.crowd = buildCrowd();
+    this.boards = buildAdBoards();
+    this.scene.add(this.crowd.object, this.boards.object);
     this.highOnly = { sky: buildSky(), roofs: buildRoofs(), spots: buildFloodSpots() };
     this.scene.add(this.highOnly.sky, this.highOnly.roofs, this.highOnly.spots);
     this.postFx = createPostFx(this.renderer, this.scene, this.camera);
@@ -246,6 +252,7 @@ export class MatchRenderer {
     this.highOnly.roofs.visible = q.skyAndRoof;
     this.highOnly.spots.visible = q.floodSpots;
     this.grass.object.visible = q.grass3d;
+    this.crowd.object.visible = q.crowd;
     // Có vòm trời thì sương mù xa hơn để không phủ mất khán đài.
     if (this.scene.fog instanceof THREE.Fog) this.scene.fog.far = q.skyAndRoof ? 220 : 140;
     this.postFx.setBloom(q.bloomStrength);
@@ -335,6 +342,7 @@ export class MatchRenderer {
     const { ball } = this.curr;
     const side = ball.pos.x >= 0 ? 1 : -1;
     this.nets.hit(side, new THREE.Vector3(ball.pos.x, BALL_DRAW_RADIUS + ball.z, ball.pos.y));
+    this.crowd.cheer();
   }
 
   /** Vẽ trạng thái nội suy: `alpha` = 0 là tick trước, 1 là tick hiện tại. */
@@ -409,7 +417,10 @@ export class MatchRenderer {
     if (dt > 0) this.cam = followCamera(this.cam, ground, dt);
     const { pos, look } = this.cam;
     this.nets.update(animDt);
-    if (this.grass.object.visible) this.grass.update(look.x, look.z, performance.now() / 1000);
+    const timeSec = performance.now() / 1000;
+    if (this.grass.object.visible) this.grass.update(look.x, look.z, timeSec);
+    if (this.crowd.object.visible) this.crowd.update(animDt, timeSec);
+    this.boards.update(timeSec);
     this.camera.position.set(pos.x, pos.y, pos.z);
     this.camera.lookAt(look.x, look.y, look.z);
   }

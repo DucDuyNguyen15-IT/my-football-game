@@ -3,7 +3,7 @@
  * phía gần là chỗ đặt camera. Khán giả là chấm màu trên texture canvas, sinh tất định.
  */
 import * as THREE from 'three';
-import { HALF_LENGTH, HALF_WIDTH } from '@pitch/sim';
+import { GOAL_DEPTH, HALF_LENGTH, HALF_WIDTH } from '@pitch/sim';
 import { RUNOFF_M } from './pitch';
 
 const TIERS = 6;
@@ -152,18 +152,122 @@ export function buildRoofs(): THREE.Group {
   return g;
 }
 
+/** Ba dãy khán đài: độ dài, tâm, góc xoay (dùng chung cho khán đài và khán giả). */
+function stands(): { length: number; center: THREE.Vector3; rotationY: number }[] {
+  return [
+    { length: EDGE_X * 2 + TIER_SPAN, center: new THREE.Vector3(0, 0, -EDGE_Z - 1), rotationY: 0 },
+    { length: EDGE_Z * 2, center: new THREE.Vector3(EDGE_X + 1, 0, 0), rotationY: -Math.PI / 2 },
+    { length: EDGE_Z * 2, center: new THREE.Vector3(-EDGE_X - 1, 0, 0), rotationY: Math.PI / 2 },
+  ];
+}
+
+/**
+ * Từng hàng ghế (mỗi bậc của mỗi dãy): điểm giữa hàng trên mặt bậc, hướng dọc hàng, độ dài dùng
+ * được (chừa hai đầu), góc quay mặt vào sân.
+ */
+export function standRows(): {
+  start: THREE.Vector3;
+  dir: THREE.Vector3;
+  length: number;
+  yaw: number;
+}[] {
+  const rows = [];
+  for (const { length, center, rotationY } of stands()) {
+    const dir = new THREE.Vector3(Math.cos(rotationY), 0, -Math.sin(rotationY));
+    const back = new THREE.Vector3(-Math.sin(rotationY), 0, -Math.cos(rotationY));
+    for (let i = 0; i < TIERS; i++) {
+      const start = center
+        .clone()
+        .addScaledVector(back, i * TIER_DEPTH)
+        .setY(TIER_RISE * (i + 1));
+      rows.push({ start, dir, length: length - 1.5, yaw: rotationY });
+    }
+  }
+  return rows;
+}
+
+/** Thương hiệu hư cấu trên bảng LED (không dùng thương hiệu thật). */
+const AD_BRANDS = ['PITCH CARDS', 'ZOLTRA', 'KIVEX', 'NORDA FIZZ', 'QUANTO BANK', 'VELIRO'];
+const AD_COLORS = ['#c8f031', '#3fa9f5', '#ff7a45', '#edf2ec', '#7b5cff', '#3dd68c'];
+const BOARD_H = 0.9;
+/** Bảng quảng cáo cách vạch biên / vạch cuối chừng này mét. */
+const BOARD_GAP = 3;
+const AD_SCROLL_PER_SEC = 0.02;
+
+function adTexture(): THREE.CanvasTexture {
+  const w = 2048;
+  const h = 64;
+  const canvas = document.createElement('canvas');
+  canvas.width = w;
+  canvas.height = h;
+  const ctx = canvas.getContext('2d');
+  if (ctx) {
+    const seg = w / AD_BRANDS.length;
+    AD_BRANDS.forEach((brand, i) => {
+      ctx.fillStyle = i % 2 === 0 ? '#0b1410' : '#14231c';
+      ctx.fillRect(i * seg, 0, seg, h);
+      ctx.fillStyle = AD_COLORS[i] ?? '#edf2ec';
+      ctx.font = 'bold 40px system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(brand, i * seg + seg / 2, h / 2 + 2);
+    });
+  }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
+
+/** Bảng LED quanh sân (phía xa và hai đầu, sau khung thành), chữ chạy chậm. */
+export function buildAdBoards(): { object: THREE.Object3D; update(timeSec: number): void } {
+  const g = new THREE.Group();
+  const tex = adTexture();
+  // Hơi sáng hơn trắng để bloom làm chữ LED loé nhẹ.
+  const face = new THREE.MeshBasicMaterial({ map: tex, color: new THREE.Color(1.3, 1.3, 1.3) });
+  const backMat = new THREE.MeshLambertMaterial({ color: 0x0b1410 });
+  const zFar = -(HALF_WIDTH + BOARD_GAP);
+  const xEnd = HALF_LENGTH + GOAL_DEPTH + BOARD_GAP;
+  const sides = [
+    { len: 2 * xEnd, pos: new THREE.Vector3(0, BOARD_H / 2, zFar), rot: 0 },
+    { len: 2 * -zFar, pos: new THREE.Vector3(xEnd, BOARD_H / 2, 0), rot: -Math.PI / 2 },
+    { len: 2 * -zFar, pos: new THREE.Vector3(-xEnd, BOARD_H / 2, 0), rot: Math.PI / 2 },
+  ];
+  const maps: THREE.Texture[] = [];
+  for (const { len, pos, rot } of sides) {
+    const map = tex.clone();
+    map.repeat.set(len / 40, 1);
+    map.needsUpdate = true;
+    maps.push(map);
+    const board = new THREE.Mesh(new THREE.BoxGeometry(len, BOARD_H, 0.15), [
+      backMat,
+      backMat,
+      backMat,
+      backMat,
+      new THREE.MeshBasicMaterial({ map, color: face.color }),
+      backMat,
+    ]);
+    board.position.copy(pos);
+    board.rotation.y = rot;
+    g.add(board);
+  }
+  face.dispose();
+  return {
+    object: g,
+    update(timeSec) {
+      for (const m of maps) m.offset.x = timeSec * AD_SCROLL_PER_SEC;
+    },
+  };
+}
+
 export function buildStadium(): THREE.Group {
   const g = new THREE.Group();
   const crowd = crowdTexture();
   const concrete = new THREE.MeshLambertMaterial({ color: 0x1a2722 });
-  const edgeZ = EDGE_Z;
-  const edgeX = EDGE_X;
-  const tierSpan = TIER_SPAN;
 
   // Phía xa (−z) và hai đầu sân.
-  g.add(stand(edgeX * 2 + tierSpan, new THREE.Vector3(0, 0, -edgeZ - 1), 0, crowd, concrete));
-  g.add(stand(edgeZ * 2, new THREE.Vector3(edgeX + 1, 0, 0), -Math.PI / 2, crowd, concrete));
-  g.add(stand(edgeZ * 2, new THREE.Vector3(-edgeX - 1, 0, 0), Math.PI / 2, crowd, concrete));
+  for (const s of stands()) g.add(stand(s.length, s.center, s.rotationY, crowd, concrete));
 
   const pole = new THREE.MeshLambertMaterial({ color: 0x2a3d35 });
   const lamp = new THREE.MeshBasicMaterial({
