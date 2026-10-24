@@ -8,6 +8,7 @@ export const COLORS = {
   bgCss: tokens.color.bg,
   text: tokens.color.text.default,
   accent: hex(tokens.color.accent.default),
+  accentCss: tokens.color.accent.default,
   pitchA: hex(tokens.color.pitch.a),
   pitchB: hex(tokens.color.pitch.b),
   pitchLine: hex(tokens.color.pitch.line),

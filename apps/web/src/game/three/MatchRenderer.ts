@@ -19,6 +19,15 @@ import { followCamera, initialCamera, type CameraState } from '../render/camera'
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
 import { chargeMeter, lerp, lerpPos } from '../render/view';
+import {
+  REPLAY_AFTER_TICKS,
+  ReplayBuffer,
+  advanceReplay,
+  replayCamera,
+  replayFrame,
+  startReplay,
+  type Replay,
+} from '../render/replay';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
 import { buildGrass, type Grass } from './grass';
 import { buildPitch, NetRig } from './pitch';
@@ -123,6 +132,13 @@ export class MatchRenderer {
   private readonly taps = createTapLatch();
   private readonly resizeObserver: ResizeObserver;
   private debug: { el: HTMLElement; frames: number; at: number } | null = null;
+  /** Các tick gần nhất để phát lại bàn thắng; `replayAt` = tick bắt đầu phát lại (chờ bóng rung lưới). */
+  private readonly history = new ReplayBuffer();
+  private replayAt: number | null = null;
+  private replay: Replay | null = null;
+  private replayCam: CameraState | null = null;
+  private skipReplay = false;
+  private replayLabel: HTMLElement | null = null;
 
   constructor(
     private readonly parent: HTMLElement,
@@ -183,7 +199,7 @@ export class MatchRenderer {
     window.addEventListener('blur', this.onBlur);
     if (import.meta.env.DEV) this.createDebugOverlay();
 
-    this.draw(1, 0);
+    this.draw(this.prev, this.curr, 1, 0);
     this.bridge?.onState(this.curr);
     this.raf = requestAnimationFrame(this.frame);
     void loadPlayerModel().then((model) => {
@@ -310,10 +326,17 @@ export class MatchRenderer {
     this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
     this.debug?.el.remove();
+    this.replayLabel?.remove();
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     const name = keyForCode(e.code);
+    if (this.replay) {
+      // Đang phát lại: phím bất kỳ để bỏ qua, không tính vào trận.
+      this.skipReplay = true;
+      if (name) e.preventDefault();
+      return;
+    }
     if (!name) return;
     // Mũi tên không cuộn trang.
     e.preventDefault();
@@ -337,6 +360,11 @@ export class MatchRenderer {
     this.lastTime = now;
     this.applyCommands();
 
+    if (this.replay) {
+      this.frameReplay(this.bridge?.isPaused() ? 0 : dt);
+      if (this.debug) this.refreshDebug(now);
+      return;
+    }
     if (this.bridge?.isPaused()) {
       // Tạm dừng: không chạy sim, không dồn thời gian; phím bấm trong menu không tính vào trận.
       this.accumulator = 0;
@@ -352,18 +380,111 @@ export class MatchRenderer {
         ticked = true;
         for (const e of animationEvents(this.prev, this.curr))
           this.models.get(e.playerId)?.trigger(e.clip);
+        this.history.push(this.curr);
         if (isGoal(this.prev, this.curr)) this.onGoal();
+        if (this.replayAt !== null && this.curr.tick >= this.replayAt) {
+          this.beginReplay();
+          break;
+        }
       }
       if (ticked) {
         this.taps.consume();
         this.bridge?.onState(this.curr);
       }
     }
-    this.draw(this.accumulator / TICK_DT, dt, this.bridge?.isPaused() ? 0 : dt);
-    if (this.q.postFx) this.postFx.render();
-    else this.renderer.render(this.scene, this.camera);
+    this.draw(
+      this.prev,
+      this.curr,
+      this.accumulator / TICK_DT,
+      dt,
+      this.bridge?.isPaused() ? 0 : dt,
+    );
+    this.render();
     if (this.debug) this.refreshDebug(now);
   };
+
+  private render(): void {
+    if (this.q.postFx) this.postFx.render();
+    else this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Bắt đầu phát lại quay chậm: sim đứng yên tới khi phát xong hoặc người chơi bỏ qua. */
+  private beginReplay(): void {
+    this.replayAt = null;
+    const frames = this.history.frames();
+    const goal = frames[Math.max(0, frames.length - 1 - REPLAY_AFTER_TICKS)] ?? this.curr;
+    this.replay = startReplay(frames, goal.ball.pos.x >= 0 ? 1 : -1);
+    this.replayCam = null;
+    this.skipReplay = false;
+    this.accumulator = 0;
+    this.held = { ...NO_KEYS };
+    this.taps.consume();
+    this.showReplayLabel(true);
+  }
+
+  private frameReplay(dt: number): void {
+    const before = this.replay;
+    if (!before) return;
+    const r = advanceReplay(before, dt);
+    // Hoạt ảnh sút/chuyền/bắt bóng ở các tick vừa phát qua.
+    for (let i = Math.floor(before.head) + 1; i <= Math.floor(r.head); i++) {
+      const a = r.frames[i - 1];
+      const b = r.frames[i];
+      if (!a || !b) continue;
+      for (const e of animationEvents(a, b)) this.models.get(e.playerId)?.trigger(e.clip);
+    }
+    if (r.crossedGoal) {
+      const { ball } = r.frames[r.goalIndex] ?? this.curr;
+      this.nets.hit(r.side, new THREE.Vector3(ball.pos.x, BALL_DRAW_RADIUS + ball.z, ball.pos.y));
+    }
+    const { prev, curr, alpha } = replayFrame(r);
+    const ball = lerpPos(prev.ball.pos, curr.ball.pos, alpha);
+    this.replayCam = replayCamera(this.replayCam, ball, r.side, dt);
+    // Hoạt ảnh chạy chậm cùng nhịp phát lại.
+    this.draw(prev, curr, alpha, dt, (r.head - before.head) * TICK_DT, this.replayCam);
+    this.render();
+    this.replay = r;
+    if (r.done || this.skipReplay) this.endReplay();
+  }
+
+  private endReplay(): void {
+    this.replay = null;
+    this.replayCam = null;
+    this.skipReplay = false;
+    this.history.clear();
+    // Quay về đúng trạng thái sim đang dừng, không nội suy từ khung phát lại.
+    this.prev = this.curr;
+    this.lastTime = 0;
+    this.showReplayLabel(false);
+  }
+
+  /** Nhãn "PHÁT LẠI" góc màn hình trong lúc quay chậm. */
+  private showReplayLabel(on: boolean): void {
+    if (!on) {
+      this.replayLabel?.remove();
+      this.replayLabel = null;
+      return;
+    }
+    if (this.replayLabel) return;
+    const el = document.createElement('div');
+    el.innerHTML =
+      '<b style="letter-spacing:.12em">● PHÁT LẠI</b>' +
+      '<div style="opacity:.7;font-size:12px;margin-top:2px">Bấm phím bất kỳ để bỏ qua</div>';
+    Object.assign(el.style, {
+      position: 'absolute',
+      left: '20px',
+      bottom: '20px',
+      padding: '8px 12px',
+      background: '#000000b0',
+      color: COLORS.text,
+      borderLeft: `3px solid ${COLORS.accentCss}`,
+      font: '600 15px system-ui, sans-serif',
+      pointerEvents: 'none',
+      zIndex: '6',
+    });
+    this.parent.appendChild(el);
+    this.replayLabel = el;
+  }
 
   /** Bàn thắng vừa được ghi (tick này): lưới rung ở khung thành bóng vào. */
   private onGoal(): void {
@@ -371,11 +492,20 @@ export class MatchRenderer {
     const side = ball.pos.x >= 0 ? 1 : -1;
     this.nets.hit(side, new THREE.Vector3(ball.pos.x, BALL_DRAW_RADIUS + ball.z, ball.pos.y));
     this.crowd.cheer();
+    // Luân lưu không phát lại; người chơi tắt replay trong menu đồ hoạ thì thôi.
+    if (this.q.replay && this.curr.phase !== 'shootout')
+      this.replayAt = this.curr.tick + REPLAY_AFTER_TICKS;
   }
 
   /** Vẽ trạng thái nội suy: `alpha` = 0 là tick trước, 1 là tick hiện tại. */
-  private draw(alpha: number, dt: number, animDt = dt): void {
-    const { prev, curr } = this;
+  private draw(
+    prev: MatchState,
+    curr: MatchState,
+    alpha: number,
+    dt: number,
+    animDt = dt,
+    cameraOverride?: CameraState,
+  ): void {
     const prevById = new Map(prev.players.map((p) => [p.id, p]));
     const onPitch = new Set<string>();
 
@@ -397,13 +527,13 @@ export class MatchRenderer {
     }
 
     const controlled = this.actors.get(curr.controlledId);
-    this.marker.visible = controlled !== undefined && !curr.autopilot;
+    this.marker.visible = controlled !== undefined && !curr.autopilot && !cameraOverride;
     if (controlled) {
       const bob = Math.sin(performance.now() / 180) * 0.08;
       this.marker.position.set(controlled.position.x, MARKER_Y + bob, controlled.position.z);
     }
 
-    const meter = controlled ? chargeMeter(curr) : null;
+    const meter = controlled && !cameraOverride ? chargeMeter(curr) : null;
     const bar = this.chargeBar;
     bar.group.visible = meter !== null;
     if (meter && controlled) {
@@ -417,7 +547,7 @@ export class MatchRenderer {
     const z = Math.max(0, lerp(prev.ball.z, curr.ball.z, alpha));
     // Sim đặt bóng ở chân người giữ; thủ môn ôm bóng / người ném biên thì vẽ bóng trong tay.
     const held = heldBall(curr);
-    const inHands = held !== null && this.handBall(held, this.ballTarget);
+    const inHands = held !== null && this.handBall(curr, held, this.ballTarget);
     if (!inHands) this.ballTarget.set(ground.x, BALL_DRAW_RADIUS + z, ground.y);
     if (inHands !== this.ballInHands) {
       this.ballInHands = inHands;
@@ -442,8 +572,8 @@ export class MatchRenderer {
     this.ballShadow.position.set(this.ball.position.x, 0.015, this.ball.position.z);
     this.ballShadow.scale.setScalar(1 / (1 + drawnZ * 0.35));
 
-    if (dt > 0) this.cam = followCamera(this.cam, ground, dt);
-    const { pos, look } = this.cam;
+    if (dt > 0 && !cameraOverride) this.cam = followCamera(this.cam, ground, dt);
+    const { pos, look } = cameraOverride ?? this.cam;
     this.nets.update(animDt);
     const timeSec = performance.now() / 1000;
     if (this.grass.object.visible) this.grass.update(look.x, look.z, timeSec);
@@ -454,10 +584,10 @@ export class MatchRenderer {
   }
 
   /** Điểm bóng trong tay người cầm: theo xương tay của model, cầu thủ khối thì trước ngực/trên đầu. */
-  private handBall(held: HeldBall, out: THREE.Vector3): boolean {
+  private handBall(state: MatchState, held: HeldBall, out: THREE.Vector3): boolean {
     if (this.models.get(held.playerId)?.ballInHands(out)) return true;
     const actor = this.actors.get(held.playerId);
-    const p = this.curr.players.find((q) => q.id === held.playerId);
+    const p = state.players.find((q) => q.id === held.playerId);
     if (!actor || !p) return false;
     const y = held.grip === 'throw_in' ? OVERHEAD_BALL_Y : CHEST_BALL_Y;
     out.set(
