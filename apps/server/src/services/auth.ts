@@ -96,7 +96,8 @@ export function toMe(user: UserRow): Me {
   };
 }
 
-function isUniqueViolation(err: unknown, constraint: string): boolean {
+/** Lỗi Postgres UNIQUE (`23505`) của đúng ràng buộc `constraint` (Drizzle bọc lỗi gốc trong `cause`). */
+export function isUniqueViolation(err: unknown, constraint: string): boolean {
   for (let e: unknown = err; e instanceof Error; e = e.cause) {
     const pg = e as Error & { code?: string; constraint?: string };
     if (pg.code === '23505' && pg.constraint === constraint) return true;

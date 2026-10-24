@@ -1,6 +1,6 @@
 import { sql } from 'drizzle-orm';
 import { afterAll } from 'vitest';
-import { buildApp } from '../src/app';
+import { buildApp, type BuildAppOptions } from '../src/app';
 import type { Clock } from '../src/clock';
 import { createDb, type Db } from '../src/db/client';
 import { TEST_DATABASE_URL } from './db-url';
@@ -42,8 +42,11 @@ export function testDb(): Db {
 }
 
 /** App nối DB test + đồng hồ giả. Nhớ `await app.close()` (không đóng pool dùng chung). */
-export function createTestApp(clock: FakeClock = new FakeClock()) {
-  return { app: buildApp({ db: testDb(), clock }), clock };
+export function createTestApp(
+  clock: FakeClock = new FakeClock(),
+  opts: Pick<BuildAppOptions, 'enableDevRoutes'> = {},
+) {
+  return { app: buildApp({ ...opts, db: testDb(), clock }), clock };
 }
 
 /** Xoá sạch dữ liệu mọi bảng `public` của DB test (giữ schema), dùng giữa các file test. */

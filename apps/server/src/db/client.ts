@@ -2,6 +2,8 @@ import { drizzle, type NodePgDatabase } from 'drizzle-orm/node-postgres';
 import pg from 'pg';
 
 export type Db = NodePgDatabase;
+/** Handle bên trong `db.transaction(async (tx) => …)`. */
+export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 /**
  * Pool Postgres + Drizzle. Người tạo chịu trách nhiệm `pool.end()`. Timeout theo ARCHITECTURE §3.4:

@@ -32,8 +32,8 @@ describe('stats helper', () => {
 describe('cấu hình', () => {
   it('hộp 2/10/30/58, gói 1 = 100 xu, gói 5 = 450 xu có bảo đảm (PRD §6.3)', () => {
     expect(BOX_COMPOSITION).toEqual({ bronze: 58, silver: 30, gold: 10, legend: 2 });
-    expect(PACKS.pack1).toEqual({ size: 1, price: 100, guarantee: false });
-    expect(PACKS.pack5).toEqual({ size: 5, price: 450, guarantee: true });
+    expect(PACKS.pack1).toEqual({ size: 1, price: 100, guarantee: false, freeCredit: false });
+    expect(PACKS.pack5).toEqual({ size: 5, price: 450, guarantee: true, freeCredit: true });
   });
 });
 
