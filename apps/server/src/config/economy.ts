@@ -29,3 +29,10 @@ export const STARTER_SQUAD = {
     ['B4', 51],
   ],
 } as const;
+
+/** Gói thẻ (PRD §6.3). `guarantee`: gói 5 bảo đảm ≥ 1 Bạc+ khi hộp còn. */
+export const PACKS = {
+  pack1: { size: 1, price: 100, guarantee: false },
+  pack5: { size: 5, price: 450, guarantee: true },
+} as const;
+export type PackCode = keyof typeof PACKS;
