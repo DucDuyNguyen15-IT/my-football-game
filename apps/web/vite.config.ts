@@ -6,7 +6,8 @@ export default defineConfig({
   server: {
     port: 5173,
     // Dev: chuyển /api sang Fastify để cookie phiên cùng origin (docs/ARCHITECTURE.md §2).
-    proxy: { '/api': 'http://127.0.0.1:3000' },
+    // Giữ nguyên Host (changeOrigin: false) để server so khớp Origin ↔ Host khi chặn CSRF (§4.1).
+    proxy: { '/api': { target: 'http://127.0.0.1:3000', changeOrigin: false } },
   },
   build: {
     // Chunk trận đấu chứa Three.js (~600 KB, ADR-0009), chỉ tải khi vào /play.
