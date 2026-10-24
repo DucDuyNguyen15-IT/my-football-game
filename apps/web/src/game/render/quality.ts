@@ -23,7 +23,7 @@ export interface QualitySettings {
   skyAndRoof: boolean;
   /** Sợi cỏ 3D (instancing) quanh khu vực camera đang nhìn. */
   grass3d: boolean;
-  /** Khán giả trên khán đài, cổ vũ khi có bàn thắng. */
+  /** Khán giả động (đổi khung ảnh, nhảy khi có bàn thắng); tắt thì đứng yên. */
   crowd: boolean;
   /** Che bóng môi trường (cần hậu kỳ). */
   ssao: boolean;
@@ -71,7 +71,7 @@ export const GRAPHICS_TOGGLES: readonly { key: GraphicsToggle; label: string }[]
   { key: 'floodSpots', label: 'Đèn pha rọi sân' },
   { key: 'skyAndRoof', label: 'Bầu trời & mái khán đài' },
   { key: 'grass3d', label: 'Cỏ 3D' },
-  { key: 'crowd', label: 'Khán giả' },
+  { key: 'crowd', label: 'Khán giả cổ vũ' },
   { key: 'replay', label: 'Phát lại bàn thắng' },
 ];
 

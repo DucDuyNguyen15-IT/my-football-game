@@ -1,123 +1,160 @@
 /**
- * Khán giả 3D (task 5.21, tắt được): mỗi người là một khối thân + đầu, vẽ bằng một InstancedMesh
- * ngồi trên các bậc khán đài. Lắc lư nhẹ khi bóng lăn, đứng bật dậy nhún nhảy khi có bàn thắng —
- * toàn bộ chuyển động nằm trong vertex shader (một uniform thời gian + một mức cổ vũ).
+ * Khán giả "ảnh động" (task 5.21): mỗi hàng ghế là một tấm phẳng dán dải người vẽ trên canvas, ba
+ * khung hình xếp dọc (ngồi, giơ tay, nhảy). Đổi khung bằng `offset.y` của texture — không có model
+ * từng người nên gần như không tốn GPU. Có bàn thắng thì cả khán đài nhảy liên tục vài giây.
  */
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
-import { standRows } from './stadium';
+import { standRows, TIER_RISE } from './stadium';
 
-const SEAT_SPACING = 0.62;
-/** Ghế trống (không vẽ người) theo tỉ lệ này. */
-const EMPTY_SEATS = 0.12;
-const SHIRT_COLORS = [
-  0x3fa9f5, 0xff7a45, 0xedf2ec, 0xc8f031, 0x9db0a6, 0x2c4a7a, 0xd94848, 0x213530,
+const FRAMES = 3;
+const FRAME_W = 1024;
+const FRAME_H = 64;
+/** Một ô texture phủ chừng này mét hàng ghế. */
+const TILE_M = 16;
+const PERSON_PX = 38;
+const EMPTY_SEATS = 0.1;
+const SEAT_BG = '#13201b';
+const SHIRTS = [
+  '#3fa9f5',
+  '#ff7a45',
+  '#edf2ec',
+  '#c8f031',
+  '#9db0a6',
+  '#2c4a7a',
+  '#d94848',
+  '#ffc23d',
 ];
+const SKINS = ['#f1c8a0', '#e0ac69', '#c68642', '#9a6235', '#6b4226'];
+const HAIRS = ['#17120f', '#2e1d12', '#5a3a20', '#b48a4e'];
 /** Mức cổ vũ giảm về 0 sau chừng này giây. */
 const CHEER_SEC = 5;
 
 export interface Crowd {
   object: THREE.Object3D;
   cheer(): void;
-  update(dt: number, timeSec: number): void;
+  /** `animate` = false: đứng yên ở khung ngồi (tắt "Khán giả động" trong menu đồ hoạ). */
+  update(dt: number, timeSec: number, animate: boolean): void;
 }
 
-function personGeometry(): THREE.BufferGeometry {
-  const body = new THREE.BoxGeometry(0.42, 0.55, 0.3);
-  body.translate(0, 0.28, 0);
-  const head = new THREE.SphereGeometry(0.12, 8, 6);
-  head.translate(0, 0.7, 0);
-  // Đầu màu da: dùng thuộc tính `aSkin` = 1 để shader không nhân màu áo.
-  const tag = (g: THREE.BufferGeometry, v: number) =>
-    g.setAttribute(
-      'aSkin',
-      new THREE.Float32BufferAttribute(new Array(g.getAttribute('position').count).fill(v), 1),
-    );
-  tag(body, 0);
-  tag(head, 1);
-  const merged = mergeGeometries([body.toNonIndexed(), head.toNonIndexed()]);
-  if (!merged) throw new Error('merge person geometry');
-  return merged;
+/** Vẽ một người ở khung `frame`: 0 ngồi, 1 giơ một tay, 2 đứng nhảy hai tay giơ cao. */
+function drawPerson(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  top: number,
+  frame: number,
+  look: { shirt: string; skin: string; hair: string; lean: number },
+): void {
+  const lift = frame === 2 ? 7 : 0;
+  const cx = x + PERSON_PX / 2 + look.lean;
+  const headY = top + 20 - lift;
+  // Tay giơ (vẽ trước thân để vai che chỗ nối).
+  ctx.strokeStyle = look.skin;
+  ctx.lineWidth = 4;
+  ctx.lineCap = 'round';
+  const arm = (side: number, up: boolean) => {
+    ctx.beginPath();
+    ctx.moveTo(cx + side * 9, headY + 14);
+    if (up) ctx.lineTo(cx + side * 14, headY - 10);
+    else ctx.lineTo(cx + side * 12, headY + 32);
+    ctx.stroke();
+  };
+  arm(-1, frame === 2);
+  arm(1, frame >= 1);
+  ctx.fillStyle = look.shirt;
+  ctx.beginPath();
+  ctx.roundRect(cx - 11, headY + 10, 22, FRAME_H, 6);
+  ctx.fill();
+  ctx.fillStyle = look.skin;
+  ctx.beginPath();
+  ctx.arc(cx, headY, 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillStyle = look.hair;
+  ctx.beginPath();
+  ctx.arc(cx, headY - 2, 8, Math.PI, Math.PI * 2);
+  ctx.fill();
 }
 
-export function buildCrowd(): Crowd {
-  let seed = 19;
+function crowdSheet(): THREE.CanvasTexture {
+  const canvas = document.createElement('canvas');
+  canvas.width = FRAME_W;
+  canvas.height = FRAME_H * FRAMES;
+  const ctx = canvas.getContext('2d');
+  let seed = 23;
   const rand = () => {
     seed = (seed * 1103515245 + 12345) % 2147483648;
     return seed / 2147483648;
   };
-  const seats: { pos: THREE.Vector3; yaw: number }[] = [];
-  for (const row of standRows()) {
-    const n = Math.floor(row.length / SEAT_SPACING);
-    for (let i = 0; i < n; i++) {
-      if (rand() < EMPTY_SEATS) continue;
-      const t = (i + 0.5) / n - 0.5 + (rand() - 0.5) * 0.004;
-      seats.push({
-        pos: row.start.clone().addScaledVector(row.dir, t * row.length),
-        yaw: row.yaw,
+  const pick = <T>(xs: readonly T[]): T => xs[Math.floor(rand() * xs.length)]!;
+  if (ctx) {
+    ctx.fillStyle = SEAT_BG;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    const n = Math.floor(FRAME_W / PERSON_PX);
+    const people = Array.from({ length: n }, () =>
+      rand() < EMPTY_SEATS
+        ? null
+        : { shirt: pick(SHIRTS), skin: pick(SKINS), hair: pick(HAIRS), lean: (rand() - 0.5) * 6 },
+    );
+    for (let f = 0; f < FRAMES; f++) {
+      const top = f * FRAME_H;
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, top, FRAME_W, FRAME_H);
+      ctx.clip();
+      people.forEach((look, j) => {
+        // Người trong cùng hàng không giơ tay cùng lúc: khung 1 chỉ áp cho một nửa số người.
+        const frame = f === 1 && j % 2 === 0 ? 0 : f;
+        if (look) drawPerson(ctx, j * (FRAME_W / n), top, frame, look);
       });
+      ctx.restore();
     }
   }
+  const tex = new THREE.CanvasTexture(canvas);
+  tex.wrapS = THREE.RepeatWrapping;
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.anisotropy = 8;
+  return tex;
+}
 
-  const uniforms = { uTime: { value: 0 }, uCheer: { value: 0 } };
-  const material = new THREE.MeshLambertMaterial();
-  material.onBeforeCompile = (shader) => {
-    Object.assign(shader.uniforms, uniforms);
-    shader.vertexShader = shader.vertexShader
-      .replace(
-        '#include <common>',
-        `#include <common>
-        uniform float uTime;
-        uniform float uCheer;
-        attribute float aSkin;
-        varying float vSkin;`,
-      )
-      .replace(
-        '#include <begin_vertex>',
-        `#include <begin_vertex>
-        vSkin = aSkin;
-        vec4 seat = instanceMatrix * vec4(0.0, 0.0, 0.0, 1.0);
-        float phase = fract(sin(dot(seat.xz, vec2(12.9898, 78.233))) * 43758.5453) * 6.2831;
-        // Ngồi: lắc nhẹ. Cổ vũ: đứng dậy (cao thêm) và nhún theo nhịp riêng.
-        transformed.x += sin(uTime * 1.3 + phase) * 0.03 * position.y;
-        float jump = max(0.0, sin(uTime * 9.0 + phase)) * 0.35 * uCheer;
-        transformed.y += position.y * 0.35 * uCheer + jump;`,
-      );
-    shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\nvarying float vSkin;`)
-      .replace(
-        '#include <color_fragment>',
-        `#include <color_fragment>
-        diffuseColor.rgb = mix(diffuseColor.rgb, vec3(0.62, 0.45, 0.33), vSkin);`,
-      );
-  };
-
-  const mesh = new THREE.InstancedMesh(personGeometry(), material, seats.length);
-  const m = new THREE.Matrix4();
-  const q = new THREE.Quaternion();
-  const up = new THREE.Vector3(0, 1, 0);
-  const one = new THREE.Vector3(1, 1, 1);
-  const color = new THREE.Color();
-  seats.forEach((s, i) => {
-    q.setFromAxisAngle(up, s.yaw + (rand() - 0.5) * 0.4);
-    const h = 0.9 + rand() * 0.2;
-    mesh.setMatrixAt(i, m.compose(s.pos, q, one.set(1, h, 1)));
-    mesh.setColorAt(i, color.setHex(SHIRT_COLORS[Math.floor(rand() * SHIRT_COLORS.length)]!));
-  });
-  // Đổ bóng hơn mười nghìn người lên khán đài tốn mà khó thấy: tắt.
-  mesh.castShadow = false;
+export function buildCrowd(): Crowd {
+  const g = new THREE.Group();
+  const sheet = crowdSheet();
+  const rows: { map: THREE.Texture; phase: number }[] = [];
+  let i = 0;
+  for (const row of standRows()) {
+    const map = sheet.clone();
+    map.repeat.set(row.length / TILE_M, 1 / FRAMES);
+    // Lệch ngang mỗi hàng để các hàng không giống hệt nhau.
+    map.offset.x = (i * 0.37) % 1;
+    map.offset.y = (FRAMES - 1) / FRAMES;
+    map.needsUpdate = true;
+    const plane = new THREE.Mesh(
+      new THREE.PlaneGeometry(row.length, TIER_RISE),
+      new THREE.MeshLambertMaterial({ map }),
+    );
+    plane.position.copy(row.start).setY(row.start.y + TIER_RISE / 2);
+    plane.rotation.y = row.yaw;
+    g.add(plane);
+    rows.push({ map, phase: (i * 2.399) % (Math.PI * 2) });
+    i++;
+  }
 
   let cheer = 0;
+  const setFrame = (map: THREE.Texture, f: number) => {
+    map.offset.y = (FRAMES - 1 - f) / FRAMES;
+  };
   return {
-    object: mesh,
+    object: g,
     cheer() {
       cheer = 1;
     },
-    update(dt, timeSec) {
+    update(dt, timeSec, animate) {
       cheer = Math.max(0, cheer - dt / CHEER_SEC);
-      uniforms.uTime.value = timeSec;
-      // Giữ đứng lâu rồi mới ngồi xuống: bình phương cho đuôi thoải.
-      uniforms.uCheer.value = Math.min(1, cheer * 1.6) ** 2;
+      for (const r of rows) {
+        if (!animate) setFrame(r.map, 0);
+        else if (cheer > 0) setFrame(r.map, Math.floor(timeSec * 6 + r.phase) % 2 === 0 ? 2 : 1);
+        // Lúc bình thường thỉnh thoảng một hàng giơ tay.
+        else setFrame(r.map, Math.sin(timeSec * 0.6 + r.phase * 3) > 0.92 ? 1 : 0);
+      }
     },
   };
 }
