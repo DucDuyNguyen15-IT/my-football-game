@@ -4,6 +4,7 @@ import { systemClock, type Clock } from './clock';
 import type { Db } from './db/client';
 import { pingDb, registerDb } from './plugins/db';
 import { AppError, registerErrors } from './plugins/errors';
+import { registerCardRoutes } from './routes/cards';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -38,6 +39,8 @@ export function buildApp(opts: BuildAppOptions = {}) {
     }
     return { data: { status: 'ok' } };
   });
+
+  if (app.hasDecorator('db')) registerCardRoutes(app);
 
   return app;
 }
