@@ -5,6 +5,9 @@
 **Tài liệu nền:** `docs/ARCHITECTURE.md` §3 (schema), §4 (API), §5 (luồng server); `docs/PRD.md` §6.
 **Tiên quyết:** Postgres 16 (Docker Desktop hoặc bản cài). Lý do đưa tài khoản cơ bản vào đây: `docs/plans/README.md` mục "Điều chỉnh".
 
+**Tiến độ (2026-10-25):** xong 6.1a, 6.1b. Tiếp theo: **6.2**. Cần bật Docker Desktop + `docker compose -f docker-compose.dev.yml up -d` trước `pnpm check` (test server dùng DB `pitch_test`, globalSetup tự migrate).
+**Chờ người dùng chơi thử (cơ chế mới cuối GĐ5):** thủ môn ném tay từ vai; AI xoay người trước khi chuyền về sau; chọc khe W / Q+W; người nhận chạy đón theo đường bóng thật (cả đường chuyền của máy); thủ môn AI đội mình ném/phát thì tự chuyển điều khiển sang người nhận.
+
 ---
 
 ### 6.1a — Hạ tầng server: Postgres dev, env, plugin, đồng hồ `[x]`
