@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { LoginRequest, type MeResponse } from '@pitch/shared';
+import { LoginRequest, RegisterRequest, type MeResponse } from '@pitch/shared';
 import { clearSessionCookie, requireAuth, SESSION_COOKIE, setSessionCookie } from '../plugins/auth';
 import { AppError } from '../plugins/errors';
 import {
@@ -7,11 +7,22 @@ import {
   createSession,
   destroySession,
   findUserByUsername,
+  registerUser,
   toMe,
   verifyPassword,
 } from '../services/auth';
 
 export function registerAuthRoutes(app: FastifyInstance): void {
+  app.post('/api/v1/auth/register', async (req, reply): Promise<MeResponse> => {
+    const input = RegisterRequest.parse(req.body);
+    const now = app.clock.now();
+    const user = await registerUser(app.db, input, now);
+    const { token, expiresAt } = await createSession(app.db, user.id, now);
+    setSessionCookie(reply, token, expiresAt);
+    reply.code(201);
+    return { data: toMe(user) };
+  });
+
   app.post('/api/v1/auth/login', async (req, reply): Promise<MeResponse> => {
     const { username, password } = LoginRequest.parse(req.body);
     const user = await findUserByUsername(app.db, username);
