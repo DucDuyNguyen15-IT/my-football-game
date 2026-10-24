@@ -20,8 +20,13 @@ import { COLORS } from '../render/colors';
 
 /** Dải cỏ ngoài vạch biên. */
 export const RUNOFF_M = 6;
-const STRIPES = 12;
-const LINE_W = 0.12;
+export const STRIPES = 12;
+export const LINE_W = 0.12;
+/** Sọc cắt cỏ đậm hơn token một chút (±) để nhìn rõ từ camera truyền hình. */
+const STRIPE_CONTRAST = 0.05;
+/** Lưới rung sau bàn thắng chừng này giây. */
+const NET_SHAKE_SEC = 1.1;
+const NET_SHAKE_AMP = 0.35;
 /** Vạch nằm nhích trên mặt cỏ để không nhấp nháy (z-fighting). */
 const LINE_Y = 0.012;
 const POST_R = 0.07;
@@ -68,22 +73,54 @@ function netTexture(): THREE.CanvasTexture {
   return tex;
 }
 
-/** Mặt lưới tứ giác qua 4 đỉnh [x, y, z] (theo thứ tự vòng), ô lưới ~25 cm. */
+/** Màu hai loại sọc cỏ (đã tăng tương phản). */
+export function stripeColors(): [number, number] {
+  const a = new THREE.Color(COLORS.pitchA).multiplyScalar(1 + STRIPE_CONTRAST);
+  const b = new THREE.Color(COLORS.pitchB).multiplyScalar(1 - STRIPE_CONTRAST);
+  return [a.getHex(), b.getHex()];
+}
+
+const NET_SEG_U = 10;
+const NET_SEG_V = 6;
+
+/**
+ * Mặt lưới tứ giác qua 4 đỉnh [x, y, z] (theo thứ tự vòng), ô lưới ~25 cm. Chia lưới đỉnh để rung
+ * phồng ra được khi bóng vào (`NetRig`).
+ */
 function netQuad(pts: [number, number, number][], tex: THREE.Texture): THREE.Mesh {
-  const [a, b, , d] = pts as [
-    THREE.Vector3Tuple,
-    THREE.Vector3Tuple,
-    THREE.Vector3Tuple,
-    THREE.Vector3Tuple,
+  const [a, b, c, d] = pts.map((v) => new THREE.Vector3(...v)) as [
+    THREE.Vector3,
+    THREE.Vector3,
+    THREE.Vector3,
+    THREE.Vector3,
   ];
-  const dist = (p: THREE.Vector3Tuple, q: THREE.Vector3Tuple) =>
-    Math.hypot(p[0] - q[0], p[1] - q[1], p[2] - q[2]);
-  const u = dist(a, b) / 0.25;
-  const v = dist(a, d) / 0.25;
+  const u = a.distanceTo(b) / 0.25;
+  const v = a.distanceTo(d) / 0.25;
+  const pos: number[] = [];
+  const uv: number[] = [];
+  const index: number[] = [];
+  const ab = new THREE.Vector3();
+  const dc = new THREE.Vector3();
+  for (let j = 0; j <= NET_SEG_V; j++) {
+    const tv = j / NET_SEG_V;
+    for (let i = 0; i <= NET_SEG_U; i++) {
+      const tu = i / NET_SEG_U;
+      ab.lerpVectors(a, b, tu);
+      dc.lerpVectors(d, c, tu);
+      const p = ab.lerp(dc, tv);
+      pos.push(p.x, p.y, p.z);
+      uv.push(tu * u, tv * v);
+      if (i < NET_SEG_U && j < NET_SEG_V) {
+        const k = j * (NET_SEG_U + 1) + i;
+        index.push(k, k + 1, k + NET_SEG_U + 2, k, k + NET_SEG_U + 2, k + NET_SEG_U + 1);
+      }
+    }
+  }
   const geo = new THREE.BufferGeometry();
-  geo.setAttribute('position', new THREE.Float32BufferAttribute(pts.flat(), 3));
-  geo.setAttribute('uv', new THREE.Float32BufferAttribute([0, 0, u, 0, u, v, 0, v], 2));
-  geo.setIndex([0, 1, 2, 0, 2, 3]);
+  geo.setAttribute('position', new THREE.Float32BufferAttribute(pos, 3));
+  geo.setAttribute('uv', new THREE.Float32BufferAttribute(uv, 2));
+  geo.setIndex(index);
+  geo.userData.base = Float32Array.from(pos);
   const mat = new THREE.MeshBasicMaterial({
     map: tex,
     transparent: true,
@@ -100,9 +137,56 @@ function post(len: number, mat: THREE.Material): THREE.Mesh {
   return mesh;
 }
 
+/**
+ * Lưới hai khung thành rung phồng ra sau bàn thắng: đỉnh gần điểm bóng vào bị đẩy ra sau khung,
+ * dao động tắt dần. Không có bàn thắng thì không đụng tới geometry.
+ */
+export class NetRig {
+  private readonly nets: Record<'1' | '-1', THREE.Mesh[]> = { '1': [], '-1': [] };
+  private shake: { side: 1 | -1; at: THREE.Vector3; t: number } | null = null;
+
+  add(side: 1 | -1, mesh: THREE.Mesh): void {
+    this.nets[side === 1 ? '1' : '-1'].push(mesh);
+  }
+
+  /** Bóng vào lưới khung thành `side` ở điểm `at` (toạ độ thế giới). */
+  hit(side: 1 | -1, at: THREE.Vector3): void {
+    this.shake = { side, at: at.clone(), t: 0 };
+  }
+
+  update(dt: number): void {
+    const sh = this.shake;
+    if (!sh) return;
+    sh.t += dt;
+    const done = sh.t >= NET_SHAKE_SEC;
+    const amp = done ? 0 : NET_SHAKE_AMP * Math.exp(-4 * sh.t) * Math.sin(sh.t * 22 + 0.6);
+    for (const mesh of this.nets[sh.side === 1 ? '1' : '-1']) {
+      const attr = mesh.geometry.getAttribute('position') as THREE.BufferAttribute;
+      const base = mesh.geometry.userData.base as Float32Array;
+      for (let i = 0; i < attr.count; i++) {
+        const x = base[i * 3]!;
+        const y = base[i * 3 + 1]!;
+        const z = base[i * 3 + 2]!;
+        // Mép dính khung (sát vạch cuối hoặc chạm đất) gần như không rung.
+        const pinned = Math.min(Math.abs(x - sh.side * HALF_LENGTH) / GOAL_DEPTH, 1);
+        const d2 = (y - sh.at.y) ** 2 + (z - sh.at.z) ** 2;
+        const w = Math.exp(-d2 / 1.8) * pinned * Math.min(y / 0.3, 1);
+        attr.setXYZ(i, x + sh.side * amp * w, y, z);
+      }
+      attr.needsUpdate = true;
+    }
+    if (done) this.shake = null;
+  }
+}
+
 /** Khung thành ở đầu sân `side` (+1 phải, −1 trái), miệng khung nằm trên vạch cuối. */
-function goal(side: 1 | -1, tex: THREE.Texture): THREE.Group {
+function goal(side: 1 | -1, tex: THREE.Texture, rig: NetRig): THREE.Group {
   const g = new THREE.Group();
+  const net = (pts: [number, number, number][]) => {
+    const mesh = netQuad(pts, tex);
+    rig.add(side, mesh);
+    return mesh;
+  };
   const white = new THREE.MeshLambertMaterial({ color: 0xffffff });
   const hw = GOAL_WIDTH / 2;
   const x = side * HALF_LENGTH;
@@ -128,36 +212,27 @@ function goal(side: 1 | -1, tex: THREE.Texture): THREE.Group {
   // Lưới: mặt nghiêng từ xà xuống mép sau (cao 30%), mặt sau thấp, hai mặt bên.
   const lowBack = GOAL_HEIGHT * 0.3;
   g.add(
-    netQuad(
-      [
-        [x, GOAL_HEIGHT, -hw],
-        [x, GOAL_HEIGHT, hw],
-        [back, lowBack, hw],
-        [back, lowBack, -hw],
-      ],
-      tex,
-    ),
-    netQuad(
-      [
-        [back, lowBack, -hw],
-        [back, lowBack, hw],
-        [back, 0, hw],
-        [back, 0, -hw],
-      ],
-      tex,
-    ),
+    net([
+      [x, GOAL_HEIGHT, -hw],
+      [x, GOAL_HEIGHT, hw],
+      [back, lowBack, hw],
+      [back, lowBack, -hw],
+    ]),
+    net([
+      [back, lowBack, -hw],
+      [back, lowBack, hw],
+      [back, 0, hw],
+      [back, 0, -hw],
+    ]),
   );
   for (const z of [-hw, hw]) {
     g.add(
-      netQuad(
-        [
-          [x, GOAL_HEIGHT, z],
-          [back, lowBack, z],
-          [back, 0, z],
-          [x, 0, z],
-        ],
-        tex,
-      ),
+      net([
+        [x, GOAL_HEIGHT, z],
+        [back, lowBack, z],
+        [back, 0, z],
+        [x, 0, z],
+      ]),
     );
   }
   return g;
@@ -200,18 +275,31 @@ function grassMaterial(color: number, map: THREE.Texture, w: number, h: number) 
   return new THREE.MeshLambertMaterial({ color, map: tex });
 }
 
-export function buildPitch(): THREE.Group {
+/** Cung tròn mảnh (vạch vôi) tâm (x, z), bán kính r, từ góc a0 quét `len` radian. */
+function arc(x: number, z: number, r: number, a0: number, len: number, mat: THREE.Material) {
+  const mesh = flat(
+    new THREE.RingGeometry(r - LINE_W / 2, r + LINE_W / 2, 48, 1, a0, len),
+    mat,
+    LINE_Y,
+  );
+  mesh.position.x = x;
+  mesh.position.z = z;
+  return mesh;
+}
+
+export function buildPitch(rig: NetRig): THREE.Group {
   const g = new THREE.Group();
   const grass = grassTexture();
   const band = PITCH_LENGTH / STRIPES;
-  const grassA = grassMaterial(COLORS.pitchA, grass, band, PITCH_WIDTH);
-  const grassB = grassMaterial(COLORS.pitchB, grass, band, PITCH_WIDTH);
+  const [colorA, colorB] = stripeColors();
+  const grassA = grassMaterial(colorA, grass, band, PITCH_WIDTH);
+  const grassB = grassMaterial(colorB, grass, band, PITCH_WIDTH);
   const runoffW = PITCH_LENGTH + RUNOFF_M * 2;
   const runoffH = PITCH_WIDTH + RUNOFF_M * 2;
 
   const runoff = flat(
     new THREE.PlaneGeometry(runoffW, runoffH),
-    grassMaterial(COLORS.pitchA, grass, runoffW, runoffH),
+    grassMaterial(colorA, grass, runoffW, runoffH),
     0,
   );
   runoff.receiveShadow = true;
@@ -252,7 +340,17 @@ export function buildPitch(): THREE.Group {
     const spot = flat(spotGeo, chalk, LINE_Y);
     spot.position.x = side * (HALF_LENGTH - PENALTY_SPOT_DIST);
     g.add(spot);
-    g.add(goal(side, tex));
+    g.add(goal(side, tex, rig));
+    // Cung đầu vòng cấm ("D"): phần đường tròn quanh chấm phạt đền nằm ngoài vòng cấm. Mặt phẳng
+    // được xoay −90° quanh x nên góc của RingGeometry đo từ +x về phía −z.
+    const reach = Math.acos((PENALTY_AREA_DEPTH - PENALTY_SPOT_DIST) / CENTER_CIRCLE_RADIUS);
+    const facing = side === 1 ? Math.PI : 0;
+    g.add(arc(spot.position.x, 0, CENTER_CIRCLE_RADIUS, facing - reach, 2 * reach, chalk));
+    // Cung phạt góc bán kính 1 m, quay vào trong sân.
+    for (const zs of [-1, 1] as const) {
+      const mid = Math.atan2(zs, -side);
+      g.add(arc(xLine, zs * HALF_WIDTH, 1, mid - Math.PI / 4, Math.PI / 2, chalk));
+    }
   }
   return g;
 }
