@@ -156,5 +156,5 @@ describe('AI chuyền/sút phải xoay người trước', () => {
     }
     expect(kicks).toBeGreaterThan(20);
     expect(worstCos).toBeGreaterThan(-0.25);
-  });
+  }, 30_000); // 20.000 bước: chậm khi chạy song song cả repo
 });
