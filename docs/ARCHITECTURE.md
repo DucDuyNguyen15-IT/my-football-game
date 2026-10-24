@@ -267,6 +267,8 @@ Quà tân thủ hiện không tặng xu nên không sinh dòng ledger (vì `amou
 | props | jsonb | |
 | created_at | timestamptz | **BRIN** index (chuỗi thời gian, chỉ thêm) + index `(name, created_at)` |
 
+**Hiện thực (task 6.1b):** `apps/server/src/db/schema.ts` + migration `apps/server/drizzle/` (trigger append-only ở `0001_coin_tx_append_only.sql`). Thêm so với bảng trên, cùng tinh thần: `CHECK` cho `pack_openings.payment` (`coins`/`free_credit`) và `price ≥ 0`, `coin_transactions.ref_type` theo danh sách, `matches.reward ≥ 0`, `daily_missions.progress ≥ 0`; index `analytics_events(user_id)` và `player_cards(card_id)` (mọi FK có index). Mã lỗi Postgres: CHECK `23514`, UNIQUE `23505`, FK RESTRICT `23503`, trigger append-only `23001`.
+
 ### 3.3 Dữ liệu ở config thay vì DB
 
 Danh mục gói (`pack1`, `pack5`), thành phần hộp 100 phiếu, bảng thưởng trận, trần 15 trận/ngày, bảng ép thẻ, giá bán thẻ, danh sách nhiệm vụ → `apps/server/src/config/economy.ts` (PRD §7.4: "mọi con số nằm trong file config phía server"). Client lấy các số cần hiển thị qua API (`GET /packs`, `GET /config/economy`), **không** import trực tiếp.

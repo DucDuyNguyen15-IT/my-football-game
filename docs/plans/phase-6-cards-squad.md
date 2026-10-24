@@ -19,7 +19,7 @@
 - **Kiểm chứng:** route thử ném `AppError` trả đúng envelope `ApiError`; body sai → 400 có `details`; `FakeClock.advance` đổi `app.clock.now()`.
 - **Xong khi:** server kết nối Postgres dev, lỗi theo chuẩn, có đồng hồ tiêm được.
 
-### 6.1b — Schema DB & migration nền `[ ]`
+### 6.1b — Schema DB & migration nền `[x]`
 - **Phụ thuộc:** 6.1a · **Model:** strongest
 - **Bối cảnh:** ARCHITECTURE §3.1–3.4 (toàn bộ); `apps/server/src/plugins/db.ts`.
 - **Việc cần làm:** `src/db/schema.ts`: **mọi bảng, enum, CHECK, UNIQUE, index** ở §3.2 (kể cả bảng dùng ở GĐ7, để có một migration nền); migration SQL tay cho trigger append-only của `coin_transactions`; script `db:generate`, `db:migrate`, `db:seed`, `db:reset` (dev), `admin:grant <username>`.

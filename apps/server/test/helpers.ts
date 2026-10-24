@@ -3,10 +3,9 @@ import { afterAll } from 'vitest';
 import { buildApp } from '../src/app';
 import type { Clock } from '../src/clock';
 import { createDb, type Db } from '../src/db/client';
+import { TEST_DATABASE_URL } from './db-url';
 
-/** DB test: `DATABASE_URL_TEST`, mặc định DB `pitch_test` của `docker-compose.dev.yml`. */
-export const TEST_DATABASE_URL =
-  process.env.DATABASE_URL_TEST ?? 'postgres://pitch:pitch@localhost:5432/pitch_test';
+export { TEST_DATABASE_URL };
 
 /** Đồng hồ giả cho test: đứng yên tới khi `set`/`advance`. */
 export class FakeClock implements Clock {
