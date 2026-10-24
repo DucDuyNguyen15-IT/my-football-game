@@ -76,6 +76,7 @@
 - **Phụ thuộc:** 6.3b, **GĐ4 xong** · **Song song với:** 6.4–6.5 · **Model:** default
 - **Bối cảnh:** ADR-0003; ARCHITECTURE §2.1 (cấu trúc web), §4.1; `docs/DESIGN.md` (tokens); `apps/web/src/api/client.ts`.
 - **Việc cần làm:** cài `@tanstack/react-query` và `react-router` (nếu 5.9 chưa cài). `api/client.ts`: `apiFetch(path, schema, init)` — `credentials: 'include'`, request đổi dữ liệu luôn gửi JSON (tối thiểu `{}`), parse `{data}` bằng schema, ném `ApiClientError(code)` từ `ApiError`. Hook `useMe`. Màn đăng ký/đăng nhập, layout + menu (Đá với máy, Cửa hàng, Kho thẻ, Đội hình), chặn route khi chưa đăng nhập. Áp design tokens.
+- **Màn khởi động = intro 3D** (người dùng yêu cầu 2026-10-25): cảnh Three.js ngắn (~3–5 s) trước màn đăng nhập/menu — VD camera bay qua sân đêm, đèn sân bật, logo chữ MFG hiện ra; bấm/phím bất kỳ để bỏ qua; chỉ chạy lần đầu mỗi phiên (sessionStorage); tôn trọng `prefers-reduced-motion` (hiện tĩnh). Tái dùng sân/ánh sáng của renderer trận (`apps/web/src/match/`) nếu được, lazy-load để không chặn màn đăng nhập.
 - **Kiểm chứng:** test client: response sai schema → lỗi rõ ràng; POST không body vẫn gửi `{}`; thủ công: đăng ký → vào menu, F5 vẫn đăng nhập, đăng xuất về màn đăng nhập.
 - **Xong khi:** người chơi đăng ký/đăng nhập được trên web.
 
