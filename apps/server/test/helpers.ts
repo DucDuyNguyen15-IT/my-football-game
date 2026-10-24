@@ -4,6 +4,8 @@ import { buildApp } from '../src/app';
 import type { Clock } from '../src/clock';
 import { createDb, type Db } from '../src/db/client';
 import { TEST_DATABASE_URL } from './db-url';
+import { users } from '../src/db/schema';
+import { hashPassword } from '../src/services/auth';
 
 export { TEST_DATABASE_URL };
 
@@ -52,4 +54,17 @@ export async function resetTestData(db: Db): Promise<void> {
   if (rows.rows.length === 0) return;
   const names = rows.rows.map((r) => `"public"."${r.tablename}"`).join(', ');
   await db.execute(sql.raw(`truncate ${names} restart identity cascade`));
+}
+
+/** Tạo user trực tiếp trong DB (trước khi có /auth/register). */
+export async function createUser(
+  db: Db,
+  username = 'tester',
+  password = 'mat-khau-1',
+): Promise<typeof users.$inferSelect> {
+  const [user] = await db
+    .insert(users)
+    .values({ username, passwordHash: await hashPassword(password) })
+    .returning();
+  return user!;
 }

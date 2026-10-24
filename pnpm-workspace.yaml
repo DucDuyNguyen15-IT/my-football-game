@@ -1,3 +1,8 @@
 packages:
   - apps/*
   - packages/*
+
+# Không chạy script cài đặt: argon2 và esbuild đều có sẵn bản build cho nền tảng.
+allowBuilds:
+  argon2: false
+  esbuild: false
