@@ -1,12 +1,11 @@
 import { buildApp } from './app';
+import { loadEnv } from './config/env';
 
-const port = Number(process.env.PORT ?? 3000);
-const host = process.env.HOST ?? '127.0.0.1';
-
-const app = buildApp({ logger: true });
+const env = loadEnv();
+const app = buildApp({ databaseUrl: env.databaseUrl, logger: true });
 
 try {
-  await app.listen({ port, host });
+  await app.listen({ port: env.port, host: env.host });
 } catch (err) {
   app.log.error(err);
   process.exit(1);
