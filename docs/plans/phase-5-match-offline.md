@@ -169,6 +169,18 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Kiểm chứng:** test `balance.slow.test.ts` khẳng định ngưỡng — loại khỏi `pnpm test` mặc định (`exclude` trong config sim), chạy bằng `pnpm --filter @pitch/sim test:slow`; ghi số FPS đo được vào `docs/PROGRESS.md`.
 - **Xong khi:** đạt 3 tiêu chí ROADMAP GĐ5 → tick ROADMAP, cập nhật CLAUDE.md, PROGRESS.
 
+### 5.21 — Đồ hoạ chi tiết hơn + tuỳ chọn bật/tắt từng chi tiết `[ ]`
+- **Phụ thuộc:** 5.13, 5.20 · **Model:** default · _Thêm 2026-10-25 theo yêu cầu chủ dự án: máy người chơi đủ mạnh, muốn đẹp hơn; người chơi tự tắt chi tiết nếu giật._
+- **Bối cảnh:** ADR-0009, `apps/web/src/game/render/quality.ts`, `apps/web/src/game/three/*`. Chỉ render (web), không đụng `packages/sim` ngoài việc đọc trạng thái.
+- **Việc cần làm:**
+  - **Sân & cỏ:** sọc cắt máy rõ hơn, sợi cỏ 3D (instancing) gần camera, vạch vôi sắc nét, lưới khung thành rung khi bóng vào.
+  - **Cầu thủ:** số + tên hư cấu trên áo, màu áo/quần/tất theo đội, đa dạng tóc/màu da, bóng chân rõ hơn.
+  - **Sân vận động:** khán giả trên khán đài (instancing/billboard), cổ vũ khi có bàn; bảng quảng cáo thương hiệu hư cấu quanh sân.
+  - **Ánh sáng & camera:** chế độ ban ngày/hoàng hôn/đêm, SSAO, quay chậm/replay khi ghi bàn.
+  - **Cài đặt:** giữ mức Thấp/Cao làm preset, thêm mục "Tuỳ chỉnh" bật/tắt từng chi tiết (cỏ 3D, khán giả, SSAO, bloom, bóng đổ, replay…); lưu localStorage.
+- **Kiểm chứng:** test cấu hình preset/tuỳ chỉnh trong `quality.test.ts`; đo FPS: Cao (bật hết) ≥ 55 trên máy dev, Thấp không tụt so với 5.20.
+- **Xong khi:** mọi chi tiết trên có công tắc riêng, preset hoạt động, FPS đạt.
+
 ### 5.16 — Chọc khe W / Q+W (Could) `[ ]`
 - **Phụ thuộc:** 5.4 · **Model:** default
 - **Bối cảnh:** PRD §5 (dòng "Điều khiển"), DESIGN §6.2, `packages/sim/src/actions/pass.ts`, `src/match.ts`, `src/types.ts`.
