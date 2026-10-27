@@ -103,6 +103,14 @@ a {
 .btn--secondary:hover:not(:disabled) {
   background: var(--c-surface-2);
 }
+.btn--danger {
+  background: transparent;
+  border-color: var(--c-danger);
+  color: var(--c-danger);
+}
+.btn--danger:hover:not(:disabled) {
+  background: rgb(255 90 78 / 0.12);
+}
 .btn--lg {
   height: 48px;
   font-size: var(--fs-lg);
@@ -190,6 +198,9 @@ a {
   color: var(--c-coin);
 }
 .coin__icon {
+  display: inline-block;
+  flex: none;
+  vertical-align: -2px;
   width: 16px;
   height: 16px;
   border: 2px solid var(--c-coin);

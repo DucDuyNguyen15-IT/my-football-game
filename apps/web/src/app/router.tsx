@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
 import { AuthPage } from '../features/auth/AuthPage';
+import { CollectionPage } from '../features/collection/CollectionPage';
 import { ComingSoon, HomePage } from '../features/home/HomePage';
 import { IntroGate } from '../features/intro/IntroGate';
 import { ShopPage } from '../features/shop/ShopPage';
@@ -32,7 +33,7 @@ export const router = createBrowserRouter([
             children: [
               { index: true, element: <HomePage /> },
               { path: '/shop', element: <ShopPage /> },
-              { path: '/collection', element: <ComingSoon title="Kho thẻ" /> },
+              { path: '/collection', element: <CollectionPage /> },
               { path: '/squad', element: <ComingSoon title="Đội hình" /> },
             ],
           },

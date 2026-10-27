@@ -1,0 +1,219 @@
+/* Kho thẻ (DESIGN.md §6.4). */
+.coll {
+  display: grid;
+  gap: var(--sp-4);
+  padding-bottom: 80px; /* chừa chỗ thanh bán */
+}
+.coll__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.coll__title {
+  margin: 0;
+  margin-right: auto;
+}
+.coll__title .muted {
+  font-weight: var(--fw-semibold);
+}
+.coll__search {
+  width: min(260px, 100%);
+}
+.coll__sort {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.coll__filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-3) var(--sp-6);
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.chip {
+  height: 30px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--c-line-strong);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--c-text);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.chip:hover {
+  background: var(--c-surface-2);
+}
+.chip[aria-pressed='true'] {
+  background: var(--c-accent);
+  border-color: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-weight: var(--fw-semibold);
+}
+.chip:focus-visible,
+.coll-item__card:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
+}
+.coll__notice {
+  margin: 0;
+  color: var(--c-success);
+}
+
+.coll__body {
+  display: grid;
+  grid-template-columns: 1fr minmax(260px, 300px);
+  gap: var(--sp-5);
+  align-items: start;
+}
+@media (max-width: 860px) {
+  .coll__body {
+    grid-template-columns: 1fr;
+  }
+  .coll__detail {
+    order: -1;
+  }
+}
+.coll__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-w-md), 1fr));
+  gap: var(--sp-4);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.coll-item {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+}
+.coll-item__card {
+  padding: 0;
+  border: 0;
+  background: none;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.coll-item__card:hover {
+  transform: translateY(-3px);
+}
+.coll-item.is-active .coll-item__card {
+  filter: drop-shadow(0 0 10px rgb(200 240 49 / 0.45));
+}
+.coll-item.is-selected .coll-item__card {
+  outline: 2px solid var(--c-danger);
+  outline-offset: 3px;
+}
+.coll-item__foot {
+  font-size: var(--fs-sm);
+  min-height: 24px;
+}
+.coll-item__squad {
+  color: var(--c-info);
+}
+.coll-item__pick {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--c-text-muted);
+  cursor: pointer;
+}
+.coll-item__pick input {
+  accent-color: var(--c-danger);
+}
+
+.coll__detail {
+  position: sticky;
+  top: calc(56px + var(--sp-4));
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-4);
+}
+.coll__facts {
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: var(--sp-1) var(--sp-4);
+  margin: 0;
+  width: 100%;
+}
+.coll__facts dt {
+  color: var(--c-text-muted);
+}
+.coll__facts dd {
+  margin: 0;
+  text-align: right;
+  font-family: var(--font-mono, inherit);
+}
+.coll__reason {
+  margin: 0;
+  color: var(--c-info);
+}
+.coll__empty {
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-3);
+}
+
+.coll__bar {
+  position: fixed;
+  left: 50%;
+  bottom: var(--sp-4);
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
+  z-index: 20;
+}
+
+.sell-dialog {
+  max-width: 420px;
+  color: var(--c-text);
+}
+.sell-dialog::backdrop {
+  background: var(--c-scrim);
+}
+.sell-dialog__warn {
+  margin: 0 0 var(--sp-3);
+  padding-left: var(--sp-5);
+  color: var(--c-warning);
+}
+.sell-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+}
+
+/* Nút bấm giữ (components/HoldButton.tsx) */
+.hold {
+  position: relative;
+  overflow: hidden;
+}
+.hold__fill {
+  position: absolute;
+  inset: 0;
+  background: rgb(255 90 78 / 0.35);
+  transform: scaleX(0);
+  transform-origin: left;
+}
+.hold.is-holding .hold__fill {
+  transform: scaleX(1);
+  transition: transform var(--hold-ms, 1s) linear;
+}
+.hold__label {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+}

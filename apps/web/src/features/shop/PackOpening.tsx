@@ -15,6 +15,8 @@ export interface PackOpeningProps {
   onBack: () => void;
   /** Nút ở bước tổng kết (Mở thêm, Xem trong kho). */
   summaryActions: ReactNode;
+  /** `PlayerCard.id` của thẻ mẫu chưa từng có trong kho → nhãn "MỚI". */
+  newIds?: ReadonlySet<string>;
 }
 
 /**
@@ -28,6 +30,7 @@ export function PackOpening({
   packNote,
   onBack,
   summaryActions,
+  newIds,
 }: PackOpeningProps) {
   const cards = result.cards.map((pc) => ({ pc, card: catalog.get(pc.cardId) }));
   const [phase, setPhase] = useState<Phase>('pack');
@@ -150,7 +153,12 @@ export function PackOpening({
                         </button>
                         <div className="reveal-face reveal-front">
                           {card ? (
-                            <CardView card={card} size="lg" level={pc.level} />
+                            <CardView
+                              card={card}
+                              size="lg"
+                              level={pc.level}
+                              isNew={newIds?.has(pc.id)}
+                            />
                           ) : (
                             <p className="muted">Thẻ #{pc.cardId}</p>
                           )}

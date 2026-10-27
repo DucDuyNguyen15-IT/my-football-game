@@ -7,8 +7,10 @@ import { AppError, registerErrors } from './plugins/errors';
 import { registerAuth } from './plugins/auth';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCardRoutes } from './routes/cards';
+import { registerConfigRoutes } from './routes/config';
 import { registerDevRoutes } from './routes/dev';
 import { registerPackRoutes } from './routes/packs';
+import { registerPlayerCardRoutes } from './routes/player-cards';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -46,11 +48,14 @@ export function buildApp(opts: BuildAppOptions = {}) {
     return { data: { status: 'ok' } };
   });
 
+  registerConfigRoutes(app);
+
   if (app.hasDecorator('db')) {
     registerAuth(app);
     registerAuthRoutes(app);
     registerCardRoutes(app);
     registerPackRoutes(app);
+    registerPlayerCardRoutes(app);
     if (opts.enableDevRoutes) registerDevRoutes(app);
   }
 
