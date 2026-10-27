@@ -10,3 +10,5 @@ export * from './api/me';
 export * from './api/packs';
 export * from './api/player-cards';
 export * from './match';
+export * from './squad';
+export * from './api/squad';

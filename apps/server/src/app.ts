@@ -11,6 +11,7 @@ import { registerConfigRoutes } from './routes/config';
 import { registerDevRoutes } from './routes/dev';
 import { registerPackRoutes } from './routes/packs';
 import { registerPlayerCardRoutes } from './routes/player-cards';
+import { registerSquadRoutes } from './routes/squad';
 
 declare module 'fastify' {
   interface FastifyInstance {
@@ -56,6 +57,7 @@ export function buildApp(opts: BuildAppOptions = {}) {
     registerCardRoutes(app);
     registerPackRoutes(app);
     registerPlayerCardRoutes(app);
+    registerSquadRoutes(app);
     if (opts.enableDevRoutes) registerDevRoutes(app);
   }
 
