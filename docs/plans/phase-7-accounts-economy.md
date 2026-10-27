@@ -54,3 +54,11 @@
 - **Việc cần làm:** sau đăng ký dẫn thẳng: mở gói miễn phí → xem đội hình xếp sẵn → "Đá với máy – Dễ". Lớp hướng dẫn phím ở trận đầu (bỏ qua được, nhớ đã xem trong localStorage). Đo `register → match_start` bằng analytics.
 - **Kiểm chứng:** thủ công: tài khoản mới vào trận đầu < 2 phút; truy vấn analytics ra thời gian trung vị.
 - **Xong khi:** luồng §9 chạy trơn. Cuối GĐ7: tick ROADMAP, cập nhật CLAUDE.md, PROGRESS.
+
+### 7.7 — Đăng nhập Google + làm đẹp màn đăng nhập/đăng ký `[ ]`
+- **Phụ thuộc:** 7.1 · **Model:** strongest
+- **Bối cảnh:** [ADR-0010](../adr/0010-google-sign-in.md); ADR-0004; `apps/server/src/routes/auth.ts`, `services/auth.ts`; `apps/web/src/features/auth/AuthPage.tsx`; `docs/DESIGN.md`.
+- **Việc cần làm:** migration `users.password_hash` nullable + `google_sub` unique; `POST /auth/google { idToken, username? }` kiểm ID token (aud = `GOOGLE_CLIENT_ID`), user cũ → tạo phiên, user mới → yêu cầu chọn username rồi tạo tài khoản + quà tân thủ trong một transaction (dùng chung code đăng ký). Web: nút Google (GIS), ẩn nếu chưa cấu hình; làm lại màn đăng nhập/đăng ký cho chỉn chu (bố cục, minh hoạ, trạng thái lỗi/chờ, hiện/ẩn mật khẩu).
+- **Cần người dùng:** tạo OAuth Client ID (Web) trong Google Cloud Console, thêm origin `http://localhost:5173` + domain deploy, gửi Client ID.
+- **Kiểm chứng:** test: token sai aud/hết hạn → 401; cùng `sub` đăng nhập lại → cùng user; user mới nhận đúng quà tân thủ; tài khoản Google không đăng nhập được bằng mật khẩu. Thủ công: đăng nhập Google thật.
+- **Xong khi:** đăng nhập Google chạy ở dev; màn auth mới được duyệt.
