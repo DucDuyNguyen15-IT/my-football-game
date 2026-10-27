@@ -5,5 +5,7 @@ import { configDefaults, defineConfig } from 'vitest/config';
 export default defineConfig({
   test: {
     exclude: [...configDefaults.exclude, '**/*.slow.test.ts'],
+    // Vài test mô phỏng cả trận (CPU thuần, tất định) mất 5–15 s khi máy bận/chạy cả repo song song.
+    testTimeout: 30_000,
   },
 });
