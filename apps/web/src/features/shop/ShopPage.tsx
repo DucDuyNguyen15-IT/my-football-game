@@ -5,6 +5,8 @@ import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
 import { ApiClientError } from '../../api/client';
 import { usePacks, useOpenPack } from '../../api/packs';
+import { usePlayerCards } from '../../api/player-cards';
+import { newCardIds } from '../collection/collection';
 import { BoxMeter, onlyBronzeLeft } from './BoxMeter';
 import { PackOpening } from './PackOpening';
 import './shop.css';
@@ -28,6 +30,7 @@ interface Opened {
   payment: PackPayment;
   /** Đổi khi mở gói mới → PackOpening dựng lại từ đầu. */
   n: number;
+  newIds?: ReadonlySet<string>;
 }
 
 /** Cửa hàng (DESIGN.md §6.6): hộp phiếu bên trái, gói 1/gói 5 bên phải; mua xong chuyển sang mở thẻ. */
@@ -36,6 +39,7 @@ export function ShopPage() {
   const packs = usePacks();
   const catalog = useCardCatalog();
   const opener = useOpenPack();
+  const owned = usePlayerCards();
   const navigate = useNavigate();
   const [opened, setOpened] = useState<Opened | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
@@ -64,9 +68,14 @@ export function ShopPage() {
 
   async function buy(code: string, payment: PackPayment) {
     setBuying(`${code}:${payment}`);
+    // Chụp kho trước khi mở (cache sẽ bị làm mới ngay sau đó) để gắn nhãn "MỚI".
+    const ownedBefore = owned.data && new Set(owned.data.map((pc) => pc.cardId));
     try {
       const result = await opener.open(code, payment);
-      if (result) setOpened((o) => ({ result, code, payment, n: (o?.n ?? 0) + 1 }));
+      if (result) {
+        const newIds = ownedBefore && newCardIds(result.cards, ownedBefore);
+        setOpened((o) => ({ result, code, payment, n: (o?.n ?? 0) + 1, newIds }));
+      }
     } catch {
       /* lỗi hiện qua opener.error */
     } finally {
@@ -109,6 +118,7 @@ export function ShopPage() {
         key={opened.n}
         result={opened.result}
         catalog={catalog.data}
+        newIds={opened.newIds}
         title={`Gói ${opened.result.cards.length} thẻ`}
         packNote={opened.payment === 'free_credit' ? 'Miễn phí · quà tân thủ' : 'Bấm để mở'}
         onBack={() => {

@@ -39,3 +39,6 @@ export const PACKS = {
   pack5: { size: 5, price: 450, guarantee: true, freeCredit: true },
 } as const;
 export type PackCode = keyof typeof PACKS;
+
+/** Giá hệ thống mua lại thẻ theo độ hiếm, không phụ thuộc cấp + (PRD §6.6, F11). */
+export const CARD_SALE_PRICE = { bronze: 10, silver: 25, gold: 80, legend: 300 } as const;
