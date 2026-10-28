@@ -2,9 +2,10 @@ import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CollectionPage } from '../features/collection/CollectionPage';
-import { ComingSoon, HomePage } from '../features/home/HomePage';
+import { HomePage } from '../features/home/HomePage';
 import { IntroGate } from '../features/intro/IntroGate';
 import { ShopPage } from '../features/shop/ShopPage';
+import { SquadPage } from '../features/squad/SquadPage';
 import { AppLayout, RequireAuth } from './AppLayout';
 
 // Three.js (~600 KB) chỉ tải khi vào trận.
@@ -34,7 +35,7 @@ export const router = createBrowserRouter([
               { index: true, element: <HomePage /> },
               { path: '/shop', element: <ShopPage /> },
               { path: '/collection', element: <CollectionPage /> },
-              { path: '/squad', element: <ComingSoon title="Đội hình" /> },
+              { path: '/squad', element: <SquadPage /> },
             ],
           },
         ],
