@@ -4,9 +4,13 @@ import { clearSessionCookie, requireAuth, SESSION_COOKIE, setSessionCookie } fro
 import { AppError } from '../plugins/errors';
 import {
   burnPasswordCheck,
+  clearLoginFailures,
   createSession,
   destroySession,
   findUserByUsername,
+  loginLockRemainingMs,
+  purgeExpiredSessions,
+  recordLoginFailure,
   registerUser,
   toMe,
   verifyPassword,
@@ -25,15 +29,28 @@ export function registerAuthRoutes(app: FastifyInstance): void {
 
   app.post('/api/v1/auth/login', async (req, reply): Promise<MeResponse> => {
     const { username, password } = LoginRequest.parse(req.body);
+    const now = app.clock.now();
     const user = await findUserByUsername(app.db, username);
-    if (!user) await burnPasswordCheck(password);
-    if (!user || !(await verifyPassword(user.passwordHash, password))) {
+    if (!user) {
+      await burnPasswordCheck(password);
       throw new AppError('invalid_credentials', 401, 'Sai tên đăng nhập hoặc mật khẩu');
     }
+    // Đang khoá thì từ chối trước khi kiểm mật khẩu — kể cả mật khẩu đúng (PRD §8).
+    const lockedMs = loginLockRemainingMs(user, now);
+    if (lockedMs > 0) {
+      reply.header('retry-after', String(Math.ceil(lockedMs / 1000)));
+      throw new AppError('login_locked', 429, 'Đăng nhập sai quá nhiều lần, thử lại sau 15 phút');
+    }
+    if (!(await verifyPassword(user.passwordHash, password))) {
+      await recordLoginFailure(app.db, user.id, now);
+      throw new AppError('invalid_credentials', 401, 'Sai tên đăng nhập hoặc mật khẩu');
+    }
+    await clearLoginFailures(app.db, user);
     // Xoay token: bỏ phiên cũ trên trình duyệt này (nếu có) rồi cấp phiên mới.
     const old = req.cookies[SESSION_COOKIE];
     if (old) await destroySession(app.db, old);
-    const { token, expiresAt } = await createSession(app.db, user.id, app.clock.now());
+    await purgeExpiredSessions(app.db, now);
+    const { token, expiresAt } = await createSession(app.db, user.id, now);
     setSessionCookie(reply, token, expiresAt);
     return { data: toMe(user) };
   });

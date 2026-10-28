@@ -17,6 +17,7 @@
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",
+    "@fastify/rate-limit": "^11.2.1",
     "@pitch/shared": "workspace:*",
     "@pitch/sim": "workspace:*",
     "argon2": "^0.45.1",

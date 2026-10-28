@@ -6,6 +6,7 @@ import { cryptoRng, type Rng } from './domain/rng';
 import { pingDb, registerDb } from './plugins/db';
 import { AppError, registerErrors } from './plugins/errors';
 import { registerAuth } from './plugins/auth';
+import { DEFAULT_RATE_LIMIT, registerRateLimit, type RateLimitConfig } from './plugins/rate-limit';
 import { registerAuthRoutes } from './routes/auth';
 import { registerCardRoutes } from './routes/cards';
 import { registerConfigRoutes } from './routes/config';
@@ -33,13 +34,20 @@ export interface BuildAppOptions {
   enableDevRoutes?: boolean;
   /** Nguồn ngẫu nhiên tiêm được (test ép thẻ); mặc định `cryptoRng`. */
   rng?: Rng;
+  /** Giới hạn tần suất; `false` để tắt (test). Mặc định {@link DEFAULT_RATE_LIMIT}. */
+  rateLimit?: RateLimitConfig | false;
+  /** Cookie phiên có `Secure`; mặc định bật, `server.ts` chỉ bật ở production. */
+  secureCookies?: boolean;
+  /** Tin `X-Forwarded-For` từ reverse proxy (Caddy) để rate limit đúng IP người dùng. */
+  trustProxy?: boolean;
 }
 
 /** Tạo instance Fastify. Tách khỏi `server.ts` để test bằng `app.inject()` mà không mở cổng. */
 export function buildApp(opts: BuildAppOptions = {}) {
-  const app = Fastify({ logger: opts.logger ?? false });
+  const app = Fastify({ logger: opts.logger ?? false, trustProxy: opts.trustProxy ?? false });
   app.decorate('clock', opts.clock ?? systemClock);
   app.decorate('rng', opts.rng ?? cryptoRng);
+  app.decorate('secureCookies', opts.secureCookies ?? true);
   registerErrors(app);
   if (opts.db) registerDb(app, { db: opts.db });
   else if (opts.databaseUrl) registerDb(app, { url: opts.databaseUrl });
@@ -58,6 +66,7 @@ export function buildApp(opts: BuildAppOptions = {}) {
   registerConfigRoutes(app);
 
   if (app.hasDecorator('db')) {
+    registerRateLimit(app, opts.rateLimit ?? DEFAULT_RATE_LIMIT);
     registerAuth(app);
     registerAuthRoutes(app);
     registerCardRoutes(app);

@@ -1,6 +1,6 @@
 import { createHash, randomBytes } from 'node:crypto';
 import argon2 from 'argon2';
-import { and, eq, gt, sql } from 'drizzle-orm';
+import { and, eq, gt, lte, sql } from 'drizzle-orm';
 import type { Me } from '@pitch/shared';
 import {
   BOX_COMPOSITION,
@@ -83,6 +83,61 @@ export async function resolveSession(
   const renewedUntil = new Date(now.getTime() + SESSION_TTL_MS);
   await db.update(sessions).set({ expiresAt: renewedUntil }).where(eq(sessions.id, id));
   return { user: row.user, renewedUntil };
+}
+
+/** Xoá mọi phiên đã hết hạn (dùng index `sessions_expires_idx`). Trả số phiên đã xoá. */
+export async function purgeExpiredSessions(db: Db, now: Date): Promise<number> {
+  const deleted = await db
+    .delete(sessions)
+    .where(lte(sessions.expiresAt, now))
+    .returning({ id: sessions.id });
+  return deleted.length;
+}
+
+/** Khoá đăng nhập (PRD §8): sai {@link LOGIN_MAX_FAILURES} lần trong 15' → khoá 15'. */
+export const LOGIN_MAX_FAILURES = 5;
+export const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
+export const LOGIN_LOCK_MS = 15 * 60 * 1000;
+
+/** Số ms còn bị khoá đăng nhập (0 = không khoá). */
+export function loginLockRemainingMs(user: UserRow, now: Date): number {
+  return user.lockedUntil ? Math.max(0, user.lockedUntil.getTime() - now.getTime()) : 0;
+}
+
+/**
+ * Ghi một lần sai mật khẩu (khoá dòng `users` để các lần thử song song không đếm sót). Lần sai đầu
+ * tiên ngoài cửa sổ 15' mở cửa sổ mới; đủ 5 lần trong cửa sổ → đặt `locked_until` và xoá bộ đếm.
+ */
+export async function recordLoginFailure(db: Db, userId: number, now: Date): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [u] = await tx
+      .select({ count: users.failedLoginCount, windowStart: users.failedLoginWindowStart })
+      .from(users)
+      .where(eq(users.id, userId))
+      .for('update');
+    if (!u) return;
+    const inWindow =
+      u.windowStart !== null && now.getTime() - u.windowStart.getTime() < LOGIN_FAILURE_WINDOW_MS;
+    const count = inWindow ? u.count + 1 : 1;
+    const patch =
+      count >= LOGIN_MAX_FAILURES
+        ? {
+            failedLoginCount: 0,
+            failedLoginWindowStart: null,
+            lockedUntil: new Date(now.getTime() + LOGIN_LOCK_MS),
+          }
+        : { failedLoginCount: count, failedLoginWindowStart: inWindow ? u.windowStart : now };
+    await tx.update(users).set(patch).where(eq(users.id, userId));
+  });
+}
+
+/** Đăng nhập đúng → xoá bộ đếm/khoá cũ (chỉ ghi DB khi có gì để xoá). */
+export async function clearLoginFailures(db: Db, user: UserRow): Promise<void> {
+  if (user.failedLoginCount === 0 && !user.failedLoginWindowStart && !user.lockedUntil) return;
+  await db
+    .update(users)
+    .set({ failedLoginCount: 0, failedLoginWindowStart: null, lockedUntil: null })
+    .where(eq(users.id, user.id));
 }
 
 export function toMe(user: UserRow): Me {
