@@ -44,7 +44,7 @@ export function testDb(): Db {
 /** App nối DB test + đồng hồ giả. Nhớ `await app.close()` (không đóng pool dùng chung). */
 export function createTestApp(
   clock: FakeClock = new FakeClock(),
-  opts: Pick<BuildAppOptions, 'enableDevRoutes'> = {},
+  opts: Pick<BuildAppOptions, 'enableDevRoutes' | 'rng'> = {},
 ) {
   return { app: buildApp({ ...opts, db: testDb(), clock }), clock };
 }
