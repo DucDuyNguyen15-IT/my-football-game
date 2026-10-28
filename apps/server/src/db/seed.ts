@@ -3,9 +3,16 @@ import { fileURLToPath } from 'node:url';
 import { sql } from 'drizzle-orm';
 import type { Db } from './client';
 import { cards } from './schema';
+import type { Card } from '@pitch/shared';
+import { toCard } from '../services/cards';
 
 /** File danh mục thẻ do `scripts/generate-cards.ts` sinh ra (task 6.2). */
 export const CARDS_SEED_FILE = fileURLToPath(new URL('./seed/cards.json', import.meta.url));
+
+/** Đọc danh mục thẻ từ file seed (không qua DB) — cho test thuần và script cân bằng. */
+export function readSeedCards(file = CARDS_SEED_FILE): Card[] {
+  return (JSON.parse(readFileSync(file, 'utf8')) as (typeof cards.$inferSelect)[]).map(toCard);
+}
 
 /**
  * Nạp danh mục thẻ vào `cards` (ghi đè theo `id`, chạy lại nhiều lần được). Trả số thẻ đã nạp;

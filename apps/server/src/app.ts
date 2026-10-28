@@ -11,6 +11,7 @@ import { registerAuthRoutes } from './routes/auth';
 import { registerCardRoutes } from './routes/cards';
 import { registerConfigRoutes } from './routes/config';
 import { registerDevRoutes } from './routes/dev';
+import { registerMatchRoutes } from './routes/matches';
 import { registerPackRoutes } from './routes/packs';
 import { registerPlayerCardRoutes } from './routes/player-cards';
 import { registerSquadRoutes } from './routes/squad';
@@ -73,6 +74,7 @@ export function buildApp(opts: BuildAppOptions = {}) {
     registerPackRoutes(app);
     registerPlayerCardRoutes(app);
     registerSquadRoutes(app);
+    registerMatchRoutes(app);
     if (opts.enableDevRoutes) registerDevRoutes(app);
   }
 

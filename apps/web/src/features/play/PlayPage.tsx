@@ -1,13 +1,9 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate, useSearchParams } from 'react-router';
-import type { Difficulty } from '@pitch/shared';
-import {
-  cpuEasyTeam,
-  cpuHardTeam,
-  starterLikeTeam,
-  type MatchSetup,
-  type MatchState,
-} from '@pitch/sim';
+import { Link, useNavigate, useSearchParams } from 'react-router';
+import type { Difficulty, StartedMatch } from '@pitch/shared';
+import type { MatchSetup, MatchState } from '@pitch/sim';
+import { ApiClientError } from '../../api/client';
+import { useStartMatch } from '../../api/matches';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
 import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
@@ -32,9 +28,6 @@ import {
 } from './screens';
 import '../../styles/tokens.css';
 import './play.css';
-
-/** Seed mới mỗi lần vào trận; trận vs máy chạy ở client nên seed không cần bí mật (ADR-0006). */
-const newSeed = (): number => Math.floor(Math.random() * 2 ** 31);
 
 const EVENT_SHOW_MS = 3000;
 const GOAL_BANNER_MS = 1200;
@@ -62,12 +55,15 @@ function saveGraphics(g: GraphicsSettings): void {
 
 type Stage =
   | { kind: 'select' }
-  | { kind: 'match'; difficulty: Difficulty; seed: number }
+  | { kind: 'starting'; difficulty: Difficulty; error?: unknown }
+  /** `match.token` giữ lại để nộp kết quả (task 7.2). */
+  | { kind: 'match'; difficulty: Difficulty; match: StartedMatch }
   | { kind: 'result'; difficulty: Difficulty; hud: HudSnapshot };
 
 /**
- * `/play` — luồng một trận vs máy: chọn độ khó → trận → kết quả. Đội demo hư cấu (tới GĐ6 mới có
- * đội từ thẻ). Dev/test: `?half=<giây>`, `?autopilot=1` (bỏ qua màn chọn độ khó; `?difficulty=hard`).
+ * `/play` — luồng một trận vs máy: chọn độ khó → server dựng trận (`POST /matches`: đội của mình từ
+ * đội hình đã lưu, đội máy, seed, token) → trận → kết quả. Dev/test: `?half=<giây>`, `?autopilot=1`
+ * (bỏ qua màn chọn độ khó; `?difficulty=hard`).
  */
 export function PlayPage() {
   const [params] = useSearchParams();
@@ -79,26 +75,43 @@ export function PlayPage() {
       : {};
   const [stage, setStage] = useState<Stage>(() =>
     dev.autopilot
-      ? {
-          kind: 'match',
-          difficulty: params.get('difficulty') === 'hard' ? 'hard' : 'easy',
-          seed: newSeed(),
-        }
+      ? { kind: 'starting', difficulty: params.get('difficulty') === 'hard' ? 'hard' : 'easy' }
       : { kind: 'select' },
   );
+  const { mutate } = useStartMatch();
+  const start = useCallback(
+    (difficulty: Difficulty) => {
+      setStage({ kind: 'starting', difficulty });
+      mutate(difficulty, {
+        onSuccess: (match) => setStage({ kind: 'match', difficulty, match }),
+        onError: (error) => setStage({ kind: 'starting', difficulty, error }),
+      });
+    },
+    [mutate],
+  );
+  // Autopilot vào thẳng trận: gọi API một lần khi mở trang (không autopilot thì đã chọn bằng tay).
+  const autoStarted = useRef(!dev.autopilot);
+  useEffect(() => {
+    if (stage.kind !== 'starting' || autoStarted.current) return;
+    autoStarted.current = true;
+    start(stage.difficulty);
+  }, [stage, start]);
 
   return (
     <div className="play-root">
-      {stage.kind === 'select' && (
-        <DifficultySelect
-          onPick={(difficulty) => setStage({ kind: 'match', difficulty, seed: newSeed() })}
+      {stage.kind === 'select' && <DifficultySelect onPick={start} />}
+      {stage.kind === 'starting' && (
+        <MatchStarting
+          error={stage.error}
+          onRetry={() => start(stage.difficulty)}
+          onBack={() => setStage({ kind: 'select' })}
         />
       )}
       {stage.kind === 'match' && (
         <MatchView
-          key={stage.seed}
+          key={stage.match.matchId}
           difficulty={stage.difficulty}
-          seed={stage.seed}
+          match={stage.match}
           halfLengthSec={dev.halfLengthSec}
           autopilot={dev.autopilot ?? false}
           onEnd={(hud) => setStage({ kind: 'result', difficulty: stage.difficulty, hud })}
@@ -106,37 +119,76 @@ export function PlayPage() {
         />
       )}
       {stage.kind === 'result' && (
-        <ResultScreen
-          hud={stage.hud}
-          onRematch={() =>
-            setStage({ kind: 'match', difficulty: stage.difficulty, seed: newSeed() })
-          }
-        />
+        <ResultScreen hud={stage.hud} onRematch={() => start(stage.difficulty)} />
       )}
     </div>
   );
 }
 
+interface MatchStartingProps {
+  error: unknown;
+  onRetry: () => void;
+  onBack: () => void;
+}
+
+/** Chờ server dựng trận; lỗi đội hình (`invalid_squad`) → dẫn sang màn đội hình. */
+function MatchStarting({ error, onRetry, onBack }: MatchStartingProps) {
+  if (!error) {
+    return (
+      <section className="screen" aria-busy="true">
+        <p className="screen-title" role="status">
+          Đang chuẩn bị trận…
+        </p>
+      </section>
+    );
+  }
+  const squadIssue = error instanceof ApiClientError && error.code === 'invalid_squad';
+  const message =
+    error instanceof ApiClientError ? error.message : 'Không bắt đầu được trận. Thử lại sau.';
+  return (
+    <section className="screen" aria-labelledby="start-error-title">
+      <h1 id="start-error-title" className="screen-title">
+        {squadIssue ? 'Đội hình chưa đủ' : 'Không vào được trận'}
+      </h1>
+      <p role="alert">{message}</p>
+      <div className="difficulty-list">
+        {squadIssue ? (
+          <Link to="/squad" className="btn btn--big" autoFocus>
+            Sửa đội hình
+          </Link>
+        ) : (
+          <button type="button" className="btn btn--big" autoFocus onClick={onRetry}>
+            Thử lại
+          </button>
+        )}
+        <button type="button" className="btn btn--ghost" onClick={onBack}>
+          Chọn lại độ khó
+        </button>
+      </div>
+    </section>
+  );
+}
+
 interface MatchViewProps {
   difficulty: Difficulty;
-  seed: number;
+  match: StartedMatch;
   halfLengthSec: number | undefined;
   autopilot: boolean;
   onEnd: (hud: HudSnapshot) => void;
   onQuit: () => void;
 }
 
-function MatchView({ difficulty, seed, halfLengthSec, autopilot, onEnd, onQuit }: MatchViewProps) {
+function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit }: MatchViewProps) {
   const setup = useMemo<MatchSetup>(
     () => ({
-      home: starterLikeTeam,
-      away: difficulty === 'hard' ? cpuHardTeam : cpuEasyTeam,
+      home: match.home,
+      away: match.away,
       difficulty,
-      seed,
+      seed: match.seed,
       ...(halfLengthSec !== undefined && { halfLengthSec }),
       ...(autopilot && { autopilot }),
     }),
-    [difficulty, seed, halfLengthSec, autopilot],
+    [difficulty, match, halfLengthSec, autopilot],
   );
 
   const [hud, setHud] = useState<HudSnapshot | null>(null);
