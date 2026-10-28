@@ -42,3 +42,20 @@ export type PackCode = keyof typeof PACKS;
 
 /** Giá hệ thống mua lại thẻ theo độ hiếm, không phụ thuộc cấp + (PRD §6.6, F11). */
 export const CARD_SALE_PRICE = { bronze: 10, silver: 25, gold: 80, legend: 300 } as const;
+
+/**
+ * Bảng ép thẻ +1→+5 (PRD §6.5, F10). `steps[i]`: ép từ cấp `i` lên `i + 1`. Phí thật = `baseFee`
+ * × hệ số độ hiếm của thẻ được ép. Trượt → thẻ +`luckPerFail` điểm may mắn (tỉ lệ tối đa 100%).
+ */
+export const UPGRADE = {
+  maxLevel: 5,
+  luckPerFail: 10,
+  steps: [
+    { toLevel: 1, baseRate: 100, baseFee: 50 },
+    { toLevel: 2, baseRate: 80, baseFee: 100 },
+    { toLevel: 3, baseRate: 60, baseFee: 200 },
+    { toLevel: 4, baseRate: 40, baseFee: 400 },
+    { toLevel: 5, baseRate: 25, baseFee: 800 },
+  ],
+  rarityFeeMultiplier: { bronze: 1, silver: 2, gold: 3, legend: 5 },
+} as const;

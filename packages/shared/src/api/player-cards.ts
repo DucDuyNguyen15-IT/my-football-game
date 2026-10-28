@@ -49,3 +49,24 @@ export type SellCardsResult = z.infer<typeof SellCardsResult>;
 
 export const SellCardsResponse = dataEnvelope(SellCardsResult);
 export type SellCardsResponse = z.infer<typeof SellCardsResponse>;
+
+/** POST /api/v1/player-cards/:id/upgrade — kèm header `Idempotency-Key: <uuid>` (bắt buộc). F10. */
+export const UpgradeCardRequest = z.object({ materialId: Id });
+export type UpgradeCardRequest = z.infer<typeof UpgradeCardRequest>;
+
+/**
+ * Kết quả ép: `level`/`luck` là trạng thái thẻ **sau** lần ép, `rate` là tỉ lệ đã áp (cơ bản + may
+ * mắn), `fee` là phí đã trừ. Gửi lại cùng key → nhận lại nguyên văn kết quả này.
+ */
+export const UpgradeCardResult = z.object({
+  success: z.boolean(),
+  level: z.number().int().min(0).max(5),
+  luck: z.number().int().min(0).max(100),
+  rate: z.number().int().min(0).max(100),
+  fee: z.number().int().min(0),
+  balance: z.number().int().min(0),
+});
+export type UpgradeCardResult = z.infer<typeof UpgradeCardResult>;
+
+export const UpgradeCardResponse = dataEnvelope(UpgradeCardResult);
+export type UpgradeCardResponse = z.infer<typeof UpgradeCardResponse>;

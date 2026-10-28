@@ -2,6 +2,7 @@ import Fastify, { type FastifyServerOptions } from 'fastify';
 import type { HealthResponse } from '@pitch/shared';
 import { systemClock, type Clock } from './clock';
 import type { Db } from './db/client';
+import { cryptoRng, type Rng } from './domain/rng';
 import { pingDb, registerDb } from './plugins/db';
 import { AppError, registerErrors } from './plugins/errors';
 import { registerAuth } from './plugins/auth';
@@ -16,6 +17,8 @@ import { registerSquadRoutes } from './routes/squad';
 declare module 'fastify' {
   interface FastifyInstance {
     clock: Clock;
+    /** Nguồn ngẫu nhiên cho ép thẻ; mặc định CSPRNG (`node:crypto`). */
+    rng: Rng;
   }
 }
 
@@ -28,12 +31,15 @@ export interface BuildAppOptions {
   logger?: FastifyServerOptions['logger'];
   /** Đăng ký `/api/v1/dev/*` (từ `ENABLE_DEV_ROUTES=1`); mặc định tắt. */
   enableDevRoutes?: boolean;
+  /** Nguồn ngẫu nhiên tiêm được (test ép thẻ); mặc định `cryptoRng`. */
+  rng?: Rng;
 }
 
 /** Tạo instance Fastify. Tách khỏi `server.ts` để test bằng `app.inject()` mà không mở cổng. */
 export function buildApp(opts: BuildAppOptions = {}) {
   const app = Fastify({ logger: opts.logger ?? false });
   app.decorate('clock', opts.clock ?? systemClock);
+  app.decorate('rng', opts.rng ?? cryptoRng);
   registerErrors(app);
   if (opts.db) registerDb(app, { db: opts.db });
   else if (opts.databaseUrl) registerDb(app, { url: opts.databaseUrl });
