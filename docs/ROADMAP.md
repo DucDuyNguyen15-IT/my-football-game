@@ -133,7 +133,7 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 **Phạm vi gợi ý:** dữ liệu cầu thủ hư cấu (seed), gói thẻ, animation mở thẻ, kho thẻ (lọc/sắp xếp), xếp đội hình + sơ đồ chiến thuật, chỉ số thẻ → tốc độ/sút/chuyền trong trận, (tuỳ chọn) nâng cấp/ép thẻ.
 
 **Hoàn thành khi:**
-- [ ] Mở thẻ → thẻ vào kho → đưa vào đội hình → đá trận bằng đội đó
+- [x] Mở thẻ → thẻ vào kho → đưa vào đội hình → đá trận bằng đội đó
 - [ ] Test phân phối tỉ lệ rơi (vd. 10.000 lần mở) khớp PRD ± sai số
 
 ---

@@ -6,6 +6,7 @@ export * from './api/cards';
 export * from './api/config';
 export * from './api/dev';
 export * from './api/health';
+export * from './api/matches';
 export * from './api/me';
 export * from './api/packs';
 export * from './api/player-cards';

@@ -1,4 +1,4 @@
-import type { Difficulty } from '@pitch/shared';
+import type { Difficulty, MatchTeamSetup } from '@pitch/shared';
 import { cpuEasyTeam, cpuHardTeam, starterLikeTeam } from './fixtures/demoTeams';
 import { createMatch, step } from './match';
 import { TICK_RATE } from './tick';
@@ -24,14 +24,29 @@ export interface BalanceResult {
   winRate: number;
 }
 
+/**
+ * Đội dùng khi chạy cân bằng. Mặc định là đội mẫu trong `fixtures/`; server truyền đội thật
+ * (11 thẻ khởi đầu + bộ sinh đội máy, task 6.11) qua `pnpm --filter @pitch/server balance`.
+ */
+export interface BalanceTeams {
+  home: MatchTeamSetup;
+  away: (opponent: Difficulty, seed: number) => MatchTeamSetup;
+}
+
+export const FIXTURE_BALANCE_TEAMS: BalanceTeams = {
+  home: starterLikeTeam,
+  away: (opponent) => (opponent === 'hard' ? cpuHardTeam : cpuEasyTeam),
+};
+
 export function balanceSetup(
   opponent: Difficulty,
   seed: number,
   halfLengthSec?: number,
+  teams: BalanceTeams = FIXTURE_BALANCE_TEAMS,
 ): MatchSetup {
   return {
-    home: starterLikeTeam,
-    away: opponent === 'hard' ? cpuHardTeam : cpuEasyTeam,
+    home: teams.home,
+    away: teams.away(opponent, seed),
     seed,
     difficulty: opponent,
     autopilot: true,
@@ -56,6 +71,7 @@ export function runBalance(
   opponent: Difficulty,
   seeds: readonly number[] = BALANCE_SEEDS,
   halfLengthSec?: number,
+  teams: BalanceTeams = FIXTURE_BALANCE_TEAMS,
 ): BalanceResult {
   const r: BalanceResult = {
     opponent,
@@ -68,7 +84,7 @@ export function runBalance(
     winRate: 0,
   };
   for (const seed of seeds) {
-    const { score } = playRegulation(balanceSetup(opponent, seed, halfLengthSec));
+    const { score } = playRegulation(balanceSetup(opponent, seed, halfLengthSec, teams));
     r.matches++;
     r.goalsFor += score.home;
     r.goalsAgainst += score.away;

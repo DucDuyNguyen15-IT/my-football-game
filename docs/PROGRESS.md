@@ -4,6 +4,9 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
+## Giai đoạn 6 — ghi chú giữa giai đoạn (đang làm)
+- 6.11 (2026-10-28): đá trận bằng đội của mình qua `POST /matches` (đội nhà từ đội hình, đội máy sinh ở server từ `cards`, seed + match token). Cân bằng lại với 11 thẻ khởi đầu thật + bộ sinh đội máy thật (`pnpm --filter @pitch/server balance`, 100 trận/mức): **Dễ thắng 79%** (T79/H18/B3, bàn 198–28), **Khó thắng 13%** (T13/H25/B62, bàn 82–203) — đạt ngưỡng PRD (Dễ ≥ 60%, Khó ≤ 30%), không cần chỉnh.
+
 ## Giai đoạn 5 — MVP lõi: trận đấu offline (2026-10-25) ✅
 - `packages/sim` tất định 60 tick/s: vật lý bóng 3D, cầu thủ theo chỉ số + thể lực, chuyền giữ-nhả có thanh lực, sút, chọc khe W/Q+W, xoạc/tắc/phạm lỗi/thẻ, bóng chết, luân lưu, thay người, AI 2 tầng + thủ môn, 2 mức khó cân chỉnh bằng mô phỏng (5.13). ~490 test Vitest.
 - Render chuyển từ Phaser sang **Three.js** (ADR-0009): sân 3D camera truyền hình, cầu thủ Mixamo (không commit file, thiếu thì dùng khối), HUD React + minimap, menu Đồ hoạ (preset, đêm/hoàng hôn/ngày, SSAO tắt mặc định), khán giả ảnh động, replay quay chậm sau bàn thắng (S bỏ qua). Mức Cao ~80–90 FPS trên Intel UHD.
