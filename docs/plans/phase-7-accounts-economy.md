@@ -6,9 +6,11 @@
 **Ngoài phạm vi:** PvP (bất đồng bộ và realtime) — sau MVP, xem `docs/BACKLOG.md`.
 **Thời gian trong test:** dùng `FakeClock` (`apps/server/test/helpers.ts`, task 6.1a); code nghiệp vụ lấy giờ từ `app.clock.now()`, không dùng `now()` của SQL.
 
+**Tiến độ (2026-10-28):** xong 7.1. Tiếp theo: **7.2** (cần 6.11). 7.1: khoá đăng nhập ở `services/auth.ts` (`recordLoginFailure` khoá dòng `users` FOR UPDATE; lần sai ngoài cửa sổ 15' mở cửa sổ mới; đủ 5 lần → `locked_until`, xoá bộ đếm; khoá kiểm **trước** mật khẩu; tên không tồn tại không đếm). Rate limit `plugins/rate-limit.ts` dùng `@fastify/rate-limit` (store bộ nhớ, một tiến trình): gọi limiter trong hook vì `config.rateLimit` theo route không áp cho route khai báo đồng bộ trong `buildApp`; `/auth/*` tính theo IP ở `onRequest`, còn lại theo user trong `requireAuth` (request chưa đăng nhập ngoài `/auth/*` không bị giới hạn). `createTestApp` tắt rate limit mặc định (mọi `inject` cùng IP) — test bật bằng `buildApp({ db, clock })`. Cookie `Secure` chỉ khi `NODE_ENV=production` (`buildApp({ secureCookies })`). Thêm biến `TRUST_PROXY=1` — **GĐ9 phải bật** khi chạy sau Caddy, không thì mọi người dùng chung một IP. Dọn phiên hết hạn: khi đăng nhập + mỗi giờ (`server.ts`). Xoay token/hạn 30 ngày trượt đã có từ 6.3a. Web chưa hiển thị riêng `login_locked`/`rate_limited` (dùng message từ server).
+
 ---
 
-### 7.1 — Gia cố đăng nhập & giới hạn tần suất `[ ]`
+### 7.1 — Gia cố đăng nhập & giới hạn tần suất `[x]`
 - **Phụ thuộc:** 6.3b · **Model:** strongest
 - **Bối cảnh:** PRD §8 tiêu chí F8; ARCHITECTURE §3.2 `users` (cột `failed_login_*`, `locked_until`), `sessions`; §4.1 (rate limit); §7; `apps/server/src/plugins/auth.ts`, `src/services/auth.ts`.
 - **Việc cần làm:** khoá đăng nhập 15' sau 5 lần sai trong 15' (429 `login_locked` + `Retry-After`); cài `@fastify/rate-limit` (100/phút/người, `/auth/*` 10/phút/IP); xoay token khi đăng nhập; hạn phiên 30 ngày gia hạn trượt; dọn phiên hết hạn; cookie `Secure` khi production.

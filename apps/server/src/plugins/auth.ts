@@ -10,17 +10,22 @@ declare module 'fastify' {
     /** Có sau `requireAuth`. */
     user: UserRow | null;
   }
+  interface FastifyInstance {
+    /** Cookie phiên có cờ `Secure` (bật ở production — ARCHITECTURE §4.1). */
+    secureCookies: boolean;
+  }
 }
 
 const MUTATING = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
-const COOKIE_OPTS = { httpOnly: true, secure: true, sameSite: 'lax', path: '/' } as const;
+const cookieOpts = (reply: FastifyReply) =>
+  ({ httpOnly: true, secure: reply.server.secureCookies, sameSite: 'lax', path: '/' }) as const;
 
 export function setSessionCookie(reply: FastifyReply, token: string, expiresAt: Date): void {
-  reply.setCookie(SESSION_COOKIE, token, { ...COOKIE_OPTS, expires: expiresAt });
+  reply.setCookie(SESSION_COOKIE, token, { ...cookieOpts(reply), expires: expiresAt });
 }
 
 export function clearSessionCookie(reply: FastifyReply): void {
-  reply.clearCookie(SESSION_COOKIE, COOKIE_OPTS);
+  reply.clearCookie(SESSION_COOKIE, cookieOpts(reply));
 }
 
 function originHost(origin: string): string | null {
@@ -62,4 +67,5 @@ export async function requireAuth(
   if (!token || !session) throw new AppError('unauthenticated', 401, 'Chưa đăng nhập');
   if (session.renewedUntil) setSessionCookie(reply, token, session.renewedUntil);
   req.user = session.user;
+  await this.userRateLimit(req, reply);
 }

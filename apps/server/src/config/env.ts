@@ -18,6 +18,7 @@ const EnvSchema = z
     HOST: z.string().min(1).default('127.0.0.1'),
     MATCH_MIN_DURATION_SEC: z.coerce.number().int().min(0).default(360),
     ENABLE_DEV_ROUTES: flag,
+    TRUST_PROXY: flag,
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') return;
@@ -34,6 +35,7 @@ const EnvSchema = z
     host: env.HOST,
     matchMinDurationSec: env.MATCH_MIN_DURATION_SEC,
     enableDevRoutes: env.ENABLE_DEV_ROUTES,
+    trustProxy: env.TRUST_PROXY,
   }));
 
 export type Env = z.infer<typeof EnvSchema>;

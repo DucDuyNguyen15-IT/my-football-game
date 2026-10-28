@@ -41,12 +41,15 @@ export function testDb(): Db {
   return shared.db;
 }
 
-/** App nối DB test + đồng hồ giả. Nhớ `await app.close()` (không đóng pool dùng chung). */
+/**
+ * App nối DB test + đồng hồ giả. Nhớ `await app.close()` (không đóng pool dùng chung). Tắt rate limit
+ * mặc định (mọi `inject` cùng IP) — test rate limit tự bật bằng `opts.rateLimit`.
+ */
 export function createTestApp(
   clock: FakeClock = new FakeClock(),
-  opts: Pick<BuildAppOptions, 'enableDevRoutes' | 'rng'> = {},
+  opts: Pick<BuildAppOptions, 'enableDevRoutes' | 'rng' | 'rateLimit'> = {},
 ) {
-  return { app: buildApp({ ...opts, db: testDb(), clock }), clock };
+  return { app: buildApp({ rateLimit: false, ...opts, db: testDb(), clock }), clock };
 }
 
 /** Xoá sạch dữ liệu mọi bảng `public` của DB test (giữ schema), dùng giữa các file test. */
