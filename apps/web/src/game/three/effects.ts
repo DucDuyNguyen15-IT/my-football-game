@@ -36,6 +36,16 @@ export function setSkyLook(
   if (points) points.visible = stars;
 }
 
+/** Như `setFloodScale` nhưng từng cột riêng: `levels[i]` cho cột thứ i của `floodlightSpots()`. */
+export function setFloodLevels(spots: THREE.Object3D, levels: readonly number[]): void {
+  const lights = spots.children.filter((o) => o instanceof THREE.SpotLight);
+  lights.forEach((o, i) => {
+    const level = levels[i] ?? 0;
+    o.intensity = SPOT_INTENSITY * level;
+    o.visible = level > 0;
+  });
+}
+
 /** Cường độ đèn spot rọi sân theo thời điểm (0 = tắt hẳn, như ban ngày). */
 export function setFloodScale(spots: THREE.Object3D, scale: number): void {
   for (const o of spots.children) {

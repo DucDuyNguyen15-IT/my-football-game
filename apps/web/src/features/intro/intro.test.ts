@@ -1,13 +1,22 @@
 import { describe, expect, it } from 'vitest';
+import { GOAL_HEIGHT, GOAL_WIDTH, HALF_LENGTH } from '@pitch/sim';
 import {
-  CAMERA_FLY_SEC,
+  BALL_R,
+  BALL_SPOT,
+  CAMERA_SETTLE_SEC,
+  floodBank,
   floodLevel,
+  INTRO_DURATION_SEC,
   INTRO_END,
   INTRO_SEEN_KEY,
-  INTRO_START,
+  introBall,
   introCamera,
   introMode,
+  keyLight,
+  KICK_SEC,
+  LOGO_AT_SEC,
   markIntroSeen,
+  NET_HIT_SEC,
   readIntroSeen,
 } from './intro';
 
@@ -48,34 +57,85 @@ describe('sessionStorage', () => {
   });
 });
 
-describe('introCamera', () => {
-  it('bắt đầu ở điểm đầu, dừng đúng điểm cuối và đứng yên sau đó', () => {
-    expect(introCamera(0)).toEqual(INTRO_START);
-    const end = introCamera(CAMERA_FLY_SEC);
-    expect(end.pos.x).toBeCloseTo(INTRO_END.pos.x);
-    expect(end.pos.y).toBeCloseTo(INTRO_END.pos.y);
-    expect(end.pos.z).toBeCloseTo(INTRO_END.pos.z);
-    expect(introCamera(CAMERA_FLY_SEC + 5)).toEqual(end);
+const dist = (a: { x: number; y: number; z: number }, b: { x: number; y: number; z: number }) =>
+  Math.hypot(a.x - b.x, a.y - b.y, a.z - b.z);
+const times = (to: number, step = 0.02) =>
+  Array.from({ length: Math.floor(to / step) + 1 }, (_, i) => i * step);
+
+describe('kịch bản', () => {
+  it('thứ tự mốc: sút → chạm lưới → logo → camera dừng → hết intro', () => {
+    expect(KICK_SEC).toBeLessThan(NET_HIT_SEC);
+    expect(NET_HIT_SEC).toBeLessThan(LOGO_AT_SEC);
+    expect(CAMERA_SETTLE_SEC).toBeLessThan(INTRO_DURATION_SEC);
+  });
+});
+
+describe('introBall', () => {
+  it('nằm yên trên chấm phạt đền tới lúc sút', () => {
+    expect(introBall(0).pos).toEqual(BALL_SPOT);
+    expect(introBall(KICK_SEC).pos).toEqual(BALL_SPOT);
   });
 
-  it('độ cao tăng dần (không chúi xuống cỏ giữa đường)', () => {
-    let prev = -Infinity;
-    for (let t = 0; t <= CAMERA_FLY_SEC; t += 0.1) {
-      const y = introCamera(t).pos.y;
-      expect(y).toBeGreaterThanOrEqual(prev - 1e-9);
-      prev = y;
+  it('qua vạch cuối ở giữa hai cột, dưới xà', () => {
+    let prev = introBall(KICK_SEC).pos;
+    for (let t = KICK_SEC; t <= NET_HIT_SEC; t += 0.005) {
+      const p = introBall(t).pos;
+      if (prev.x < HALF_LENGTH && p.x >= HALF_LENGTH) {
+        expect(Math.abs(p.z)).toBeLessThan(GOAL_WIDTH / 2 - BALL_R);
+        expect(p.y).toBeLessThan(GOAL_HEIGHT - BALL_R);
+      }
+      prev = p;
+    }
+    expect(prev.x).toBeGreaterThan(HALF_LENGTH);
+  });
+
+  it('không lún xuống cỏ, nằm yên trong lưới ở cuối', () => {
+    for (const t of times(INTRO_DURATION_SEC)) {
+      expect(introBall(t).pos.y).toBeGreaterThanOrEqual(BALL_R - 1e-9);
+    }
+    const end = introBall(INTRO_DURATION_SEC).pos;
+    expect(end.y).toBeCloseTo(BALL_R);
+    expect(end.x).toBeGreaterThan(HALF_LENGTH);
+  });
+});
+
+describe('introCamera', () => {
+  it('liền mạch: không nhảy cóc giữa hai khung hình (60 fps)', () => {
+    let prev = introCamera(0).pos;
+    for (const t of times(INTRO_DURATION_SEC, 1 / 60)) {
+      const p = introCamera(t).pos;
+      expect(dist(p, prev)).toBeLessThan(1);
+      prev = p;
+    }
+  });
+
+  it('dừng đúng góc toàn cảnh và đứng yên sau đó', () => {
+    expect(introCamera(CAMERA_SETTLE_SEC)).toEqual(INTRO_END);
+    expect(introCamera(INTRO_DURATION_SEC)).toEqual(INTRO_END);
+  });
+
+  it('không chui xuống cỏ, không đâm vào quả bóng', () => {
+    for (const t of times(INTRO_DURATION_SEC)) {
+      const cam = introCamera(t).pos;
+      expect(cam.y).toBeGreaterThan(0.2);
+      expect(dist(cam, introBall(t).pos)).toBeGreaterThan(0.8);
     }
   });
 });
 
-describe('floodLevel', () => {
-  it('tắt lúc đầu, bật hết sau ~1,6 s, không giảm', () => {
+describe('đèn', () => {
+  it('đèn pha tắt lúc đầu, bật hết trước khi sút, mỗi cột bật một lúc khác nhau', () => {
     expect(floodLevel(0)).toBe(0);
-    expect(floodLevel(2)).toBe(1);
-    let prev = 0;
-    for (let t = 0; t <= 2; t += 0.05) {
-      expect(floodLevel(t)).toBeGreaterThanOrEqual(prev);
-      prev = floodLevel(t);
-    }
+    expect(floodLevel(KICK_SEC)).toBe(1);
+    const firstOn = [0, 1, 2, 3].map((i) => times(KICK_SEC, 0.01).find((t) => floodBank(t, i) > 0));
+    expect(new Set(firstOn).size).toBe(4);
+  });
+
+  it('đèn rọi bóng sáng lên từ tối, dịu xuống khi đèn pha bật, tắt sau khi bóng vào lưới', () => {
+    expect(keyLight(0)).toBe(0);
+    expect(keyLight(1)).toBeCloseTo(1);
+    expect(keyLight(KICK_SEC)).toBeGreaterThan(0.2);
+    expect(keyLight(KICK_SEC)).toBeLessThan(0.5);
+    expect(keyLight(INTRO_DURATION_SEC)).toBe(0);
   });
 });
