@@ -55,7 +55,10 @@ function IntroOverlay({
 }) {
   const host = useRef<HTMLDivElement>(null);
   const [leaving, setLeaving] = useState(false);
+  // Bản 3D chờ nạp model rồi mới chạy đồng hồ: logo chỉ bắt đầu đếm trễ từ lúc đó.
+  const [started, setStarted] = useState(false);
   const leave = useCallback(() => setLeaving(true), []);
+  const begin = useCallback(() => setStarted(true), []);
 
   // Mờ dần (--dur-base) rồi mới gỡ overlay.
   useEffect(() => {
@@ -84,7 +87,7 @@ function IntroOverlay({
     import('../../game/three/IntroRenderer')
       .then(({ IntroRenderer }) => {
         if (disposed || !host.current) return;
-        renderer = new IntroRenderer(host.current, leave);
+        renderer = new IntroRenderer(host.current, leave, begin);
       })
       .catch(() => {
         if (!disposed) onFallback(); // không tải được chunk hoặc không có WebGL
@@ -93,7 +96,7 @@ function IntroOverlay({
       disposed = true;
       renderer?.dispose();
     };
-  }, [mode, leave, onFallback]);
+  }, [mode, leave, begin, onFallback]);
 
   return (
     <div
@@ -103,7 +106,10 @@ function IntroOverlay({
       <div ref={host} className="intro__canvas" aria-hidden="true" />
       <h1
         className="intro__logo"
-        style={{ animationDelay: mode === 'full' ? `${LOGO_AT_SEC}s` : '0s' }}
+        style={{
+          animationDelay: mode === 'full' ? `${LOGO_AT_SEC}s` : '0s',
+          animationPlayState: started || mode === 'static' ? 'running' : 'paused',
+        }}
       >
         MFG
         <span className="intro__tag">My Football Game</span>

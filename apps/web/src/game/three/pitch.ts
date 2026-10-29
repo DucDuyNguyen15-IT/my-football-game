@@ -149,6 +149,11 @@ export class NetRig {
     this.nets[side === 1 ? '1' : '-1'].push(mesh);
   }
 
+  /** Bỏ hết lưới đã đăng ký của khung `side` (khi thay khung vẽ bằng code bằng model). */
+  clear(side: 1 | -1): void {
+    this.nets[side === 1 ? '1' : '-1'].length = 0;
+  }
+
   /** Bóng vào lưới khung thành `side` ở điểm `at` (toạ độ thế giới). */
   hit(side: 1 | -1, at: THREE.Vector3): void {
     this.shake = { side, at: at.clone(), t: 0 };
@@ -179,9 +184,14 @@ export class NetRig {
   }
 }
 
+/** Tên group khung thành vẽ bằng code — `three/propModels.ts` tìm theo tên này để thay bằng model. */
+export const CODE_GOAL_NAME = 'codeGoal';
+
 /** Khung thành ở đầu sân `side` (+1 phải, −1 trái), miệng khung nằm trên vạch cuối. */
 function goal(side: 1 | -1, tex: THREE.Texture, rig: NetRig): THREE.Group {
   const g = new THREE.Group();
+  g.name = CODE_GOAL_NAME;
+  g.userData.side = side;
   const net = (pts: [number, number, number][]) => {
     const mesh = netQuad(pts, tex);
     rig.add(side, mesh);

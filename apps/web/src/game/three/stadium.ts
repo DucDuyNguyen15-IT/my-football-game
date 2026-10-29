@@ -38,6 +38,9 @@ function stand(
   return g;
 }
 
+/** Tên mesh mặt đèn pha — intro tìm theo tên để bật sáng từng cột. */
+export const FLOOD_LAMP_NAME = 'floodLamp';
+
 function floodlight(x: number, z: number, pole: THREE.Material, lamp: THREE.Material): THREE.Group {
   const g = new THREE.Group();
   const height = FLOODLIGHT_HEIGHT;
@@ -45,6 +48,7 @@ function floodlight(x: number, z: number, pole: THREE.Material, lamp: THREE.Mate
   mast.position.y = height / 2;
   g.add(mast);
   const head = new THREE.Mesh(new THREE.BoxGeometry(3.2, 1.6, 0.4), lamp);
+  head.name = FLOOD_LAMP_NAME;
   head.position.y = height;
   g.add(head);
   g.position.set(x, 0, z);
