@@ -4,8 +4,11 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
-## Giai đoạn 6 — ghi chú giữa giai đoạn (đang làm)
-- 6.11 (2026-10-28): đá trận bằng đội của mình qua `POST /matches` (đội nhà từ đội hình, đội máy sinh ở server từ `cards`, seed + match token). Cân bằng lại với 11 thẻ khởi đầu thật + bộ sinh đội máy thật (`pnpm --filter @pitch/server balance`, 100 trận/mức): **Dễ thắng 79%** (T79/H18/B3, bàn 198–28), **Khó thắng 13%** (T13/H25/B62, bàn 82–203) — đạt ngưỡng PRD (Dễ ≥ 60%, Khó ≤ 30%), không cần chỉnh.
+## Giai đoạn 6 — Thẻ & đội hình + nền server (2026-11-03) ✅
+- Server Fastify + Postgres/Drizzle: đăng ký/đăng nhập phiên cookie, ví + sổ cái append-only, quà tân thủ, 150 thẻ hư cấu, gacha box draw 2/10/30/58 bằng CSPRNG (test 10.000 hộp chi-bình phương), idempotency, bán thẻ, đội hình, ép thẻ +1→+5 có may mắn (server 6.12a, màn ép 6.12b).
+- Web: router + đăng nhập, cửa hàng + màn mở thẻ lật CSS 3D, kho thẻ, đội hình kéo-thả, đá trận bằng đội của mình (6.11: Dễ thắng 79%, Khó 13% — đạt PRD).
+- 2026-11-03 thêm 5.23 (chọc khe W giữ-nhả có thanh lực, theo yêu cầu) và sửa shader cỏ 3D. Lần đầu chạy 3 agent song song (worktree riêng, DB test riêng `pitch_test_{a,b,c}`), tôi gộp + check + push từng task.
+- Tiếp theo: Giai đoạn 7 — 7.3 (toàn vẹn sổ cái & thử sửa request).
 
 ## Giai đoạn 5 — MVP lõi: trận đấu offline (2026-10-25) ✅
 - `packages/sim` tất định 60 tick/s: vật lý bóng 3D, cầu thủ theo chỉ số + thể lực, chuyền giữ-nhả có thanh lực, sút, chọc khe W/Q+W, xoạc/tắc/phạm lỗi/thẻ, bóng chết, luân lưu, thay người, AI 2 tầng + thủ môn, 2 mức khó cân chỉnh bằng mô phỏng (5.13). ~490 test Vitest.
