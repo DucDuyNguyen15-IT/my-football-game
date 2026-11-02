@@ -1,0 +1,393 @@
+/* Màn ép thẻ (PRD §6.5, F10) — "Sân đêm": bàn ép là nửa sân vẽ vạch phấn, vòng tròn giữa sân ở tâm. */
+.upg {
+  display: grid;
+  gap: var(--sp-4);
+}
+.upg__head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.upg__title {
+  margin: 0;
+  margin-right: auto;
+}
+
+.upg__stage {
+  position: relative;
+  display: grid;
+  grid-template-columns: var(--card-w-lg) 1fr var(--card-w-lg);
+  align-items: center;
+  gap: var(--sp-6);
+  padding: var(--sp-6);
+  overflow: hidden;
+}
+/* Vạch giữa sân + vòng tròn giữa sân (vạch phấn mờ) */
+.upg__stage::before,
+.upg__stage::after {
+  content: '';
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid var(--c-line);
+}
+.upg__stage::before {
+  inset: 0 50%;
+  border-width: 0 0 0 1px;
+}
+.upg__stage::after {
+  left: 50%;
+  top: 50%;
+  width: 260px;
+  height: 260px;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+.upg__slot,
+.upg__center {
+  position: relative;
+  z-index: 1;
+}
+.upg__slot {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-2);
+}
+.upg__label,
+.upg__subtitle {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.upg__subtitle {
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-3);
+}
+.upg__empty {
+  display: grid;
+  place-items: center;
+  width: var(--card-w-lg);
+  aspect-ratio: 5 / 7;
+  padding: var(--sp-4);
+  border: 2px dashed var(--c-line-strong);
+  clip-path: polygon(
+    0 0,
+    calc(100% - var(--card-notch)) 0,
+    100% var(--card-notch),
+    100% 100%,
+    var(--card-notch) 100%,
+    0 calc(100% - var(--card-notch))
+  );
+  color: var(--c-text-muted);
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+
+.upg__center {
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-3);
+  text-align: center;
+  background: var(--c-surface-1);
+  padding: var(--sp-4);
+  border-radius: var(--radius-lg);
+}
+.upg__levels {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-3);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-2xl);
+  line-height: var(--lh-tight);
+  font-variant-numeric: tabular-nums;
+}
+.upg__arrow {
+  font-size: var(--fs-xl);
+  color: var(--c-text-muted);
+}
+.upg__to {
+  color: var(--c-accent);
+}
+.upg__facts {
+  display: grid;
+  gap: var(--sp-1);
+  margin: 0;
+}
+.upg__facts dt {
+  font-size: var(--fs-xs);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  margin-top: var(--sp-2);
+}
+.upg__facts dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+.upg__rate {
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-3xl);
+  line-height: var(--lh-tight);
+}
+.upg__rate-note {
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.upg__fee {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-xl);
+  color: var(--c-coin);
+}
+.upg__meter {
+  display: flex;
+  width: min(260px, 100%);
+  height: 8px;
+  background: var(--c-surface-3);
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+}
+.upg__meter-base {
+  background: var(--c-accent);
+}
+.upg__meter-luck {
+  background: var(--c-info);
+}
+.upg__hint {
+  max-width: 320px;
+  font-size: var(--fs-sm);
+}
+.upg__maxed {
+  color: var(--c-warning);
+  margin: 0;
+}
+
+.upg__confirm {
+  display: grid;
+  grid-template-columns: minmax(260px, 340px) 1fr;
+  gap: var(--sp-4);
+  align-items: start;
+}
+.upg-stats {
+  width: 100%;
+  border-collapse: collapse;
+  font-variant-numeric: tabular-nums;
+}
+.upg-stats th,
+.upg-stats td {
+  padding: var(--sp-1) var(--sp-2);
+  text-align: right;
+  border-bottom: 1px solid var(--c-line);
+}
+.upg-stats thead th {
+  font-family: var(--font-display);
+  font-size: var(--fs-sm);
+  color: var(--c-text-muted);
+}
+.upg-stats tbody th {
+  text-align: left;
+  font-family: var(--font-display);
+  letter-spacing: var(--tracking-caps);
+  color: var(--c-text-muted);
+}
+.upg-stats__to {
+  font-weight: var(--fw-semibold);
+}
+.upg-stats__delta {
+  color: var(--c-success);
+}
+.upg-stats__ovr th,
+.upg-stats__ovr td {
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-bold);
+}
+
+.upg__action {
+  display: grid;
+  justify-items: start;
+  align-content: start;
+  gap: var(--sp-3);
+}
+.upg__warn {
+  margin: 0;
+  padding: var(--sp-3) var(--sp-4);
+  list-style: none;
+  border-left: 3px solid var(--c-warning);
+  background: var(--c-surface-2);
+  color: var(--c-warning);
+  display: grid;
+  gap: var(--sp-1);
+}
+.upg__short {
+  color: var(--c-danger);
+  font-size: var(--fs-sm);
+}
+.upg__action .hold__fill {
+  background: rgb(10 19 16 / 0.25);
+}
+
+.upg__picker {
+  display: grid;
+  gap: var(--sp-3);
+}
+.upg__filter-note {
+  font-size: var(--fs-sm);
+}
+.upg__note {
+  color: var(--c-warning);
+}
+
+@media (max-width: 900px) {
+  .upg__stage {
+    grid-template-columns: 1fr;
+    justify-items: center;
+  }
+  .upg__stage::before,
+  .upg__stage::after {
+    display: none;
+  }
+  .upg__confirm {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Kết quả ép */
+.upg-result {
+  width: min(420px, 92vw);
+  color: var(--c-text);
+  text-align: center;
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-3);
+}
+.upg-result:not([open]) {
+  display: none;
+}
+.upg-result::backdrop {
+  background: var(--c-scrim);
+}
+.upg-result__stage {
+  position: relative;
+  display: grid;
+  place-items: center;
+  padding: var(--sp-4);
+}
+.upg-result__title {
+  margin: 0;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-2xl);
+  letter-spacing: var(--tracking-caps);
+  text-transform: uppercase;
+}
+.upg-result__text {
+  margin: 0;
+}
+.upg-result--win .upg-result__title {
+  color: var(--c-accent);
+  animation: upg-pop var(--dur-slow) var(--ease-snap) both;
+}
+.upg-result--lose .upg-result__title {
+  color: var(--c-danger);
+}
+.upg-result--win .upg-result__card {
+  animation: upg-rise 600ms var(--ease-snap) both;
+}
+.upg-result--lose .upg-result__card {
+  animation: upg-shake 480ms var(--ease-out) both;
+  filter: saturate(0.6);
+}
+.upg-result__burst {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 260px;
+  height: 260px;
+  margin: -130px 0 0 -130px;
+  border-radius: 50%;
+  border: 3px solid var(--c-accent);
+  box-shadow:
+    0 0 40px rgb(200 240 49 / 0.55),
+    inset 0 0 40px rgb(200 240 49 / 0.35);
+  opacity: 0;
+  animation: upg-burst 900ms var(--ease-out) 120ms both;
+  pointer-events: none;
+}
+
+@keyframes upg-rise {
+  0% {
+    transform: translateY(16px) scale(0.92);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes upg-pop {
+  0% {
+    transform: scale(0.6);
+    opacity: 0;
+  }
+  100% {
+    transform: none;
+    opacity: 1;
+  }
+}
+@keyframes upg-burst {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+@keyframes upg-shake {
+  0%,
+  100% {
+    transform: none;
+  }
+  20% {
+    transform: translateX(-10px) rotate(-2deg);
+  }
+  40% {
+    transform: translateX(9px) rotate(1.5deg);
+  }
+  60% {
+    transform: translateX(-6px);
+  }
+  80% {
+    transform: translateX(3px);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .upg-result__burst {
+    display: none;
+  }
+  .upg-result--win .upg-result__card,
+  .upg-result--lose .upg-result__card,
+  .upg-result--win .upg-result__title {
+    animation: upg-fade 200ms linear both;
+  }
+}
+@keyframes upg-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

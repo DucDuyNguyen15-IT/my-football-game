@@ -122,9 +122,10 @@
 - **Kiểm chứng:** test: 10.000 lần ép mỗi cấp (luck 0, PRNG seed cố định) lệch ≤ ±1,5 điểm %; 3 lần trượt ở +5 → lần 4 tỉ lệ 55%; không ép thẻ +5 → 422 `max_level`; nguyên liệu thấp độ hiếm hơn → 422 `invalid_material`; nguyên liệu trong đội hình → 409; thiếu xu → 409 và không gì thay đổi; **cùng key gửi lại → cùng kết quả, trừ phí một lần; cùng key khác nguyên liệu → 409**; **2 lần ép song song dùng cùng nguyên liệu → đúng 1 thành công**; ledger khớp.
 - **Xong khi:** tiêu chí F10 phía server có test.
 
-### 6.12b — Màn ép thẻ (F10, Should) `[ ]`
+### 6.12b — Màn ép thẻ (F10, Should) `[x]`
 - **Phụ thuộc:** 6.12a, 6.7 · **Model:** default
 - **Bối cảnh:** `docs/DESIGN.md`; PRD §6.5 tiêu chí F10 (UI); ARCHITECTURE §4.3 #9–10.
 - **Việc cần làm:** chọn thẻ + nguyên liệu (lọc nguyên liệu hợp lệ), hiển thị tỉ lệ = cơ bản + may mắn, phí, chỉ số sau ép, cảnh báo mất nguyên liệu (kể cả nguyên liệu đã +); Idempotency-Key như 6.7; hiệu ứng thành công/thất bại.
 - **Kiểm chứng:** test component tính "chỉ số sau ép"; thủ công theo tiêu chí F10.
 - **Xong khi:** tiêu chí F10 đạt. Cuối GĐ6: tick ROADMAP, cập nhật CLAUDE.md, PROGRESS.
+- **Ghi chú triển khai:** màn `/upgrade?card=&mat=` (`features/upgrade/`; vào từ nút "Ép thẻ" ở panel chi tiết Kho thẻ). Hàm thuần `upgrade.ts` (`upgradePreview` = `effectiveStats` không phạt vị trí, `materialCandidates` lọc cùng độ hiếm trở lên/không trong đội/khác thẻ, xếp nguyên liệu "rẻ" trước), bảng `<UpgradeStats>` trước → sau. Hook `useUpgradeCard` (`api/player-cards.ts`) giữ Idempotency-Key khi lỗi tạm thời như 6.7. Nguyên liệu đã +/Vàng+/hiếm hơn thẻ được ép → nút bấm giữ 1s.
