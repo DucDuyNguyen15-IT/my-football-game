@@ -259,16 +259,27 @@ export function CollectionPage() {
                 </dd>
               </dl>
               {detail.pc.inSquad && <p className="coll__reason">● {IN_SQUAD_REASON}</p>}
-              <button
-                type="button"
-                className="btn btn--danger"
-                disabled={detail.pc.inSquad || seller.isPending}
-                title={detail.pc.inSquad ? IN_SQUAD_REASON : undefined}
-                onClick={() => ask([detail])}
-              >
-                Bán {fmt(prices[detail.card.rarity])}
-                <span className="coin__icon" aria-hidden />
-              </button>
+              <div className="coll__actions">
+                {detail.pc.level >= economy.data.upgrade.maxLevel ? (
+                  <button type="button" className="btn btn--primary" disabled>
+                    Đã +{economy.data.upgrade.maxLevel}
+                  </button>
+                ) : (
+                  <Link to={`/upgrade?card=${detail.pc.id}`} className="btn btn--primary">
+                    Ép thẻ
+                  </Link>
+                )}
+                <button
+                  type="button"
+                  className="btn btn--danger"
+                  disabled={detail.pc.inSquad || seller.isPending}
+                  title={detail.pc.inSquad ? IN_SQUAD_REASON : undefined}
+                  onClick={() => ask([detail])}
+                >
+                  Bán {fmt(prices[detail.card.rarity])}
+                  <span className="coin__icon" aria-hidden />
+                </button>
+              </div>
             </>
           ) : (
             <p className="muted">Chọn một thẻ để xem chi tiết.</p>

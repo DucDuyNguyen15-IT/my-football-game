@@ -6,6 +6,7 @@ import { HomePage } from '../features/home/HomePage';
 import { IntroGate } from '../features/intro/IntroGate';
 import { ShopPage } from '../features/shop/ShopPage';
 import { SquadPage } from '../features/squad/SquadPage';
+import { UpgradePage } from '../features/upgrade/UpgradePage';
 import { AppLayout, RequireAuth } from './AppLayout';
 
 // Three.js (~600 KB) chỉ tải khi vào trận.
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
               { path: '/shop', element: <ShopPage /> },
               { path: '/collection', element: <CollectionPage /> },
               { path: '/squad', element: <SquadPage /> },
+              { path: '/upgrade', element: <UpgradePage /> },
             ],
           },
         ],
