@@ -601,6 +601,32 @@
 .hud-event--shootout {
   border-left-color: var(--c-info);
 }
+.result-reward {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-bold);
+}
+.result-reward .coin {
+  color: var(--c-coin);
+  font-variant-numeric: tabular-nums;
+}
+.result-reward p {
+  margin: 0;
+}
+.result-reward--none {
+  margin: 0;
+  color: var(--c-warning);
+  font-size: var(--fs-md);
+}
+.result-reward--error {
+  color: var(--c-danger);
+  font-size: var(--fs-md);
+}
 .result-shootout {
   margin: 0;
   font-family: var(--font-display);

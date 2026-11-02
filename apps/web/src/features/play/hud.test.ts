@@ -6,6 +6,7 @@ import {
   hudEvents,
   matchOutcome,
   readDevOptions,
+  resultBody,
   sameHud,
   shootoutOutcome,
   shootoutScore,
@@ -179,5 +180,22 @@ describe('luân lưu trên HUD', () => {
     expect(shootoutOutcome(hud)).toBe('win');
     expect(shootoutOutcome(withShootout([false, false, false], [true, true, true]))).toBe('loss');
     expect(shootoutOutcome(toHudSnapshot(match()))).toBeNull();
+  });
+
+  it('body nộp kết quả: tỉ số chính + số bàn luân lưu, giữ nguyên token', () => {
+    const hud = withShootout([true, true, false, true], [false, true, false, false]);
+    expect(resultBody('tok', hud)).toEqual({
+      token: 'tok',
+      homeGoals: hud.score.home,
+      awayGoals: hud.score.away,
+      shootout: { home: 3, away: 1 },
+    });
+  });
+});
+
+describe('resultBody', () => {
+  it('không có luân lưu → không gửi `shootout`', () => {
+    const hud = { ...toHudSnapshot(match()), score: { home: 2, away: 1 } };
+    expect(resultBody('abc', hud)).toEqual({ token: 'abc', homeGoals: 2, awayGoals: 1 });
   });
 });
