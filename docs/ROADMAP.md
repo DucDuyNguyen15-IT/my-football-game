@@ -134,7 +134,7 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 
 **Hoàn thành khi:**
 - [x] Mở thẻ → thẻ vào kho → đưa vào đội hình → đá trận bằng đội đó
-- [ ] Test phân phối tỉ lệ rơi (vd. 10.000 lần mở) khớp PRD ± sai số
+- [x] Test phân phối tỉ lệ rơi (vd. 10.000 lần mở) khớp PRD ± sai số
 
 ---
 

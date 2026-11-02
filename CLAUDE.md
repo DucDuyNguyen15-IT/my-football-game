@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** 6 — Hệ thống thẻ & đội hình (+ nền server, tài khoản cơ bản)
-- **Việc tiếp theo:** task đầu tiên chưa xong trong `docs/plans/phase-6-cards-squad.md` (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
+- **Giai đoạn đang làm:** 7 — Tài khoản, kinh tế (7.1, 7.2, 7.7 xong; 7.7 chờ Client ID Google)
+- **Việc tiếp theo:** task đầu tiên chưa xong trong `docs/plans/phase-7-accounts-economy.md` (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
