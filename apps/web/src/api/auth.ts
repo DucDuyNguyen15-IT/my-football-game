@@ -1,5 +1,12 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { Me, type LoginRequest, type RegisterRequest } from '@pitch/shared';
+import {
+  AuthConfig,
+  GoogleAuthResult,
+  Me,
+  type GoogleAuthRequest,
+  type LoginRequest,
+  type RegisterRequest,
+} from '@pitch/shared';
 import { apiFetch, ApiClientError } from './client';
 
 export const meKey = ['me'] as const;
@@ -31,6 +38,28 @@ export function useRegister() {
   return useMutation({
     mutationFn: (body: RegisterRequest) => apiFetch('/auth/register', Me, { method: 'POST', body }),
     onSuccess: (me) => qc.setQueryData(meKey, me),
+  });
+}
+
+/** Cách đăng nhập server đang bật (`googleClientId` null → ẩn nút Google, ADR-0010). */
+export function useAuthConfig() {
+  return useQuery({
+    queryKey: ['config', 'auth'] as const,
+    queryFn: () => apiFetch('/config/auth', AuthConfig),
+    staleTime: Infinity,
+    retry: 1,
+  });
+}
+
+/** Đăng nhập Google: `signed_in` → lưu người chơi vào cache; `needs_username` → màn chọn tên. */
+export function useGoogleSignIn() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: GoogleAuthRequest) =>
+      apiFetch('/auth/google', GoogleAuthResult, { method: 'POST', body }),
+    onSuccess: (result) => {
+      if (result.status === 'signed_in') qc.setQueryData(meKey, result.me);
+    },
   });
 }
 

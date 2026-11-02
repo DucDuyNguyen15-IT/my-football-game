@@ -265,49 +265,7 @@ a {
   color: var(--c-text-muted);
 }
 
-/* Đăng nhập / đăng ký */
-.auth {
-  display: grid;
-  place-items: center;
-  min-height: 100vh;
-  padding: var(--sp-5);
-}
-.auth__box {
-  width: min(400px, 100%);
-}
-.auth__logo {
-  margin: 0 0 var(--sp-4);
-  text-align: center;
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: var(--fs-3xl);
-  line-height: var(--lh-tight);
-  letter-spacing: 0.14em;
-  color: var(--c-accent);
-}
-.auth__tabs {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  margin-bottom: var(--sp-5);
-  border-bottom: 1px solid var(--c-line);
-}
-.auth__tab {
-  padding: var(--sp-3);
-  background: none;
-  border: 0;
-  color: var(--c-text-muted);
-  font: inherit;
-  font-weight: var(--fw-semibold);
-  cursor: pointer;
-}
-.auth__tab.is-active {
-  color: var(--c-text);
-  box-shadow: inset 0 -2px 0 var(--c-accent);
-}
-.auth__form {
-  display: grid;
-  gap: var(--sp-4);
-}
+/* Ô nhập (form đăng nhập: features/auth/auth.css) */
 .field {
   display: grid;
   gap: var(--sp-1);
