@@ -2,14 +2,16 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty, StartedMatch } from '@pitch/shared';
 import type { MatchSetup, MatchState } from '@pitch/sim';
+import { useMe } from '../../api/auth';
 import { ApiClientError } from '../../api/client';
-import { useStartMatch } from '../../api/matches';
+import { isTransientError, useStartMatch, useSubmitMatchResult } from '../../api/matches';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
 import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
 import {
   hudEvents,
   readDevOptions,
+  resultBody,
   sameHud,
   subOptions,
   toHudSnapshot,
@@ -22,9 +24,11 @@ import {
   DifficultySelect,
   HalfTimeOverlay,
   KeyHints,
+  NoRewardWarning,
   PauseMenu,
   ResultScreen,
   ShootoutHint,
+  type RewardStatus,
 } from './screens';
 import '../../styles/tokens.css';
 import './play.css';
@@ -56,14 +60,17 @@ function saveGraphics(g: GraphicsSettings): void {
 type Stage =
   | { kind: 'select' }
   | { kind: 'starting'; difficulty: Difficulty; error?: unknown }
-  /** `match.token` giữ lại để nộp kết quả (task 7.2). */
+  /** Server báo trận này không có thưởng (hết 15 trận/ngày) → hỏi trước khi vào trận. */
+  | { kind: 'warn'; difficulty: Difficulty; match: StartedMatch }
+  /** `match.token` giữ lại để nộp kết quả. */
   | { kind: 'match'; difficulty: Difficulty; match: StartedMatch }
-  | { kind: 'result'; difficulty: Difficulty; hud: HudSnapshot };
+  | { kind: 'result'; difficulty: Difficulty; match: StartedMatch; hud: HudSnapshot };
 
 /**
  * `/play` — luồng một trận vs máy: chọn độ khó → server dựng trận (`POST /matches`: đội của mình từ
- * đội hình đã lưu, đội máy, seed, token) → trận → kết quả. Dev/test: `?half=<giây>`, `?autopilot=1`
- * (bỏ qua màn chọn độ khó; `?difficulty=hard`).
+ * đội hình đã lưu, đội máy, seed, token) → (cảnh báo nếu không có thưởng) → trận → kết quả, nộp tỉ
+ * số lên server (`POST /matches/:id/result`) và hiện xu nhận. Dev/test: `?half=<giây>`,
+ * `?autopilot=1` (bỏ qua màn chọn độ khó; `?difficulty=hard`).
  */
 export function PlayPage() {
   const [params] = useSearchParams();
@@ -78,16 +85,23 @@ export function PlayPage() {
       ? { kind: 'starting', difficulty: params.get('difficulty') === 'hard' ? 'hard' : 'easy' }
       : { kind: 'select' },
   );
+  const { data: me } = useMe();
   const { mutate } = useStartMatch();
+  const autopilot = dev.autopilot ?? false;
   const start = useCallback(
     (difficulty: Difficulty) => {
       setStage({ kind: 'starting', difficulty });
       mutate(difficulty, {
-        onSuccess: (match) => setStage({ kind: 'match', difficulty, match }),
+        onSuccess: (match) =>
+          setStage({
+            kind: match.rewardEligible || autopilot ? 'match' : 'warn',
+            difficulty,
+            match,
+          }),
         onError: (error) => setStage({ kind: 'starting', difficulty, error }),
       });
     },
-    [mutate],
+    [mutate, autopilot],
   );
   // Autopilot vào thẳng trận: gọi API một lần khi mở trang (không autopilot thì đã chọn bằng tay).
   const autoStarted = useRef(!dev.autopilot);
@@ -99,7 +113,19 @@ export function PlayPage() {
 
   return (
     <div className="play-root">
-      {stage.kind === 'select' && <DifficultySelect onPick={start} />}
+      {stage.kind === 'select' && (
+        <DifficultySelect
+          onPick={start}
+          capReached={!!me && me.rewardedMatchesToday >= me.rewardedMatchesLimit}
+        />
+      )}
+      {stage.kind === 'warn' && (
+        <NoRewardWarning
+          limit={me?.rewardedMatchesLimit}
+          onPlay={() => setStage({ ...stage, kind: 'match' })}
+          onBack={() => void navigate('/')}
+        />
+      )}
       {stage.kind === 'starting' && (
         <MatchStarting
           error={stage.error}
@@ -114,14 +140,66 @@ export function PlayPage() {
           match={stage.match}
           halfLengthSec={dev.halfLengthSec}
           autopilot={dev.autopilot ?? false}
-          onEnd={(hud) => setStage({ kind: 'result', difficulty: stage.difficulty, hud })}
+          onEnd={(hud) =>
+            setStage({ kind: 'result', difficulty: stage.difficulty, match: stage.match, hud })
+          }
           onQuit={() => void navigate('/')}
         />
       )}
       {stage.kind === 'result' && (
-        <ResultScreen hud={stage.hud} onRematch={() => start(stage.difficulty)} />
+        <MatchResultView
+          key={stage.match.matchId}
+          match={stage.match}
+          hud={stage.hud}
+          onRematch={() => start(stage.difficulty)}
+        />
       )}
     </div>
+  );
+}
+
+interface MatchResultViewProps {
+  match: StartedMatch;
+  hud: HudSnapshot;
+  onRematch: () => void;
+}
+
+/**
+ * Màn kết quả + nộp tỉ số lên server một lần khi mở. Lỗi mạng/5xx: hook tự thử lại, rồi cho bấm
+ * "Gửi lại" — luôn cùng token nên server không cộng xu hai lần.
+ */
+function MatchResultView({ match, hud, onRematch }: MatchResultViewProps) {
+  const { mutate, data, error, isError } = useSubmitMatchResult();
+  const vars = useMemo(
+    () => ({ matchId: match.matchId, body: resultBody(match.token, hud) }),
+    [match, hud],
+  );
+  const submitted = useRef(false);
+  useEffect(() => {
+    if (submitted.current) return;
+    submitted.current = true;
+    mutate(vars);
+  }, [mutate, vars]);
+
+  let reward: RewardStatus = { kind: 'pending' };
+  if (data) reward = { kind: 'done', reward: data.reward };
+  else if (isError) {
+    reward = {
+      kind: 'error',
+      message:
+        error instanceof ApiClientError && !isTransientError(error)
+          ? `Kết quả không được ghi nhận: ${error.message}`
+          : 'Chưa gửi được kết quả lên máy chủ.',
+      retryable: isTransientError(error),
+    };
+  }
+  return (
+    <ResultScreen
+      hud={hud}
+      reward={reward}
+      onRetryReward={() => mutate(vars)}
+      onRematch={onRematch}
+    />
   );
 }
 

@@ -3,6 +3,21 @@
 /** Trần số trận được thưởng mỗi ngày GMT+7 (PRD §7.1). */
 export const MATCH_REWARD_DAILY_CAP = 15;
 
+/**
+ * Thưởng xu một trận vs máy theo độ khó + kết quả (PRD §7.1). Thắng luân lưu = hoà + 50% chênh lệch
+ * thắng–hoà; thua luân lưu = hoà.
+ */
+export const MATCH_REWARD = {
+  easy: { win: 60, draw: 30, loss: 15, shootout_win: 45, shootout_loss: 30 },
+  hard: { win: 120, draw: 60, loss: 30, shootout_win: 90, shootout_loss: 60 },
+} as const;
+
+/** Số bàn tối đa mỗi đội được coi là hợp lý khi nộp kết quả (PRD §7 tiêu chí match token). */
+export const MATCH_MAX_GOALS = 20;
+
+/** Thời gian tối thiểu từ lúc phát match token tới lúc nộp kết quả (giây); env ghi đè cho dev/test. */
+export const MATCH_MIN_DURATION_SEC = 360;
+
 /** Thành phần hộp 100 phiếu của mỗi người chơi (PRD §6.3). */
 export const BOX_COMPOSITION = { bronze: 58, silver: 30, gold: 10, legend: 2 } as const;
 
