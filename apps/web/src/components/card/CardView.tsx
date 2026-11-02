@@ -3,7 +3,7 @@ import { Avatar } from './Avatar';
 import { POSITION_NAME, RARITY_INFO, statsFor } from './rarity';
 import './card.css';
 
-export type CardSize = 'lg' | 'md' | 'sm';
+export type CardSize = 'lg' | 'md' | 'sm' | 'xs';
 
 export interface CardViewProps {
   card: Card;
@@ -13,6 +13,12 @@ export interface CardViewProps {
   /** Chỉ số hiệu lực (đã áp cấp +/phạt vị trí); mặc định chỉ số gốc của mẫu thẻ. */
   stats?: PlayerStats;
   isNew?: boolean;
+  /** Thẻ đã có trong kho (khi mở gói): nhãn "TRÙNG". */
+  isDuplicate?: boolean;
+  /** Chấm xanh: thẻ đang trong đội hình. */
+  inSquad?: boolean;
+  selected?: boolean;
+  dim?: boolean;
 }
 
 /** Mô tả đọc cho trình đọc màn hình, VD "Vàng, Rafinho Duarte, Tiền đạo, OVR 81". */
@@ -31,14 +37,24 @@ function splitName(name: string): [string, string] {
  * Thẻ cầu thủ dùng chung (DESIGN.md §4): mặt tối, khung màu độ hiếm, góc vát. Cỡ lg (mở thẻ),
  * md (kho), sm (ô đội hình — không có chỉ số). Chiều rộng lấy từ `--card-w`, chữ co theo `cqw`.
  */
-export function CardView({ card, size = 'md', level = 0, stats, isNew }: CardViewProps) {
+export function CardView({
+  card,
+  size = 'md',
+  level = 0,
+  stats,
+  isNew,
+  isDuplicate,
+  inSquad,
+  selected,
+  dim,
+}: CardViewProps) {
   const shown = stats ?? card.stats;
   const ovr = stats ? computeOvr(card.position, stats) : card.ovr;
   const info = RARITY_INFO[card.rarity];
   const [last, first] = splitName(card.name);
   return (
     <div
-      className={`card card--${size} r-${card.rarity}`}
+      className={`card card--${size} r-${card.rarity}${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}`}
       role="img"
       aria-label={cardLabel(card, ovr, level)}
     >
@@ -50,7 +66,9 @@ export function CardView({ card, size = 'md', level = 0, stats, isNew }: CardVie
         <div className="card__pips" aria-hidden="true">
           {'◆'.repeat(info.pips)}
         </div>
-        {isNew && <div className="card__new">MỚI</div>}
+        {isNew && <div className="card__flag">MỚI</div>}
+        {!isNew && isDuplicate && <div className="card__flag card__flag--dup">TRÙNG</div>}
+        {inSquad && <div className="card__squad" title="Đang trong đội hình" />}
         <div className="card__avatar">
           <Avatar seed={card.avatarSeed} />
         </div>
@@ -58,7 +76,7 @@ export function CardView({ card, size = 'md', level = 0, stats, isNew }: CardVie
         <div className="card__sub">
           {first && `${first} · `}“{card.nickname}”
         </div>
-        {size !== 'sm' && (
+        {(size === 'lg' || size === 'md') && (
           <div className="card__stats">
             {statsFor(card.position).map((s) => (
               <div key={s.key} className="card__stat" title={s.name}>

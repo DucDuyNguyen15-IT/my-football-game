@@ -10,17 +10,20 @@
   --c-surface-2: #182822;
   --c-surface-3: #213530;
   --c-line: #2a3d35;
-  --c-line-strong: #3d5a4e;
+  --c-line-strong: #3d5a4e; /* chỉ trang trí: 2.5:1 trên bg */
+  --c-line-control: #557a6a; /* viền ô nhập, nút phụ, chip: ≥ 3:1 (WCAG 1.4.11) */
+  --c-chalk: #e8f0e6;
 
   /* Chữ */
   --c-text: #edf2ec;
   --c-text-muted: #9db0a6;
-  --c-text-faint: #71857c;
+  --c-text-faint: #71857c; /* chỉ trên --c-bg (4.8:1) */
 
   /* Hành động & trạng thái */
   --c-accent: #c8f031;
   --c-accent-hover: #d8ff4a;
   --c-accent-ink: #0a1310;
+  --c-accent-soft: rgb(200 240 49 / 0.12);
   --c-danger: #ff5a4e;
   --c-warning: #ffc23d;
   --c-success: #3dd68c;
@@ -35,6 +38,9 @@
   --c-pitch-line: #e8f0e6;
   --c-team-home: #3fa9f5;
   --c-team-away: #ff7a45;
+  --c-power-pass: #3fa9f5;
+  --c-power-through: #9b6bff; /* ngoại lệ tím duy nhất ngoài thẻ Huyền thoại, chỉ trong HUD */
+  --c-power-shot: #c8f031;
 
   /* Độ hiếm: base (khung), hi (OVR, viền sáng), lo (nền mặt thẻ), glow (hào quang) */
   --r-bronze-base: #b87040;
@@ -91,6 +97,7 @@
   --radius-md: 4px;
   --radius-lg: 8px;
   --card-notch: 14px; /* góc vát của thẻ cầu thủ */
+  --panel-notch: 10px; /* góc vát panel nhấn */
 
   /* Bóng & lớp */
   --shadow-1: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 2px 6px rgb(0 0 0 / 0.35);
