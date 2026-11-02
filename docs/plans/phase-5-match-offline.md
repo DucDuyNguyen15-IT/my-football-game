@@ -194,5 +194,9 @@ Quy ước chung trong `packages/sim`: hàm thuần, state là object thường 
 - **Phụ thuộc:** 5.17 · Yêu cầu người dùng 2026-10-25: chuyền thì người được chuyền biết chạy về chỗ bóng lăn/rơi tới.
 - _Xong (2026-10-25): `interceptPoint` (`actions/pass.ts`) dự đoán đường bóng thật (bước thô 4 tick, tối đa 3 s), chọn điểm sớm nhất bóng thấp hơn tầm khống chế mà người nhận chạy kịp; người nhận chạy tới điểm đó mỗi tick thay vì điểm dự định. Đường chuyền của AI (kể cả thủ môn) cũng có `passReceiver`; thủ môn AI đội người chơi ném/phát thì người chơi điều khiển luôn người nhận._
 
+### 5.23 — Lực chọc khe giữ-nhả + thanh lực `[x]`
+- **Phụ thuộc:** 5.16, 5.19 · Yêu cầu người dùng 2026-11-03: chọc khe W cũng phải có thanh lực để chọc mạnh hay nhẹ.
+- _Xong (2026-11-03): W / Q+W bắt đầu nạp `passCharge` (cờ `through`), giữ tăng lực như S/A, nhả mới chọc. `throughPass` nhận `power`: ưu tiên người nhận xa (như chuyền), khoảng dẫn trước người nhận `THROUGH_LEAD` 6 m → `THROUGH_LEAD_MAX` 15 m, bóng căng hơn. Thanh lực màu tím (`chargeMeter` kind `through`). Bấm nhanh giữ hành vi cũ._
+
 ### 5.14 — Hướng dẫn trận đầu (F14, Could) `[~]`
 - Hoãn sang 7.6 (onboarding) để làm một lần cùng luồng người chơi mới.

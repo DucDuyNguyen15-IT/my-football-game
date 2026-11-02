@@ -39,8 +39,8 @@ export function playerNumber(playerId: string): number {
 }
 
 export interface ChargeMeter {
-  /** Thanh sút (D) hay chuyền sệt (S) / chuyền bổng (A). */
-  kind: 'shot' | 'ground' | 'lob';
+  /** Thanh sút (D), chuyền sệt (S) / chuyền bổng (A) hay chọc khe (W / Q+W). */
+  kind: 'shot' | 'ground' | 'lob' | 'through';
   /** Độ đầy 0…1. */
   fill: number;
 }
@@ -51,7 +51,7 @@ export function chargeMeter(
 ): ChargeMeter | null {
   if (state.passCharge) {
     const fill = Math.min(1, state.passCharge.ticks / PASS_FULL_CHARGE_TICKS);
-    return { kind: state.passCharge.kind, fill };
+    return { kind: state.passCharge.through ? 'through' : state.passCharge.kind, fill };
   }
   if (state.shotChargeTicks > 0) {
     return { kind: 'shot', fill: Math.min(1, state.shotChargeTicks / MAX_CHARGE_TICKS) };

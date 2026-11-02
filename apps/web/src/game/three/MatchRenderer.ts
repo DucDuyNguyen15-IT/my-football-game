@@ -64,7 +64,13 @@ const TONE_EXPOSURE = 1.15;
 const MARKER_Y = 2.2;
 const CHARGE_BAR_Y = 2.75;
 /** Màu thanh lực: chuyền xanh dương, sút màu chanh (nút chính). */
-const CHARGE_COLORS = { ground: 0x5cc8ff, lob: 0x5cc8ff, shot: COLORS.accent } as const;
+/** Chuyền: xanh dương · chọc khe: tím · sút: màu nhấn (chanh). */
+const CHARGE_COLORS = {
+  ground: 0x5cc8ff,
+  lob: 0x5cc8ff,
+  through: 0xb78cff,
+  shot: COLORS.accent,
+} as const;
 const DEBUG_REFRESH_MS = 250;
 /** Bóng trượt giữa tay và vị trí sim trong chừng này giây (lúc bắt / ném), không nhảy cóc. */
 const BALL_BLEND_SEC = 0.12;
