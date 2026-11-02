@@ -1,13 +1,15 @@
 import Fastify, { type FastifyServerOptions } from 'fastify';
+import type { JWTVerifyGetKey } from 'jose';
 import type { HealthResponse } from '@pitch/shared';
 import { systemClock, type Clock } from './clock';
 import type { Db } from './db/client';
 import { cryptoRng, type Rng } from './domain/rng';
+import { createGoogleVerifier } from './services/google';
 import { pingDb, registerDb } from './plugins/db';
 import { AppError, registerErrors } from './plugins/errors';
 import { registerAuth } from './plugins/auth';
 import { DEFAULT_RATE_LIMIT, registerRateLimit, type RateLimitConfig } from './plugins/rate-limit';
-import { registerAuthRoutes } from './routes/auth';
+import { registerAuthConfigRoute, registerAuthRoutes } from './routes/auth';
 import { registerCardRoutes } from './routes/cards';
 import { registerConfigRoutes } from './routes/config';
 import { registerDevRoutes } from './routes/dev';
@@ -41,6 +43,10 @@ export interface BuildAppOptions {
   secureCookies?: boolean;
   /** Tin `X-Forwarded-For` từ reverse proxy (Caddy) để rate limit đúng IP người dùng. */
   trustProxy?: boolean;
+  /** OAuth Client ID (Web) cho đăng nhập Google (ADR-0010); không có thì tắt đăng nhập Google. */
+  googleClientId?: string | null;
+  /** Bộ khoá kiểm ID token Google; mặc định JWKS từ xa của Google (test tiêm khoá cục bộ). */
+  googleKeys?: JWTVerifyGetKey;
 }
 
 /** Tạo instance Fastify. Tách khỏi `server.ts` để test bằng `app.inject()` mà không mở cổng. */
@@ -65,11 +71,18 @@ export function buildApp(opts: BuildAppOptions = {}) {
   });
 
   registerConfigRoutes(app);
+  const google = opts.googleClientId
+    ? {
+        clientId: opts.googleClientId,
+        verify: createGoogleVerifier(opts.googleClientId, opts.googleKeys),
+      }
+    : null;
+  registerAuthConfigRoute(app, google);
 
   if (app.hasDecorator('db')) {
     registerRateLimit(app, opts.rateLimit ?? DEFAULT_RATE_LIMIT);
     registerAuth(app);
-    registerAuthRoutes(app);
+    registerAuthRoutes(app, google);
     registerCardRoutes(app);
     registerPackRoutes(app);
     registerPlayerCardRoutes(app);

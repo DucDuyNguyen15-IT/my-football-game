@@ -57,7 +57,10 @@ export const users = pgTable(
   {
     id: id(),
     username: text('username').notNull(),
-    passwordHash: text('password_hash').notNull(),
+    /** `null` = tài khoản chỉ đăng nhập bằng Google (ADR-0010), không đăng nhập được bằng mật khẩu. */
+    passwordHash: text('password_hash'),
+    /** `sub` của tài khoản Google đã gắn (ADR-0010); `null` = chưa gắn. */
+    googleSub: text('google_sub'),
     email: text('email'),
     coins: bigint('coins', { mode: 'number' }).notNull().default(0),
     freePack5Credits: smallint('free_pack5_credits').notNull().default(0),
@@ -69,6 +72,11 @@ export const users = pgTable(
   },
   (t) => [
     uniqueIndex('users_username_lower_uq').on(sql`lower(${t.username})`),
+    uniqueIndex('users_google_sub_uq').on(t.googleSub),
+    check(
+      'users_has_login_method',
+      sql`${t.passwordHash} is not null or ${t.googleSub} is not null`,
+    ),
     check('users_coins_nonneg', sql`${t.coins} >= 0`),
     check('users_free_pack5_nonneg', sql`${t.freePack5Credits} >= 0`),
   ],
