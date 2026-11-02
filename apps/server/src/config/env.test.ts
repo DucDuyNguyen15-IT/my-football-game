@@ -21,6 +21,15 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ NODE_ENV: 'production' })).toThrow(/DATABASE_URL[\s\S]*SESSION_SECRET/);
   });
 
+  it('GOOGLE_CLIENT_ID: trống/không đặt → null; sai dạng → lỗi', () => {
+    expect(loadEnv({}).googleClientId).toBeNull();
+    expect(loadEnv({ GOOGLE_CLIENT_ID: '' }).googleClientId).toBeNull();
+    expect(
+      loadEnv({ GOOGLE_CLIENT_ID: ' 123-abc.apps.googleusercontent.com ' }).googleClientId,
+    ).toBe('123-abc.apps.googleusercontent.com');
+    expect(() => loadEnv({ GOOGLE_CLIENT_ID: 'khong-hop-le' })).toThrow(/GOOGLE_CLIENT_ID/);
+  });
+
   it('giá trị sai → lỗi', () => {
     expect(() => loadEnv({ PORT: 'abc' })).toThrow(/PORT/);
     expect(() => loadEnv({ SESSION_SECRET: 'ngắn' })).toThrow(/SESSION_SECRET/);

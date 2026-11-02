@@ -19,6 +19,18 @@ const EnvSchema = z
     MATCH_MIN_DURATION_SEC: z.coerce.number().int().min(0).default(360),
     ENABLE_DEV_ROUTES: flag,
     TRUST_PROXY: flag,
+    /** OAuth Client ID (Web) của Google (ADR-0010); để trống = tắt đăng nhập Google. */
+    GOOGLE_CLIENT_ID: z
+      .string()
+      .trim()
+      .transform((v) => v || undefined)
+      .pipe(
+        z
+          .string()
+          .regex(/^[\w.-]+\.apps\.googleusercontent\.com$/)
+          .optional(),
+      )
+      .optional(),
   })
   .superRefine((env, ctx) => {
     if (env.NODE_ENV !== 'production') return;
@@ -36,6 +48,7 @@ const EnvSchema = z
     matchMinDurationSec: env.MATCH_MIN_DURATION_SEC,
     enableDevRoutes: env.ENABLE_DEV_ROUTES,
     trustProxy: env.TRUST_PROXY,
+    googleClientId: env.GOOGLE_CLIENT_ID ?? null,
   }));
 
 export type Env = z.infer<typeof EnvSchema>;
