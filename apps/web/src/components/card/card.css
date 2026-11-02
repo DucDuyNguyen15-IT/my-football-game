@@ -125,18 +125,6 @@
   font-size: 6cqw;
   letter-spacing: 0.5cqw;
 }
-.card__new {
-  position: absolute;
-  top: 18cqw;
-  right: 8cqw;
-  padding: 0.5cqw 2.5cqw;
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: 6.5cqw;
-  letter-spacing: var(--tracking-caps);
-}
 .card__avatar {
   width: 56%;
   aspect-ratio: 1;
@@ -240,5 +228,61 @@ html.tab-hidden .r-legend.card {
 @media (prefers-reduced-motion: reduce) {
   .r-legend.card {
     animation: none;
+  }
+}
+
+/* v2 (docs/design/generator/mfg.css): cỡ xs, cờ, chấm đội hình, mặt sau, chọn/mờ */
+.card--xs {
+  --card-w: 72px;
+  --notch: 7px;
+  padding: 2px;
+}
+.card--xs .card__tier,
+.card--xs .card__sub {
+  display: none;
+}
+.card--xs .card__name {
+  font-size: 15cqw;
+}
+.card__flag {
+  position: absolute;
+  top: 18cqw;
+  right: 6cqw;
+  padding: 0.5cqw 2.5cqw;
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: 6.5cqw;
+  letter-spacing: var(--tracking-caps);
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+}
+.card__flag--dup {
+  background: var(--c-surface-3);
+  color: var(--c-text);
+}
+.card__squad {
+  position: absolute;
+  top: 31cqw;
+  right: 6cqw;
+  width: 9cqw;
+  height: 9cqw;
+  border-radius: 50%;
+  background: var(--c-info);
+  box-shadow: 0 0 0 1cqw var(--lo);
+}
+.r-gold.card:hover .card__sheen {
+  transition: transform 700ms var(--ease-out);
+  transform: translateX(130%);
+}
+.card.is-selected {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 3px;
+}
+.card.is-dim {
+  opacity: 0.4;
+}
+@media (prefers-reduced-motion: reduce) {
+  .r-gold.card:hover .card__sheen {
+    transition: none;
   }
 }

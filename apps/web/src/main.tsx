@@ -6,6 +6,7 @@ import { ApiClientError } from './api/client';
 import { router } from './app/router';
 import './styles/tokens.css';
 import './app/app.css';
+import './styles/ui.css';
 // Font tự host (DESIGN.md §2): chỉ tải file của dải ký tự trang cần (Latin + tiếng Việt).
 import '@fontsource/barlow-condensed/600.css';
 import '@fontsource/barlow-condensed/700.css';

@@ -21,39 +21,52 @@ export function RequireAuth() {
 }
 
 const NAV = [
-  { to: '/', label: 'Đá với máy', end: true },
+  { to: '/', label: 'Trang chủ', end: true },
   { to: '/shop', label: 'Cửa hàng', end: false },
   { to: '/collection', label: 'Kho thẻ', end: false },
   { to: '/squad', label: 'Đội hình', end: false },
 ] as const;
 
-/** Khung các màn ngoài trận (DESIGN.md §6): thanh trên 56px — logo · menu · xu · tên · đăng xuất. */
+/** Khung các màn ngoài trận (docs/design/screens/home.html): thanh trên 56px — logo · menu · ví xu · người chơi · đăng xuất. */
 export function AppLayout() {
   const me = useMe().data;
   const logout = useLogout();
   return (
     <div className="shell">
       <header className="topbar">
-        <Link to="/" className="topbar__logo" aria-label="MFG — trang chủ">
+        <Link to="/" className="logo" aria-label="MFG — trang chủ">
+          <span className="logo__mark" aria-hidden="true" />
           MFG
         </Link>
-        <nav className="topbar__nav" aria-label="Menu chính">
+        <nav className="nav" aria-label="Menu chính">
           {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end={n.end} className="topbar__link">
+            <NavLink
+              key={n.to}
+              to={n.to}
+              end={n.end}
+              className={({ isActive }) => `nav__link${isActive ? ' is-on' : ''}`}
+            >
               {n.label}
             </NavLink>
           ))}
         </nav>
         {me && (
-          <div className="topbar__user">
-            <span className="coin" aria-label={`${me.coins} xu`}>
-              <span className="coin__icon" aria-hidden="true" />
-              {me.coins.toLocaleString('vi-VN')}
+          <div className="topbar__right">
+            <span className="wallet">
+              <span className="coin coin--sm" aria-label={`${me.coins} xu`}>
+                <span className="coin__icon" aria-hidden="true" />
+                {me.coins.toLocaleString('vi-VN')}
+              </span>
             </span>
-            <span className="topbar__name">{me.username}</span>
+            <span className="user">
+              <span className="user__dot" aria-hidden="true">
+                {me.username.slice(0, 1).toUpperCase()}
+              </span>
+              <span className="user__name">{me.username}</span>
+            </span>
             <button
               type="button"
-              className="btn btn--secondary btn--sm"
+              className="btn btn--ghost btn--sm"
               disabled={logout.isPending}
               onClick={() => logout.mutate()}
             >

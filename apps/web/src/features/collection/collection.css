@@ -36,27 +36,6 @@
   align-items: center;
   gap: var(--sp-2);
 }
-.chip {
-  height: 30px;
-  padding: 0 var(--sp-3);
-  border: 1px solid var(--c-line-strong);
-  border-radius: 999px;
-  background: transparent;
-  color: var(--c-text);
-  font: inherit;
-  font-size: var(--fs-sm);
-  cursor: pointer;
-}
-.chip:hover {
-  background: var(--c-surface-2);
-}
-.chip[aria-pressed='true'] {
-  background: var(--c-accent);
-  border-color: var(--c-accent);
-  color: var(--c-accent-ink);
-  font-weight: var(--fw-semibold);
-}
-.chip:focus-visible,
 .coll-item__card:focus-visible {
   outline: 2px solid var(--c-focus);
   outline-offset: 2px;

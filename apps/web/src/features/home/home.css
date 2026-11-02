@@ -1,0 +1,192 @@
+/* Trang chủ — theo docs/design/screens/home.html. Component chung ở styles/ui.css. */
+.chalk-pitch {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+}
+
+.home {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 360px;
+  gap: var(--sp-5);
+  align-items: start;
+}
+.home__main {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-5);
+  min-width: 0;
+}
+
+.home__hero-in {
+  display: flex;
+  gap: var(--sp-5);
+  padding: var(--sp-6);
+}
+.home__hero-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-4);
+}
+.home__title {
+  margin: 0;
+  font-size: var(--fs-3xl);
+  line-height: 0.92;
+  text-transform: uppercase;
+}
+.home__lead {
+  max-width: 380px;
+}
+.home__lead b {
+  color: var(--c-text);
+}
+.home__reward {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-width: 360px;
+}
+.home__reward-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  font-size: var(--fs-sm);
+}
+.home__reward-out {
+  color: var(--c-warning);
+}
+.home__reward-count {
+  font-size: var(--fs-lg);
+}
+.home__reward-bar {
+  height: 8px;
+}
+.home__reward-bar.is-out i.on {
+  background: var(--c-warning);
+}
+.home__cta {
+  margin-top: var(--sp-2);
+}
+
+.home__pitch {
+  position: relative;
+  flex: none;
+  align-self: center;
+  width: 236px;
+  aspect-ratio: 100 / 140;
+  opacity: 0.95;
+}
+.home__dot {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transform: translate(-50%, -50%);
+}
+.home__dot .num {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--c-team-home);
+  color: #04121c; /* 7.4:1 trên xanh đội nhà */
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-md);
+  box-shadow: 0 0 0 3px rgb(10 19 16 / 0.6);
+}
+.home__dot small {
+  padding: 0 4px;
+  background: rgb(10 19 16 / 0.75);
+  font-family: var(--font-display);
+  font-weight: var(--fw-bold);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.1em;
+}
+
+.home__team {
+  padding: var(--sp-4) var(--sp-5);
+}
+.home__team .panel__title .meta b {
+  color: var(--c-text);
+}
+.home__edit {
+  order: 3;
+}
+.home__xi {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+.home__empty-slot {
+  width: 72px;
+  aspect-ratio: 5 / 7;
+  display: grid;
+  place-items: center;
+  border: 1.5px dashed var(--c-line-control);
+  color: var(--c-text-muted);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  text-decoration: none;
+}
+.home__warn {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-sm);
+  color: var(--c-warning);
+}
+
+.home__side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.home__tile {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding: var(--sp-4) var(--sp-5);
+  text-decoration: none;
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.home__tile:hover {
+  background: var(--c-surface-2);
+}
+.home__tile .muted {
+  font-size: var(--fs-sm);
+}
+.home__tile.is-accent {
+  border-color: var(--c-accent);
+  background: linear-gradient(90deg, rgb(200 240 49 / 0.08), transparent);
+}
+.home__tile.is-accent .label {
+  color: var(--c-accent);
+}
+.home__tile-big {
+  font-size: 22px;
+  text-transform: uppercase;
+}
+
+/* Màn hẹp (768px): xếp chồng, ẩn sân minh hoạ */
+@media (max-width: 1024px) {
+  .home {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .home__side {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 860px) {
+  .home__pitch {
+    display: none;
+  }
+  .user__name {
+    display: none;
+  }
+}
