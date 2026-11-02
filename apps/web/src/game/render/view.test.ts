@@ -45,7 +45,22 @@ describe('chargeMeter', () => {
   });
 
   it('giữ S/A: thanh chuyền theo số tick đã giữ', () => {
-    const passCharge = { kind: 'lob' as const, ticks: PASS_FULL_CHARGE_TICKS / 4, dir: { x: 1, y: 0 } };
+    const passCharge = {
+      kind: 'lob' as const,
+      ticks: PASS_FULL_CHARGE_TICKS / 4,
+      dir: { x: 1, y: 0 },
+      through: false,
+    };
     expect(chargeMeter({ ...none, passCharge })).toEqual({ kind: 'lob', fill: 0.25 });
+  });
+
+  it('giữ W / Q+W: thanh chọc khe (màu riêng), cùng nhịp đầy như chuyền', () => {
+    const passCharge = {
+      kind: 'ground' as const,
+      ticks: PASS_FULL_CHARGE_TICKS / 2,
+      dir: { x: 1, y: 0 },
+      through: true,
+    };
+    expect(chargeMeter({ ...none, passCharge })).toEqual({ kind: 'through', fill: 0.5 });
   });
 });

@@ -330,12 +330,15 @@ function kickAim(
 export const THROW_RELEASE_HEIGHT = 1.5;
 export const THROW_RELEASE_VZ = 2;
 
-/** Chọc khe: bóng tới trước người nhận chừng này mét theo hướng tấn công (task 5.16). */
+/** Chọc khe bấm nhanh: bóng tới trước người nhận chừng này mét theo hướng tấn công (task 5.16). */
 export const THROUGH_LEAD = 6;
+/** Chọc khe đầy thanh lực: bóng tới trước người nhận chừng này mét (task 5.23). */
+export const THROUGH_LEAD_MAX = 15;
 
 /**
  * Người chơi chọc khe (W / Q+W): như `kickPass` nhưng đích là khoảng trống phía trước người nhận theo
  * hướng tấn công `attack`, người nhận chạy đón. Không có ai trong hướng thì chuyền vào khoảng trống.
+ * `power` 0…1 (giữ W): lực lớn thì ưu tiên người xa hơn, bóng dẫn xa hơn trước người nhận và đi căng hơn.
  */
 function throughPass(
   players: readonly PlayerState[],
@@ -346,11 +349,13 @@ function throughPass(
   attack: 1 | -1,
   rng: RngState,
   tick: number,
+  power = 0,
 ): { ball: BallState; rng: RngState; receiver: PassReceiver | null } {
   const range = kind === 'lob' ? lobRangeFor(passer.stats.passing) : Infinity;
-  const target = choosePassTarget(players, passer, dir, range, kind, 0, true);
-  if (!target) return kickPass(players, passer, from, dir, kind, rng, tick);
-  const lead = add(passLeadPoint(from, target, kind), vec2(attack * THROUGH_LEAD, 0));
+  const target = choosePassTarget(players, passer, dir, range, kind, power, true);
+  if (!target) return kickPass(players, passer, from, dir, kind, rng, tick, power);
+  const leadM = THROUGH_LEAD + (THROUGH_LEAD_MAX - THROUGH_LEAD) * power;
+  const lead = add(passLeadPoint(from, target, kind), vec2(attack * leadM, 0));
   const to = vec2(Math.max(-HALF_LENGTH + 1, Math.min(HALF_LENGTH - 1, lead.x)), lead.y);
   const travelTicks = Math.ceil(passTravelTime(length(sub(to, from)), kind) / TICK_DT);
   const receiver = {
@@ -358,7 +363,7 @@ function throughPass(
     point: to,
     untilTick: tick + travelTicks + RECEIVE_GRACE_TICKS,
   };
-  return { ...passBall(passer, from, to, kind, rng, PASS_ASSIST_ERROR_MULT), receiver };
+  return { ...passBall(passer, from, to, kind, rng, PASS_ASSIST_ERROR_MULT, power), receiver };
 }
 
 /** Người nhận đường chuyền của AI (chạy đón bóng như đường chuyền của người chơi). */
@@ -893,16 +898,24 @@ function stepPlay(
   const humanBefore = humanOf(state, controlledId);
   const me = humanBefore === null ? undefined : byId(humanBefore);
   if (me && ballOwnerId === me.id && !windup) {
-    // S/A: bấm bắt đầu nạp lực chuyền, giữ thì lực tăng, nhả mới chuyền (đang nạp sút thì bỏ qua).
-    const startKind: PassKind | null =
-      passCharge || shotChargeTicks > 0
-        ? null
+    // S/A/W: bấm bắt đầu nạp lực chuyền/chọc khe, giữ thì lực tăng, nhả mới đá (đang nạp sút thì bỏ
+    // qua). Thủ môn ôm bóng không chọc khe.
+    const canStart = !passCharge && shotChargeTicks === 0;
+    const startThrough = canStart && !keeperHolds && pressed('through');
+    const startKind: PassKind | null = !canStart
+      ? null
+      : startThrough
+        ? input.modifier
+          ? 'lob'
+          : 'ground'
         : pressed('pass')
           ? 'ground'
           : pressed('lob')
             ? 'lob'
             : null;
-    const holding = passCharge !== null && input[passCharge.kind === 'ground' ? 'pass' : 'lob'];
+    const holding =
+      passCharge !== null &&
+      input[passCharge.through ? 'through' : passCharge.kind === 'ground' ? 'pass' : 'lob'];
     const moveDir = length(input.move) > 0 ? normalize(input.move) : null;
     const releasedShot = !input.shoot && shotChargeTicks > 0;
     if (losesBallOnTurn(me, input.move)) {
@@ -912,20 +925,8 @@ function stepPlay(
       shotChargeTicks = 0;
       passCharge = null;
       backPass = null;
-    } else if (pressed('through') && !passCharge && shotChargeTicks === 0 && !keeperHolds) {
-      const kind: PassKind = input.modifier ? 'lob' : 'ground';
-      const dir = moveDir ?? me.facing;
-      const attack = attackSign(me.team, state.half);
-      const kick = throughPass(state.players, asKicker(me), ball.pos, dir, kind, attack, rng, tick);
-      ({ ball, rng } = kick);
-      if (kick.receiver) controlledId = kick.receiver.playerId;
-      passReceiver = kick.receiver;
-      ballOwnerId = null;
-      kickLock = lock(me.id);
-      lastShot = null;
-      backPass = kickedBy(me);
     } else if (startKind) {
-      passCharge = { kind: startKind, ticks: 1, dir: moveDir ?? me.facing };
+      passCharge = { kind: startKind, ticks: 1, dir: moveDir ?? me.facing, through: startThrough };
     } else if (passCharge && holding) {
       passCharge = {
         ...passCharge,
@@ -937,7 +938,27 @@ function stepPlay(
       const dir = moveDir ?? passCharge.dir;
       const power = passPower(passCharge.ticks);
       const { kind } = passCharge;
-      if (keeperHolds) {
+      if (passCharge.through) {
+        const attack = attackSign(me.team, state.half);
+        const kick = throughPass(
+          state.players,
+          asKicker(me),
+          ball.pos,
+          dir,
+          kind,
+          attack,
+          rng,
+          tick,
+          power,
+        );
+        ({ ball, rng } = kick);
+        if (kick.receiver) controlledId = kick.receiver.playerId;
+        passReceiver = kick.receiver;
+        ballOwnerId = null;
+        kickLock = lock(me.id);
+        lastShot = null;
+        backPass = kickedBy(me);
+      } else if (keeperHolds) {
         // Thủ môn ôm bóng: lấy đà ném (chuyền sệt) / phát bóng (bổng), bóng còn trong tay.
         const style = kind === 'ground' ? 'throw' : 'kick';
         windup = startWindup(me.id, tick, style, { type: 'assisted', kind, dir, power });

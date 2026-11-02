@@ -246,10 +246,10 @@ export interface MatchState {
   /** Số tick người chơi đã giữ nút sút (0 = không nạp lực). */
   shotChargeTicks: number;
   /**
-   * Người chơi đang giữ S/A để nạp lực chuyền (nhả mới chuyền): loại chuyền, số tick đã giữ, hướng
-   * bấm gần nhất. null khi không nạp.
+   * Người chơi đang giữ S/A (chuyền) hoặc W / Q+W (chọc khe, `through`) để nạp lực, nhả mới đá: loại
+   * chuyền, số tick đã giữ, hướng bấm gần nhất. null khi không nạp.
    */
-  passCharge: { kind: 'ground' | 'lob'; ticks: number; dir: Vec2 } | null;
+  passCharge: { kind: 'ground' | 'lob'; ticks: number; dir: Vec2; through: boolean } | null;
   /** Cầu thủ đội nhà người chơi đang điều khiển. */
   controlledId: string;
   /** Thủ môn đang lấy đà ném/phát bóng; null khi không. */
