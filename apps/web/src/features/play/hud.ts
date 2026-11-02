@@ -2,7 +2,7 @@
  * Dữ liệu HUD rút từ `MatchState`, thuần (không React/Three.js). Chỉ đọc state, không quyết định luật.
  * Snapshot làm tròn (phút, % thể lực) để React chỉ vẽ lại vài lần mỗi giây dù sim chạy 60 tick/s.
  */
-import type { Position, SquadSlot } from '@pitch/shared';
+import type { Position, SquadSlot, SubmitMatchResultRequest } from '@pitch/shared';
 import {
   MAX_SUBS,
   matchClock,
@@ -149,6 +149,22 @@ const kicksTaken = (h: HudSnapshot): number =>
 /** Số bàn luân lưu mỗi đội. */
 export function shootoutScore(s: { home: boolean[]; away: boolean[] }): Score {
   return { home: s.home.filter(Boolean).length, away: s.away.filter(Boolean).length };
+}
+
+/**
+ * Body nộp kết quả cuối trận (POST /matches/:id/result). Chỉ báo tỉ số; thưởng/kết quả do server
+ * quyết định.
+ */
+export function resultBody(
+  token: string,
+  hud: Pick<HudSnapshot, 'score' | 'shootout'>,
+): SubmitMatchResultRequest {
+  return {
+    token,
+    homeGoals: hud.score.home,
+    awayGoals: hud.score.away,
+    ...(hud.shootout && { shootout: shootoutScore(hud.shootout) }),
+  };
 }
 
 /** Đội nhà thắng/thua luân lưu (kết quả trận vẫn là Hoà, PRD §5); null nếu không có luân lưu. */

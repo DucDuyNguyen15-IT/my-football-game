@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { MATCH_MIN_DURATION_SEC } from './economy';
 
 /** Giá trị dev khớp `docker-compose.dev.yml`; production bắt buộc đặt biến thật. */
 const DEV_DATABASE_URL = 'postgres://pitch:pitch@localhost:5432/pitch';
@@ -16,7 +17,7 @@ const EnvSchema = z
     SESSION_SECRET: z.string().min(32).optional(),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     HOST: z.string().min(1).default('127.0.0.1'),
-    MATCH_MIN_DURATION_SEC: z.coerce.number().int().min(0).default(360),
+    MATCH_MIN_DURATION_SEC: z.coerce.number().int().min(0).default(MATCH_MIN_DURATION_SEC),
     ENABLE_DEV_ROUTES: flag,
     TRUST_PROXY: flag,
   })
