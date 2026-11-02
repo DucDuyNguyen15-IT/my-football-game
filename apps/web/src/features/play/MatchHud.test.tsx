@@ -10,6 +10,7 @@ import {
   ResultScreen,
   SubstitutionPanel,
   type PauseSubs,
+  type RewardStatus,
 } from './screens';
 
 const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
@@ -114,6 +115,30 @@ describe('Scoreboard khi luân lưu', () => {
 });
 
 describe('ResultScreen', () => {
+  const result = (reward: RewardStatus) =>
+    renderToStaticMarkup(
+      <MemoryRouter>
+        <ResultScreen
+          hud={hud({ score: { home: 2, away: 0 }, phase: 'full_time' })}
+          reward={reward}
+          onRetryReward={() => {}}
+          onRematch={() => {}}
+        />
+      </MemoryRouter>,
+    );
+
+  it('hiện xu nhận từ server; hết lượt thưởng; lỗi mạng cho gửi lại', () => {
+    expect(result({ kind: 'pending' })).toContain('Đang ghi nhận kết quả');
+    expect(result({ kind: 'done', reward: 120 })).toContain('+120 xu');
+    expect(result({ kind: 'done', reward: 0 })).toContain('Không có thưởng');
+    const offline = result({ kind: 'error', message: 'Mất mạng', retryable: true });
+    expect(offline).toContain('Mất mạng');
+    expect(offline).toContain('Gửi lại kết quả');
+    expect(result({ kind: 'error', message: 'Quá sớm', retryable: false })).not.toContain(
+      'Gửi lại kết quả',
+    );
+  });
+
   it('hoà có luân lưu: hiện Hoà kèm Thắng luân lưu', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter>
@@ -123,6 +148,8 @@ describe('ResultScreen', () => {
             phase: 'full_time',
             shootout: { home: [true, true, true], away: [false, false, false], turn: null },
           })}
+          reward={{ kind: 'pending' }}
+          onRetryReward={() => {}}
           onRematch={() => {}}
         />
       </MemoryRouter>,

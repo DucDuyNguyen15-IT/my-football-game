@@ -9,6 +9,7 @@ const app = buildApp({
   enableDevRoutes: env.enableDevRoutes,
   secureCookies: env.nodeEnv === 'production',
   trustProxy: env.trustProxy,
+  matchMinDurationSec: env.matchMinDurationSec,
 });
 
 // Dọn phiên hết hạn mỗi giờ (đăng nhập cũng dọn); lỗi chỉ ghi log, không làm sập server.

@@ -45,3 +45,10 @@ export const MatchTeamSetup = z
     }
   });
 export type MatchTeamSetup = z.infer<typeof MatchTeamSetup>;
+
+/**
+ * Kết quả trận theo góc nhìn người chơi (enum `match_outcome`, PRD §7.1). Hoà sau 2 hiệp phân định
+ * bằng luân lưu → `shootout_win` / `shootout_loss`; `draw` chỉ khi không có luân lưu.
+ */
+export const MatchOutcome = z.enum(['win', 'draw', 'loss', 'shootout_win', 'shootout_loss']);
+export type MatchOutcome = z.infer<typeof MatchOutcome>;

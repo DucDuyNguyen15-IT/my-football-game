@@ -1,6 +1,7 @@
 import Fastify, { type FastifyServerOptions } from 'fastify';
 import type { HealthResponse } from '@pitch/shared';
 import { systemClock, type Clock } from './clock';
+import { MATCH_MIN_DURATION_SEC } from './config/economy';
 import type { Db } from './db/client';
 import { cryptoRng, type Rng } from './domain/rng';
 import { pingDb, registerDb } from './plugins/db';
@@ -41,6 +42,8 @@ export interface BuildAppOptions {
   secureCookies?: boolean;
   /** Tin `X-Forwarded-For` từ reverse proxy (Caddy) để rate limit đúng IP người dùng. */
   trustProxy?: boolean;
+  /** Giây tối thiểu từ lúc phát match token tới lúc nộp kết quả; mặc định 360 (6 phút). */
+  matchMinDurationSec?: number;
 }
 
 /** Tạo instance Fastify. Tách khỏi `server.ts` để test bằng `app.inject()` mà không mở cổng. */
@@ -74,7 +77,9 @@ export function buildApp(opts: BuildAppOptions = {}) {
     registerPackRoutes(app);
     registerPlayerCardRoutes(app);
     registerSquadRoutes(app);
-    registerMatchRoutes(app);
+    registerMatchRoutes(app, {
+      minDurationSec: opts.matchMinDurationSec ?? MATCH_MIN_DURATION_SEC,
+    });
     if (opts.enableDevRoutes) registerDevRoutes(app);
   }
 

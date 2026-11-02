@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { Rarity } from '../domain';
+import type { MatchOutcome } from '../match';
 import { dataEnvelope } from './common';
 
 const price = z.number().int().min(0);
@@ -33,11 +34,24 @@ export const UpgradeConfig = z.object({
 });
 export type UpgradeConfig = z.infer<typeof UpgradeConfig>;
 
+/** Thưởng xu một trận theo kết quả (PRD §7.1). */
+export const MatchRewardTable = z.object({
+  win: price,
+  draw: price,
+  loss: price,
+  shootout_win: price,
+  shootout_loss: price,
+} satisfies Record<MatchOutcome, typeof price>);
+export type MatchRewardTable = z.infer<typeof MatchRewardTable>;
+
 /**
  * GET /api/v1/config/economy (ARCHITECTURE §4.3 #10): số liệu kinh tế để UI hiển thị — server là
- * nguồn duy nhất. Thưởng trận bổ sung ở 7.2.
+ * nguồn duy nhất.
  */
 export const EconomyConfig = z.object({
+  matchReward: z.object({ easy: MatchRewardTable, hard: MatchRewardTable }),
+  /** Trần số trận có thưởng mỗi ngày GMT+7. */
+  matchRewardDailyCap: z.number().int().min(0),
   cardSalePrice: z.object({
     bronze: price,
     silver: price,
