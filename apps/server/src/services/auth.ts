@@ -140,13 +140,14 @@ export async function clearLoginFailures(db: Db, user: UserRow): Promise<void> {
     .where(eq(users.id, user.id));
 }
 
-export function toMe(user: UserRow): Me {
+/** `rewardedMatchesToday`: số trận đã nhận thưởng hôm nay (GMT+7), route tính qua `countRewardedMatches`. */
+export function toMe(user: UserRow, rewardedMatchesToday = 0): Me {
   return {
     id: String(user.id),
     username: user.username,
     coins: user.coins,
     freePack5Credits: user.freePack5Credits,
-    rewardedMatchesToday: 0,
+    rewardedMatchesToday,
     rewardedMatchesLimit: MATCH_REWARD_DAILY_CAP,
   };
 }
@@ -160,23 +161,46 @@ export function isUniqueViolation(err: unknown, constraint: string): boolean {
   return false;
 }
 
-/**
- * Đăng ký trong **một transaction** (ARCHITECTURE §4.3 #2): user + hộp 100 phiếu + 11 thẻ khởi đầu +
- * đội hình 2-3-1 xếp sẵn + lượt gói 5 miễn phí. Trùng tên (không phân biệt hoa thường) → 409.
- */
+/** Đăng ký bằng tên + mật khẩu (task 6.3b) — xem {@link createAccount}. */
 export async function registerUser(
   db: Db,
   input: { username: string; password: string; email?: string | undefined },
   now: Date,
 ): Promise<UserRow> {
   const passwordHash = await hashPassword(input.password);
+  return createAccount(db, { username: input.username, passwordHash, email: input.email }, now);
+}
+
+/** Tra user theo `sub` Google đã gắn (ADR-0010). */
+export async function findUserByGoogleSub(db: Db, sub: string): Promise<UserRow | undefined> {
+  const [user] = await db.select().from(users).where(eq(users.googleSub, sub));
+  return user;
+}
+
+/**
+ * Tạo tài khoản trong **một transaction** (ARCHITECTURE §4.3 #2): user + hộp 100 phiếu + 11 thẻ khởi
+ * đầu + đội hình 2-3-1 xếp sẵn + lượt gói 5 miễn phí. Dùng chung cho đăng ký thường (có
+ * `passwordHash`) và Google (có `googleSub`, không mật khẩu — task 7.7). Trùng tên (không phân biệt
+ * hoa thường) → 409; trùng `googleSub` ném lỗi gốc (`users_google_sub_uq`) để nơi gọi tự xử lý.
+ */
+export async function createAccount(
+  db: Db,
+  input: {
+    username: string;
+    passwordHash?: string | null | undefined;
+    googleSub?: string | null | undefined;
+    email?: string | null | undefined;
+  },
+  now: Date,
+): Promise<UserRow> {
   try {
     return await db.transaction(async (tx) => {
       const [user] = await tx
         .insert(users)
         .values({
           username: input.username,
-          passwordHash,
+          passwordHash: input.passwordHash ?? null,
+          googleSub: input.googleSub ?? null,
           email: input.email ?? null,
           freePack5Credits: STARTER_FREE_PACK5,
         })

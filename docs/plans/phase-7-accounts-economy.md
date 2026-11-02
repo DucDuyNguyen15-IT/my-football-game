@@ -57,10 +57,11 @@
 - **Kiểm chứng:** thủ công: tài khoản mới vào trận đầu < 2 phút; truy vấn analytics ra thời gian trung vị.
 - **Xong khi:** luồng §9 chạy trơn. Cuối GĐ7: tick ROADMAP, cập nhật CLAUDE.md, PROGRESS.
 
-### 7.7 — Đăng nhập Google + làm đẹp màn đăng nhập/đăng ký `[ ]`
+### 7.7 — Đăng nhập Google + làm đẹp màn đăng nhập/đăng ký `[x]`
 - **Phụ thuộc:** 7.1 · **Model:** strongest
 - **Bối cảnh:** [ADR-0010](../adr/0010-google-sign-in.md); ADR-0004; `apps/server/src/routes/auth.ts`, `services/auth.ts`; `apps/web/src/features/auth/AuthPage.tsx`; `docs/DESIGN.md`.
 - **Việc cần làm:** migration `users.password_hash` nullable + `google_sub` unique; `POST /auth/google { idToken, username? }` kiểm ID token (aud = `GOOGLE_CLIENT_ID`), user cũ → tạo phiên, user mới → yêu cầu chọn username rồi tạo tài khoản + quà tân thủ trong một transaction (dùng chung code đăng ký). Web: nút Google (GIS), ẩn nếu chưa cấu hình; làm lại màn đăng nhập/đăng ký cho chỉn chu (bố cục, minh hoạ, trạng thái lỗi/chờ, hiện/ẩn mật khẩu).
 - **Cần người dùng:** tạo OAuth Client ID (Web) trong Google Cloud Console, thêm origin `http://localhost:5173` + domain deploy, gửi Client ID.
 - **Kiểm chứng:** test: token sai aud/hết hạn → 401; cùng `sub` đăng nhập lại → cùng user; user mới nhận đúng quà tân thủ; tài khoản Google không đăng nhập được bằng mật khẩu. Thủ công: đăng nhập Google thật.
 - **Xong khi:** đăng nhập Google chạy ở dev; màn auth mới được duyệt.
+- **Ghi chú (xong code, chờ người dùng: Client ID + kiểm thủ công Google thật + duyệt màn auth mới):** migration `0002_google_sign_in` (`password_hash` nullable, `google_sub` + unique index `users_google_sub_uq`, CHECK `users_has_login_method`; rollback: xoá user chỉ-Google rồi `DROP` constraint/index/cột, `SET NOT NULL`). Kiểm token bằng `jose` + JWKS của Google (`services/google.ts`, kiểm `aud`/`iss`/`exp` theo đồng hồ nghiệp vụ); test tiêm khoá cục bộ (`buildApp({ googleClientId, googleKeys })`) nên không cần mạng. `POST /auth/google` trả `signed_in` (201 khi vừa tạo) hoặc `needs_username` (gợi ý tên từ email); tạo tài khoản dùng chung `createAccount` với đăng ký. Web lấy client id qua `GET /api/v1/config/auth` (null → ẩn nút); server tự nạp `.env` ở gốc repo. Màn auth mới: minh hoạ nửa sân vạch phấn + panel form, lỗi theo từng ô, hiện/ẩn mật khẩu, thông báo riêng `login_locked`/`rate_limited`.

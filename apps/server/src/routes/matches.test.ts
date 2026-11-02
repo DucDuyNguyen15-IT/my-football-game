@@ -239,6 +239,17 @@ describe('POST /api/v1/matches/:id/result', () => {
     expect(u!.coins).toBe(tx.reduce((s, t) => s + t.amount, 0));
   });
 
+  it('GET /me đếm số trận có thưởng hôm nay (GMT+7), sang ngày mới về 0', async () => {
+    const sid = await signup();
+    expect((await me(sid)).rewardedMatchesToday).toBe(0);
+    const m = await startOk(sid);
+    clock.advance(6 * MIN);
+    await submit(sid, m.matchId, { token: m.token, homeGoals: 1, awayGoals: 0 });
+    expect((await me(sid)).rewardedMatchesToday).toBe(1);
+    clock.advance(24 * 60 * MIN);
+    expect((await me(sid)).rewardedMatchesToday).toBe(0);
+  });
+
   it('thưởng theo độ khó + luân lưu (Khó: thắng luân lưu 90, thua luân lưu 60)', async () => {
     const sid = await signup();
     const a = await startOk(sid, 'hard');

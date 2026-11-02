@@ -15,6 +15,13 @@
       "when": 1792877171586,
       "tag": "0001_coin_tx_append_only",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1793642997917,
+      "tag": "0002_google_sign_in",
+      "breakpoints": true
     }
   ]
 }
