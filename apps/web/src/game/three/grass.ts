@@ -122,7 +122,8 @@ export function buildGrass(): Grass {
         bool inPitch = abs(wp.x) < ${HALF_LENGTH.toFixed(3)} && abs(wp.y) < ${HALF_WIDTH.toFixed(3)};
         vec3 base = (inPitch && mod(idx, 2.0) > 0.5) ? uColB : uColA;
         if (lineDist(wp) < ${(LINE_W / 2).toFixed(3)}) base = uChalk;
-        vColor = base * mix(0.75, 1.12, h);`,
+        // .rgb: Three.js mới khai báo vColor là vec4, bản cũ là vec3 — gán thẳng vec3 sẽ lỗi biên dịch.
+        vColor.rgb = base * mix(0.75, 1.12, h);`,
       );
   };
 
