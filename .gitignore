@@ -45,3 +45,6 @@ assets-src/dls/
 assets-src/sketchfab/
 apps/web/public/models/ball.glb
 apps/web/public/models/goal.glb
+
+# Worktree của agent Claude Code
+.claude/worktrees/
