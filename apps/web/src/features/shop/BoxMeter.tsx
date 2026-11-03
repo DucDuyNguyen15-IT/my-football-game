@@ -34,22 +34,20 @@ export function WarnIcon() {
 }
 
 /** Hộp phiếu (docs/design/screens/shop.html): còn lại theo độ hiếm + tỉ lệ lần bốc kế tiếp. */
-export function BoxMeter({ box, layout = 'column' }: { box: PackBox; layout?: 'column' | 'row' }) {
+export function BoxMeter({ box }: { box: PackBox }) {
   const empty = box.total === 0;
   return (
-    <section className={`box box--${layout}`} aria-labelledby="box-title">
+    <section className="box" aria-labelledby="box-title">
       <h2 id="box-title" className="panel__title box__title">
         Hộp thẻ của bạn{' '}
         <span className="meta num">
           còn <b>{box.total}</b>/100 phiếu
         </span>
       </h2>
-      {layout === 'column' && (
-        <p className="muted box__lead">
-          Hộp riêng 100 phiếu: <b>{composition}</b>. Bốc phiếu nào, phiếu đó ra khỏi hộp — tỉ lệ đổi
-          sau mỗi lần mở.
-        </p>
-      )}
+      <p className="muted box__lead">
+        Hộp riêng 100 phiếu: <b>{composition}</b>. Bốc phiếu nào, phiếu đó ra khỏi hộp — tỉ lệ đổi
+        sau mỗi lần mở.
+      </p>
       {onlyBronzeLeft(box) && (
         <p className="banner" role="note">
           <WarnIcon />
