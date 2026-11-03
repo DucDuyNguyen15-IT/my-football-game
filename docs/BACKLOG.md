@@ -26,3 +26,5 @@ Ghi ý tưởng vào đây thay vì làm ngay. Xem xét lại khi lập kế ho�
 | Lưu highlight và chọn góc camera khi phát lại | Người dùng | 5 | Người dùng · 2026-10-25; mở rộng `render/replay.ts` |
 | Ăn mừng bàn thắng theo thẻ cầu thủ | Người dùng | 5 | Người dùng · 2026-10-25; cần hoạt ảnh Mixamo riêng |
 | Tuỳ chọn tốc độ trận (độ dài hiệp / tốc độ mô phỏng) | Người dùng | 5 | Người dùng · 2026-10-25 |
+| Cửa hàng: "5 lần bốc gần nhất" + nút "Làm mới hộp" thủ công (thiết kế `shop.html`) — API `/packs` chưa trả lịch sử bốc, server tự làm mới hộp khi hết phiếu nên UI chỉ báo "lần mở tới tự làm mới" | Agent | 7 | Làm lại giao diện Sân đêm v2 (2026-11-03); cần thêm trường vào `PackBox` (contract-first) |
+| Thành phần hộp 100 phiếu (2/10/30/58) đang lặp ở web (`BOX_INIT` trong `BoxMeter.tsx`) — nên trả từ `/packs` để web không hard-code | Agent | 7 | Làm lại giao diện 2026-11-03 |

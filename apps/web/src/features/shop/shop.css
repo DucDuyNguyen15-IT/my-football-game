@@ -1,83 +1,106 @@
-/* Cửa hàng + màn mở thẻ (DESIGN.md §6.3, §6.6) — theo prototype docs/design/prototypes/pack-opening.html. */
+/* Cửa hàng + màn mở thẻ — theo docs/design/screens/shop*.html, packopening*.html. Component chung ở styles/ui.css. */
 
 /* ---------- Cửa hàng ---------- */
+.shop-page {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+.shop__head {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: var(--sp-2) var(--sp-4);
+}
+.shop__head .muted {
+  font-size: var(--fs-sm);
+}
 .shop {
   display: grid;
-  grid-template-columns: minmax(280px, 380px) 1fr;
+  grid-template-columns: 440px minmax(0, 1fr);
   gap: var(--sp-5);
   align-items: start;
 }
-@media (max-width: 860px) {
+@media (max-width: 1000px) {
   .shop {
     grid-template-columns: 1fr;
   }
+  /* Màn hẹp: gói (việc chính) lên trước, hộp phiếu xuống dưới. */
+  .shop__box {
+    order: 2;
+  }
 }
 .shop__packs {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  min-width: 0;
 }
+
+.shop .pack-art {
+  --pw: 120px;
+  flex: none;
+  width: var(--pw);
+}
+.shop .pack-art::before {
+  inset: calc(var(--pw) * 0.055);
+}
+.shop .pack-art__count {
+  font-size: calc(var(--pw) * 0.42);
+}
+.shop .pack-art__count small {
+  font-size: max(10px, calc(var(--pw) * 0.08));
+}
+.shop .pack-art__stripes {
+  height: calc(var(--pw) * 0.07);
+}
+
+.shop-free__in {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  background: linear-gradient(90deg, rgb(200 240 49 / 0.1), var(--c-surface-1) 60%);
+}
+.shop-free .pack-art {
+  outline: 2px solid var(--c-accent);
+  outline-offset: 4px;
+}
+.shop-free__label {
+  color: var(--c-accent);
+}
+
 .shop-pack {
   display: flex;
-  gap: var(--sp-4);
-  align-items: flex-start;
+  align-items: center;
+  gap: var(--sp-5);
+  padding: var(--sp-5);
 }
 .shop-pack__info {
-  display: grid;
-  gap: var(--sp-3);
-  justify-items: start;
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
 }
-.shop-pack__info .panel__title {
+.shop-pack__title {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.shop-pack__desc {
   margin: 0;
-}
-.shop-pack__art {
-  flex: none;
-  width: 84px;
-  aspect-ratio: 5 / 7;
-  display: grid;
-  place-items: center;
-  clip-path: polygon(
-    0 0,
-    calc(100% - 10px) 0,
-    100% 10px,
-    100% 100%,
-    10px 100%,
-    0 calc(100% - 10px)
-  );
-  background:
-    linear-gradient(
-      135deg,
-      transparent 70%,
-      var(--r-bronze-base) 70% 74%,
-      var(--r-silver-base) 74% 78%,
-      var(--r-gold-base) 78% 82%,
-      var(--r-legend-base) 82% 86%,
-      transparent 86%
-    ),
-    linear-gradient(160deg, #1b2c25, #0e1814);
-  box-shadow: inset 0 0 0 2px var(--c-line-strong);
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: var(--fs-2xl);
-}
-.shop-pack__warn {
-  margin: 0;
-  padding: var(--sp-2) var(--sp-3);
-  border-left: 3px solid var(--c-warning);
-  background: rgb(255 194 61 / 0.08);
-  color: var(--c-warning);
   font-size: var(--fs-sm);
 }
-.shop-pack__free {
-  display: grid;
-  gap: var(--sp-2);
-  color: var(--c-accent);
-  font-weight: var(--fw-semibold);
+.shop-pack__desc b {
+  color: var(--c-text);
+  font-weight: 600;
+}
+.shop-pack .buy {
+  margin-top: 6px;
 }
 .shop__error {
-  grid-column: 1 / -1;
-  margin: 0;
-  color: var(--c-danger);
+  width: auto;
 }
 
 .buy {
@@ -86,52 +109,87 @@
   gap: var(--sp-3);
   flex-wrap: wrap;
 }
-.buy__short {
-  color: var(--c-danger);
-  font-size: var(--fs-sm);
+
+/* Khung chờ tải */
+.shop-skel {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.buy .btn {
-  position: relative;
+.shop-skel__row {
+  display: grid;
+  grid-template-columns: 80px 1fr 40px;
+  gap: 10px;
 }
-.buy .btn[aria-busy='true'] > :not(.spinner) {
-  visibility: hidden;
+.shop-skel__art {
+  flex: none;
+  width: 110px;
+  height: 146px;
 }
-.buy .btn .spinner {
-  position: absolute;
-  inset: 0;
-  margin: auto;
+.shop-skel__info {
+  flex: 1;
+  display: grid;
+  gap: var(--sp-2);
+  align-content: start;
 }
-.price {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-1);
-  font-variant-numeric: tabular-nums;
-}
-.price .coin__icon {
-  border-color: currentColor;
-  background: linear-gradient(currentColor, currentColor) center / 2px 8px no-repeat;
+.shop-skel__btn {
+  width: 140px;
+  height: 40px;
 }
 
-/* ---------- Thanh hộp phiếu ---------- */
+/* ---------- Hộp phiếu ---------- */
 .box {
-  display: grid;
-  gap: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
-.box__title {
+.box .box__title {
   margin: 0;
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-md);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  color: var(--c-text-muted);
 }
-.box__total b {
+.box__total b,
+.box__title .meta b {
   color: var(--c-text);
+  font-weight: 600;
 }
-.box__rows {
+.box__lead {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.box__lead b {
+  color: var(--c-text);
+  font-weight: 600;
+}
+.box .banner {
+  margin: 0;
+}
+.box .banner svg {
+  flex: none;
+}
+.box .meter {
+  grid-template-columns: 118px 1fr 40px 52px;
+}
+.box .meter__name {
+  white-space: nowrap;
+}
+.box__head {
+  display: flex;
+  justify-content: space-between;
+}
+.box__note {
+  margin: 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--c-line);
+  font-size: var(--fs-xs);
+}
+.box__empty {
   display: grid;
-  gap: var(--sp-3);
+  gap: var(--sp-1);
+  padding-top: 14px;
+  border-top: 1px solid var(--c-line);
+}
+.box__empty p {
+  margin: 0;
+  font-size: var(--fs-sm);
 }
 .box--row {
   max-width: 1100px;
@@ -140,62 +198,17 @@
   border-top: 2px solid var(--c-line);
 }
 .box--row .box__rows {
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: var(--sp-4);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px var(--sp-6);
+}
+.box--row .meter + .meter {
+  margin-top: 0;
 }
 @media (max-width: 860px) {
   .box--row .box__rows {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: 1fr;
   }
-}
-.box__row {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 2px var(--sp-2);
-  font-size: var(--fs-sm);
-}
-.box__label {
-  color: var(--hi);
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-md);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  white-space: nowrap;
-}
-.box__count {
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: var(--fs-lg);
-  font-variant-numeric: tabular-nums;
-}
-.box__bar {
-  grid-column: 1 / -1;
-  position: relative;
-  height: 6px;
-  background: var(--c-surface-3);
-}
-.box__bar i {
-  position: absolute;
-  inset: 0 auto 0 0;
-  background: var(--base);
-  transition: width 600ms var(--ease-out);
-}
-.box__odds {
-  grid-column: 1 / -1;
-  color: var(--c-text-muted);
-}
-.box__odds b {
-  color: var(--c-text);
-  font-variant-numeric: tabular-nums;
-}
-.box__note {
-  font-size: var(--fs-xs);
-}
-.box__warn {
-  margin: 0;
-  color: var(--c-warning);
-  font-size: var(--fs-sm);
 }
 
 /* ---------- Màn mở thẻ ---------- */

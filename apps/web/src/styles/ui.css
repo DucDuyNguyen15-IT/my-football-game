@@ -987,6 +987,18 @@
 .pack-art__stripes i {
   flex: 1;
 }
+.pack-art__stripes i:nth-child(1) {
+  background: var(--r-bronze-base);
+}
+.pack-art__stripes i:nth-child(2) {
+  background: var(--r-silver-base);
+}
+.pack-art__stripes i:nth-child(3) {
+  background: var(--r-gold-base);
+}
+.pack-art__stripes i:nth-child(4) {
+  background: var(--r-legend-base);
+}
 .pack-art__count {
   position: relative;
   font-family: var(--font-display);
