@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import type { Card, OpenPackResult } from '@pitch/shared';
+import type { Card, OpenPackResult, PackBox } from '@pitch/shared';
 import { CardView, cardLabel } from '../../components/card/CardView';
-import { BoxMeter } from './BoxMeter';
+import { RARITY_INFO, RARITY_ORDER } from '../../components/card/rarity';
+import { formatOdds } from './BoxMeter';
 import { hintsRarity, PackRevealer } from './reveal';
 
 type Phase = 'pack' | 'reveal' | 'done';
@@ -13,7 +14,7 @@ export interface PackOpeningProps {
   /** "Miễn phí · quà tân thủ" hoặc "Bấm để mở". */
   packNote: string;
   onBack: () => void;
-  /** Nút ở bước tổng kết (Mở thêm, Xem trong kho). */
+  /** Nút ở bước tổng kết (Xếp đội, Mở tiếp, Về kho). */
   summaryActions: ReactNode;
   /** `PlayerCard.id` của thẻ mẫu chưa từng có trong kho → nhãn "MỚI". */
   newIds?: ReadonlySet<string>;
@@ -35,6 +36,7 @@ export function PackOpening({
   const cards = result.cards.map((pc) => ({ pc, card: catalog.get(pc.cardId) }));
   const [phase, setPhase] = useState<Phase>('pack');
   const [announce, setAnnounce] = useState('');
+  const [revealed, setRevealed] = useState<ReadonlySet<number>>(() => new Set());
   const packRef = useRef<HTMLButtonElement>(null);
   const rowRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLElement>(null);
@@ -49,6 +51,7 @@ export function PackOpening({
         scrim: scrimRef,
         stage: stageRef,
         onRevealed: (i) => {
+          setRevealed((prev) => new Set(prev).add(i));
           const c = cards[i];
           if (c?.card) setAnnounce(`Thẻ ${i + 1}: ${cardLabel(c.card, undefined, c.pc.level)}`);
         },
@@ -101,19 +104,32 @@ export function PackOpening({
     return () => document.removeEventListener('keydown', onKey);
   });
 
+  const revealedCount = revealed.size;
+  const nNew = newIds ? cards.filter(({ pc }) => newIds.has(pc.id)).length : 0;
+  const nDup = newIds ? cards.length - nNew : 0;
+
   return (
     <div className="opening">
       <div className="opening__bar">
-        <button type="button" className="opening__back" onClick={onBack}>
+        <button type="button" className="btn btn--ghost btn--sm opening__back" onClick={onBack}>
           ← Cửa hàng
         </button>
-        <h2 className="opening__title">{title}</h2>
+        <h1 className="h2 opening__title">{title}</h1>
+        <span className="label num opening__count">
+          {phase === 'pack' ? '' : `Đã lật ${revealedCount}/${cards.length}`}
+        </span>
       </div>
 
       <section className="stage" ref={stageRef} aria-label="Mở gói">
-        <div className="stage__halfway" aria-hidden="true" />
-        <div className="stage__circle" aria-hidden="true" />
-        <div className="stage__spot" aria-hidden="true" />
+        <svg
+          className="stage__lines"
+          viewBox="0 0 1280 500"
+          preserveAspectRatio="none"
+          aria-hidden="true"
+        >
+          <line x1="0" y1="250" x2="1280" y2="250" />
+          <ellipse cx="640" cy="250" rx="560" ry="220" />
+        </svg>
         <div className="stage__inner">
           {phase === 'pack' ? (
             <button
@@ -133,41 +149,59 @@ export function PackOpening({
             </button>
           ) : (
             <div className="reveal-row" ref={rowRef}>
-              {cards.map(({ pc, card }, i) => (
-                <div
-                  key={pc.id}
-                  data-i={i}
-                  className={`reveal-slot r-${card?.rarity ?? 'bronze'}${card && hintsRarity(card.rarity) ? ' hint' : ''}`}
-                >
-                  <div className="reveal-mover">
-                    <div className="reveal-aura" />
-                    <div className="reveal-shaker">
-                      <div className="reveal-flipper">
-                        <button
-                          type="button"
-                          className="reveal-face reveal-back"
-                          aria-label={`Thẻ ${i + 1} — lật`}
-                          onClick={() => void rv.reveal(i)}
-                        >
-                          <span className="reveal-mark">MFG</span>
-                        </button>
-                        <div className="reveal-face reveal-front">
-                          {card ? (
-                            <CardView
-                              card={card}
-                              size="lg"
-                              level={pc.level}
-                              isNew={newIds?.has(pc.id)}
-                            />
-                          ) : (
-                            <p className="muted">Thẻ #{pc.cardId}</p>
-                          )}
+              {cards.map(({ pc, card }, i) => {
+                const rarity = card?.rarity ?? 'bronze';
+                const hot = card !== undefined && hintsRarity(rarity);
+                const isOpen = revealed.has(i);
+                const isNew = newIds?.has(pc.id);
+                const isDup = newIds !== undefined && !isNew;
+                let tag: ReactNode = null;
+                if (!isOpen) {
+                  tag = hot ? (
+                    <span className="label po-slot__hint">
+                      {rarity === 'legend' ? 'Sáng tím…' : 'Sáng vàng…'}
+                    </span>
+                  ) : (
+                    <span className="label">Thẻ {i + 1}</span>
+                  );
+                } else if (isNew) tag = <span className="tag tag--accent">Mới</span>;
+                else if (isDup) tag = <span className="tag">Trùng</span>;
+                return (
+                  <div key={pc.id} className="po-slot">
+                    <div data-i={i} className={`reveal-slot r-${rarity}${hot ? ' hint' : ''}`}>
+                      <div className="reveal-mover">
+                        <div className="reveal-aura" />
+                        <div className="reveal-shaker">
+                          <div className="reveal-flipper">
+                            <button
+                              type="button"
+                              className="reveal-face reveal-back"
+                              aria-label={`Lật thẻ ${i + 1}`}
+                              onClick={() => void rv.reveal(i)}
+                            >
+                              <span className="reveal-mark">MFG</span>
+                            </button>
+                            <div className="reveal-face reveal-front">
+                              {card ? (
+                                <CardView
+                                  card={card}
+                                  size="lg"
+                                  level={pc.level}
+                                  isNew={isNew}
+                                  isDuplicate={isDup}
+                                />
+                              ) : (
+                                <p className="muted">Thẻ #{pc.cardId}</p>
+                              )}
+                            </div>
+                          </div>
                         </div>
                       </div>
                     </div>
+                    <span className={`po-slot__tag r-${rarity}`}>{tag}</span>
                   </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
@@ -175,37 +209,68 @@ export function PackOpening({
 
       <div className="opening__controls">
         {phase === 'pack' && (
-          <span className="opening__hint">
-            <kbd>Space</kbd> hoặc bấm vào gói để xé
+          <span className="muted opening__hint">
+            Bấm vào gói hoặc <span className="kbd">Space</span> để xé
           </span>
         )}
         {phase === 'reveal' && (
           <>
-            <span className="opening__hint">
-              <kbd>Space</kbd> lật thẻ tiếp · <kbd>Esc</kbd> bỏ qua
+            <span className="muted opening__hint">
+              Bấm thẻ hoặc <span className="kbd">Space</span> để lật ·{' '}
+              <span className="kbd">Esc</span> bỏ qua hiệu ứng
             </span>
             <button
               type="button"
               className="btn btn--secondary"
               onClick={() => void rv.revealAll()}
             >
-              Lật hết
+              Lật tất cả
             </button>
           </>
         )}
         {phase === 'done' && (
-          <>
-            <p className="opening__summary">Đã nhận {cards.length} thẻ</p>
-            {summaryActions}
-          </>
+          <div className="opening__summary">
+            <p className="h3 opening__summary-text" role="status">
+              Đã nhận {cards.length} thẻ
+              {newIds && (
+                <span className="muted num">
+                  {' '}
+                  · {nNew} mới · {nDup} trùng
+                </span>
+              )}
+            </p>
+            <div className="opening__actions">{summaryActions}</div>
+          </div>
         )}
       </div>
 
-      <BoxMeter box={result.box} layout="row" />
+      <BoxStrip box={result.box} onDetails={onBack} />
       <div className="reveal-scrim" ref={scrimRef} />
       <div className="sr-only" aria-live="polite">
         {announce}
       </div>
+    </div>
+  );
+}
+
+/** Dải hộp phiếu gọn dưới màn mở gói (packopening.html). */
+function BoxStrip({ box, onDetails }: { box: PackBox; onDetails: () => void }) {
+  return (
+    <div className="box-strip">
+      <span className="label num">Hộp còn {box.total}/100</span>
+      {RARITY_ORDER.map((r) => (
+        <span key={r} className={`box-strip__item r-${r}`}>
+          <b>
+            <span aria-hidden="true">{'◆'.repeat(RARITY_INFO[r].pips)} </span>
+            {RARITY_INFO[r].label}
+          </b>
+          <span className="display num box-strip__n">{box.left[r]}</span>
+          <span className="muted num">{formatOdds(box.nextOdds[r])}</span>
+        </span>
+      ))}
+      <button type="button" className="btn btn--ghost btn--sm box-strip__more" onClick={onDetails}>
+        Chi tiết hộp
+      </button>
     </div>
   );
 }

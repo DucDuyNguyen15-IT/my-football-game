@@ -163,7 +163,12 @@ export function ShopPage() {
   }
 
   /** Nút mua: khoá + spinner khi chờ server (không đổi kích thước), báo thiếu bao nhiêu xu. */
-  const buyButton = (p: PackInfo, payment: PackPayment, className = 'btn btn--coin') => {
+  const buyButton = (
+    p: PackInfo,
+    payment: PackPayment,
+    className = 'btn btn--coin',
+    verb = 'Mua',
+  ) => {
     const free = payment === 'free_credit';
     const short = free ? 0 : p.price - me.coins;
     const id = `${p.code}:${payment}`;
@@ -177,7 +182,9 @@ export function ShopPage() {
           aria-busy={busy}
           onClick={() => void buy(p.code, payment)}
         >
-          <span className="btn__label">{free ? 'Mở miễn phí' : `Mua · ${fmt(p.price)} xu`}</span>
+          <span className="btn__label">
+            {free ? `${verb === 'Mua' ? 'Mở' : verb} miễn phí` : `${verb} · ${fmt(p.price)} xu`}
+          </span>
         </button>
         {short > 0 && <span className="field__error">Thiếu {fmt(short)} xu</span>}
       </div>
@@ -212,17 +219,23 @@ export function ShopPage() {
         }}
         summaryActions={
           <>
-            {p && buyButton(p, 'coins', 'btn btn--coin btn--lg')}
+            <button
+              type="button"
+              className="btn btn--primary btn--lg"
+              onClick={() => void navigate('/squad')}
+            >
+              Xếp đội
+            </button>
             {p &&
-              p.size === 5 &&
-              me.freePack5Credits > 0 &&
-              buyButton(p, 'free_credit', 'btn btn--secondary btn--lg')}
+              (p.size === 5 && me.freePack5Credits > 0
+                ? buyButton(p, 'free_credit', 'btn btn--coin btn--lg', 'Mở tiếp')
+                : buyButton(p, 'coins', 'btn btn--coin btn--lg', 'Mở tiếp'))}
             <button
               type="button"
               className="btn btn--secondary btn--lg"
               onClick={() => void navigate('/collection')}
             >
-              Xem trong kho
+              Về kho
             </button>
             {errorToast}
           </>
