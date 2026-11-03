@@ -4,7 +4,7 @@ import type { PackBox } from '@pitch/shared';
 import { ApiClientError } from '../../api/client';
 import { attemptFor, isTransient } from '../../api/packs';
 import { BoxMeter, formatOdds, onlyBronzeLeft } from './BoxMeter';
-import { openErrorMessage } from './ShopPage';
+import { discountPct, openErrorMessage } from './ShopPage';
 
 const box = (left: PackBox['left'], cycle = 1): PackBox => {
   const total = left.bronze + left.silver + left.gold + left.legend;
@@ -33,6 +33,15 @@ describe('<BoxMeter>', () => {
     expect(html).toContain('9,5%');
     expect(html).toContain('2,1%');
     expect(html).not.toContain('chỉ còn thẻ Đồng');
+    expect(html).not.toContain('is-empty');
+  });
+
+  it('hộp hết phiếu → hàng mờ + báo lần mở tới tự làm mới', () => {
+    const html = renderToStaticMarkup(
+      <BoxMeter box={box({ bronze: 0, silver: 0, gold: 0, legend: 0 }, 3)} />,
+    );
+    expect(html.match(/is-empty/g)).toHaveLength(4);
+    expect(html).toContain('Đã bốc hết 100 phiếu');
   });
 
   it('hộp chỉ còn Đồng → cảnh báo gói 5 không bảo đảm', () => {
@@ -46,6 +55,21 @@ describe('<BoxMeter>', () => {
     expect(formatOdds(0.58)).toBe('58%');
     expect(formatOdds(2 / 95)).toBe('2,1%');
     expect(formatOdds(0)).toBe('0%');
+  });
+});
+
+describe('discountPct', () => {
+  const pack = (size: number, price: number) => ({
+    code: `p${size}`,
+    size,
+    price,
+    guaranteeAvailable: true,
+  });
+  it('tính % rẻ hơn mua lẻ; gói 1 hoặc thiếu giá lẻ → 0', () => {
+    expect(discountPct(pack(5, 450), 100)).toBe(10);
+    expect(discountPct(pack(1, 100), 100)).toBe(0);
+    expect(discountPct(pack(5, 450), 0)).toBe(0);
+    expect(discountPct(pack(5, 600), 100)).toBe(0);
   });
 });
 
