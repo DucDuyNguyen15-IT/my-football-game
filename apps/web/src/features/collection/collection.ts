@@ -13,9 +13,11 @@ export interface CollectionFilter {
   sort: PlayerCardSort;
   /** Tìm theo tên/biệt danh (lọc ở client). */
   q: string;
+  /** Chỉ thẻ đang trong đội hình (lọc ở client). */
+  squad: boolean;
 }
 
-/** Bộ lọc lưu trên URL (`?pos=FW&rarity=gold&sort=-ovr&q=…`, DESIGN.md §6.4); giá trị lạ bị bỏ qua. */
+/** Bộ lọc lưu trên URL (`?pos=FW&rarity=gold&sort=-ovr&q=…&squad=1`, DESIGN.md §6.4); giá trị lạ bị bỏ qua. */
 export function readFilter(params: URLSearchParams): CollectionFilter {
   const pos = Position.safeParse(params.get('pos'));
   const rarity = Rarity.safeParse(params.get('rarity'));
@@ -25,6 +27,7 @@ export function readFilter(params: URLSearchParams): CollectionFilter {
     rarity: rarity.success ? rarity.data : undefined,
     sort: sort.success ? sort.data : '-ovr',
     q: params.get('q') ?? '',
+    squad: params.get('squad') === '1',
   };
 }
 
@@ -34,6 +37,7 @@ export function writeFilter(f: CollectionFilter): URLSearchParams {
   if (f.rarity) p.set('rarity', f.rarity);
   if (f.sort !== '-ovr') p.set('sort', f.sort);
   if (f.q) p.set('q', f.q);
+  if (f.squad) p.set('squad', '1');
   return p;
 }
 
