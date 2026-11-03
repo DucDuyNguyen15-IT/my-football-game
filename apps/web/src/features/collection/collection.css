@@ -1,8 +1,15 @@
-/* Kho thẻ (DESIGN.md §6.4). */
+/* Kho thẻ — theo docs/design/screens/collection*.html. Component chung ở styles/ui.css. */
 .coll {
   display: grid;
-  gap: var(--sp-4);
-  padding-bottom: 80px; /* chừa chỗ thanh bán */
+  grid-template-columns: minmax(0, 1fr) 380px;
+  gap: var(--sp-5);
+  align-items: start;
+}
+.coll__main {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
 }
 .coll__head {
   display: flex;
@@ -10,25 +17,31 @@
   align-items: center;
   gap: var(--sp-4);
 }
-.coll__title {
-  margin: 0;
-  margin-right: auto;
+.coll__count {
+  font-size: var(--fs-xl);
 }
-.coll__title .muted {
-  font-weight: var(--fw-semibold);
+.coll__spacer {
+  flex: 1;
 }
 .coll__search {
-  width: min(260px, 100%);
+  width: 220px;
 }
 .coll__sort {
-  display: flex;
+  display: inline-flex;
   align-items: center;
   gap: var(--sp-2);
+  font-size: var(--fs-sm);
+}
+.coll__sort .input {
+  width: 170px;
+  height: 36px;
+  font-size: var(--fs-sm);
 }
 .coll__filters {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-3) var(--sp-6);
+  align-items: center;
+  gap: var(--sp-2) var(--sp-4);
 }
 .chips {
   display: flex;
@@ -36,148 +49,252 @@
   align-items: center;
   gap: var(--sp-2);
 }
-.coll-item__card:focus-visible {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
+.coll__pips {
+  color: var(--hi);
+  font-size: 10px;
 }
-.coll__notice {
+.coll__dot {
+  color: var(--c-info);
+}
+.coll-skel__chip {
+  width: 56px;
+  height: 32px;
+  border-radius: 999px;
+}
+.coll__toast {
+  width: auto;
   margin: 0;
-  color: var(--c-success);
+}
+.coll__toast > span:last-child {
+  color: var(--c-text);
+}
+.coll .banner {
+  margin: 0;
 }
 
-.coll__body {
-  display: grid;
-  grid-template-columns: 1fr minmax(260px, 300px);
-  gap: var(--sp-5);
-  align-items: start;
-}
-@media (max-width: 860px) {
-  .coll__body {
-    grid-template-columns: 1fr;
-  }
-  .coll__detail {
-    order: -1;
-  }
-}
 .coll__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(var(--card-w-md), 1fr));
-  gap: var(--sp-4);
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: 14px 12px;
   margin: 0;
   padding: 0;
   list-style: none;
 }
-.coll-item {
-  display: grid;
-  justify-items: center;
-  gap: var(--sp-2);
+.coll__grid .skel--card,
+.coll-item .card {
+  --card-w: 100%;
 }
-.coll-item__card {
+.coll-item {
+  display: block;
+  width: 100%;
   padding: 0;
   border: 0;
   background: none;
   cursor: pointer;
   transition: transform var(--dur-fast) var(--ease-out);
 }
-.coll-item__card:hover {
+.coll-item:hover:not(:disabled) {
   transform: translateY(-3px);
 }
-.coll-item.is-active .coll-item__card {
-  filter: drop-shadow(0 0 10px rgb(200 240 49 / 0.45));
+.coll-item:disabled {
+  cursor: not-allowed;
 }
-.coll-item.is-selected .coll-item__card {
-  outline: 2px solid var(--c-danger);
-  outline-offset: 3px;
+.coll-item:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 4px;
 }
-.coll-item__foot {
-  font-size: var(--fs-sm);
-  min-height: 24px;
-}
-.coll-item__squad {
-  color: var(--c-info);
-}
-.coll-item__pick {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
-  color: var(--c-text-muted);
-  cursor: pointer;
-}
-.coll-item__pick input {
-  accent-color: var(--c-danger);
-}
-
-.coll__detail {
-  position: sticky;
-  top: calc(56px + var(--sp-4));
-  display: grid;
-  justify-items: center;
-  gap: var(--sp-4);
-}
-.coll__facts {
-  display: grid;
-  grid-template-columns: auto auto;
-  gap: var(--sp-1) var(--sp-4);
-  margin: 0;
-  width: 100%;
-}
-.coll__facts dt {
-  color: var(--c-text-muted);
-}
-.coll__facts dd {
-  margin: 0;
-  text-align: right;
-  font-family: var(--font-mono, inherit);
-}
-.coll__reason {
-  margin: 0;
-  color: var(--c-info);
-}
-.coll__actions {
+.coll__legend {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
-  gap: var(--sp-3);
+  gap: var(--sp-2) 20px;
+  font-size: var(--fs-xs);
 }
 .coll__empty {
-  display: grid;
-  justify-items: start;
-  gap: var(--sp-3);
+  border: 1px dashed var(--c-line-strong);
+  border-radius: var(--radius-lg);
+}
+.coll__empty-actions {
+  display: flex;
+  gap: 10px;
 }
 
+/* Panel chi tiết */
+.coll__detail {
+  position: sticky;
+  top: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px;
+  min-height: 420px;
+}
+.coll__hint {
+  margin: auto 0;
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+.coll__detail .coll__close {
+  display: none;
+  position: absolute;
+  top: 8px;
+  right: 8px;
+}
+.coll__who {
+  display: flex;
+  gap: var(--sp-4);
+}
+.coll__who .card {
+  --card-w: 150px;
+  flex: none;
+}
+.coll__who-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.coll__name {
+  font-size: var(--fs-xl);
+}
+.coll__nick {
+  font-size: var(--fs-sm);
+}
+.coll__badges {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.coll__stats td {
+  padding: 5px 0;
+  border-bottom: 0;
+}
+.coll__stats td:first-child {
+  width: 44px;
+}
+.coll__stats td:nth-child(2) {
+  padding: 5px 8px;
+}
+.coll__stat-bar {
+  width: 120px;
+}
+.coll__stat-n {
+  width: 36px;
+  padding-left: 10px !important;
+  font-size: var(--fs-lg);
+}
+.coll__level {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+}
+.coll__level .bar {
+  flex: 1;
+}
+.coll__level-n {
+  font-size: var(--fs-lg);
+}
+.coll__actions {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.coll__actions-row {
+  display: flex;
+  gap: 10px;
+}
+.coll__actions-row .btn {
+  flex: 1;
+}
+.coll__reason {
+  font-size: var(--fs-xs);
+}
+
+/* Thanh bán nhiều thẻ */
 .coll__bar {
   position: fixed;
   left: 50%;
-  bottom: var(--sp-4);
-  transform: translateX(-50%);
+  bottom: var(--sp-5);
+  z-index: var(--z-overlay);
+  translate: -50% 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
   gap: var(--sp-3);
-  padding: var(--sp-3) var(--sp-4);
-  background: var(--c-surface-2);
+  padding: 10px 14px;
+  background: var(--c-surface-3);
   border: 1px solid var(--c-line-strong);
   border-radius: var(--radius-lg);
-  box-shadow: 0 10px 30px rgb(0 0 0 / 0.45);
-  z-index: 20;
+  box-shadow: var(--shadow-2);
 }
 
+/* Hộp thoại bán */
 .sell-dialog {
-  max-width: 420px;
   color: var(--c-text);
 }
 .sell-dialog::backdrop {
   background: var(--c-scrim);
 }
+.sell-dialog__one {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+}
+.sell-dialog__one .card {
+  --card-w: 72px;
+  flex: none;
+}
+.dialog__body b {
+  color: var(--c-text);
+  font-weight: 600;
+}
+.dialog__body p {
+  margin: 0;
+}
 .sell-dialog__warn {
-  margin: 0 0 var(--sp-3);
-  padding-left: var(--sp-5);
+  margin: var(--sp-2) 0 0;
+  padding-left: 1.2em;
   color: var(--c-warning);
 }
-.sell-dialog__actions {
-  display: flex;
-  justify-content: flex-end;
-  gap: var(--sp-3);
+
+/* Màn hẹp: chi tiết thành tấm trượt dưới đáy khi đã chọn thẻ. */
+@media (max-width: 1000px) {
+  .coll {
+    grid-template-columns: 1fr;
+  }
+  .coll__grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+  .coll__detail {
+    display: none;
+  }
+  .coll.has-detail .coll__detail {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    top: auto;
+    z-index: var(--z-overlay);
+    max-height: 70vh;
+    min-height: 0;
+    overflow: auto;
+    background: var(--c-surface-2);
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: 0 -12px 32px rgb(0 0 0 / 0.5);
+  }
+  .coll.has-detail {
+    padding-bottom: 70vh;
+  }
+  .coll__detail .coll__close {
+    display: inline-flex;
+  }
+}
+@media (max-width: 560px) {
+  .coll__grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
 }
 
 /* Nút bấm giữ (components/HoldButton.tsx) */

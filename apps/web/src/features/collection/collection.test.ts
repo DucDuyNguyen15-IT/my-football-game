@@ -42,14 +42,15 @@ const prices = { bronze: 10, silver: 25, gold: 80, legend: 300 };
 
 describe('bộ lọc trên URL', () => {
   it('đọc/ghi khứ hồi, bỏ giá trị lạ', () => {
-    const f = readFilter(new URLSearchParams('pos=FW&rarity=gold&sort=acquired&q=duc'));
-    expect(f).toEqual({ position: 'FW', rarity: 'gold', sort: 'acquired', q: 'duc' });
+    const f = readFilter(new URLSearchParams('pos=FW&rarity=gold&sort=acquired&q=duc&squad=1'));
+    expect(f).toEqual({ position: 'FW', rarity: 'gold', sort: 'acquired', q: 'duc', squad: true });
     expect(readFilter(writeFilter(f))).toEqual(f);
     expect(readFilter(new URLSearchParams('pos=XX&rarity=bad&sort=zzz'))).toEqual({
       position: undefined,
       rarity: undefined,
       sort: '-ovr',
       q: '',
+      squad: false,
     });
     expect(writeFilter(readFilter(new URLSearchParams())).toString()).toBe('');
   });
