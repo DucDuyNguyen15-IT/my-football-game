@@ -8,7 +8,7 @@ export interface AuthNotice {
 }
 
 /** Ô nhập có lỗi riêng (lỗi `validation_error` của server có `details[].field`). */
-export type AuthField = 'username' | 'password';
+export type AuthField = 'username' | 'password' | 'email';
 
 /** Đổi lỗi API thành thông báo cho người chơi; `login_locked` và `rate_limited` có lời riêng. */
 export function describeAuthError(err: unknown): AuthNotice {
@@ -45,6 +45,8 @@ export function fieldErrorOf(err: unknown): { field: AuthField; text: string } |
   if (!(err instanceof ApiClientError)) return null;
   if (err.code === 'username_taken') return { field: 'username', text: err.message };
   if (err.code !== 'validation_error') return null;
-  const d = err.details?.find((x) => x.field === 'username' || x.field === 'password');
+  const d = err.details?.find(
+    (x) => x.field === 'username' || x.field === 'password' || x.field === 'email',
+  );
   return d ? { field: d.field as AuthField, text: d.message } : null;
 }

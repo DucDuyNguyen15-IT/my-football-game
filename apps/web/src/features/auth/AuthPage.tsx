@@ -1,3 +1,7 @@
+/**
+ * Đăng nhập / đăng ký (docs/design/screens/auth.html, auth-states.html) + Google (ADR-0010). Đã đăng
+ * nhập thì chuyển về trang định vào (hoặc trang chủ).
+ */
 import { useCallback, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { LoginRequest, RegisterRequest, Username } from '@pitch/shared';
@@ -9,7 +13,9 @@ import './auth.css';
 type Mode = 'login' | 'register';
 type FieldErrors = Partial<Record<AuthField, string>>;
 
-/** Đăng nhập / đăng ký (+ Google, ADR-0010). Đã đăng nhập thì chuyển về trang định vào (hoặc menu). */
+/** Quà tân thủ (server `config/economy.ts`: STARTER_SQUAD, STARTER_FREE_PACK5). */
+const GIFT_TEXT = '11 thẻ Đồng + 1 gói 5 thẻ miễn phí';
+
 export function AuthPage() {
   const me = useMe();
   const location = useLocation();
@@ -20,6 +26,7 @@ export function AuthPage() {
   const [mode, setMode] = useState<Mode>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [localErrors, setLocalErrors] = useState<FieldErrors>({});
   /** Lần đầu đăng nhập Google: giữ ID token để gửi lại kèm tên đăng nhập. */
@@ -57,13 +64,20 @@ export function AuthPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const schema = mode === 'login' ? LoginRequest : RegisterRequest;
-    const parsed = schema.safeParse({ username, password });
+    const parsed =
+      mode === 'login'
+        ? LoginRequest.safeParse({ username, password })
+        : RegisterRequest.safeParse({
+            username,
+            password,
+            ...(email.trim() && { email: email.trim() }),
+          });
     if (!parsed.success) {
       const errs: FieldErrors = {};
       for (const issue of parsed.error.issues) {
         const f = issue.path[0];
-        if ((f === 'username' || f === 'password') && !errs[f]) errs[f] = issue.message;
+        if (f === 'email' && !errs.email) errs.email = 'Email chưa đúng định dạng.';
+        else if ((f === 'username' || f === 'password') && !errs[f]) errs[f] = issue.message;
       }
       setLocalErrors(errs);
       return;
@@ -88,141 +102,174 @@ export function AuthPage() {
     ...localErrors,
   };
   const notice = serverError && !serverField ? describeAuthError(serverError) : null;
+  const isRegister = mode === 'register';
 
   return (
     <main className="auth">
       <AuthStage />
       <section className="auth__panel" aria-labelledby="auth-title">
-        <header className="auth__head">
-          <p className="auth__brand">MFG</p>
-          <h1 id="auth-title" className="auth__title">
-            {googleStep ? 'Chọn tên đăng nhập' : mode === 'login' ? 'Vào sân' : 'Lập đội mới'}
-          </h1>
-          <p className="auth__sub">
-            {googleStep
-              ? 'Lần đầu đăng nhập bằng Google — chọn tên sẽ hiện trong game.'
-              : mode === 'login'
-                ? 'Đăng nhập để mở gói, xếp đội và ra sân.'
-                : 'Tài khoản mới nhận 11 thẻ khởi đầu và 1 gói 5 miễn phí.'}
-          </p>
-        </header>
+        <div className="auth__box">
+          {googleStep ? (
+            <GoogleUsernameStep
+              key={googleStep.idToken}
+              suggested={googleStep.suggested}
+              pending={google.isPending}
+              error={google.error}
+              onSubmit={(name) => google.mutate({ idToken: googleStep.idToken, username: name })}
+              onCancel={() => {
+                setGoogleStep(null);
+                google.reset();
+              }}
+            />
+          ) : (
+            <>
+              <h1 id="auth-title" className="sr-only">
+                {isRegister ? 'Đăng ký tài khoản' : 'Đăng nhập'}
+              </h1>
+              <div className="tabs" role="tablist" aria-label="Chọn cách vào">
+                {(['login', 'register'] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    role="tab"
+                    aria-selected={mode === m}
+                    aria-controls="auth-form"
+                    className={`tab${mode === m ? ' is-on' : ''}`}
+                    onClick={() => switchMode(m)}
+                  >
+                    {m === 'login' ? 'Đăng nhập' : 'Đăng ký'}
+                  </button>
+                ))}
+              </div>
 
-        {googleStep ? (
-          <GoogleUsernameStep
-            key={googleStep.idToken}
-            suggested={googleStep.suggested}
-            pending={google.isPending}
-            error={google.error}
-            onSubmit={(name) => google.mutate({ idToken: googleStep.idToken, username: name })}
-            onCancel={() => {
-              setGoogleStep(null);
-              google.reset();
-            }}
-          />
-        ) : (
-          <>
-            <div className="auth__tabs" role="tablist" aria-label="Chọn cách vào">
-              {(['login', 'register'] as const).map((m) => (
-                <button
-                  key={m}
-                  type="button"
-                  role="tab"
-                  aria-selected={mode === m}
-                  className={`auth__tab${mode === m ? ' is-active' : ''}`}
-                  onClick={() => switchMode(m)}
+              <form id="auth-form" className="auth__form" onSubmit={onSubmit} noValidate>
+                <Field
+                  label="Tên đăng nhập"
+                  error={fieldErrors.username}
+                  hint={isRegister ? 'Đây cũng là tên người chơi hiện trong trận.' : undefined}
                 >
-                  {m === 'login' ? 'Đăng nhập' : 'Đăng ký'}
-                </button>
-              ))}
-            </div>
-
-            <form className="auth__form" onSubmit={onSubmit} noValidate>
-              <Field
-                label="Tên đăng nhập"
-                error={fieldErrors.username}
-                hint={mode === 'register' ? '3–20 ký tự: chữ, số, dấu gạch dưới' : undefined}
-              >
-                {(props) => (
-                  <input
-                    {...props}
-                    className="field__input"
-                    autoComplete="username"
-                    autoCapitalize="none"
-                    spellCheck={false}
-                    value={username}
-                    onChange={(e) => setUsername(e.target.value)}
-                    maxLength={20}
-                    required
-                    autoFocus
-                  />
-                )}
-              </Field>
-              <Field
-                label="Mật khẩu"
-                error={fieldErrors.password}
-                hint={mode === 'register' ? 'Ít nhất 8 ký tự' : undefined}
-              >
-                {(props) => (
-                  <div className="field__control">
+                  {(props) => (
                     <input
                       {...props}
-                      className="field__input"
-                      type={showPassword ? 'text' : 'password'}
-                      autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
-                      value={password}
-                      onChange={(e) => setPassword(e.target.value)}
-                      maxLength={72}
+                      className="input"
+                      autoComplete="username"
+                      autoCapitalize="none"
+                      spellCheck={false}
+                      placeholder={isRegister ? '3–20 ký tự: chữ, số, dấu gạch dưới' : undefined}
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      maxLength={20}
                       required
+                      autoFocus
                     />
-                    <button
-                      type="button"
-                      className="field__reveal"
-                      aria-pressed={showPassword}
-                      aria-controls={props.id}
-                      aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
-                      onClick={() => setShowPassword((v) => !v)}
-                    >
-                      <EyeIcon off={showPassword} />
-                    </button>
-                  </div>
+                  )}
+                </Field>
+                <Field label="Mật khẩu" error={fieldErrors.password}>
+                  {(props) => (
+                    <span className="field__box">
+                      <input
+                        {...props}
+                        className="input auth__password"
+                        type={showPassword ? 'text' : 'password'}
+                        autoComplete={isRegister ? 'new-password' : 'current-password'}
+                        placeholder={isRegister ? 'Ít nhất 8 ký tự' : undefined}
+                        value={password}
+                        onChange={(e) => setPassword(e.target.value)}
+                        maxLength={72}
+                        required
+                      />
+                      <button
+                        type="button"
+                        className="field__btn"
+                        aria-pressed={showPassword}
+                        aria-controls={props.id}
+                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                        onClick={() => setShowPassword((v) => !v)}
+                      >
+                        <EyeIcon off={showPassword} />
+                      </button>
+                    </span>
+                  )}
+                </Field>
+                {isRegister && (
+                  <Field label="Email" optional error={fieldErrors.email}>
+                    {(props) => (
+                      <input
+                        {...props}
+                        className="input"
+                        type="email"
+                        autoComplete="email"
+                        placeholder="ban@vidu.vn"
+                        value={email}
+                        onChange={(e) => setEmail(e.target.value)}
+                        maxLength={254}
+                      />
+                    )}
+                  </Field>
                 )}
-              </Field>
 
-              {notice && <Notice notice={notice} />}
+                {notice && <Notice notice={notice} />}
 
-              <button type="submit" className="btn btn--primary btn--lg" disabled={busy}>
-                {active.isPending && <span className="spinner" aria-hidden="true" />}
-                <span>{mode === 'login' ? 'Vào sân' : 'Tạo tài khoản'}</span>
-              </button>
-            </form>
+                <button
+                  type="submit"
+                  className={`btn btn--primary btn--lg btn--block${active.isPending ? ' is-loading' : ''}`}
+                  aria-busy={active.isPending || undefined}
+                  disabled={busy}
+                >
+                  <span className="btn__label">
+                    {isRegister ? 'Tạo tài khoản & nhận quà' : 'Đăng nhập'}
+                  </span>
+                </button>
+              </form>
 
-            {googleClientId && (
-              <>
-                <p className="auth__or">
-                  <span>hoặc</span>
-                </p>
-                <GoogleButton
-                  clientId={googleClientId}
-                  onCredential={onGoogleCredential}
-                  busy={google.isPending}
-                />
-              </>
-            )}
-          </>
-        )}
+              {googleClientId && (
+                <>
+                  <p className="auth__or">
+                    <span>Hoặc</span>
+                  </p>
+                  <GoogleButton
+                    clientId={googleClientId}
+                    onCredential={onGoogleCredential}
+                    busy={google.isPending}
+                  />
+                </>
+              )}
+              <p className="muted auth__foot">
+                Không có giao dịch tiền thật. Xu chỉ kiếm được khi chơi.
+              </p>
+            </>
+          )}
+        </div>
       </section>
     </main>
   );
 }
 
+const WarnIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    aria-hidden="true"
+  >
+    <path d="M8 2l6.5 12h-13z" />
+    <path d="M8 7v3M8 12v.5" />
+  </svg>
+);
+
 /** Ô nhập có nhãn, gợi ý và lỗi riêng (nối bằng `aria-describedby`). */
 function Field({
   label,
+  optional,
   hint,
   error,
   children,
 }: {
   label: string;
+  optional?: boolean;
   hint?: string | undefined;
   error?: string | undefined;
   children: (props: {
@@ -234,13 +281,15 @@ function Field({
   const id = useId();
   const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
   return (
-    <div className={`field${error ? ' has-error' : ''}`}>
+    <div className="field">
       <label className="field__label" htmlFor={id}>
         {label}
+        {optional && <small> (không bắt buộc)</small>}
       </label>
       {children({ id, 'aria-invalid': Boolean(error), 'aria-describedby': describedBy })}
       {error ? (
         <p id={`${id}-err`} className="field__error">
+          <WarnIcon />
           {error}
         </p>
       ) : (
@@ -256,14 +305,12 @@ function Field({
 
 function Notice({ notice }: { notice: AuthNotice }) {
   return (
-    <div className={`auth__notice auth__notice--${notice.tone}`} role="alert">
-      <span className="auth__notice-icon" aria-hidden="true">
-        {notice.tone === 'warning' ? '⏱' : '!'}
-      </span>
-      <p>
-        {notice.title && <strong>{notice.title}. </strong>}
+    <div className={`banner${notice.tone === 'danger' ? ' banner--danger' : ''}`} role="alert">
+      <WarnIcon />
+      <span>
+        {notice.title && <b>{notice.title}. </b>}
         {notice.text}
-      </p>
+      </span>
     </div>
   );
 }
@@ -300,15 +347,22 @@ function GoogleUsernameStep({
 
   return (
     <form className="auth__form" onSubmit={submit} noValidate>
+      <span className="label auth__step">Bước 2/2</span>
+      <h1 id="auth-title" className="h2">
+        Chọn tên người chơi
+      </h1>
+      <p className="muted auth__lead">
+        Đã liên kết tài khoản Google. Tên này hiện trên bảng tỉ số và không đổi được sau này.
+      </p>
       <Field
-        label="Tên đăng nhập"
-        hint="3–20 ký tự: chữ, số, dấu gạch dưới. Không đổi được sau này."
+        label="Tên người chơi"
+        hint="3–20 ký tự: chữ, số, dấu gạch dưới."
         error={localError ?? serverField?.text}
       >
         {(props) => (
           <input
             {...props}
-            className="field__input"
+            className="input"
             autoComplete="username"
             autoCapitalize="none"
             spellCheck={false}
@@ -321,21 +375,32 @@ function GoogleUsernameStep({
         )}
       </Field>
       {notice && <Notice notice={notice} />}
-      <p className="field__hint">Tài khoản mới nhận 11 thẻ khởi đầu và 1 gói 5 miễn phí.</p>
-      <button type="submit" className="btn btn--primary btn--lg" disabled={pending}>
-        {pending && <span className="spinner" aria-hidden="true" />}
-        <span>Tạo tài khoản</span>
-      </button>
-      <button type="button" className="btn btn--secondary" onClick={onCancel} disabled={pending}>
-        Quay lại
-      </button>
+      <div className="auth__actions">
+        <button
+          type="submit"
+          className={`btn btn--primary btn--lg btn--block${pending ? ' is-loading' : ''}`}
+          aria-busy={pending || undefined}
+          disabled={pending}
+        >
+          <span className="btn__label">Vào sân &amp; nhận quà</span>
+        </button>
+        <span className="muted auth__foot">{GIFT_TEXT} đang chờ</span>
+        <button
+          type="button"
+          className="btn btn--ghost btn--block"
+          onClick={onCancel}
+          disabled={pending}
+        >
+          Quay lại
+        </button>
+      </div>
     </form>
   );
 }
 
 function EyeIcon({ off }: { off: boolean }) {
   return (
-    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
         d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12Z"
         stroke="currentColor"
@@ -348,43 +413,82 @@ function EyeIcon({ off }: { off: boolean }) {
   );
 }
 
+/** Bề ngang mép xa / mép gần của sân phối cảnh (viewBox 760×720, đường chân trời y = 300). */
+const FAR = [110, 650] as const;
+const NEAR = [-420, 1180] as const;
+const STRIPES = 12;
+const at = (edge: readonly [number, number], t: number) => edge[0] + (edge[1] - edge[0]) * t;
+
+/** Sân nhìn nghiêng kiểu camera truyền hình (chỉ trang trí). */
+function TvPitch() {
+  return (
+    <svg
+      className="auth__pitch"
+      viewBox="0 0 760 720"
+      preserveAspectRatio="xMidYMax slice"
+      aria-hidden="true"
+    >
+      {Array.from({ length: STRIPES }, (_, i) => {
+        const a = i / STRIPES;
+        const b = (i + 1) / STRIPES;
+        return (
+          <polygon
+            key={i}
+            points={`${at(FAR, a)},300 ${at(FAR, b)},300 ${at(NEAR, b)},900 ${at(NEAR, a)},900`}
+            fill={i % 2 ? 'var(--c-pitch-b)' : 'var(--c-pitch-a)'}
+          />
+        );
+      })}
+      <g fill="none" stroke="var(--c-chalk)" strokeOpacity={0.6} strokeWidth={2}>
+        <polygon points={`${FAR[0]},300 ${FAR[1]},300 ${NEAR[1]},900 ${NEAR[0]},900`} />
+        <line x1={380} y1={300} x2={380} y2={900} />
+        <ellipse cx={380} cy={470} rx={170} ry={62} />
+      </g>
+    </svg>
+  );
+}
+
 /**
- * Minh hoạ bên trái (chỉ trang trí): nửa sân vẽ bằng "vạch phấn" + 3 thẻ úp góc vát theo độ hiếm
- * và vòng lặp chơi (DESIGN.md §1). Ẩn ở màn hẹp.
+ * Nửa trái (chỉ trang trí): sân nhìn nghiêng kiểu camera truyền hình, logo, khẩu hiệu và quà tân
+ * thủ (3 thẻ Đồng úp + gói 5 thẻ). Ẩn ở màn hẹp.
  */
 function AuthStage() {
   return (
-    <section className="auth__stage" aria-hidden="true">
-      <svg className="auth__pitch" viewBox="0 0 400 520" preserveAspectRatio="xMidYMid slice">
-        <rect x="20" y="20" width="360" height="480" />
-        <line x1="20" y1="260" x2="380" y2="260" />
-        <circle cx="200" cy="260" r="62" />
-        <circle cx="200" cy="260" r="3" className="dot" />
-        <rect x="100" y="20" width="200" height="80" />
-        <rect x="150" y="20" width="100" height="32" />
-        <path d="M160 100a48 48 0 0 0 80 0" />
-        <rect x="100" y="420" width="200" height="80" />
-        <rect x="150" y="468" width="100" height="32" />
-        <path d="M160 420a48 48 0 0 1 80 0" />
-      </svg>
-      <div className="auth__cards">
-        <span className="auth__card auth__card--bronze" />
-        <span className="auth__card auth__card--silver" />
-        <span className="auth__card auth__card--gold" />
-      </div>
+    <section className="auth__stage" aria-label="Giới thiệu">
+      <TvPitch />
+      <span className="logo auth__logo">
+        <span className="logo__mark" aria-hidden="true" />
+        MFG
+      </span>
       <div className="auth__pitch-copy">
-        <p className="auth__tagline">Sân đêm đã lên đèn.</p>
-        <ol className="auth__loop">
-          <li>
-            <b>01</b> Mở gói thẻ
-          </li>
-          <li>
-            <b>02</b> Xếp đội hình
-          </li>
-          <li>
-            <b>03</b> Ra sân
-          </li>
-        </ol>
+        <p className="display auth__headline">
+          Mở gói. Xếp đội.
+          <br />
+          <span>Ra sân.</span>
+        </p>
+        <div className="auth-gift">
+          <div className="auth-gift__art" aria-hidden="true">
+            {[0, 1, 2].map((i) => (
+              <span key={i} className={`auth-gift__card r-bronze auth-gift__card--${i}`} />
+            ))}
+            <div className="pack-art auth-gift__pack">
+              <div className="pack-art__count">
+                5<small>Thẻ</small>
+              </div>
+              <div className="pack-art__stripes">
+                <i />
+                <i />
+                <i />
+                <i />
+              </div>
+            </div>
+          </div>
+          <div className="auth-gift__text">
+            <span className="label auth-gift__kicker">Quà tân thủ</span>
+            <span className="auth-gift__title">{GIFT_TEXT}</span>
+            <span className="muted">Nhận ngay khi tạo tài khoản. Đội hình được xếp sẵn.</span>
+          </div>
+        </div>
       </div>
     </section>
   );
