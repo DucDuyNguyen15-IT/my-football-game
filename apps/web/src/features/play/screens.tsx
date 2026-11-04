@@ -3,7 +3,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { Difficulty, SquadSlot } from '@pitch/shared';
+import type { SquadSlot } from '@pitch/shared';
 import type { GraphicsSettings } from '../../game/bridge';
 import {
   GRAPHICS_TOGGLES,
@@ -75,50 +75,6 @@ export function KeyHints() {
       <kbd>A</kbd> chuyền bổng / xoạc · <kbd>D</kbd> sút / áp sát · <kbd>W</kbd> chọc khe ·{' '}
       <kbd>Esc</kbd> tạm dừng
     </p>
-  );
-}
-
-const DIFFICULTIES: ReadonlyArray<{ value: Difficulty; label: string; hint: string }> = [
-  { value: 'easy', label: 'Dễ', hint: 'Máy phản ứng chậm, chuyền và sút kém chính xác' },
-  { value: 'hard', label: 'Khó', hint: 'Máy phản ứng nhanh, chuyền và sút chính xác hơn' },
-];
-
-export function DifficultySelect({
-  onPick,
-  capReached = false,
-}: {
-  onPick: (d: Difficulty) => void;
-  /** Đã hết trận có thưởng hôm nay → báo trước khi vào trận. */
-  capReached?: boolean;
-}) {
-  return (
-    <section className="screen" aria-labelledby="pick-title">
-      <h1 id="pick-title" className="screen-title">
-        Chọn độ khó
-      </h1>
-      {capReached && (
-        <p className="result-reward--none" role="alert">
-          Hôm nay đã đủ số trận có thưởng — trận tiếp theo không nhận xu.
-        </p>
-      )}
-      <div className="difficulty-list">
-        {DIFFICULTIES.map((d, i) => (
-          <button
-            key={d.value}
-            type="button"
-            className="btn btn--big difficulty"
-            autoFocus={i === 0}
-            onClick={() => onPick(d.value)}
-          >
-            <span className="difficulty-label">{d.label}</span>
-            <span className="difficulty-hint">{d.hint}</span>
-          </button>
-        ))}
-      </div>
-      <Link to="/" className="btn btn--ghost">
-        Về menu
-      </Link>
-    </section>
   );
 }
 
@@ -427,36 +383,6 @@ function RewardLine({ status, onRetry }: { status: RewardStatus; onRetry: () => 
 }
 
 /** Cảnh báo trước khi vào trận: đã hết trận có thưởng trong ngày (PRD §7.1). */
-export function NoRewardWarning({
-  limit,
-  onPlay,
-  onBack,
-}: {
-  limit?: number | undefined;
-  onPlay: () => void;
-  onBack: () => void;
-}) {
-  return (
-    <section className="screen" aria-labelledby="no-reward-title">
-      <h1 id="no-reward-title" className="screen-title">
-        Trận này không có thưởng
-      </h1>
-      <p role="alert">
-        Hôm nay bạn đã nhận thưởng đủ {limit ?? 15} trận. Vẫn đá được, nhưng không nhận xu — lượt
-        thưởng mới bắt đầu lúc 00:00 (giờ Việt Nam).
-      </p>
-      <div className="difficulty-list">
-        <button type="button" className="btn btn--big" autoFocus onClick={onPlay}>
-          Vẫn đá
-        </button>
-        <button type="button" className="btn btn--ghost" onClick={onBack}>
-          Về menu
-        </button>
-      </div>
-    </section>
-  );
-}
-
 interface ResultScreenProps {
   hud: HudSnapshot;
   reward: RewardStatus;
