@@ -3,6 +3,7 @@ import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty, StartedMatch } from '@pitch/shared';
 import type { MatchSetup, MatchState } from '@pitch/sim';
 import { ApiClientError } from '../../api/client';
+import { useMe } from '../../api/auth';
 import { isTransientError, useStartMatch, useSubmitMatchResult } from '../../api/matches';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
@@ -18,10 +19,18 @@ import {
   type DevOptions,
   type HudSnapshot,
 } from './hud';
-import { EventStrip, Minimap, PlayerPanel, Scoreboard, type ShownEvent } from './MatchHud';
+import {
+  EventStrip,
+  Minimap,
+  PlayerPanel,
+  PowerLegend,
+  Scoreboard,
+  ShootoutPanel,
+  type ShownEvent,
+} from './MatchHud';
 import { PreMatch, Versus } from './PreMatch';
 import {
-  HalfTimeOverlay,
+  HalfTimeStrip,
   KeyHints,
   PauseMenu,
   ResultScreen,
@@ -142,6 +151,7 @@ export function PlayPage() {
       {stage.kind === 'result' && (
         <MatchResultView
           key={stage.match.matchId}
+          difficulty={stage.difficulty}
           match={stage.match}
           hud={stage.hud}
           onRematch={() => start(stage.difficulty)}
@@ -152,17 +162,23 @@ export function PlayPage() {
 }
 
 interface MatchResultViewProps {
+  difficulty: Difficulty;
   match: StartedMatch;
   hud: HudSnapshot;
   onRematch: () => void;
 }
 
+const SUBMIT_FAILED = 'Chưa gửi được kết quả lên máy chủ.';
+
 /**
  * Màn kết quả + nộp tỉ số lên server một lần khi mở. Lỗi mạng/5xx: hook tự thử lại, rồi cho bấm
  * "Gửi lại" — luôn cùng token nên server không cộng xu hai lần.
  */
-function MatchResultView({ match, hud, onRematch }: MatchResultViewProps) {
-  const { mutate, data, error, isError } = useSubmitMatchResult();
+function MatchResultView({ difficulty, match, hud, onRematch }: MatchResultViewProps) {
+  const { mutate, data, error, isError, isPending } = useSubmitMatchResult();
+  const me = useMe().data;
+  // Đã bấm "Gửi lại" (chỉ có với lỗi mạng/5xx) — khi chờ thì giữ khối lỗi, nút quay chờ.
+  const [retried, setRetried] = useState(false);
   const vars = useMemo(
     () => ({ matchId: match.matchId, body: resultBody(match.token, hud) }),
     [match, hud],
@@ -175,22 +191,31 @@ function MatchResultView({ match, hud, onRematch }: MatchResultViewProps) {
   }, [mutate, vars]);
 
   let reward: RewardStatus = { kind: 'pending' };
-  if (data) reward = { kind: 'done', reward: data.reward };
+  if (data) reward = { kind: 'done', reward: data.reward, balance: data.balance };
   else if (isError) {
     reward = {
       kind: 'error',
       message:
         error instanceof ApiClientError && !isTransientError(error)
           ? `Kết quả không được ghi nhận: ${error.message}`
-          : 'Chưa gửi được kết quả lên máy chủ.',
+          : SUBMIT_FAILED,
       retryable: isTransientError(error),
     };
+  } else if (isPending && retried) {
+    reward = { kind: 'error', message: SUBMIT_FAILED, retryable: true, retrying: true };
   }
   return (
     <ResultScreen
       hud={hud}
+      difficulty={difficulty}
+      matches={
+        data && me ? { today: me.rewardedMatchesToday, limit: me.rewardedMatchesLimit } : null
+      }
       reward={reward}
-      onRetryReward={() => mutate(vars)}
+      onRetryReward={() => {
+        setRetried(true);
+        mutate(vars);
+      }}
       onRematch={onRematch}
     />
   );
@@ -206,8 +231,8 @@ interface MatchStartingProps {
 function MatchStarting({ error, onRetry, onBack }: MatchStartingProps) {
   if (!error) {
     return (
-      <section className="screen" aria-busy="true">
-        <p className="screen-title" role="status">
+      <section className="play-screen" aria-busy="true">
+        <p className="h1 play-screen__title" role="status">
           Đang chuẩn bị trận…
         </p>
       </section>
@@ -217,12 +242,12 @@ function MatchStarting({ error, onRetry, onBack }: MatchStartingProps) {
   const message =
     error instanceof ApiClientError ? error.message : 'Không bắt đầu được trận. Thử lại sau.';
   return (
-    <section className="screen" aria-labelledby="start-error-title">
-      <h1 id="start-error-title" className="screen-title">
+    <section className="play-screen" aria-labelledby="start-error-title">
+      <h1 id="start-error-title" className="h1 play-screen__title">
         {squadIssue ? 'Đội hình chưa đủ' : 'Không vào được trận'}
       </h1>
       <p role="alert">{message}</p>
-      <div className="difficulty-list">
+      <div className="play-screen__actions">
         {squadIssue ? (
           <Link to="/squad" className="btn btn--primary btn--lg" autoFocus>
             Sửa đội hình
@@ -232,7 +257,7 @@ function MatchStarting({ error, onRetry, onBack }: MatchStartingProps) {
             Thử lại
           </button>
         )}
-        <button type="button" className="btn btn--ghost" onClick={onBack}>
+        <button type="button" className="btn btn--secondary btn--lg" onClick={onBack}>
           Chọn lại độ khó
         </button>
       </div>
@@ -296,7 +321,11 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
     };
   }, []);
 
-  useEffect(() => later(HINTS_SHOW_MS, () => setHints(false)), [later]);
+  // Đếm giờ gợi ý phím từ lúc trận hiện lên (tải cảnh 3D có thể mất vài giây).
+  const started = hud !== null;
+  useEffect(() => {
+    if (started) later(HINTS_SHOW_MS, () => setHints(false));
+  }, [started, later]);
 
   const [subs, setSubs] = useState<SubOptions>({ onPitch: [], bench: [] });
   const setPaused = useCallback((value: boolean) => {
@@ -351,13 +380,22 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
         <div className="hud">
           <div className="hud-top">
             <Scoreboard hud={hud} />
+            {hud.phase === 'half_time' && !autopilot && !paused && <HalfTimeStrip />}
             <EventStrip events={events} />
+            {hud.shootout && <ShootoutPanel shootout={hud.shootout} />}
           </div>
           <Minimap stateRef={latestState} />
+          <div className="hud-tl">
+            {hints && !autopilot && !hud.shootout && <PowerLegend />}
+            <button
+              type="button"
+              className="btn btn--secondary btn--sm hud-pause"
+              onClick={() => setPaused(true)}
+            >
+              Esc · Tạm dừng
+            </button>
+          </div>
           <PlayerPanel controlled={autopilot ? null : hud.controlled} />
-          <p className="hud-pause-hint">
-            <kbd>Esc</kbd> Tạm dừng
-          </p>
           {hud.shootout?.turn === 'home' && !autopilot ? (
             <ShootoutHint />
           ) : (
@@ -367,12 +405,12 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
       )}
       {goalBanner > 0 && (
         <div className="goal-banner" aria-hidden="true">
-          VÀO!
+          <span className="display goal-banner__text">VÀO!</span>
         </div>
       )}
-      {hud?.phase === 'half_time' && !autopilot && !paused && <HalfTimeOverlay hud={hud} />}
       {paused && (
         <PauseMenu
+          hud={hud}
           graphics={graphics}
           onGraphics={(g) => {
             setGraphics(g);

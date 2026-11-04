@@ -1,4 +1,6 @@
-/* Màn trận đấu & HUD — DESIGN.md §6.2. Chỉ animate transform/opacity (§5). */
+/* Màn trận đấu, HUD, tạm dừng, kết quả — docs/design/screens/match*.html, pause.html, result*.html.
+ * Component chung (.hud-score, .hud-panel, .event-strip, .power, .keyhint, .kbd, .dot, .switch, .seg,
+ * .btn, .panel…) ở styles/ui.css; file này chỉ bố cục riêng. Chỉ animate transform/opacity (§5). */
 
 .play-root {
   position: fixed;
@@ -11,19 +13,8 @@
   line-height: var(--lh-normal);
 }
 
-.play-root kbd {
-  display: inline-block;
-  padding: 0 var(--sp-1);
-  border: 1px solid var(--c-line-strong);
-  border-radius: var(--radius-sm);
-  background: var(--c-surface-2);
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-caps);
-}
-
-/* ---------- Màn (chọn độ khó, kết quả) ---------- */
-.screen {
+/* ---------- Chờ server dựng trận / lỗi vào trận ---------- */
+.play-screen {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -33,37 +24,14 @@
   padding: var(--sp-6) var(--sp-4);
   text-align: center;
 }
-.screen-title {
+.play-screen p {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  text-transform: uppercase;
 }
-.difficulty-list {
+.play-screen__actions {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--sp-4);
-}
-.difficulty {
-  flex-direction: column;
-  gap: var(--sp-1);
-  width: 240px;
-  padding: var(--sp-5);
-  text-transform: none;
-}
-.difficulty-label {
-  font-size: var(--fs-xl);
-  text-transform: uppercase;
-}
-.difficulty-hint {
-  color: var(--c-text-muted);
-  font-family: var(--font-body);
-  font-size: var(--fs-sm);
-  font-weight: var(--fw-regular);
-  letter-spacing: 0;
+  gap: var(--sp-3);
 }
 
 /* ---------- HUD ---------- */
@@ -75,7 +43,7 @@
 }
 .hud-top {
   position: absolute;
-  top: var(--sp-3);
+  top: 18px;
   left: 50%;
   display: flex;
   flex-direction: column;
@@ -83,49 +51,20 @@
   gap: var(--sp-2);
   transform: translateX(-50%);
 }
-.hud-scoreboard {
-  padding: var(--sp-1) var(--sp-5) var(--sp-2);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-md);
-  background: var(--c-scrim);
-  box-shadow: var(--shadow-2);
-  backdrop-filter: blur(6px);
-  text-align: center;
+/* Bảng tỉ số: 6 cột (vạch, tên, bàn, bàn, tên, vạch) + hàng đồng hồ. */
+.hud .hud-score {
+  grid-template-columns: repeat(6, auto);
 }
-.hud-score {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-4);
+.hud-score__sw--home {
+  background: var(--c-team-home);
 }
-.hud-team {
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-caps);
+.hud-score__sw--away {
+  background: var(--c-team-away);
 }
-.hud-team--home {
-  color: var(--c-team-home);
+.hud-score__goals--away {
+  background: var(--c-surface-3);
 }
-.hud-team--away {
-  color: var(--c-team-away);
-}
-.hud-score-num {
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  font-variant-numeric: tabular-nums;
-}
-.hud-clock {
-  color: var(--c-text-muted);
-  font-family: var(--font-display);
-  font-size: var(--fs-md);
-  letter-spacing: var(--tracking-caps);
-}
-.hud-clock-min {
-  color: var(--c-text);
-  font-variant-numeric: tabular-nums;
-}
+
 .hud-events {
   display: flex;
   flex-direction: column;
@@ -136,147 +75,254 @@
   list-style: none;
 }
 .hud-event {
-  padding: var(--sp-1) var(--sp-3);
-  border-left: 3px solid var(--c-accent);
-  border-radius: var(--radius-sm);
-  background: var(--c-scrim);
-  font-size: var(--fs-sm);
   animation: hud-in var(--dur-base) var(--ease-out);
 }
-.hud-event--yellow {
-  border-left-color: var(--c-warning);
+.hud-event .event-strip__mark {
+  background: var(--c-surface-3);
+  color: var(--c-text);
 }
-.hud-event--red {
-  border-left-color: var(--c-danger);
+.hud-event--goal .event-strip__mark {
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
 }
-.hud-event-mark {
-  margin-right: var(--sp-2);
+.hud-event--yellow .event-strip__mark {
+  background: var(--c-warning);
+  color: #1a1405;
 }
-.hud-event-mark--home {
-  color: var(--c-team-home);
+.hud-event--red .event-strip__mark {
+  background: var(--c-danger);
+  color: #1a0705;
 }
-.hud-event-mark--away {
-  color: var(--c-team-away);
+.hud-event--shootout .event-strip__mark,
+.hud-event--foul .event-strip__mark {
+  background: var(--c-info);
+  color: #04121c;
+}
+.hud-event--half .event-strip__mark {
+  background: var(--c-text);
+  color: var(--c-accent-ink);
+}
+.hud-event .kbd {
+  height: 20px;
+  min-width: 20px;
 }
 
 .hud-minimap {
   position: absolute;
-  top: var(--sp-3);
-  right: var(--sp-4);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-md);
-  background: var(--c-scrim);
-  box-shadow: var(--shadow-1);
+  top: 18px;
+  right: 20px;
+  line-height: 0;
 }
 
-.hud-player {
+/* Góc trên-trái: chú thích thanh lực + nút tạm dừng. */
+.hud-tl {
   position: absolute;
-  bottom: var(--sp-4);
-  left: var(--sp-4);
-  width: 220px;
-  padding: var(--sp-2) var(--sp-3);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-md);
-  background: var(--c-scrim);
-  box-shadow: var(--shadow-2);
-  backdrop-filter: blur(6px);
-}
-.hud-player-head {
+  top: 18px;
+  left: 20px;
   display: flex;
-  align-items: baseline;
-  gap: var(--sp-2);
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-caps);
+  flex-direction: column;
+  gap: 6px;
+  width: 250px;
 }
-.hud-player-head abbr {
-  text-decoration: none;
+.hud-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
-.hud-player-num {
-  font-size: var(--fs-xl);
-  font-variant-numeric: tabular-nums;
+.hud-legend .label {
+  align-self: flex-start;
+  padding: 0 4px;
+  background: rgb(10 19 16 / 0.7);
 }
-.hud-stamina {
+.hud-legend__row {
   display: flex;
   align-items: center;
-  gap: var(--sp-2);
-}
-.hud-stamina-label {
-  color: var(--c-text-muted);
+  gap: 10px;
   font-size: var(--fs-xs);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+  text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
 }
-.hud-stamina-bar {
+.hud-legend__bar--pass {
+  --tone: var(--c-power-pass);
+  --v: 45%;
+}
+.hud-legend__bar--through {
+  --tone: var(--c-power-through);
+  --v: 70%;
+}
+.hud-legend__bar--shot {
+  --tone: var(--c-power-shot);
+  --v: 90%;
+}
+.hud-pause {
+  align-self: flex-start;
+  margin-top: 6px;
+  background: rgb(10 19 16 / 0.7);
+  pointer-events: auto;
+}
+
+/* Panel cầu thủ đang điều khiển. */
+.hud-player {
+  position: absolute;
+  bottom: 20px;
+  left: 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  width: 300px;
+  padding: 10px 16px 10px 10px;
+}
+.hud-player__num {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 48px;
+  height: 48px;
+  background: var(--c-team-home);
+  color: #04121c;
+  font-size: 30px;
+}
+.hud-player__body {
+  display: flex;
   flex: 1;
-  height: 8px;
-  overflow: hidden;
-  border-radius: var(--radius-sm);
-  background: var(--c-surface-3);
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
 }
-.hud-stamina-fill {
-  display: block;
-  height: 100%;
+.hud-player__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.hud-player__name abbr {
+  text-decoration: none;
+}
+.hud-player__stamina {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hud-player__stamina .label {
+  font-size: 10px;
+}
+.hud-stamina {
+  flex: 1;
+}
+.hud-stamina .bar__fill {
   background: var(--c-success);
-  transform-origin: left center;
-  transition: transform var(--dur-slow) var(--ease-out);
 }
-.hud-stamina-fill--low {
+.hud-stamina--low .bar__fill {
   background: var(--c-warning);
 }
-.hud-stamina-fill--critical {
+.hud-stamina--critical .bar__fill {
   background: var(--c-danger);
 }
-
-.hud-pause-hint {
-  position: absolute;
-  right: var(--sp-4);
-  bottom: var(--sp-4);
-  margin: 0;
-  color: var(--c-text-muted);
-  font-size: var(--fs-sm);
-}
-/* Nằm trên panel cầu thủ để màn hẹp không bị đè. */
-.hud-hints {
-  position: absolute;
-  bottom: 96px;
-  left: 50%;
-  margin: 0;
-  padding: var(--sp-2) var(--sp-4);
-  border-radius: var(--radius-md);
-  background: var(--c-scrim);
-  font-size: var(--fs-sm);
-  white-space: nowrap;
-  transform: translateX(-50%);
+.hud-player__pct {
+  min-width: 4ch;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  text-align: right;
 }
 
-/* "VÀO!" quét ngang màn hình 1.2s. */
+/* Dải gợi ý phím cạnh dưới (bên phải panel cầu thủ). */
+.hud-keys {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  left: 340px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px 12px;
+  width: fit-content;
+  max-width: calc(100% - 360px);
+  margin: 0 auto;
+  padding: 8px 16px;
+}
+
+/* Bảng luân lưu. */
+.so {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 440px;
+  margin-top: var(--sp-2);
+  padding: 16px 22px;
+}
+.so__head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+.so-row {
+  display: grid;
+  grid-template-columns: 110px 1fr 40px;
+  align-items: center;
+  gap: 12px;
+}
+.so-row__team {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: var(--fs-lg);
+}
+.so-row__sw {
+  width: 8px;
+  height: 18px;
+}
+.so-row__sw--home {
+  background: var(--c-team-home);
+}
+.so-row__sw--away {
+  background: var(--c-team-away);
+}
+.so-row__dots {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.so-row__dots .dot {
+  width: 20px;
+  height: 20px;
+}
+.so-row__score {
+  font-size: 32px;
+  text-align: right;
+}
+
+/* "VÀO!" quét ngang 1,2s (match-events.html). */
 .goal-banner {
   position: absolute;
-  top: 40%;
+  top: 32%;
   left: 0;
+  right: 0;
   z-index: var(--z-overlay);
-  color: var(--c-accent);
-  font-family: var(--font-display);
-  font-size: var(--fs-3xl);
-  font-weight: var(--fw-bold);
-  letter-spacing: var(--tracking-caps);
+  display: flex;
+  justify-content: center;
+  overflow: hidden;
   pointer-events: none;
-  animation: goal-sweep 1.2s var(--ease-in-out) both;
+}
+.goal-banner__text {
+  display: block;
+  padding: 4px 64px;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-size: clamp(64px, 10vw, 120px);
+  line-height: 1;
+  letter-spacing: 0.06em;
+  animation: goal-sweep 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
 }
 @keyframes goal-sweep {
-  from {
-    transform: translateX(-30vw);
-    opacity: 0;
+  0% {
+    transform: translateX(-110vw) skewX(-12deg);
   }
-  20%,
-  80% {
-    opacity: 1;
+  25%,
+  75% {
+    transform: skewX(-12deg);
   }
-  to {
-    transform: translateX(110vw);
-    opacity: 0;
+  100% {
+    transform: translateX(110vw) skewX(-12deg);
   }
 }
 @keyframes hud-in {
@@ -285,298 +331,374 @@
     opacity: 0;
   }
 }
-
-/* ---------- Lớp phủ: nghỉ giữa hiệp, tạm dừng ---------- */
-.overlay {
-  position: absolute;
-  inset: 0;
-  z-index: var(--z-modal);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-3);
-  background: var(--c-scrim);
-  text-align: center;
-  animation: fade-in var(--dur-base) var(--ease-out);
-}
-.overlay--passive {
-  z-index: var(--z-overlay);
-  pointer-events: none;
-}
-.overlay p {
-  margin: 0;
-}
-.overlay-kicker {
-  margin: 0;
-  color: var(--c-text-muted);
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-}
-.overlay-score {
-  font-family: var(--font-display);
-  font-size: var(--fs-3xl);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  font-variant-numeric: tabular-nums;
-}
-.panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-4);
-  min-width: 320px;
-  padding: var(--sp-5);
-  border: 1px solid var(--c-line);
-  border-radius: var(--radius-lg);
-  background: var(--c-surface-1);
-  box-shadow: var(--shadow-2);
-}
-.menu {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-}
-.menu--row {
-  flex-direction: row;
-  justify-content: center;
-}
-.controls-table {
-  border-collapse: collapse;
-  font-size: var(--fs-sm);
-  text-align: left;
-}
-.controls-table th,
-.controls-table td {
-  padding: var(--sp-1) var(--sp-3);
-  border-bottom: 1px solid var(--c-line);
-}
-.controls-table thead th {
-  color: var(--c-text-muted);
-  font-weight: var(--fw-medium);
-}
 @keyframes fade-in {
   from {
     opacity: 0;
   }
 }
 
-/* ---------- Kết quả ---------- */
-.result-outcome {
+/* ---------- Tạm dừng (pause.html) ---------- */
+.pause {
+  z-index: var(--z-modal);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 60px;
+  padding: 110px var(--sp-5) var(--sp-5);
+  overflow-y: auto;
+  animation: fade-in var(--dur-base) var(--ease-out);
+}
+.pause__menu {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 320px;
+  flex: none;
+}
+.pause__title {
+  margin-bottom: 10px;
+}
+.pause__btn {
+  justify-content: flex-start;
+}
+.pause__btn--split {
+  justify-content: space-between;
+}
+.pause__btn[aria-pressed='true']:not(.btn--primary, .btn--danger) {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.pause__btn.btn--danger[aria-pressed='true'] {
+  outline: 2px solid var(--c-danger);
+  outline-offset: 2px;
+}
+.pause__hint {
+  margin: -4px 0 4px;
+  font-size: var(--fs-xs);
+}
+.pause__quit {
+  margin-top: 14px;
+}
+.pause__panel {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  width: 520px;
+  max-width: 100%;
+  box-shadow: var(--shadow-2);
+}
+.pause__panel .panel__title {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-3xl);
-  font-weight: var(--fw-bold);
-  line-height: var(--lh-tight);
-  text-transform: uppercase;
 }
-.result-outcome--win {
-  color: var(--c-accent);
-}
-.result-outcome--loss {
-  color: var(--c-danger);
-}
-.result-score {
+.pause__panel p {
   margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-2xl);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
 }
-.result-score span {
-  font-size: var(--fs-lg);
+.pause-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
 }
-.result-shots,
-.result-empty {
-  margin: 0;
-  color: var(--c-text-muted);
+.pause-switches {
+  padding-top: 6px;
+  border-top: 1px solid var(--c-line);
 }
-.result-subtitle {
-  margin: 0;
-  color: var(--c-text-muted);
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+.pause-switch__text {
+  display: flex;
+  flex-direction: column;
 }
-.result-bookings {
-  margin: 0;
-  padding: 0;
-  list-style: none;
+.pause-switch__text .muted {
+  font-size: var(--fs-xs);
 }
-.card-chip {
-  display: inline-block;
-  width: 10px;
-  height: 14px;
-  margin-right: var(--sp-2);
-  border-radius: var(--radius-sm);
-  vertical-align: -2px;
+.switch {
+  cursor: pointer;
 }
-.card-chip--yellow {
-  background: var(--c-warning);
+.switch input:focus-visible + .switch__track {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
 }
-.card-chip--red {
-  background: var(--c-danger);
+.switch.is-blocked {
+  cursor: not-allowed;
+}
+.switch.is-blocked .switch__track {
+  opacity: 0.4;
+}
+.pause__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--sp-3);
+}
+.pause__confirm {
+  align-self: flex-end;
+}
+.seg__opt:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .goal-banner {
-    left: 50%;
-    transform: translateX(-50%);
-    animation: fade-in 200ms linear both;
-  }
-  .hud-event,
-  .overlay {
-    animation-name: fade-in;
-    animation-duration: 160ms;
-  }
-  .hud-stamina-fill {
-    transition: none;
-  }
-}
-
-/* Thay người trong menu tạm dừng (task 5.11). */
-.menu-hint {
-  margin: calc(-1 * var(--sp-1)) 0 0;
-  color: var(--c-text-muted);
-  font-size: var(--fs-sm);
-  text-align: center;
-}
-.subs-left {
-  margin: 0 0 var(--sp-3);
-  color: var(--c-text-muted);
-}
+/* Thay người. */
 .subs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--sp-4);
-  margin-bottom: var(--sp-4);
 }
-.subs-col {
+.subs__col {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-1);
+  gap: 4px;
+  min-width: 0;
   margin: 0;
-  padding: var(--sp-2);
+  padding: 0;
+  border: 0;
+}
+.subs__col legend {
+  margin-bottom: 6px;
+  padding: 0;
+}
+.subs__item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 40px;
+  padding: 0 10px;
   border: 1px solid var(--c-line);
   border-radius: var(--radius-md);
-}
-.subs-col legend {
-  padding: 0 var(--sp-1);
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-}
-.subs-item {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  padding: var(--sp-1) var(--sp-2);
-  border-radius: var(--radius-sm);
+  background: var(--c-surface-1);
   cursor: pointer;
 }
-.subs-item:hover,
-.subs-item:has(input:checked) {
-  background: var(--c-surface-2);
+.subs__item:hover {
+  border-color: var(--c-line-control);
 }
-.subs-num {
+.subs__item:has(input:checked) {
+  border-color: var(--c-accent);
+  background: var(--c-accent-soft);
+}
+.subs__item:has(input:focus-visible) {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
+}
+.subs__item abbr {
+  text-decoration: none;
+}
+.subs__num {
   min-width: 2ch;
-  font-family: var(--font-display);
   font-size: var(--fs-lg);
-  font-weight: var(--fw-bold);
-  font-variant-numeric: tabular-nums;
 }
-.subs-pos {
-  flex: 1;
-  color: var(--c-text-muted);
-}
-.subs-stamina {
-  font-variant-numeric: tabular-nums;
-}
-.subs-empty,
-.subs-warn {
-  margin: 0;
-  color: var(--c-text-muted);
+.subs__stamina {
+  margin-left: auto;
   font-size: var(--fs-sm);
+  color: var(--c-success);
 }
-.subs-warn {
+.subs__stamina.is-low {
   color: var(--c-warning);
 }
+.subs__stamina.is-critical {
+  color: var(--c-danger);
+}
+.subs__warn {
+  color: var(--c-warning);
+  font-size: var(--fs-sm);
+}
 
-/* Luân lưu (task 5.12): chấm từng lượt dưới bảng tỉ số. */
-.hud-shootout {
+/* ---------- Kết quả (result.html) ---------- */
+.result {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 400px;
+  gap: 40px;
+  min-height: 100%;
+  padding: 40px 64px;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+.result__main {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  min-width: 0;
+}
+.result__score {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 28px;
+  margin: 0;
+}
+.result__team {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: var(--sp-3);
-  margin-top: var(--sp-1);
+  gap: 10px;
+  font-size: 28px;
 }
-.hud-shootout-label {
-  color: var(--c-text-muted);
-  font-family: var(--font-display);
+.result__sw {
+  width: 12px;
+  height: 36px;
+}
+.result__sw--home {
+  background: var(--c-team-home);
+}
+.result__sw--away {
+  background: var(--c-team-away);
+}
+.result__goals {
+  font-size: clamp(72px, 10vw, 132px);
+  line-height: 0.85;
+}
+.result__pens {
   font-size: var(--fs-md);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  font-variant-numeric: tabular-nums;
 }
-.hud-kicks {
-  display: inline-flex;
+.result__pens b {
+  color: var(--c-text);
+}
+.result__outcome {
+  margin: 0;
+  font-size: 56px;
+  line-height: 1;
+  text-transform: uppercase;
+}
+.result__outcome--win {
+  color: var(--c-accent);
+}
+.result__outcome--draw {
+  color: var(--c-text);
+}
+.result__outcome--loss {
+  color: var(--c-team-away);
+}
+.result__stats {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 18px 24px;
+}
+.result-stat {
+  display: grid;
+  grid-template-columns: 44px 1fr 44px;
+  align-items: center;
+  gap: 12px;
+}
+.result-stat .display {
+  font-size: 22px;
+}
+.result-stat__r {
+  text-align: right;
+}
+.result-stat__mid {
+  display: flex;
+  flex-direction: column;
   gap: 4px;
 }
-.hud-kick {
-  width: 10px;
-  height: 10px;
-  border: 1.5px solid var(--c-text-muted);
-  border-radius: 50%;
+.result-stat__mid .label {
+  text-align: center;
 }
-.hud-kick--scored {
-  border-color: var(--c-accent);
-  background: var(--c-accent);
+.result-stat__bars {
+  display: flex;
+  gap: 3px;
+  height: 6px;
 }
-.hud-kick--missed {
-  border-color: var(--c-danger);
-  background: var(--c-danger);
+.result-stat__bars span {
+  flex-basis: 0;
 }
-.hud-event--shootout {
-  border-left-color: var(--c-info);
+.result-stat__home {
+  border-radius: 3px 0 0 3px;
+  background: var(--c-team-home);
+}
+.result-stat__away {
+  border-radius: 0 3px 3px 0;
+  background: var(--c-team-away);
+}
+.result-stat__bars.is-empty span {
+  background: var(--c-surface-3);
+}
+.result__bookings {
+  font-size: var(--fs-sm);
+}
+.result__side {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 .result-reward {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: var(--sp-2);
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: var(--fw-bold);
+  align-items: flex-start;
+  gap: 10px;
 }
-.result-reward .coin {
-  color: var(--c-coin);
-  font-variant-numeric: tabular-nums;
+.result-reward .muted {
+  font-size: var(--fs-sm);
 }
-.result-reward p {
-  margin: 0;
+.result-reward__skel {
+  width: 180px;
+  height: 48px;
 }
-.result-reward--none {
-  margin: 0;
-  color: var(--c-warning);
-  font-size: var(--fs-md);
+.result-coin--none {
+  color: var(--c-text-muted);
 }
-.result-reward--error {
-  color: var(--c-danger);
-  font-size: var(--fs-md);
+.result__actions {
+  display: flex;
+  gap: 12px;
+  margin-top: auto;
 }
-.result-shootout {
-  margin: 0;
-  font-family: var(--font-display);
-  font-size: var(--fs-xl);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
+.result__actions .btn {
+  flex: 1;
 }
 
-.gfx-toggles {
-  margin-bottom: var(--sp-4);
+@media (max-width: 960px) {
+  .result {
+    grid-template-columns: 1fr;
+    padding: 32px 24px;
+  }
+  .pause {
+    flex-direction: column;
+    align-items: center;
+    padding-top: 48px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .goal-banner__text {
+    animation: fade-in 200ms linear both;
+    transform: skewX(-12deg);
+  }
+  .hud-event,
+  .pause {
+    animation-name: fade-in;
+    animation-duration: 160ms;
+  }
+}
+
+/* Nhãn "PHÁT LẠI" do MatchRenderer gắn vào khung canvas khi quay chậm bàn thắng. */
+.replay-tag {
+  position: absolute;
+  right: 20px;
+  bottom: 20px;
+  z-index: 6;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 14px 6px 12px;
+  pointer-events: none;
+}
+.replay-tag__dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--c-danger);
+  animation: replay-blink 1s steps(2, jump-none) infinite;
+}
+.replay-tag__text {
+  font-size: 22px;
+  letter-spacing: 0.2em;
+}
+.replay-tag .keyhint {
+  font-size: var(--fs-sm);
+}
+@keyframes replay-blink {
+  50% {
+    opacity: 0.25;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .replay-tag__dot {
+    animation: none;
+  }
 }
