@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty, StartedMatch } from '@pitch/shared';
 import type { MatchSetup, MatchState } from '@pitch/sim';
-import { useMe } from '../../api/auth';
 import { ApiClientError } from '../../api/client';
 import { isTransientError, useStartMatch, useSubmitMatchResult } from '../../api/matches';
 import { MatchCanvas } from '../../game/MatchCanvas';
@@ -20,11 +19,10 @@ import {
   type HudSnapshot,
 } from './hud';
 import { EventStrip, Minimap, PlayerPanel, Scoreboard, type ShownEvent } from './MatchHud';
+import { PreMatch, Versus } from './PreMatch';
 import {
-  DifficultySelect,
   HalfTimeOverlay,
   KeyHints,
-  NoRewardWarning,
   PauseMenu,
   ResultScreen,
   ShootoutHint,
@@ -60,8 +58,8 @@ function saveGraphics(g: GraphicsSettings): void {
 type Stage =
   | { kind: 'select' }
   | { kind: 'starting'; difficulty: Difficulty; error?: unknown }
-  /** Server báo trận này không có thưởng (hết 15 trận/ngày) → hỏi trước khi vào trận. */
-  | { kind: 'warn'; difficulty: Difficulty; match: StartedMatch }
+  /** Server đã dựng trận → màn đối đầu (báo luôn nếu trận không có thưởng). */
+  | { kind: 'versus'; difficulty: Difficulty; match: StartedMatch }
   /** `match.token` giữ lại để nộp kết quả. */
   | { kind: 'match'; difficulty: Difficulty; match: StartedMatch }
   | { kind: 'result'; difficulty: Difficulty; match: StartedMatch; hud: HudSnapshot };
@@ -85,7 +83,6 @@ export function PlayPage() {
       ? { kind: 'starting', difficulty: params.get('difficulty') === 'hard' ? 'hard' : 'easy' }
       : { kind: 'select' },
   );
-  const { data: me } = useMe();
   const { mutate } = useStartMatch();
   const autopilot = dev.autopilot ?? false;
   const start = useCallback(
@@ -94,7 +91,7 @@ export function PlayPage() {
       mutate(difficulty, {
         onSuccess: (match) =>
           setStage({
-            kind: match.rewardEligible || autopilot ? 'match' : 'warn',
+            kind: autopilot ? 'match' : 'versus',
             difficulty,
             match,
           }),
@@ -113,17 +110,13 @@ export function PlayPage() {
 
   return (
     <div className="play-root">
-      {stage.kind === 'select' && (
-        <DifficultySelect
-          onPick={start}
-          capReached={!!me && me.rewardedMatchesToday >= me.rewardedMatchesLimit}
-        />
-      )}
-      {stage.kind === 'warn' && (
-        <NoRewardWarning
-          limit={me?.rewardedMatchesLimit}
+      {stage.kind === 'select' && <PreMatch onContinue={start} />}
+      {stage.kind === 'versus' && (
+        <Versus
+          match={stage.match}
+          difficulty={stage.difficulty}
           onPlay={() => setStage({ ...stage, kind: 'match' })}
-          onBack={() => void navigate('/')}
+          onBack={() => setStage({ kind: 'select' })}
         />
       )}
       {stage.kind === 'starting' && (
@@ -231,11 +224,11 @@ function MatchStarting({ error, onRetry, onBack }: MatchStartingProps) {
       <p role="alert">{message}</p>
       <div className="difficulty-list">
         {squadIssue ? (
-          <Link to="/squad" className="btn btn--big" autoFocus>
+          <Link to="/squad" className="btn btn--primary btn--lg" autoFocus>
             Sửa đội hình
           </Link>
         ) : (
-          <button type="button" className="btn btn--big" autoFocus onClick={onRetry}>
+          <button type="button" className="btn btn--primary btn--lg" autoFocus onClick={onRetry}>
             Thử lại
           </button>
         )}

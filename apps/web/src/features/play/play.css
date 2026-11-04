@@ -22,64 +22,6 @@
   letter-spacing: var(--tracking-caps);
 }
 
-/* ---------- Nút ---------- */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 40px;
-  padding: 0 var(--sp-5);
-  border: 1px solid var(--c-line-strong);
-  border-radius: var(--radius-md);
-  background: transparent;
-  color: var(--c-text);
-  font-family: var(--font-display);
-  font-size: var(--fs-lg);
-  font-weight: var(--fw-semibold);
-  letter-spacing: var(--tracking-caps);
-  text-transform: uppercase;
-  text-decoration: none;
-  cursor: pointer;
-  transition: transform var(--dur-instant) var(--ease-out);
-}
-.btn:hover {
-  background: var(--c-surface-2);
-}
-.btn:active {
-  transform: scale(0.97);
-}
-.btn:focus-visible {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
-}
-.btn--primary {
-  border-color: var(--c-accent);
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
-}
-.btn--primary:hover {
-  background: var(--c-accent-hover);
-}
-/* Mờ hẳn và không phản hồi khi bị khoá (DESIGN §6.2: thay người khi bóng sống). */
-.btn:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
-  transform: none;
-}
-.btn:disabled:hover {
-  background: transparent;
-}
-.btn--primary:disabled:hover {
-  background: var(--c-accent);
-}
-.btn--danger {
-  border-color: var(--c-danger);
-  color: var(--c-danger);
-}
-.btn--big {
-  min-height: 48px;
-}
-
 /* ---------- Màn (chọn độ khó, kết quả) ---------- */
 .screen {
   display: flex;
@@ -489,8 +431,7 @@
     animation-name: fade-in;
     animation-duration: 160ms;
   }
-  .hud-stamina-fill,
-  .btn {
+  .hud-stamina-fill {
     transition: none;
   }
 }
