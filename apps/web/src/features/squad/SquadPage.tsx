@@ -1,5 +1,5 @@
-import { useEffect, useState, type CSSProperties } from 'react';
-import { useBlocker } from 'react-router';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useBlocker, type Blocker } from 'react-router';
 import {
   DndContext,
   DragOverlay,
@@ -13,6 +13,7 @@ import {
 } from '@dnd-kit/core';
 import {
   BENCH_SLOTS,
+  computeOvr,
   evaluateSquad,
   Formation,
   slotRole,
@@ -24,11 +25,13 @@ import {
   type SquadMember,
   type SquadSlot,
 } from '@pitch/shared';
+import { MAX_SUBS } from '@pitch/sim';
 import { useCardCatalog } from '../../api/cards';
 import { ApiClientError } from '../../api/client';
 import { usePlayerCards } from '../../api/player-cards';
 import { useSaveSquad, useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
+import { ChalkPitch } from '../../components/ChalkPitch';
 import { POSITION_NAME } from '../../components/card/rarity';
 import {
   changeFormation,
@@ -53,6 +56,8 @@ interface Draft {
 }
 
 const KHO = 'kho';
+/** OVR hiệu lực của thẻ (đã tính cấp ép, chưa tính phạt vị trí). */
+const ovrOf = (it: Item) => computeOvr(it.card.position, it.pc.effectiveStats);
 const cardDragId = (pcId: string) => `card:${pcId}`;
 
 export function saveErrorMessage(err: unknown): string {
@@ -72,7 +77,16 @@ export function SquadPage() {
   const catalog = useCardCatalog();
 
   if (squad.isPending || list.isPending || catalog.isPending) {
-    return <p className="screen-msg">Đang tải đội hình…</p>;
+    return (
+      <div className="sq" aria-busy="true">
+        <p className="sr-only">Đang tải đội hình…</p>
+        <div className="skel sq-skel__head" />
+        <div className="sq__body">
+          <div className="skel sq-skel__pitch" />
+          <div className="skel sq-skel__side" />
+        </div>
+      </div>
+    );
   }
   if (squad.isError || list.isError || catalog.isError) {
     return (
@@ -100,6 +114,43 @@ export function SquadPage() {
   return <SquadEditor saved={squad.data} items={items} />;
 }
 
+/** Mô tả sơ đồ (PRD §5: 2-3-1 cân bằng, 3-2-1 phòng ngự, 2-2-2 tấn công). */
+const FORMATION_HINT: Record<Formation, string> = {
+  '2-3-1': 'Cân bằng',
+  '3-2-1': 'Phòng ngự',
+  '2-2-2': 'Tấn công',
+};
+
+type Filter = 'all' | 'role' | 'other';
+
+interface Notice {
+  tone: 'success' | 'warn';
+  title: string;
+  body?: string;
+}
+
+const WarnIcon = () => (
+  <svg
+    width="16"
+    height="16"
+    viewBox="0 0 16 16"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="1.6"
+    aria-hidden="true"
+  >
+    <path d="M8 2l6.5 12h-13z" />
+    <path d="M8 7v3M8 12v.5" />
+  </svg>
+);
+
+/** Số ô (kể cả sơ đồ) khác giữa bản nháp và bản đã lưu. */
+function changeCount(a: Draft, b: Draft): number {
+  let n = a.formation === b.formation ? 0 : 1;
+  for (const s of [...STARTER_SLOTS, ...BENCH_SLOTS]) if (a.slots[s] !== b.slots[s]) n += 1;
+  return n;
+}
+
 function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string, Item> }) {
   const [draft, setDraft] = useState<Draft>(() => ({
     formation: saved.formation,
@@ -107,13 +158,13 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   }));
   const [selected, setSelected] = useState<SquadSlot | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [anyPosition, setAnyPosition] = useState(false);
+  const [notice, setNotice] = useState<Notice | null>(null);
+  const [filter, setFilter] = useState<Filter>('role');
   const saver = useSaveSquad();
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const dirty = !sameSquad(draft, saved);
-  useLeaveGuard(dirty);
+  const blocker = useLeaveGuard(dirty);
 
   const members: Partial<Record<SquadSlot, SquadMember>> = {};
   for (const [slot, id] of Object.entries(draft.slots) as [SquadSlot, string | null][]) {
@@ -134,9 +185,16 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   };
   const selectedRole = selected ? slotRole(draft.formation, selected) : undefined;
   const pool = [...items.values()].filter((it) => !slotOf(draft.slots, it.pc.id));
-  const shown =
-    selectedRole && !anyPosition ? pool.filter((it) => it.card.position === selectedRole) : pool;
+  const shown = !selectedRole
+    ? pool
+    : filter === 'role'
+      ? pool.filter((it) => it.card.position === selectedRole)
+      : filter === 'other'
+        ? pool.filter((it) => it.card.position !== selectedRole)
+        : pool;
   const layout = slotLayout(draft.formation);
+  const benchUsed = BENCH_SLOTS.filter((s) => draft.slots[s]).length;
+  const selectedItem = selected ? itemAt(selected) : undefined;
 
   const update = (slots: SlotMap) => {
     setDraft((d) => ({ ...d, slots }));
@@ -157,7 +215,11 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
         BENCH_SLOTS.find((s) => !draft.slots[s]) ??
         null;
       if (!target) {
-        setNotice('Không còn ô trống đúng vị trí — chọn một ô để thay người.');
+        setNotice({
+          tone: 'warn',
+          title: 'Không còn ô trống đúng vị trí',
+          body: 'Chọn một ô để thay người.',
+        });
         return;
       }
     }
@@ -172,6 +234,7 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
       return setSelected(null);
     }
     setSelected(slot);
+    setFilter('role');
   }
 
   function pickFormation(f: Formation) {
@@ -181,11 +244,20 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
     setSelected(null);
     saver.reset();
     const names = (ids: string[]) => ids.map((id) => items.get(id)?.card.name ?? '?').join(', ');
+    const moved = r.toBench.length + r.toCollection.length;
     const parts = [
       r.toBench.length > 0 && `${names(r.toBench)} xuống dự bị`,
       r.toCollection.length > 0 && `${names(r.toCollection)} về kho`,
     ].filter(Boolean);
-    setNotice(parts.length > 0 ? `Sơ đồ ${f}: ${parts.join('; ')}.` : null);
+    setNotice(
+      moved > 0
+        ? {
+            tone: 'warn',
+            title: `${moved} thẻ không còn chỗ trong sơ đồ ${f}`,
+            body: `${parts.join('; ')}.`,
+          }
+        : null,
+    );
   }
 
   function onDragEnd(e: DragEndEvent) {
@@ -203,7 +275,7 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   }
 
   // Thẻ đã bán ở nơi khác (kho làm mới sau lỗi `not_found`) thì bỏ khỏi ô trước khi gửi.
-  const save = () =>
+  const save = (after?: () => void) =>
     saver.mutate(
       {
         formation: draft.formation,
@@ -211,12 +283,22 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
           Object.entries(draft.slots).map(([s, id]) => [s, id && items.has(id) ? id : null]),
         ) as SlotMap,
       },
-      { onSuccess: () => setNotice('Đã lưu đội hình.') },
+      {
+        onSuccess: () => {
+          setNotice({
+            tone: 'success',
+            title: 'Đã lưu đội hình',
+            body: `OVR đội ${evaluation.teamRating} · ${draft.formation}`,
+          });
+          after?.();
+        },
+      },
     );
 
   const misplaced = new Set(
     evaluation.warnings.filter((w) => w.code === 'misposition').map((w) => w.slot),
   );
+  const missing = evaluation.warnings.filter((w) => w.code !== 'misposition');
   const dragItem = dragging ? items.get(dragging) : undefined;
 
   const slotProps = (slot: SquadSlot) => ({
@@ -244,50 +326,44 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
         }}
       >
         <header className="sq__head">
-          <h1 className="panel__title sq__title">Đội hình</h1>
-          <div className="chips" role="group" aria-label="Sơ đồ">
-            <span className="muted">Sơ đồ:</span>
+          <h1 className="h1">Đội hình</h1>
+          <div className="seg" role="radiogroup" aria-label="Sơ đồ">
             {Formation.options.map((f) => (
               <button
                 key={f}
                 type="button"
-                className="chip"
-                aria-pressed={draft.formation === f}
+                role="radio"
+                className={`seg__opt${draft.formation === f ? ' is-on' : ''}`}
+                aria-checked={draft.formation === f}
                 onClick={() => pickFormation(f)}
               >
                 {f}
               </button>
             ))}
           </div>
-          <p className="sq__rating">
-            <span className="muted">Chỉ số đội</span>
-            <b aria-live="polite">{evaluation.teamRating}</b>
-          </p>
+          <span className="muted sq__formation">{FORMATION_HINT[draft.formation]}</span>
+          <span className="sq__rating">
+            <span className="label">OVR đội</span>
+            <span className="display num sq__ovr" aria-live="polite">
+              {evaluation.teamRating}
+            </span>
+          </span>
           <button
             type="button"
             className="btn btn--primary"
             disabled={!dirty || saver.isPending}
             aria-busy={saver.isPending}
-            onClick={save}
+            onClick={() => save()}
           >
             {saver.isPending && <span className="spinner" aria-hidden="true" />}
             Lưu
+            {dirty && <span className="sq__dirty" role="img" aria-label="có thay đổi chưa lưu" />}
           </button>
         </header>
 
-        {notice && (
-          <p className="sq__notice" role="status">
-            {notice}
-          </p>
-        )}
-        {saver.error && (
-          <p className="form-error" role="alert">
-            {saveErrorMessage(saver.error)}
-          </p>
-        )}
-
         <div className="sq__body">
-          <section className="panel sq__field" aria-label="Sân">
+          <section className="sq__pitch-wrap" aria-label="Sân">
+            <ChalkPitch />
             <ul className="sq__pitch">
               {STARTER_SLOTS.map((slot) => (
                 <SlotCell
@@ -297,23 +373,69 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
                 />
               ))}
             </ul>
-            <ul className="sq__warnings">
-              {evaluation.warnings.map((w, i) => (
-                <li key={i} className={w.code === 'misposition' ? 'is-danger' : undefined}>
-                  ⚠ {warningText(w, draft.formation, itemAt)}
-                </li>
-              ))}
-            </ul>
           </section>
 
-          <aside className="sq__side">
+          <div className="sq__side">
+            {missing.length > 0 && (
+              <div className="banner banner--danger" role="alert">
+                <WarnIcon />
+                <span>
+                  <b>{missing.map((w) => w.message).join(' · ')}.</b> Cần đủ {STARTER_SLOTS.length}{' '}
+                  người, có 1 GK, để vào trận.
+                </span>
+              </div>
+            )}
+            {evaluation.warnings
+              .filter((w) => w.code === 'misposition' && w.slot)
+              .map((w) => (
+                <MispositionBanner
+                  key={w.slot}
+                  item={itemAt(w.slot!)}
+                  role={slotRole(draft.formation, w.slot!)}
+                  base={itemAt(w.slot!)?.pc.effectiveStats}
+                  stats={evaluation.effective[w.slot!]}
+                  fallback={w.message}
+                />
+              ))}
+            {notice && (
+              <div className={`toast toast--${notice.tone} sq__toast`} role="status">
+                <span className="toast__icon" aria-hidden="true">
+                  {notice.tone === 'success' ? '✓' : '!'}
+                </span>
+                <div>
+                  <b>{notice.title}</b>
+                  {notice.body && <span>{notice.body}</span>}
+                </div>
+              </div>
+            )}
+            {saver.error && (
+              <p className="banner banner--danger" role="alert">
+                {saveErrorMessage(saver.error)}
+              </p>
+            )}
+
+            <section className="panel sq__panel" aria-labelledby="sq-bench-title">
+              <h2 className="panel__title" id="sq-bench-title">
+                Dự bị{' '}
+                <span className="meta">
+                  {benchUsed}/{BENCH_SLOTS.length} · thay người tối đa {MAX_SUBS} lượt/trận
+                </span>
+              </h2>
+              <ul className="sq__bench">
+                {BENCH_SLOTS.map((slot) => (
+                  <SlotCell key={slot} {...slotProps(slot)} bench />
+                ))}
+              </ul>
+            </section>
+
             <PoolPanel
               items={shown}
               total={pool.length}
               selected={selected}
               role={selectedRole}
-              anyPosition={anyPosition}
-              onAnyPosition={setAnyPosition}
+              filter={filter}
+              onFilter={setFilter}
+              compareOvr={selectedItem ? ovrOf(selectedItem) : undefined}
               onPick={pickFromPool}
               onClearSlot={
                 selected && draft.slots[selected]
@@ -324,33 +446,65 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
                   : undefined
               }
             />
-            <section className="panel" aria-label="Dự bị">
-              <h2 className="panel__title">Dự bị ({BENCH_SLOTS.length})</h2>
-              <ul className="sq__bench">
-                {BENCH_SLOTS.map((slot) => (
-                  <SlotCell key={slot} {...slotProps(slot)} />
-                ))}
-              </ul>
-            </section>
-          </aside>
+            <p className="muted sq__hint">
+              {selected
+                ? `Đang chọn ô ${selected} — bấm thẻ để xếp, bấm ô khác để đổi chỗ, Esc để bỏ chọn.`
+                : 'Kéo-thả thẻ vào ô, hoặc bấm ô → bấm thẻ (dùng được bằng bàn phím). Kéo một thẻ lên thẻ khác để đổi chỗ, kéo về Kho để gỡ.'}
+            </p>
+          </div>
         </div>
       </div>
       <DragOverlay>
         {dragItem && <CardView card={dragItem.card} size="sm" level={dragItem.pc.level} />}
       </DragOverlay>
+      {blocker.state === 'blocked' && (
+        <LeaveDialog
+          changes={changeCount(draft, { formation: saved.formation, slots: saved.slots })}
+          saving={saver.isPending}
+          onDiscard={() => blocker.proceed()}
+          onSave={() => save(() => blocker.proceed?.())}
+          onStay={() => blocker.reset()}
+        />
+      )}
     </DndContext>
   );
 }
 
-function warningText(
-  w: Squad['warnings'][number],
-  formation: Formation,
-  itemAt: (slot: SquadSlot) => Item | undefined,
-): string {
-  if (w.code !== 'misposition' || !w.slot) return w.message;
-  const it = itemAt(w.slot);
-  const role = slotRole(formation, w.slot);
-  return it && role ? `${it.card.name} (${it.card.position}) đá ${role}: −15% chỉ số` : w.message;
+function MispositionBanner({
+  item,
+  role,
+  base,
+  stats,
+  fallback,
+}: {
+  item: Item | undefined;
+  role: SquadMember['position'] | undefined;
+  base: PlayerStats | undefined;
+  stats: PlayerStats | undefined;
+  fallback: string;
+}) {
+  if (!item || !role) {
+    return (
+      <div className="banner banner--danger" role="alert">
+        <WarnIcon />
+        <span>{fallback}</span>
+      </div>
+    );
+  }
+  const after = stats ? computeOvr(item.card.position, stats) : undefined;
+  return (
+    <div className="banner banner--danger" role="alert">
+      <WarnIcon />
+      <span>
+        <b>
+          {item.card.name} ({item.card.position}) đang đá {role}:
+        </b>{' '}
+        mọi chỉ số −15%
+        {base && after !== undefined && ` (OVR ${ovrOf(item)} → ${after})`}. Kéo một{' '}
+        {POSITION_NAME[role].toLowerCase()} vào ô này để bỏ phạt.
+      </span>
+    </div>
+  );
 }
 
 interface SlotCellProps {
@@ -360,19 +514,30 @@ interface SlotCellProps {
   stats: PlayerStats | undefined;
   selected: boolean;
   warn: boolean;
+  bench?: boolean;
   style?: CSSProperties;
   onClick: () => void;
 }
 
-function SlotCell({ slot, role, item, stats, selected, warn, style, onClick }: SlotCellProps) {
+function SlotCell({
+  slot,
+  role,
+  item,
+  stats,
+  selected,
+  warn,
+  bench,
+  style,
+  onClick,
+}: SlotCellProps) {
   const drop = useDroppable({ id: `slot:${slot}` });
   const drag = useDraggable({ id: cardDragId(item?.pc.id ?? `empty-${slot}`), disabled: !item });
   const label = `Ô ${slot}${role ? ` (${POSITION_NAME[role]})` : ' (dự bị)'}${
     item ? `: ${item.card.name}` : ': trống'
-  }${warn ? ', sai vị trí' : ''}`;
+  }${warn ? ', sai vị trí −15%' : ''}`;
   return (
     <li
-      className={`sq-slot${selected ? ' is-selected' : ''}${warn ? ' is-warn' : ''}${
+      className={`slot sq-slot${selected ? ' is-selected' : ''}${warn ? ' is-wrong' : ''}${
         drop.isOver ? ' is-over' : ''
       }${drag.isDragging ? ' is-dragging' : ''}`}
       style={style}
@@ -391,16 +556,29 @@ function SlotCell({ slot, role, item, stats, selected, warn, style, onClick }: S
         {...drag.listeners}
       >
         {item ? (
-          <CardView card={item.card} size="sm" level={item.pc.level} stats={stats} />
+          <CardView
+            card={item.card}
+            size="sm"
+            level={item.pc.level}
+            stats={stats}
+            selected={selected}
+          />
         ) : (
-          <span className="sq-slot__empty">{role ?? slot}</span>
+          <span className={`slot__empty${selected ? ' is-selected' : ''}`}>
+            {bench ? '+' : role}
+          </span>
         )}
       </button>
-      {warn && (
-        <span className="sq-slot__warn" aria-hidden="true">
-          ⚠
-        </span>
-      )}
+      {!bench &&
+        (warn ? (
+          <span className="slot__penalty" aria-hidden="true">
+            <WarnIcon /> {role} −15%
+          </span>
+        ) : (
+          <span className="slot__role" aria-hidden="true">
+            {role}
+          </span>
+        ))}
     </li>
   );
 }
@@ -410,8 +588,10 @@ interface PoolPanelProps {
   total: number;
   selected: SquadSlot | null;
   role: SquadMember['position'] | undefined;
-  anyPosition: boolean;
-  onAnyPosition: (v: boolean) => void;
+  filter: Filter;
+  onFilter: (f: Filter) => void;
+  /** OVR thẻ đang ở ô được chọn — để hiện "+N OVR" nếu thẻ trong kho mạnh hơn. */
+  compareOvr: number | undefined;
   onPick: (pcId: string) => void;
   onClearSlot?: () => void;
 }
@@ -421,58 +601,76 @@ function PoolPanel({
   total,
   selected,
   role,
-  anyPosition,
-  onAnyPosition,
+  filter,
+  onFilter,
+  compareOvr,
   onPick,
   onClearSlot,
 }: PoolPanelProps) {
   const { setNodeRef, isOver } = useDroppable({ id: KHO });
+  const chips: [Filter, string][] = role
+    ? [
+        ['all', 'Tất cả'],
+        ['role', role],
+        ['other', 'Khác vị trí (−15%)'],
+      ]
+    : [];
   return (
     <section
       ref={setNodeRef}
-      className={`panel sq__pool${isOver ? ' is-over' : ''}`}
-      aria-label="Kho"
+      className={`panel sq__panel sq__pool${isOver ? ' is-over' : ''}`}
+      aria-labelledby="sq-pool-title"
     >
-      <h2 className="panel__title">
+      <h2 className="panel__title" id="sq-pool-title">
         Kho{' '}
-        {role && !anyPosition ? (
-          `(lọc theo ô đang chọn: ${role})`
-        ) : (
-          <span className="muted">{total}</span>
-        )}
+        <span className="meta">
+          {selected && role ? `Đang chọn ô ${selected} · lọc theo ${role}` : `${total} thẻ`}
+        </span>
       </h2>
-      {role && (
-        <label className="sq__any">
-          <input
-            type="checkbox"
-            checked={anyPosition}
-            onChange={(e) => onAnyPosition(e.target.checked)}
-          />
-          Hiện mọi vị trí (khác vị trí bị −15%)
-        </label>
-      )}
-      <p className="muted sq__hint">
-        {selected
-          ? `Đang chọn ô ${selected} — bấm thẻ để xếp, bấm ô khác để đổi chỗ, Esc để bỏ chọn.`
-          : 'Bấm một ô rồi bấm thẻ, hoặc kéo thẻ vào ô. Kéo thẻ về đây để gỡ khỏi đội.'}
-      </p>
-      {onClearSlot && (
-        <button type="button" className="btn btn--secondary" onClick={onClearSlot}>
-          Gỡ thẻ ở ô {selected} về kho
-        </button>
+      {(chips.length > 0 || onClearSlot) && (
+        <div className="chips">
+          {chips.map(([f, text]) => (
+            <button
+              key={f}
+              type="button"
+              className={`chip${filter === f ? ' is-on' : ''}`}
+              aria-pressed={filter === f}
+              onClick={() => onFilter(f)}
+            >
+              {text}
+            </button>
+          ))}
+          {onClearSlot && (
+            <button type="button" className="btn btn--ghost btn--sm" onClick={onClearSlot}>
+              Gỡ thẻ ở ô {selected} về kho
+            </button>
+          )}
+        </div>
       )}
       {items.length === 0 ? (
-        <p className="muted">{role ? `Không còn thẻ ${role} trong kho.` : 'Kho không còn thẻ.'}</p>
+        <p className="muted">
+          {role && filter === 'role' ? `Không còn thẻ ${role} trong kho.` : 'Kho không còn thẻ.'}
+        </p>
       ) : (
         <ul className="sq__pool-grid">
-          {items.map((it) => (
-            <PoolCard
-              key={it.pc.id}
-              item={it}
-              penalty={!!role && it.card.position !== role}
-              onPick={() => onPick(it.pc.id)}
-            />
-          ))}
+          {items.map((it) => {
+            const penalty = !!role && it.card.position !== role;
+            const gain = !penalty && compareOvr !== undefined ? ovrOf(it) - compareOvr : 0;
+            return (
+              <PoolCard
+                key={it.pc.id}
+                item={it}
+                tag={
+                  penalty ? (
+                    <span className="tag tag--warn">−15%</span>
+                  ) : gain > 0 ? (
+                    <span className="tag tag--success">+{gain} OVR</span>
+                  ) : null
+                }
+                onPick={() => onPick(it.pc.id)}
+              />
+            );
+          })}
         </ul>
       )}
     </section>
@@ -481,15 +679,14 @@ function PoolPanel({
 
 interface PoolCardProps {
   item: Item;
-  /** Khác nhóm vị trí của ô đang chọn → hiện "−15%". */
-  penalty: boolean;
+  tag: ReactNode;
   onPick: () => void;
 }
 
-function PoolCard({ item, penalty, onPick }: PoolCardProps) {
+function PoolCard({ item, tag, onPick }: PoolCardProps) {
   const { setNodeRef, listeners, isDragging } = useDraggable({ id: cardDragId(item.pc.id) });
   return (
-    <li className={isDragging ? 'is-dragging' : undefined}>
+    <li className={`sq-pool__item${isDragging ? ' is-dragging' : ''}`}>
       <button
         ref={setNodeRef}
         type="button"
@@ -498,27 +695,80 @@ function PoolCard({ item, penalty, onPick }: PoolCardProps) {
         {...listeners}
       >
         <CardView card={item.card} size="sm" level={item.pc.level} stats={item.pc.effectiveStats} />
-        {penalty && <span className="sq-pool__penalty">−15%</span>}
       </button>
+      {tag}
     </li>
   );
 }
 
-/** Còn thay đổi chưa lưu → hỏi trước khi rời trang (đổi route hoặc đóng tab). */
-function useLeaveGuard(dirty: boolean) {
+function LeaveDialog({
+  changes,
+  saving,
+  onDiscard,
+  onSave,
+  onStay,
+}: {
+  changes: number;
+  saving: boolean;
+  onDiscard: () => void;
+  onSave: () => void;
+  onStay: () => void;
+}) {
+  const ref = useRef<HTMLDialogElement>(null);
+  useEffect(() => {
+    const d = ref.current;
+    if (d && !d.open) d.showModal();
+  }, []);
+  return (
+    <dialog
+      ref={ref}
+      className="dialog sq-leave"
+      aria-labelledby="sq-leave-title"
+      onCancel={(e) => {
+        e.preventDefault();
+        onStay();
+      }}
+    >
+      <h2 className="dialog__title" id="sq-leave-title">
+        Lưu đội hình?
+      </h2>
+      <p className="dialog__body">
+        Bạn có {changes} thay đổi chưa lưu. Rời trang bây giờ sẽ bỏ các thay đổi này.
+      </p>
+      <div className="dialog__actions">
+        <button type="button" className="btn btn--ghost" onClick={onStay}>
+          Ở lại
+        </button>
+        <button type="button" className="btn btn--secondary" onClick={onDiscard}>
+          Bỏ thay đổi
+        </button>
+        <button
+          type="button"
+          className="btn btn--primary"
+          autoFocus
+          disabled={saving}
+          aria-busy={saving}
+          onClick={onSave}
+        >
+          {saving && <span className="spinner" aria-hidden="true" />}
+          Lưu &amp; rời
+        </button>
+      </div>
+    </dialog>
+  );
+}
+
+/** Còn thay đổi chưa lưu → hỏi trước khi rời trang (đổi route: hộp thoại; đóng tab: trình duyệt). */
+function useLeaveGuard(dirty: boolean): Blocker {
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       dirty && currentLocation.pathname !== nextLocation.pathname,
   );
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    if (window.confirm('Đội hình chưa lưu. Rời trang và bỏ thay đổi?')) blocker.proceed();
-    else blocker.reset();
-  }, [blocker]);
   useEffect(() => {
     if (!dirty) return;
     const onUnload = (e: BeforeUnloadEvent) => e.preventDefault();
     window.addEventListener('beforeunload', onUnload);
     return () => window.removeEventListener('beforeunload', onUnload);
   }, [dirty]);
+  return blocker;
 }

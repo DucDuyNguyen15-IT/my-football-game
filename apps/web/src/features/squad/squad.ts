@@ -85,11 +85,11 @@ export function slotLayout(
 ): Record<(typeof STARTER_SLOTS)[number], { x: number; y: number }> {
   const [df, mf, fw] = FORMATION_LINES[formation];
   const rows: { count: number; y: number }[] = [
-    { count: df, y: 68 },
-    { count: mf, y: 44 },
-    { count: fw, y: 18 },
+    { count: df, y: 65 },
+    { count: mf, y: 40 },
+    { count: fw, y: 15 },
   ];
-  const out = { GK: { x: 50, y: 88 } } as Record<
+  const out = { GK: { x: 50, y: 91 } } as Record<
     (typeof STARTER_SLOTS)[number],
     { x: number; y: number }
   >;
