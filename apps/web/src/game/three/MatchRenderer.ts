@@ -479,22 +479,14 @@ export class MatchRenderer {
       return;
     }
     if (this.replayLabel) return;
+    // Class HUD chung (styles/ui.css, features/play/play.css) — match-events.html.
     const el = document.createElement('div');
+    el.className = 'hud-panel replay-tag';
+    el.setAttribute('role', 'status');
     el.innerHTML =
-      '<b style="letter-spacing:.12em">● PHÁT LẠI</b>' +
-      '<div style="opacity:.7;font-size:12px;margin-top:2px">Bấm S để bỏ qua</div>';
-    Object.assign(el.style, {
-      position: 'absolute',
-      left: '20px',
-      bottom: '20px',
-      padding: '8px 12px',
-      background: '#000000b0',
-      color: COLORS.text,
-      borderLeft: `3px solid ${COLORS.accentCss}`,
-      font: '600 15px system-ui, sans-serif',
-      pointerEvents: 'none',
-      zIndex: '6',
-    });
+      '<span class="replay-tag__dot" aria-hidden="true"></span>' +
+      '<span class="display replay-tag__text">PHÁT LẠI</span>' +
+      '<span class="keyhint"><kbd class="kbd">S</kbd>Bỏ qua</span>';
     this.parent.appendChild(el);
     this.replayLabel = el;
   }
