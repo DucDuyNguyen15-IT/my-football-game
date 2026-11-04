@@ -1,6 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
-import { effectiveStats, type Card, type PlayerCard, type UpgradeCardResult } from '@pitch/shared';
+import {
+  effectiveStats,
+  type Card,
+  type UpgradeCardResult,
+  type UpgradeConfig,
+} from '@pitch/shared';
 import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
 import { useEconomy, usePlayerCards, useUpgradeCard } from '../../api/player-cards';
@@ -16,7 +21,6 @@ import {
   type CardItem,
 } from './upgrade';
 import { UpgradeStats } from './UpgradeStats';
-import '../collection/collection.css'; // lưới thẻ + chip dùng chung với Kho thẻ
 import './upgrade.css';
 
 const fmt = (n: number) => n.toLocaleString('vi-VN');
@@ -27,7 +31,36 @@ const Coin = () => (
   </>
 );
 
-type Tab = 'target' | 'material';
+const svg = {
+  width: 16,
+  height: 16,
+  viewBox: '0 0 16 16',
+  fill: 'none',
+  stroke: 'currentColor',
+  'aria-hidden': true,
+} as const;
+const BackIcon = () => (
+  <svg {...svg} strokeWidth={1.8}>
+    <path d="M10 3L5 8l5 5" />
+  </svg>
+);
+const WarnIcon = () => (
+  <svg {...svg} strokeWidth={1.6}>
+    <path d="M8 2l6.5 12h-13z" />
+    <path d="M8 7v3M8 12v.5" />
+  </svg>
+);
+const CheckIcon = () => (
+  <svg {...svg} strokeWidth={2}>
+    <path d="M3 8.5l3 3 7-7" />
+  </svg>
+);
+const LockIcon = () => (
+  <svg {...svg} strokeWidth={1.6}>
+    <rect x="3" y="7" width="10" height="7" rx="1" />
+    <path d="M5.5 7V5a2.5 2.5 0 015 0v2" />
+  </svg>
+);
 
 interface Outcome {
   res: UpgradeCardResult;
@@ -35,9 +68,15 @@ interface Outcome {
   fromLevel: number;
 }
 
+/** Một ô trong lưới chọn: thẻ + nhãn trạng thái dưới thẻ. */
+interface PickItem extends CardItem {
+  tone: 'success' | 'warn' | 'lock' | 'plain';
+  note: string;
+}
+
 /**
- * Màn ép thẻ (PRD §6.5, F10): chọn thẻ được ép + nguyên liệu (thẻ chọn lưu trên URL `?card=&mat=`),
- * xem tỉ lệ = cơ bản + may mắn, phí, chỉ số sau ép, cảnh báo mất nguyên liệu; kết quả do server quay.
+ * Màn ép thẻ (PRD §6.5, F10) theo docs/design/screens/upgrade*.html: thẻ cần ép | chọn nguyên liệu |
+ * tỉ lệ (cơ bản + may mắn), phí, chỉ số sau ép. Thẻ chọn lưu trên URL `?card=&mat=`; kết quả do server quay.
  */
 export function UpgradePage() {
   const [params, setParams] = useSearchParams();
@@ -46,11 +85,21 @@ export function UpgradePage() {
   const economy = useEconomy();
   const me = useMe();
   const upgrader = useUpgradeCard();
-  const [tab, setTab] = useState<Tab | null>(null);
+  const [picking, setPicking] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
 
   if (list.isPending || catalog.isPending || economy.isPending) {
-    return <p className="screen-msg">Đang tải…</p>;
+    return (
+      <div className="upg upg--loading" aria-busy="true">
+        <p className="sr-only">Đang tải…</p>
+        <div className="skel upg-skel__head" />
+        <div className="upg__layout">
+          <div className="skel upg-skel__panel" />
+          <div className="skel upg-skel__panel" />
+          <div className="skel upg-skel__panel" />
+        </div>
+      </div>
+    );
   }
   if (list.isError || catalog.isError || economy.isError) {
     return (
@@ -77,14 +126,14 @@ export function UpgradePage() {
     return card ? [{ pc, card }] : [];
   });
   const target = items.find((it) => it.pc.id === params.get('card')) ?? null;
-  const { valid: materials, inSquad: lockedMaterials } = target
+  const { valid: materials } = target
     ? materialCandidates(target.pc, list.data, catalog.data)
-    : { valid: [], inSquad: 0 };
+    : { valid: [] as CardItem[] };
   const material = materials.find((it) => it.pc.id === params.get('mat')) ?? null;
   const preview = target ? upgradePreview(target.card, target.pc, cfg) : null;
   const coins = me.data?.coins ?? 0;
   const short = preview ? Math.max(0, preview.fee - coins) : 0;
-  const activeTab: Tab = tab ?? (target && preview ? 'material' : 'target');
+  const choosingTarget = !target || picking;
 
   const select = (card: string | null, mat: string | null) => {
     const next = new URLSearchParams();
@@ -92,10 +141,6 @@ export function UpgradePage() {
     if (mat) next.set('mat', mat);
     setParams(next, { replace: true });
     upgrader.reset();
-  };
-  const pickTarget = (pc: PlayerCard) => {
-    select(pc.id, null);
-    setTab('material');
   };
 
   async function run() {
@@ -112,245 +157,355 @@ export function UpgradePage() {
     !!target && !!material && !!preview && short === 0 && !upgrader.isPending && !!me.data;
   const hold =
     target && material ? needsHoldConfirm(target.card, material.card, material.pc) : false;
+  const rarityLabel = target ? RARITY_INFO[target.card.rarity].label : '';
+
+  // Lưới nguyên liệu: hợp lệ trước (rẻ trước), rồi thẻ khoá (trong đội hình / độ hiếm thấp hơn).
+  const materialGrid: PickItem[] = target
+    ? [
+        ...materials.map((it): PickItem => {
+          if (it.pc.level > 0) return { ...it, tone: 'warn', note: `Đã ép +${it.pc.level}` };
+          if (it.card.rarity !== target.card.rarity)
+            return { ...it, tone: 'warn', note: 'Hiếm hơn' };
+          return { ...it, tone: 'success', note: 'Hợp lệ' };
+        }),
+        ...items
+          .filter((it) => it.pc.id !== target.pc.id && !materials.includes(it))
+          .map((it): PickItem => ({
+            ...it,
+            tone: 'lock',
+            note: it.pc.inSquad ? 'Trong đội hình' : `Thấp hơn ${rarityLabel}`,
+          }))
+          .sort((a, b) => Number(b.pc.inSquad) - Number(a.pc.inSquad)),
+      ]
+    : [];
+  const targetGrid: PickItem[] = items.map((it) =>
+    it.pc.level >= cfg.maxLevel
+      ? { ...it, tone: 'plain', note: 'Đã tối đa' }
+      : it.pc.luck > 0
+        ? { ...it, tone: 'warn', note: `May mắn ${it.pc.luck}%` }
+        : { ...it, tone: 'plain', note: `+${it.pc.level} → +${it.pc.level + 1}` },
+  );
 
   return (
     <div className="upg">
       <header className="upg__head">
-        <h1 className="panel__title upg__title">Ép thẻ</h1>
-        <Link to="/collection" className="btn btn--secondary btn--sm">
-          ← Kho thẻ
+        <Link to="/collection" className="btn btn--ghost btn--sm">
+          <BackIcon />
+          Kho thẻ
         </Link>
+        <h1 className="h1">Ép thẻ</h1>
+        <span className="muted upg__sub">
+          +1 → +{cfg.maxLevel} · mỗi lần tiêu 1 thẻ nguyên liệu cùng độ hiếm trở lên
+        </span>
       </header>
 
-      <section className="panel upg__stage" aria-label="Bàn ép thẻ">
-        <div className="upg__slot">
-          <span className="upg__label">Thẻ được ép</span>
+      <div className="upg__layout">
+        <section className="panel upg__target" aria-label="Thẻ cần ép">
+          <span className="label">Thẻ cần ép</span>
           {target ? (
-            <CardView
-              card={target.card}
-              size="lg"
-              level={target.pc.level}
-              stats={effectiveStats(target.card, target.pc.level)}
-            />
-          ) : (
-            <EmptySlot text="Chọn thẻ muốn ép ở danh sách bên dưới" />
-          )}
-        </div>
-
-        <div className="upg__center">
-          {!target ? (
-            <p className="muted">Chọn một thẻ để xem tỉ lệ, phí và chỉ số sau khi ép.</p>
-          ) : !preview ? (
-            <p className="upg__maxed">Thẻ đã đạt +{cfg.maxLevel} — không ép thêm được.</p>
-          ) : (
             <>
-              <div
-                className="upg__levels"
-                aria-label={`Từ +${target.pc.level} lên +${preview.toLevel}`}
-              >
-                <span>+{target.pc.level}</span>
-                <span className="upg__arrow" aria-hidden="true">
-                  ➜
-                </span>
-                <span className="upg__to">+{preview.toLevel}</span>
-              </div>
-              <dl className="upg__facts">
-                <dt>Tỉ lệ thành công</dt>
-                <dd className="upg__rate">{preview.rate}%</dd>
-                <dd className="upg__rate-note">
-                  {preview.baseRate}% cơ bản
-                  {preview.luck > 0 && <> + {preview.luck}% may mắn</>}
-                </dd>
-                <dt>Phí</dt>
-                <dd className="upg__fee">
-                  {fmt(preview.fee)} <Coin />
-                </dd>
-              </dl>
-              <div className="upg__meter" aria-hidden="true">
-                <span
-                  className="upg__meter-base"
-                  style={{ width: `${Math.min(preview.baseRate, preview.rate)}%` }}
-                />
-                <span
-                  className="upg__meter-luck"
-                  style={{ width: `${preview.rate - Math.min(preview.baseRate, preview.rate)}%` }}
-                />
-              </div>
-              <p className="upg__hint muted">
-                Thất bại: giữ cấp, mất nguyên liệu và phí, thẻ được +{cfg.luckPerFail}% may mắn cho
-                lần sau.
-              </p>
+              <CardView
+                card={target.card}
+                size="lg"
+                level={target.pc.level}
+                stats={effectiveStats(target.card, target.pc.level)}
+              />
+              {preview ? (
+                <>
+                  <div
+                    className="upg__levels"
+                    aria-label={`Từ +${target.pc.level} lên +${preview.toLevel}`}
+                  >
+                    <span className="display num upg__from">+{target.pc.level}</span>
+                    <span className="muted" aria-hidden="true">
+                      →
+                    </span>
+                    <span className="display num upg__to">+{preview.toLevel}</span>
+                  </div>
+                  <span className="muted upg__small">
+                    +{preview.toLevel} = cộng tổng +{preview.bonusAfter} vào mọi chỉ số (tối đa 99)
+                  </span>
+                </>
+              ) : (
+                <span className="tag tag--accent">Đã tối đa +{cfg.maxLevel}</span>
+              )}
+              {!picking && (
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={() => setPicking(true)}
+                >
+                  Đổi thẻ
+                </button>
+              )}
             </>
-          )}
-        </div>
-
-        <div className="upg__slot">
-          <span className="upg__label">Nguyên liệu</span>
-          {material ? (
-            <CardView
-              card={material.card}
-              size="lg"
-              level={material.pc.level}
-              stats={material.pc.effectiveStats}
-            />
           ) : (
-            <EmptySlot
-              text={
-                target && preview
-                  ? `Chọn 1 thẻ ${RARITY_INFO[target.card.rarity].label} trở lên làm nguyên liệu`
-                  : 'Chọn thẻ được ép trước'
-              }
-            />
+            <div className="upg__empty">Chọn thẻ cần ép ở danh sách bên cạnh</div>
           )}
-        </div>
-      </section>
-
-      {target && preview && (
-        <section className="upg__confirm">
-          <div className="panel upg__stats-panel">
-            <h2 className="upg__subtitle">Chỉ số sau khi ép</h2>
-            <UpgradeStats card={target.card} preview={preview} />
-          </div>
-          <div className="panel upg__action">
-            {material ? (
-              <ul className="upg__warn" aria-label="Cảnh báo">
-                {materialWarnings(target.card, material.card, material.pc).map((w) => (
-                  <li key={w}>⚠ {w}</li>
-                ))}
-              </ul>
-            ) : (
-              <p className="muted">Chọn nguyên liệu để ép.</p>
-            )}
-            {upgrader.error && (
-              <p className="form-error" role="alert">
-                {upgradeErrorMessage(upgrader.error)}
-              </p>
-            )}
-            {hold ? (
-              <HoldButton
-                className="btn btn--primary btn--lg"
-                onHold={() => void run()}
-                disabled={!canRun}
-              >
-                {upgrader.isPending && <span className="spinner" aria-hidden="true" />}
-                Giữ để ép · {fmt(preview.fee)} <Coin />
-              </HoldButton>
-            ) : (
-              <button
-                type="button"
-                className="btn btn--primary btn--lg"
-                disabled={!canRun}
-                aria-busy={upgrader.isPending}
-                onClick={() => void run()}
-              >
-                {upgrader.isPending && <span className="spinner" aria-hidden="true" />}
-                Ép thẻ · {fmt(preview.fee)} <Coin />
-              </button>
-            )}
-            {short > 0 && (
-              <span className="upg__short">
-                Thiếu {fmt(short)} <Coin />
-              </span>
-            )}
-          </div>
         </section>
-      )}
 
-      <section className="upg__picker" aria-label="Chọn thẻ">
-        <div className="chips upg__tabs" role="group" aria-label="Danh sách đang chọn">
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={activeTab === 'target'}
-            onClick={() => setTab('target')}
-          >
-            Thẻ được ép
-          </button>
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={activeTab === 'material'}
-            disabled={!target || !preview}
-            onClick={() => setTab('material')}
-          >
-            Nguyên liệu ({materials.length} hợp lệ)
-          </button>
-        </div>
-
-        {activeTab === 'target' ? (
-          <CardGrid
-            items={items}
-            activeId={target?.pc.id}
-            empty="Kho đang trống."
-            note={(it) =>
-              it.pc.level >= cfg.maxLevel
-                ? 'Đã tối đa'
-                : it.pc.luck > 0
-                  ? `May mắn ${it.pc.luck}%`
-                  : null
-            }
-            onPick={(it) => pickTarget(it.pc)}
-          />
-        ) : (
-          <>
-            <p className="muted upg__filter-note">
-              Chỉ hiện thẻ {target ? RARITY_INFO[target.card.rarity].label : ''} trở lên, không nằm
-              trong đội hình. Thẻ ít giá trị xếp trước.
-              {lockedMaterials > 0 &&
-                ` ${lockedMaterials} thẻ hợp lệ đang trong đội hình nên bị ẩn.`}
-            </p>
-            <CardGrid
-              items={materials}
+        <section className="panel upg__pick" aria-labelledby="upg-pick-title">
+          <h2 className="panel__title" id="upg-pick-title">
+            {choosingTarget ? 'Chọn thẻ cần ép' : 'Chọn nguyên liệu'}
+            <span className="meta">
+              {choosingTarget
+                ? `${items.length} thẻ trong kho`
+                : `${rarityLabel} trở lên · không trong đội hình`}
+            </span>
+          </h2>
+          {choosingTarget ? (
+            <PickGrid
+              items={targetGrid}
+              activeId={target?.pc.id}
+              label="Thẻ trong kho"
+              empty={
+                <div className="empty">
+                  <h3 className="empty__title">Kho còn trống</h3>
+                  <p className="empty__body">Mở gói ở Cửa hàng để có thẻ đầu tiên.</p>
+                  <Link className="btn btn--primary" to="/shop">
+                    Tới cửa hàng
+                  </Link>
+                </div>
+              }
+              onPick={(it) => {
+                select(it.pc.id, null);
+                setPicking(false);
+              }}
+            />
+          ) : !preview ? (
+            <p className="muted">Thẻ đã đạt +{cfg.maxLevel} — không ép thêm được.</p>
+          ) : (
+            <PickGrid
+              items={materialGrid}
               activeId={material?.pc.id}
-              empty="Không có nguyên liệu hợp lệ. Mở thêm gói ở Cửa hàng."
-              note={(it) => (it.pc.level > 0 ? `⚠ Đang +${it.pc.level}` : null)}
+              label="Nguyên liệu"
+              empty={
+                <div className="empty">
+                  <h3 className="empty__title">Chưa có nguyên liệu</h3>
+                  <p className="empty__body">
+                    Cần 1 thẻ {rarityLabel} trở lên không nằm trong đội hình.
+                  </p>
+                  <Link className="btn btn--secondary" to="/shop">
+                    Tới cửa hàng
+                  </Link>
+                </div>
+              }
               onPick={(it) => select(target!.pc.id, it.pc.id)}
             />
-          </>
+          )}
+        </section>
+
+        <section className="panel upg__sum" aria-label="Tỉ lệ và phí">
+          {!target || !preview ? (
+            <p className="muted">
+              {target
+                ? `Thẻ đã đạt cấp tối đa +${cfg.maxLevel}.`
+                : 'Chọn thẻ cần ép để xem tỉ lệ, phí và chỉ số sau khi ép.'}
+            </p>
+          ) : (
+            <Summary
+              cfg={cfg}
+              card={target.card}
+              level={target.pc.level}
+              preview={preview}
+              material={material}
+              hold={hold}
+              canRun={canRun}
+              pending={upgrader.isPending}
+              short={short}
+              error={upgrader.error ? upgradeErrorMessage(upgrader.error) : null}
+              onRun={() => void run()}
+            />
+          )}
+        </section>
+      </div>
+
+      {outcome && <ResultDialog outcome={outcome} cfg={cfg} onClose={() => setOutcome(null)} />}
+    </div>
+  );
+}
+
+interface SummaryProps {
+  cfg: UpgradeConfig;
+  card: Card;
+  level: number;
+  preview: NonNullable<ReturnType<typeof upgradePreview>>;
+  material: CardItem | null;
+  hold: boolean;
+  canRun: boolean;
+  pending: boolean;
+  short: number;
+  error: string | null;
+  onRun: () => void;
+}
+
+function Summary({
+  cfg,
+  card,
+  level,
+  preview,
+  material,
+  hold,
+  canRun,
+  pending,
+  short,
+  error,
+  onRun,
+}: SummaryProps) {
+  const base = Math.min(preview.baseRate, preview.rate);
+  const luck = preview.rate - base;
+  const fails = cfg.luckPerFail > 0 ? Math.round(preview.luck / cfg.luckPerFail) : 0;
+  const warnings = material ? materialWarnings(card, material.card, material.pc) : [];
+  const label = (
+    <>
+      {pending && <span className="spinner" aria-hidden="true" />}
+      {hold ? 'Giữ để ép' : 'Ép thẻ'} · {fmt(preview.fee)} <Coin />
+    </>
+  );
+  return (
+    <>
+      <div className="upg__rate-row">
+        <span className="label">Tỉ lệ thành công</span>
+        <span className="display num upg__rate">
+          {preview.rate}
+          <span className="upg__pct">%</span>
+        </span>
+      </div>
+      <UpgradeBar base={base} luck={luck} />
+      <div className="muted upg__legend">
+        <span>
+          <i className="upg__key upg__key--base" aria-hidden="true" /> Cơ bản +{preview.toLevel}:{' '}
+          {preview.baseRate}%
+        </span>
+        {preview.luck > 0 && (
+          <span>
+            <i className="upg__key upg__key--luck" aria-hidden="true" /> May mắn tích luỹ: +
+            {preview.luck}% ({fails} lần trượt)
+          </span>
         )}
-      </section>
+      </div>
+      <div className="upg__fee">
+        <span>
+          Phí ép{' '}
+          <span className="muted">
+            ({fmt(preview.fee / cfg.rarityFeeMultiplier[card.rarity])} ×{' '}
+            {RARITY_INFO[card.rarity].label} ×{cfg.rarityFeeMultiplier[card.rarity]})
+          </span>
+        </span>
+        <span className={`coin${short > 0 ? ' coin--short' : ''}`}>
+          <span className="coin__icon" aria-hidden />
+          <span className="num">{fmt(preview.fee)}</span>
+          <span className="sr-only"> xu</span>
+        </span>
+      </div>
+      <UpgradeStats card={card} preview={preview} />
 
-      {outcome && <ResultDialog outcome={outcome} onClose={() => setOutcome(null)} />}
-    </div>
+      {error && (
+        <p className="form-error" role="alert">
+          {error}
+        </p>
+      )}
+      {!material ? (
+        <p className="muted upg__note">
+          <WarnIcon /> Chọn 1 thẻ nguyên liệu để ép. Nguyên liệu sẽ mất dù thành công hay thất bại.
+        </p>
+      ) : hold ? (
+        <div className="banner" role="note">
+          <WarnIcon />
+          <span>
+            <b>Nguyên liệu quý:</b> {warnings.slice(1).join(' ') || warnings[0]} Giữ nút 1 giây để
+            xác nhận.
+          </span>
+        </div>
+      ) : (
+        <p className="muted upg__note">
+          <WarnIcon /> {warnings[0]} Thất bại: giữ cấp +{level}, may mắn +{cfg.luckPerFail}%.
+        </p>
+      )}
+      {short > 0 && <p className="upg__short">Thiếu {fmt(short)} xu để ép.</p>}
+      {hold ? (
+        <HoldButton
+          className="btn btn--primary btn--lg btn--hold"
+          onHold={onRun}
+          disabled={!canRun}
+        >
+          {label}
+        </HoldButton>
+      ) : (
+        <button
+          type="button"
+          className="btn btn--primary btn--lg"
+          disabled={!canRun}
+          aria-busy={pending}
+          onClick={onRun}
+        >
+          {label}
+        </button>
+      )}
+    </>
   );
 }
 
-function EmptySlot({ text }: { text: string }) {
+/** Thanh tỉ lệ 2 màu: phần cơ bản (chanh) + phần may mắn (sọc vàng). */
+function UpgradeBar({ base, luck }: { base: number; luck: number }) {
   return (
-    <div className="upg__empty">
-      <span>{text}</span>
+    <div
+      className="bar bar--thick"
+      style={{ '--v': `${base}%`, '--luck': `${luck}%` } as CSSProperties}
+      aria-hidden="true"
+    >
+      <div className="bar__fill" />
+      {luck > 0 && <div className="bar__luck" />}
     </div>
   );
 }
 
-interface CardGridProps {
-  items: CardItem[];
+interface PickGridProps {
+  items: PickItem[];
   activeId: string | undefined;
-  empty: string;
-  note: (it: CardItem) => string | null;
-  onPick: (it: CardItem) => void;
+  label: string;
+  empty: ReactNode;
+  onPick: (it: PickItem) => void;
 }
 
-function CardGrid({ items, activeId, empty, note, onPick }: CardGridProps) {
-  if (items.length === 0) return <p className="panel muted">{empty}</p>;
+function PickGrid({ items, activeId, label, empty, onPick }: PickGridProps) {
+  if (items.length === 0) return <>{empty}</>;
   return (
-    <ul className="coll__grid">
+    <ul className="upg__grid" aria-label={label}>
       {items.map((it) => {
-        const n = note(it);
+        const lock = it.tone === 'lock';
+        const on = it.pc.id === activeId;
         return (
-          <li key={it.pc.id} className={`coll-item${it.pc.id === activeId ? ' is-active' : ''}`}>
+          <li key={it.pc.id}>
             <button
               type="button"
-              className="coll-item__card"
-              aria-pressed={it.pc.id === activeId}
+              className="upg-pick"
+              aria-pressed={on}
+              disabled={lock}
               onClick={() => onPick(it)}
             >
-              <CardView card={it.card} size="md" level={it.pc.level} stats={it.pc.effectiveStats} />
+              <CardView
+                card={it.card}
+                size="sm"
+                level={it.pc.level}
+                stats={it.pc.effectiveStats}
+                selected={on}
+                dim={lock}
+                inSquad={it.pc.inSquad}
+              />
+              <span
+                className={`tag${it.tone === 'success' ? ' tag--success' : it.tone === 'warn' ? ' tag--warn' : ''}`}
+              >
+                {lock ? (
+                  <LockIcon />
+                ) : it.tone === 'warn' ? (
+                  <WarnIcon />
+                ) : it.tone === 'success' ? (
+                  <CheckIcon />
+                ) : null}
+                {it.note}
+              </span>
             </button>
-            <div className="coll-item__foot">
-              {it.pc.inSquad && <span className="coll-item__squad">● Trong đội </span>}
-              {n && <span className="upg__note">{n}</span>}
-            </div>
           </li>
         );
       })}
@@ -358,8 +513,16 @@ function CardGrid({ items, activeId, empty, note, onPick }: CardGridProps) {
   );
 }
 
-/** Hiệu ứng kết quả: thành công → vòng sáng toả + thẻ nảy; thất bại → thẻ rung, chữ đỏ. */
-function ResultDialog({ outcome, onClose }: { outcome: Outcome; onClose: () => void }) {
+/** Kết quả: thành công → vòng sáng toả + thẻ nảy; thất bại → thẻ rung, chữ đỏ, thanh may mắn mới. */
+function ResultDialog({
+  outcome,
+  cfg,
+  onClose,
+}: {
+  outcome: Outcome;
+  cfg: UpgradeConfig;
+  onClose: () => void;
+}) {
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -367,15 +530,19 @@ function ResultDialog({ outcome, onClose }: { outcome: Outcome; onClose: () => v
   }, []);
   const { res, card, fromLevel } = outcome;
   const win = res.success;
+  // Lần ép kế tiếp (xem trước, chỉ để hiển thị).
+  const next = upgradePreview(card, { level: res.level, luck: res.luck }, cfg);
+  const nextBase = next ? Math.min(next.baseRate, next.rate) : 0;
   return (
     <dialog
       ref={ref}
-      className={`panel upg-result ${win ? 'upg-result--win' : 'upg-result--lose'}`}
+      className={`upg-result ${win ? 'upg-result--win' : 'upg-result--lose'}`}
       aria-labelledby="upg-result-title"
       onClose={onClose}
     >
+      <span className="label">{win ? 'Thành công' : 'Thất bại'}</span>
       <div className="upg-result__stage">
-        {win && <span className="upg-result__burst" aria-hidden="true" />}
+        {win && <span className="upg-result__ring" aria-hidden="true" />}
         <div className="upg-result__card">
           <CardView
             card={card}
@@ -385,20 +552,48 @@ function ResultDialog({ outcome, onClose }: { outcome: Outcome; onClose: () => v
           />
         </div>
       </div>
-      <h2 id="upg-result-title" className="upg-result__title" role="status">
-        {win ? `Thành công · +${res.level}` : 'Thất bại'}
+      <h2 id="upg-result-title" className="display upg-result__title" role="status">
+        {win ? `+${res.level} thành công` : 'Thất bại'}
       </h2>
-      <p className="upg-result__text">
-        {win
-          ? `${card.name} lên +${res.level} (từ +${fromLevel}). May mắn về 0.`
-          : `${card.name} giữ +${res.level}. May mắn tăng lên ${res.luck}% cho lần ép sau.`}
+      {win ? (
+        <p className="muted upg-result__text">
+          {card.name} lên +{res.level} (từ +{fromLevel}) · may mắn về 0%
+        </p>
+      ) : (
+        <div className="upg-result__luck">
+          <div className="upg-result__luck-row">
+            <span>
+              Giữ cấp <b>+{res.level}</b> · nguyên liệu đã mất
+            </span>
+            {next && (
+              <span>
+                Lần sau: <b className="num upg-result__next">{next.rate}%</b>
+              </span>
+            )}
+          </div>
+          {next && <UpgradeBar base={nextBase} luck={next.rate - nextBase} />}
+          <span className="muted upg__small">
+            May mắn +{cfg.luckPerFail}% → tích luỹ {res.luck}% (gắn với thẻ này)
+          </span>
+        </div>
+      )}
+      <p className="muted upg__small">
+        Tỉ lệ đã áp {res.rate}% · phí {fmt(res.fee)} xu · còn {fmt(res.balance)} xu
       </p>
-      <p className="muted">
-        Tỉ lệ đã áp {res.rate}% · phí {fmt(res.fee)} <Coin /> · còn {fmt(res.balance)} <Coin />
-      </p>
-      <button type="button" className="btn btn--primary" autoFocus onClick={onClose}>
-        Tiếp tục
-      </button>
+      <div className="upg-result__actions">
+        {next ? (
+          <button type="button" className="btn btn--primary" autoFocus onClick={onClose}>
+            {win ? `Ép tiếp lên +${next.toLevel} (${next.rate}%)` : 'Thử lại với nguyên liệu khác'}
+          </button>
+        ) : (
+          <button type="button" className="btn btn--primary" autoFocus onClick={onClose}>
+            Xong
+          </button>
+        )}
+        <Link className="btn btn--secondary" to="/collection">
+          Về kho
+        </Link>
+      </div>
     </dialog>
   );
 }

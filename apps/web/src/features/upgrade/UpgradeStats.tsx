@@ -15,7 +15,7 @@ export function UpgradeStats({ card, preview }: { card: Card; preview: UpgradePr
     })),
   ];
   return (
-    <table className="upg-stats">
+    <table className="table upg-stats">
       <caption className="sr-only">
         Chỉ số ở +{preview.toLevel - 1} và sau khi ép lên +{preview.toLevel}
       </caption>
