@@ -232,7 +232,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Trận vs máy **Dễ** (thắng / hòa / thua) | 60 / 30 / 15 |
 | Trận vs máy **Khó** (thắng / hòa / thua) | 120 / 60 / 30 |
 | Thắng luân lưu | Bằng thưởng hòa + 50% chênh lệch giữa thắng và hòa (Dễ 45, Khó 90) |
-| Thua luân lưu | Bằng thưởng hòa |
+| Thua luân lưu | 2/3 thưởng hòa — vẫn hơn thua thường vì đã cầm hòa 2 hiệp (Dễ 20, Khó 40). Chốt 2026-11-04 |
 | Nhiệm vụ ngày (3 nhiệm vụ, reset 00:00 GMT+7) | ~50 xu mỗi nhiệm vụ, tổng ~150. Nhiệm vụ lấy từ một danh sách, VD: "Thắng 1 trận", "Ghi 3 bàn", "Mở 1 gói", "Đá 1 trận mức Khó" |
 | Bán thẻ | Xem F11 |
 | Quà tân thủ (F9) | **11 thẻ Đồng cố định** (1 TM, 3 HV, 4 TV, 3 TĐ = 7 chính + 4 dự bị, đủ cho sơ đồ 2-3-1) + **1 gói 5 thẻ miễn phí** bốc từ hộp của người chơi |

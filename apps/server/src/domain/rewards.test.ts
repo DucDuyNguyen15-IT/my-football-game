@@ -3,24 +3,25 @@ import { MATCH_MAX_GOALS, MATCH_REWARD, MATCH_REWARD_DAILY_CAP } from '../config
 import { gameDay, judgeMatchResult, matchReward } from './rewards';
 
 describe('cấu hình thưởng trận', () => {
-  it('khớp bảng PRD §7.1 (luân lưu: thắng = hoà + 50% chênh lệch, thua = hoà)', () => {
+  it('khớp bảng PRD §7.1 (luân lưu: thắng = hoà + 50% chênh lệch, thua = 2/3 hoà)', () => {
     expect(MATCH_REWARD.easy).toEqual({
       win: 60,
       draw: 30,
       loss: 15,
       shootout_win: 45,
-      shootout_loss: 30,
+      shootout_loss: 20,
     });
     expect(MATCH_REWARD.hard).toEqual({
       win: 120,
       draw: 60,
       loss: 30,
       shootout_win: 90,
-      shootout_loss: 60,
+      shootout_loss: 40,
     });
     for (const t of [MATCH_REWARD.easy, MATCH_REWARD.hard]) {
       expect(t.shootout_win).toBe(t.draw + (t.win - t.draw) / 2);
-      expect(t.shootout_loss).toBe(t.draw);
+      expect(t.shootout_loss).toBe((t.draw * 2) / 3);
+      expect(t.shootout_loss).toBeGreaterThan(t.loss);
     }
     expect(MATCH_REWARD_DAILY_CAP).toBe(15);
     expect(MATCH_MAX_GOALS).toBe(20);

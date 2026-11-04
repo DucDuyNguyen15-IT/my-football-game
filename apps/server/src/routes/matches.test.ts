@@ -270,7 +270,7 @@ describe('POST /api/v1/matches/:id/result', () => {
       shootout: { home: 2, away: 4 },
     });
     const rb = MatchResultResponse.parse(resB.json()).data;
-    expect(rb).toMatchObject({ outcome: 'shootout_loss', reward: 60, balance: ra.balance + 60 });
+    expect(rb).toMatchObject({ outcome: 'shootout_loss', reward: 40, balance: ra.balance + 40 });
   });
 
   it('gửi lại cùng token → cùng kết quả, xu chỉ cộng một lần', async () => {
