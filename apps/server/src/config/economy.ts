@@ -5,11 +5,11 @@ export const MATCH_REWARD_DAILY_CAP = 15;
 
 /**
  * Thưởng xu một trận vs máy theo độ khó + kết quả (PRD §7.1). Thắng luân lưu = hoà + 50% chênh lệch
- * thắng–hoà; thua luân lưu = hoà.
+ * thắng–hoà; thua luân lưu = 2/3 thưởng hoà (vẫn hơn thua thường).
  */
 export const MATCH_REWARD = {
-  easy: { win: 60, draw: 30, loss: 15, shootout_win: 45, shootout_loss: 30 },
-  hard: { win: 120, draw: 60, loss: 30, shootout_win: 90, shootout_loss: 60 },
+  easy: { win: 60, draw: 30, loss: 15, shootout_win: 45, shootout_loss: 20 },
+  hard: { win: 120, draw: 60, loss: 30, shootout_win: 90, shootout_loss: 40 },
 } as const;
 
 /** Số bàn tối đa mỗi đội được coi là hợp lý khi nộp kết quả (PRD §7 tiêu chí match token). */
