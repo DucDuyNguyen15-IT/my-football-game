@@ -4,21 +4,6 @@ import { useAdminOnboarding, useAdminRetention } from '../../api/admin';
 import { ApiClientError } from '../../api/client';
 import './admin.css';
 
-const GMT7_OFFSET_MS = 7 * 60 * 60 * 1000;
-const DAY_MS = 24 * 60 * 60 * 1000;
-
-/** Tính khoảng ngày [from, to] GMT+7 cho N ngày gần nhất (kết thúc ở ngày hôm nay). */
-export function getGmt7DateRange(
-  days: number,
-  now: Date = new Date(),
-): { from: string; to: string } {
-  const toMs = now.getTime() + GMT7_OFFSET_MS;
-  const to = new Date(toMs).toISOString().slice(0, 10);
-  const fromMs = new Date(`${to}T00:00:00.000Z`).getTime() - (days - 1) * DAY_MS;
-  const from = new Date(fromMs).toISOString().slice(0, 10);
-  return { from, to };
-}
-
 /** Chuyển `YYYY-MM-DD` thành `DD/MM/YYYY`. */
 export function formatCohortDay(iso: string): string {
   const parts = iso.split('-');
@@ -311,7 +296,10 @@ export function AdminRetentionView({
   );
 }
 
-/** Trang quản trị retention nối API (GET /admin/retention & /admin/onboarding). */
+/**
+ * Trang quản trị retention nối API (GET /admin/retention & /admin/onboarding). Chỉ gửi `days`:
+ * server tự cắt khoảng ngày GMT+7 theo đồng hồ của mình, không phụ thuộc giờ máy người xem.
+ */
 export function AdminPage() {
   const [days, setDays] = useState<7 | 30>(7);
   const { data: cohorts, isLoading, error, refetch } = useAdminRetention({ days });
