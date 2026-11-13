@@ -3,7 +3,7 @@
 **Mục tiêu:** chứng minh MVP đạt các tiêu chí PRD và an toàn trước khi phát hành.
 **Hoàn thành giai đoạn khi** (ROADMAP): E2E luồng chính xanh · không còn lỗi bảo mật mức cao · có `docs/QA-REPORT.md`.
 
-**Tiến độ (2026-11-14):** xong 8.2 (gộp `main`): body limit 64 KiB, security headers + `cache-control: no-store`, match token hết hạn sau 2 giờ, chặn `ENABLE_DEV_ROUTES` ở production, rate limit chạy trước 401, gia hạn phiên sau rate limit, thứ tự khoá `putSquad`, nâng zod 4.6.7 (`pnpm audit` 0 High/Critical); chi tiết `docs/QA-REPORT.md`. **8.1 E2E hoãn sang tuần sau** (người dùng quyết định). Tiếp theo: 8.1 → 8.3 → 8.4. Ghi chú còn mở: cookie `sid` giả vẫn tra DB một lần trước khi bị rate limit (chấp nhận được).
+**Tiến độ (2026-11-14):** xong 8.2 (gộp `main`): body limit 64 KiB, security headers + `cache-control: no-store`, match token hết hạn sau 2 giờ, chặn `ENABLE_DEV_ROUTES` ở production, rate limit chạy trước 401, gia hạn phiên sau rate limit, thứ tự khoá `putSquad`, nâng zod 4.6.7 (`pnpm audit` 0 High/Critical); chi tiết `docs/QA-REPORT.md`. **8.1 E2E hoãn sang tuần sau** (người dùng quyết định). **8.3 phần tự động xong, chờ người dùng đo FPS/bộ nhớ** (bundle, p95 mở gói, truy vấn retention/onboarding đã có số; hướng dẫn + bảng trống ở `docs/QA-REPORT.md` §2.4, đo bằng `/play?perf=1`). Tiếp theo: 8.1 → người dùng đo FPS/bộ nhớ để đóng 8.3 → 8.4. Ghi chú còn mở: cookie `sid` giả vẫn tra DB một lần trước khi bị rate limit (chấp nhận được).
 
 ---
 
