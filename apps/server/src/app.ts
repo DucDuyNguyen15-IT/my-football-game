@@ -1,4 +1,4 @@
-import Fastify, { type FastifyServerOptions } from 'fastify';
+import Fastify, { type FastifyServerOptions, type RouteOptions } from 'fastify';
 import type { JWTVerifyGetKey } from 'jose';
 import type { HealthResponse } from '@pitch/shared';
 import { systemClock, type Clock } from './clock';
@@ -50,11 +50,14 @@ export interface BuildAppOptions {
   googleClientId?: string | null;
   /** Bộ khoá kiểm ID token Google; mặc định JWKS từ xa của Google (test tiêm khoá cục bộ). */
   googleKeys?: JWTVerifyGetKey;
+  /** Gọi cho mỗi route được đăng ký (test rà soát: mọi route ghi phải yêu cầu đăng nhập). */
+  onRoute?: (route: RouteOptions) => void;
 }
 
 /** Tạo instance Fastify. Tách khỏi `server.ts` để test bằng `app.inject()` mà không mở cổng. */
 export function buildApp(opts: BuildAppOptions = {}) {
   const app = Fastify({ logger: opts.logger ?? false, trustProxy: opts.trustProxy ?? false });
+  if (opts.onRoute) app.addHook('onRoute', opts.onRoute);
   app.decorate('clock', opts.clock ?? systemClock);
   app.decorate('rng', opts.rng ?? cryptoRng);
   app.decorate('secureCookies', opts.secureCookies ?? true);

@@ -77,6 +77,8 @@ export async function putSquad(
     return id ? [{ slot, playerCardId: Number(id) }] : [];
   });
   const ids = entries.map((e) => e.playerCardId);
+  // Id ngoài phạm vi số nguyên an toàn không thể là thẻ có thật (và làm Postgres báo lỗi kiểu).
+  if (!ids.every(Number.isSafeInteger)) throw new AppError('not_found', 404, 'Không tìm thấy thẻ');
   if (new Set(ids).size !== ids.length) {
     throw new AppError('invalid_squad', 422, 'Một thẻ chỉ được ở một ô');
   }
