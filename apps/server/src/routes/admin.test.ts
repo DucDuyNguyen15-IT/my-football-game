@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { asc, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
-import { ApiError, RetentionResponse } from '@pitch/shared';
+import { ApiError, OnboardingStatsResponse, RetentionResponse } from '@pitch/shared';
 import { seedCards } from '../db/seed';
 import { analyticsEvents, cards, playerCards, users } from '../db/schema';
 import { createTestApp, FakeClock, resetTestData, testDb } from '../../test/helpers';
@@ -267,5 +267,138 @@ describe('GET /api/v1/admin/retention', () => {
       { cohortDay: '2026-10-05', registered: 2, d1: 0.5, d7: null },
       { cohortDay: '2026-10-08', registered: 1, d1: null, d7: null },
     ]);
+  });
+});
+
+describe('GET /api/v1/admin/onboarding', () => {
+  it('chặn 401/403 và validate query; trả null khi chưa ai vào trận', async () => {
+    const anon = await app.inject({ method: 'GET', url: '/api/v1/admin/onboarding' });
+    expect(anon.statusCode).toBe(401);
+    expect(errorCode(anon)).toBe('unauthenticated');
+
+    const user = await signup('tan_thu_1');
+    const forbidden = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/onboarding',
+      cookies: { sid: user.sid },
+    });
+    expect(forbidden.statusCode).toBe(403);
+    expect(errorCode(forbidden)).toBe('forbidden');
+
+    await makeAdmin(user.userId);
+    const empty = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/onboarding?days=7',
+      cookies: { sid: user.sid },
+    });
+    expect(empty.statusCode).toBe(200);
+    expect(OnboardingStatsResponse.parse(empty.json()).data).toEqual({
+      from: '2026-09-25',
+      to: '2026-10-01',
+      totalRegistered: 1,
+      completedUsers: 0,
+      withinTargetUsers: 0,
+      medianSeconds: null,
+      p90Seconds: null,
+    });
+  });
+
+  it('tính trung vị register -> match_start chính xác bằng FakeClock, bỏ qua user chưa đá', async () => {
+    // 3 user đăng ký ở các mốc khác nhau, thời gian tới trận đầu lần lượt: 45s, 90s, 150s → median = 90s
+    clock.set('2026-10-01T10:00:00+07:00');
+    const u1 = await signup('fast_user');
+    clock.advance(45 * 1000);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/matches',
+          payload: { difficulty: 'easy' },
+          headers: json,
+          cookies: { sid: u1.sid },
+        })
+      ).statusCode,
+    ).toBe(201);
+    // Trận thứ 2 sau 300s không làm thay đổi thời gian tới trận ĐẦU TIÊN
+    clock.advance(300 * 1000);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/matches',
+          payload: { difficulty: 'easy' },
+          headers: json,
+          cookies: { sid: u1.sid },
+        })
+      ).statusCode,
+    ).toBe(201);
+
+    clock.set('2026-10-01T11:00:00+07:00');
+    const u2 = await signup('mid_user');
+    clock.advance(90 * 1000);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/matches',
+          payload: { difficulty: 'easy' },
+          headers: json,
+          cookies: { sid: u2.sid },
+        })
+      ).statusCode,
+    ).toBe(201);
+
+    clock.set('2026-10-02T09:00:00+07:00');
+    const u3 = await signup('slow_user');
+    clock.advance(150 * 1000);
+    expect(
+      (
+        await app.inject({
+          method: 'POST',
+          url: '/api/v1/matches',
+          payload: { difficulty: 'easy' },
+          headers: json,
+          cookies: { sid: u3.sid },
+        })
+      ).statusCode,
+    ).toBe(201);
+
+    // User thứ 4 đăng ký nhưng chưa từng vào trận (admin cũng chưa vào trận)
+    const admin = await signup('onboard_admin');
+    await makeAdmin(admin.userId);
+
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/onboarding?from=2026-10-01&to=2026-10-02',
+      cookies: { sid: admin.sid },
+    });
+    expect(res.statusCode).toBe(200);
+    const stats = OnboardingStatsResponse.parse(res.json()).data;
+    expect(stats).toEqual({
+      from: '2026-10-01',
+      to: '2026-10-02',
+      totalRegistered: 4,
+      completedUsers: 3,
+      withinTargetUsers: 2,
+      medianSeconds: 90,
+      p90Seconds: 138,
+    });
+
+    // Lọc chỉ ngày 2026-10-01: chỉ gồm u1 (45s) và u2 (90s) → trung vị = 67.5s
+    const day1Res = await app.inject({
+      method: 'GET',
+      url: '/api/v1/admin/onboarding?from=2026-10-01&to=2026-10-01',
+      cookies: { sid: admin.sid },
+    });
+    expect(day1Res.statusCode).toBe(200);
+    expect(OnboardingStatsResponse.parse(day1Res.json()).data).toEqual({
+      from: '2026-10-01',
+      to: '2026-10-01',
+      totalRegistered: 2,
+      completedUsers: 2,
+      withinTargetUsers: 2,
+      medianSeconds: 67.5,
+      p90Seconds: 85.5,
+    });
   });
 });

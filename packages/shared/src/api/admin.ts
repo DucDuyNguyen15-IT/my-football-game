@@ -39,3 +39,21 @@ export type RetentionCohort = z.infer<typeof RetentionCohort>;
 
 export const RetentionResponse = dataEnvelope(z.array(RetentionCohort));
 export type RetentionResponse = z.infer<typeof RetentionResponse>;
+
+/**
+ * Thống kê phễu tân thủ `register -> match_start` (7.6 / PRD §9, §10):
+ * đo thời gian trung vị (giây) từ lúc đăng ký tới trận đầu tiên.
+ */
+export const OnboardingStats = z.object({
+  from: IsoDate.nullable(),
+  to: IsoDate.nullable(),
+  totalRegistered: z.number().int().min(0),
+  completedUsers: z.number().int().min(0),
+  withinTargetUsers: z.number().int().min(0),
+  medianSeconds: z.number().min(0).nullable(),
+  p90Seconds: z.number().min(0).nullable(),
+});
+export type OnboardingStats = z.infer<typeof OnboardingStats>;
+
+export const OnboardingStatsResponse = dataEnvelope(OnboardingStats);
+export type OnboardingStatsResponse = z.infer<typeof OnboardingStatsResponse>;

@@ -1,11 +1,12 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import type { RetentionCohort } from '@pitch/shared';
+import type { OnboardingStats, RetentionCohort } from '@pitch/shared';
 import { ApiClientError } from '../../api/client';
 import {
   AdminRetentionView,
   calculateWeightedAverage,
   formatCohortDay,
+  formatDurationSeconds,
   formatPercent,
   getGmt7DateRange,
 } from './AdminPage';
@@ -149,9 +150,34 @@ describe('calculateWeightedAverage & formatPercent & formatCohortDay', () => {
     expect(calculateWeightedAverage([], 'd1')).toBeNull();
   });
 
-  it('formatPercent & formatCohortDay', () => {
+  it('formatPercent & formatCohortDay & formatDurationSeconds', () => {
     expect(formatPercent(0.438)).toBe('43,8%');
     expect(formatPercent(null)).toBe('—');
     expect(formatCohortDay('2026-10-27')).toBe('27/10/2026');
+    expect(formatDurationSeconds(null)).toBe('—');
+    expect(formatDurationSeconds(45)).toBe('45s');
+    expect(formatDurationSeconds(90)).toBe('1p 30s');
+    expect(formatDurationSeconds(120)).toBe('2p');
+  });
+
+  it('hiển thị thẻ phễu tân thủ register -> match_start khi có onboarding', () => {
+    const onboarding: OnboardingStats = {
+      from: '2026-10-23',
+      to: '2026-10-29',
+      totalRegistered: 50,
+      completedUsers: 42,
+      withinTargetUsers: 36,
+      medianSeconds: 88,
+      p90Seconds: 135,
+    };
+    const html = renderToStaticMarkup(
+      <AdminRetentionView cohorts={SAMPLE_COHORTS} onboarding={onboarding} days={7} />,
+    );
+    expect(html).toContain('Phễu tân thủ · register → match_start');
+    expect(html).toContain('Đạt mục tiêu ≤ 2 phút');
+    expect(html).toContain('1p 28s');
+    expect(html).toContain('2p 15s');
+    expect(html).toContain('42/50');
+    expect(html).toContain('36/50');
   });
 });

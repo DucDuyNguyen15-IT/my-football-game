@@ -9,6 +9,8 @@ import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
 import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
+import { MatchTutorialOverlay } from '../onboarding/MatchTutorialOverlay';
+import { markTutorialSeen, readTutorialSeen, resetTutorialSeen } from '../onboarding/onboarding';
 import {
   hudEvents,
   readDevOptions,
@@ -88,9 +90,13 @@ export function PlayPage() {
     import.meta.env.DEV || import.meta.env.MODE === 'test'
       ? readDevOptions(params.toString(), import.meta.env)
       : {};
+  const isOnboarding = params.get('onboarding') === '1';
+  const requestedDifficulty: Difficulty =
+    params.get('difficulty') === 'hard' ? 'hard' : 'easy';
+  const autoStart = Boolean(dev.autopilot) || isOnboarding;
   const [stage, setStage] = useState<Stage>(() =>
-    dev.autopilot
-      ? { kind: 'starting', difficulty: params.get('difficulty') === 'hard' ? 'hard' : 'easy' }
+    autoStart
+      ? { kind: 'starting', difficulty: requestedDifficulty }
       : { kind: 'select' },
   );
   const { mutate } = useStartMatch();
@@ -110,8 +116,8 @@ export function PlayPage() {
     },
     [mutate, autopilot],
   );
-  // Autopilot vào thẳng trận: gọi API một lần khi mở trang (không autopilot thì đã chọn bằng tay).
-  const autoStarted = useRef(!dev.autopilot);
+  // Autopilot hoặc luồng tân thủ (`?onboarding=1`): gọi API một lần khi mở trang.
+  const autoStarted = useRef(!autoStart);
   useEffect(() => {
     if (stage.kind !== 'starting' || autoStarted.current) return;
     autoStarted.current = true;
@@ -120,7 +126,9 @@ export function PlayPage() {
 
   return (
     <div className="play-root">
-      {stage.kind === 'select' && <PreMatch onContinue={start} />}
+      {stage.kind === 'select' && (
+        <PreMatch initialDifficulty={requestedDifficulty} onContinue={start} />
+      )}
       {stage.kind === 'versus' && (
         <Versus
           match={stage.match}
@@ -305,6 +313,10 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
   const [goalBanner, setGoalBanner] = useState(0);
   const [hints, setHints] = useState(true);
   const [paused, setPausedState] = useState(false);
+  const [showTutorial, setShowTutorial] = useState(
+    () => !autopilot && !readTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null),
+  );
+  const [tutorialKey, setTutorialKey] = useState(0);
   const [graphics, setGraphics] = useState<GraphicsSettings>(loadGraphics);
   // Scene đọc cờ tạm dừng mỗi khung hình nên giữ thêm bản ref (không chờ React render).
   const pausedRef = useRef(false);
@@ -412,9 +424,23 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
           {hud.shootout?.turn === 'home' && !autopilot ? (
             <ShootoutHint />
           ) : (
-            hints && !autopilot && <KeyHints />
+            hints && !autopilot && !(showTutorial && !paused) && <KeyHints />
           )}
         </div>
+      )}
+      {hud && showTutorial && (
+        <MatchTutorialOverlay
+          key={tutorialKey}
+          paused={paused}
+          onComplete={() => {
+            markTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null);
+            setShowTutorial(false);
+          }}
+          onSkip={() => {
+            markTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null);
+            setShowTutorial(false);
+          }}
+        />
       )}
       {goalBanner > 0 && (
         <div className="goal-banner" aria-hidden="true">
@@ -431,6 +457,12 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
           }}
           onResume={() => setPaused(false)}
           onQuit={onQuit}
+          onReplayTutorial={() => {
+            resetTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null);
+            setTutorialKey((k) => k + 1);
+            setShowTutorial(true);
+            setPaused(false);
+          }}
           subs={{
             allowed: hud?.ballDead === true && hud.phase !== 'full_time' && hud.shootout === null,
             left: hud?.subsLeft ?? 0,

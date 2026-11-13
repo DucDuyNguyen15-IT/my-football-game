@@ -80,11 +80,17 @@ const LEVELS: ReadonlyArray<{ value: Difficulty; label: string; desc: string }> 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Dễ', hard: 'Khó' };
 
 /** Bước 1/2 — chọn độ khó. */
-export function PreMatch({ onContinue }: { onContinue: (d: Difficulty) => void }) {
+export function PreMatch({
+  initialDifficulty = 'easy',
+  onContinue,
+}: {
+  initialDifficulty?: Difficulty;
+  onContinue: (d: Difficulty) => void;
+}) {
   const me = useMe().data;
   const economy = useEconomy();
   const squad = useSquad().data;
-  const [pick, setPick] = useState<Difficulty>('hard');
+  const [pick, setPick] = useState<Difficulty>(initialDifficulty);
   const capReached = !!me && me.rewardedMatchesToday >= me.rewardedMatchesLimit;
   const left = me ? Math.max(0, me.rewardedMatchesLimit - me.rewardedMatchesToday) : null;
 

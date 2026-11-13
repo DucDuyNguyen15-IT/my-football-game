@@ -87,6 +87,38 @@
   gap: 12px;
 }
 
+.admin-onboarding {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.admin-onboarding__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.admin-onboarding__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.admin-onboarding__metric {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.admin-onboarding__val {
+  font-size: 28px;
+  line-height: 1.1;
+}
+
 @media (max-width: 768px) {
   .admin-page {
     padding: 16px;
@@ -94,5 +126,9 @@
 
   .admin-stats {
     grid-template-columns: 1fr;
+  }
+
+  .admin-onboarding__grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }

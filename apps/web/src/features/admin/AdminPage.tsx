@@ -1,6 +1,6 @@
 import { useState, type CSSProperties } from 'react';
-import type { RetentionCohort } from '@pitch/shared';
-import { useAdminRetention } from '../../api/admin';
+import type { OnboardingStats, RetentionCohort } from '@pitch/shared';
+import { useAdminOnboarding, useAdminRetention } from '../../api/admin';
 import { ApiClientError } from '../../api/client';
 import './admin.css';
 
@@ -55,6 +55,16 @@ export function formatPercent(val: number | null): string {
   return `${(val * 100).toFixed(1).replace('.', ',')}%`;
 }
 
+/** Định dạng khoảng thời gian (giây) sang dạng dễ đọc (`45s`, `1p 30s`, `2p`), hoặc `—`. */
+export function formatDurationSeconds(seconds: number | null | undefined): string {
+  if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return '—';
+  const total = Math.max(0, Math.round(seconds));
+  if (total < 60) return `${total}s`;
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return secs > 0 ? `${mins}p ${String(secs).padStart(2, '0')}s` : `${mins}p`;
+}
+
 function RateCell({ value }: { value: number | null }) {
   if (value === null) {
     return <td className="r muted">—</td>;
@@ -82,6 +92,7 @@ function RateCell({ value }: { value: number | null }) {
 
 export interface AdminRetentionViewProps {
   cohorts: readonly RetentionCohort[] | undefined;
+  onboarding?: OnboardingStats | null;
   days: 7 | 30;
   onChangeDays?: (days: 7 | 30) => void;
   isLoading?: boolean;
@@ -92,6 +103,7 @@ export interface AdminRetentionViewProps {
 /** Component thuần hiển thị bảng thống kê retention quản trị. */
 export function AdminRetentionView({
   cohorts,
+  onboarding,
   days,
   onChangeDays,
   isLoading = false,
@@ -219,6 +231,49 @@ export function AdminRetentionView({
         </section>
       </div>
 
+      {onboarding && (
+        <section className="panel admin-onboarding" aria-label="Thời gian tới trận đầu">
+          <div className="admin-onboarding__head">
+            <span className="label">Phễu tân thủ · register → match_start</span>
+            {onboarding.medianSeconds !== null && (
+              <span
+                className={`tag ${onboarding.medianSeconds <= 120 ? 'tag--success' : 'tag--warn'}`}
+              >
+                {onboarding.medianSeconds <= 120
+                  ? 'Đạt mục tiêu ≤ 2 phút'
+                  : 'Chậm hơn mục tiêu 2 phút'}
+              </span>
+            )}
+          </div>
+          <div className="admin-onboarding__grid">
+            <div className="admin-onboarding__metric">
+              <span className="label">Thời gian trung vị</span>
+              <span className="display num admin-onboarding__val">
+                {formatDurationSeconds(onboarding.medianSeconds)}
+              </span>
+            </div>
+            <div className="admin-onboarding__metric">
+              <span className="label">Phân vị P90</span>
+              <span className="display num admin-onboarding__val">
+                {formatDurationSeconds(onboarding.p90Seconds)}
+              </span>
+            </div>
+            <div className="admin-onboarding__metric">
+              <span className="label">Đã vào trận đầu</span>
+              <span className="display num admin-onboarding__val">
+                {onboarding.completedUsers}/{onboarding.totalRegistered}
+              </span>
+            </div>
+            <div className="admin-onboarding__metric">
+              <span className="label">Trong ≤ 2 phút</span>
+              <span className="display num admin-onboarding__val">
+                {onboarding.withinTargetUsers}/{onboarding.totalRegistered}
+              </span>
+            </div>
+          </div>
+        </section>
+      )}
+
       <section className="panel admin-table-panel">
         {!cohorts || cohorts.length === 0 ? (
           <p className="muted admin-empty" role="status">
@@ -256,19 +311,24 @@ export function AdminRetentionView({
   );
 }
 
-/** Trang quản trị retention nối API (GET /admin/retention). */
+/** Trang quản trị retention nối API (GET /admin/retention & /admin/onboarding). */
 export function AdminPage() {
   const [days, setDays] = useState<7 | 30>(7);
   const { data: cohorts, isLoading, error, refetch } = useAdminRetention({ days });
+  const onboarding = useAdminOnboarding({ days });
 
   return (
     <AdminRetentionView
       cohorts={cohorts}
+      onboarding={onboarding.data ?? null}
       days={days}
       onChangeDays={setDays}
-      isLoading={isLoading}
-      error={error}
-      onRetry={() => void refetch()}
+      isLoading={isLoading || onboarding.isLoading}
+      error={error ?? onboarding.error}
+      onRetry={() => {
+        void refetch();
+        void onboarding.refetch();
+      }}
     />
   );
 }

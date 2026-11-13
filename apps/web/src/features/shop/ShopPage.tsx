@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react';
-import { useNavigate } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import type { OpenPackResult, PackInfo, PackPayment } from '@pitch/shared';
 import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
@@ -7,6 +7,7 @@ import { ApiClientError } from '../../api/client';
 import { usePacks, useOpenPack } from '../../api/packs';
 import { usePlayerCards } from '../../api/player-cards';
 import { newCardIds } from '../collection/collection';
+import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import { BoxMeter, onlyBronzeLeft, WarnIcon } from './BoxMeter';
 import { PackOpening } from './PackOpening';
 import './shop.css';
@@ -97,10 +98,16 @@ export function ShopPage() {
   const opener = useOpenPack();
   const owned = usePlayerCards();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [opened, setOpened] = useState<Opened | null>(null);
   const [buying, setBuying] = useState<string | null>(null);
 
   if (!me) return null;
+
+  const isOnboarding =
+    searchParams.get('onboarding') === '1' ||
+    (me.freePack5Credits > 0 && me.rewardedMatchesToday === 0);
+  const squadDest = isOnboarding ? '/squad?onboarding=1' : '/squad';
 
   const head = (
     <div className="shop__head">
@@ -222,7 +229,11 @@ export function ShopPage() {
             <button
               type="button"
               className="btn btn--primary btn--lg"
-              onClick={() => void navigate('/squad')}
+              onClick={() =>
+                void navigate(
+                  opened.payment === 'free_credit' || isOnboarding ? '/squad?onboarding=1' : squadDest,
+                )
+              }
             >
               Xếp đội
             </button>
@@ -246,6 +257,7 @@ export function ShopPage() {
 
   return (
     <div className="shop-page">
+      {isOnboarding && <OnboardingFlowBanner currentStep={2} />}
       {head}
       <div className="shop">
         <div className="panel shop__box">

@@ -315,6 +315,7 @@ export function PauseMenu({
   onGraphics,
   onResume,
   onQuit,
+  onReplayTutorial,
   subs,
 }: {
   hud: Pick<HudSnapshot, 'half' | 'clock'> | null;
@@ -322,6 +323,7 @@ export function PauseMenu({
   onGraphics: (g: GraphicsSettings) => void;
   onResume: () => void;
   onQuit: () => void;
+  onReplayTutorial?: () => void;
   subs: PauseSubs;
 }) {
   const [view, setView] = useState<PauseView>('graphics');
@@ -403,6 +405,17 @@ export function PauseMenu({
               Phím điều khiển
             </h3>
             <ControlsTable />
+            {onReplayTutorial && (
+              <div className="pause__actions">
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={onReplayTutorial}
+                >
+                  Xem lại hướng dẫn 5 bước
+                </button>
+              </div>
+            )}
           </>
         )}
         {shown === 'confirm' && (

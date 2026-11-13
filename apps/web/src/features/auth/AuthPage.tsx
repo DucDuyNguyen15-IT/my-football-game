@@ -3,7 +3,7 @@
  * nhập thì chuyển về trang định vào (hoặc trang chủ).
  */
 import { useCallback, useId, useState, type FormEvent, type ReactNode } from 'react';
-import { Navigate, useLocation } from 'react-router';
+import { Navigate, useLocation, useSearchParams } from 'react-router';
 import { LoginRequest, RegisterRequest, Username } from '@pitch/shared';
 import { useAuthConfig, useGoogleSignIn, useLogin, useMe, useRegister } from '../../api/auth';
 import { describeAuthError, fieldErrorOf, type AuthField, type AuthNotice } from './authErrors';
@@ -15,15 +15,39 @@ type FieldErrors = Partial<Record<AuthField, string>>;
 
 /** Quà tân thủ (server `config/economy.ts`: STARTER_SQUAD, STARTER_FREE_PACK5). */
 const GIFT_TEXT = '11 thẻ Đồng + 1 gói 5 thẻ miễn phí';
+export const ONBOARDING_SHOP_HREF = '/shop?onboarding=1';
+
+export interface AuthRedirectParams {
+  from: string;
+  justRegistered: boolean;
+  registerSuccess: boolean;
+  googleSuccess: boolean;
+  hasGoogleStep: boolean;
+}
+
+/** Xác định trang đích sau khi có `me.data`: ưu tiên luồng tân thủ nếu vừa tạo tài khoản mới. */
+export function resolveAuthRedirect({
+  from,
+  justRegistered,
+  registerSuccess,
+  googleSuccess,
+  hasGoogleStep,
+}: AuthRedirectParams): string {
+  const isNewAccount = justRegistered || registerSuccess || (googleSuccess && hasGoogleStep);
+  return isNewAccount ? ONBOARDING_SHOP_HREF : from;
+}
 
 export function AuthPage() {
   const me = useMe();
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const from = (location.state as { from?: string } | null)?.from ?? '/';
   const config = useAuthConfig();
   const googleClientId = config.data?.googleClientId ?? null;
 
-  const [mode, setMode] = useState<Mode>('login');
+  const [mode, setMode] = useState<Mode>(() =>
+    searchParams.get('mode') === 'register' ? 'register' : 'login',
+  );
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
@@ -35,6 +59,7 @@ export function AuthPage() {
   const login = useLogin();
   const register = useRegister();
   const google = useGoogleSignIn();
+  const [justRegistered, setJustRegistered] = useState(false);
   const active = mode === 'login' ? login : register;
   const busy = active.isPending || google.isPending;
 
@@ -46,6 +71,7 @@ export function AuthPage() {
     (idToken: string) => {
       resetLogin();
       resetRegister();
+      setJustRegistered(false);
       mutateGoogle(
         { idToken },
         {
@@ -60,7 +86,14 @@ export function AuthPage() {
     [resetLogin, resetRegister, mutateGoogle],
   );
 
-  if (me.data) return <Navigate to={from} replace />;
+  const redirectTo = resolveAuthRedirect({
+    from,
+    justRegistered,
+    registerSuccess: register.isSuccess,
+    googleSuccess: google.isSuccess,
+    hasGoogleStep: googleStep !== null,
+  });
+  if (me.data) return <Navigate to={redirectTo} replace />;
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
@@ -84,12 +117,18 @@ export function AuthPage() {
     }
     setLocalErrors({});
     google.reset();
-    active.mutate(parsed.data);
+    setJustRegistered(mode === 'register');
+    active.mutate(parsed.data, {
+      onError: () => {
+        setJustRegistered(false);
+      },
+    });
   };
 
   const switchMode = (m: Mode) => {
     setMode(m);
     setLocalErrors({});
+    setJustRegistered(false);
     login.reset();
     register.reset();
     google.reset();
@@ -115,8 +154,19 @@ export function AuthPage() {
               suggested={googleStep.suggested}
               pending={google.isPending}
               error={google.error}
-              onSubmit={(name) => google.mutate({ idToken: googleStep.idToken, username: name })}
+              onSubmit={(name) => {
+                setJustRegistered(true);
+                google.mutate(
+                  { idToken: googleStep.idToken, username: name },
+                  {
+                    onError: () => {
+                      setJustRegistered(false);
+                    },
+                  },
+                );
+              }}
               onCancel={() => {
+                setJustRegistered(false);
                 setGoogleStep(null);
                 google.reset();
               }}

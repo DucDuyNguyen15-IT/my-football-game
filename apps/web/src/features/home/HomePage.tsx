@@ -11,6 +11,7 @@ import { useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
 import { ChalkPitch } from '../../components/ChalkPitch';
 import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
+import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import { slotLayout } from '../squad/squad';
 import './home.css';
 
@@ -45,9 +46,12 @@ export function HomePage() {
   const layout = squad.data ? slotLayout(squad.data.formation) : null;
   const box = packs.data?.box;
   const teamLoading = squad.isPending || catalog.isPending || list.isPending;
+  const showOnboardingBanner = me.freePack5Credits > 0 && me.rewardedMatchesToday === 0;
 
   return (
-    <div className="home">
+    <>
+      {showOnboardingBanner && <OnboardingFlowBanner currentStep={2} />}
+      <div className="home">
       <div className="home__main">
         <section className="panel--notch home__hero" aria-labelledby="play-title">
           <div className="panel__in night-bg home__hero-in">
@@ -164,7 +168,7 @@ export function HomePage() {
           onClaim={(code) => claim.mutate(code)}
         />
         {me.freePack5Credits > 0 && (
-          <Link to="/shop" className="panel home__tile is-accent">
+          <Link to={showOnboardingBanner ? '/shop?onboarding=1' : '/shop'} className="panel home__tile is-accent">
             <span className="label">Quà tân thủ</span>
             <span className="display home__tile-big">{me.freePack5Credits} gói 5 thẻ miễn phí</span>
             <span className="muted">Mở ngay ở Cửa hàng →</span>
@@ -194,7 +198,8 @@ export function HomePage() {
           <span className="muted">Biết trước tỉ lệ thành công →</span>
         </Link>
       </aside>
-    </div>
+      </div>
+    </>
   );
 }
 
