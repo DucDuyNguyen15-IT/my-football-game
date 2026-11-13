@@ -45,7 +45,6 @@ export function useSubmitMatchResult() {
       qc.setQueryData<Me | null>(meKey, (me) => me && { ...me, coins: result.balance });
       qc.setQueryData(missionsKey, result.missions);
       void qc.invalidateQueries({ queryKey: meKey });
-      void qc.invalidateQueries({ queryKey: missionsKey });
     },
   });
 }
