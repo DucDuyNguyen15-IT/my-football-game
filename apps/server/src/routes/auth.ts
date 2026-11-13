@@ -72,8 +72,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
     const input = RegisterRequest.parse(req.body);
     const now = app.clock.now();
     const user = await registerUser(app.db, input, now);
-    const { token, expiresAt } = await createSession(app.db, user.id, now);
-    setSessionCookie(reply, token, expiresAt);
+    await startSession(app, req, reply, user, now);
     reply.code(201);
     return { data: await meWithRewards(app, user) };
   });

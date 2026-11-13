@@ -24,6 +24,12 @@ export function judgeMatchResult(r: ReportedResult): Judgement {
     return { ok: true, outcome: r.homeGoals > r.awayGoals ? 'win' : 'loss' };
   }
   if (!r.shootout) return { ok: true, outcome: 'draw' };
+  if (r.shootout.home > MATCH_MAX_GOALS || r.shootout.away > MATCH_MAX_GOALS) {
+    return {
+      ok: false,
+      reason: `Tỉ số luân lưu không hợp lý (tối đa ${MATCH_MAX_GOALS} bàn mỗi đội)`,
+    };
+  }
   if (r.shootout.home === r.shootout.away) {
     return { ok: false, reason: 'Luân lưu phải phân định thắng thua' };
   }

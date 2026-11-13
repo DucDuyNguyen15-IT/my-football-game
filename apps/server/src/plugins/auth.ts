@@ -1,6 +1,6 @@
 import cookie from '@fastify/cookie';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
-import { resolveSession, type UserRow } from '../services/auth';
+import { renewSession, resolveSession, type UserRow } from '../services/auth';
 import { AppError } from './errors';
 
 export const SESSION_COOKIE = 'sid';
@@ -64,8 +64,14 @@ export async function requireAuth(
 ): Promise<void> {
   const token = req.cookies[SESSION_COOKIE];
   const session = token ? await resolveSession(this.db, token, this.clock.now()) : null;
-  if (!token || !session) throw new AppError('unauthenticated', 401, 'Chưa đăng nhập');
-  if (session.renewedUntil) setSessionCookie(reply, token, session.renewedUntil);
+  if (!token || !session) {
+    await this.userRateLimit(req, reply);
+    throw new AppError('unauthenticated', 401, 'Chưa đăng nhập');
+  }
   req.user = session.user;
   await this.userRateLimit(req, reply);
+  if (session.renewedUntil) {
+    await renewSession(this.db, token, session.renewedUntil);
+    setSessionCookie(reply, token, session.renewedUntil);
+  }
 }

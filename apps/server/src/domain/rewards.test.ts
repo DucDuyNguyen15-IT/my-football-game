@@ -44,10 +44,16 @@ describe('judgeMatchResult', () => {
     ).toEqual({ ok: true, outcome: 'shootout_loss' });
   });
 
-  it('tỉ số ≤ 20 mỗi đội; 21 bị từ chối', () => {
+  it('tỉ số ≤ 20 mỗi đội; 21 bị từ chối (kể cả luân lưu)', () => {
     expect(judgeMatchResult({ homeGoals: 20, awayGoals: 20 }).ok).toBe(true);
     expect(judgeMatchResult({ homeGoals: 21, awayGoals: 0 }).ok).toBe(false);
     expect(judgeMatchResult({ homeGoals: 0, awayGoals: 21 }).ok).toBe(false);
+    expect(
+      judgeMatchResult({ homeGoals: 1, awayGoals: 1, shootout: { home: 21, away: 20 } }).ok,
+    ).toBe(false);
+    expect(
+      judgeMatchResult({ homeGoals: 1, awayGoals: 1, shootout: { home: 20, away: 21 } }).ok,
+    ).toBe(false);
   });
 
   it('luân lưu chỉ khi hoà, và phải phân thắng thua', () => {

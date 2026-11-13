@@ -48,3 +48,4 @@ apps/web/public/models/goal.glb
 
 # Worktree của agent Claude Code
 .claude/worktrees/
+.claude/collab/

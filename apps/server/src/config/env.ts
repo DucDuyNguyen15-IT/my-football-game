@@ -39,6 +39,13 @@ const EnvSchema = z
       if (!env[key])
         ctx.addIssue({ code: 'custom', path: [key], message: 'bắt buộc ở production' });
     }
+    if (env.ENABLE_DEV_ROUTES) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['ENABLE_DEV_ROUTES'],
+        message: 'không được bật ở production',
+      });
+    }
   })
   .transform((env) => ({
     nodeEnv: env.NODE_ENV,

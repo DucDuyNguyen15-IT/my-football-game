@@ -21,6 +21,17 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ NODE_ENV: 'production' })).toThrow(/DATABASE_URL[\s\S]*SESSION_SECRET/);
   });
 
+  it('production bật ENABLE_DEV_ROUTES → lỗi nêu tên biến', () => {
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgres://pitch:pitch@localhost:5432/pitch',
+        SESSION_SECRET: 'a-very-long-production-session-secret-32chars',
+        ENABLE_DEV_ROUTES: '1',
+      }),
+    ).toThrow(/ENABLE_DEV_ROUTES/);
+  });
+
   it('GOOGLE_CLIENT_ID: trống/không đặt → null; sai dạng → lỗi', () => {
     expect(loadEnv({}).googleClientId).toBeNull();
     expect(loadEnv({ GOOGLE_CLIENT_ID: '' }).googleClientId).toBeNull();
