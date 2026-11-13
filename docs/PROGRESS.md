@@ -4,6 +4,12 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
+## Giai đoạn 7 — Tài khoản & kinh tế (2026-11-14) ✅
+- Khoá đăng nhập + rate limit (7.1), kiểm kết quả trận & thưởng theo trần ngày GMT+7 (7.2), đối soát sổ cái + `ledger:check` + test đồng thời/tamper/401 mọi route ghi (7.3), nhiệm vụ ngày ghi `mission_reward` (7.4), analytics + trang admin retention/onboarding (7.5), onboarding + hướng dẫn trận đầu (7.6), đăng nhập Google (7.7). Kèm 8.2 security review (gộp cùng đợt).
+- Chốt: mọi ghi nhiệm vụ/analytics chạy trong transaction nghiệp vụ sau `lockUser`; thứ tự khoá users → pack_boxes → player_cards (id tăng) → squads; rate limit chạy trước 401; không làm PvP trong MVP.
+- Cách làm: Fable làm 7.3, Gemini làm 7.4–7.6 + 8.2 trên worktree riêng, Gemini review chéo, Opus review cuối + gộp (`e0d4954`, 845 test xanh, `ledger:check` 0 lệch).
+- Còn dở: 7.7 chờ Client ID Google thật; 8.1 E2E hoãn sang tuần sau; ghi chú cookie giả vẫn tra DB một lần trước rate limit; vài mục "Nên sửa" nhỏ của review 7.4/7.5 (bỏ invalidate missions thừa sau trận, mốc ngày admin lấy theo đồng hồ trình duyệt) chưa làm.
+
 ## Giai đoạn 6 — Thẻ & đội hình + nền server (2026-11-03) ✅
 - Server Fastify + Postgres/Drizzle: đăng ký/đăng nhập phiên cookie, ví + sổ cái append-only, quà tân thủ, 150 thẻ hư cấu, gacha box draw 2/10/30/58 bằng CSPRNG (test 10.000 hộp chi-bình phương), idempotency, bán thẻ, đội hình, ép thẻ +1→+5 có may mắn (server 6.12a, màn ép 6.12b).
 - Web: router + đăng nhập, cửa hàng + màn mở thẻ lật CSS 3D, kho thẻ, đội hình kéo-thả, đá trận bằng đội của mình (6.11: Dễ thắng 79%, Khó 13% — đạt PRD).

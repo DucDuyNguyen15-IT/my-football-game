@@ -3,6 +3,8 @@
 **Mục tiêu:** chứng minh MVP đạt các tiêu chí PRD và an toàn trước khi phát hành.
 **Hoàn thành giai đoạn khi** (ROADMAP): E2E luồng chính xanh · không còn lỗi bảo mật mức cao · có `docs/QA-REPORT.md`.
 
+**Tiến độ (2026-11-14):** xong 8.2 (gộp `main`): body limit 64 KiB, security headers + `cache-control: no-store`, match token hết hạn sau 2 giờ, chặn `ENABLE_DEV_ROUTES` ở production, rate limit chạy trước 401, gia hạn phiên sau rate limit, thứ tự khoá `putSquad`, nâng zod 4.6.7 (`pnpm audit` 0 High/Critical); chi tiết `docs/QA-REPORT.md`. **8.1 E2E hoãn sang tuần sau** (người dùng quyết định). Tiếp theo: 8.1 → 8.3 → 8.4. Ghi chú còn mở: cookie `sid` giả vẫn tra DB một lần trước khi bị rate limit (chấp nhận được).
+
 ---
 
 ### 8.1 — E2E luồng chính `[ ]`
@@ -12,7 +14,7 @@
 - **Kiểm chứng:** `pnpm e2e` xanh 3 lần liên tiếp (không flaky).
 - **Xong khi:** tiêu chí ROADMAP "E2E luồng chính chạy xanh".
 
-### 8.2 — Security review gacha, ví, API `[ ]`
+### 8.2 — Security review gacha, ví, API `[x]`
 - **Phụ thuộc:** 8.1 · **Song song với:** 8.3 · **Model:** strongest
 - **Bối cảnh:** ARCHITECTURE §7; PRD §6.3, §7.4, §8; skill `ecc:security-review`, agent `ecc:security-reviewer`.
 - **Việc cần làm:** review `apps/server` tập trung: auth/phiên/cookie, IDOR mọi route, idempotency, khoá dòng & race, CSPRNG, validate đầu vào, header bảo mật, lộ lỗi, rate limit; `pnpm audit`. Thử tay bằng curl: sửa body, replay, gửi song song. Sửa mọi lỗi High/Critical (mỗi lỗi một commit có test hồi quy).

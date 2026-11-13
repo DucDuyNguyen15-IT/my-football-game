@@ -17,10 +17,10 @@ Người dùng chỉ cần copy "Câu lệnh mẫu" dán cho agent. Agent đọc
 | 2 | Spec (PRD) & quyết định kỹ thuật | `docs/PRD.md`, `docs/adr/*` | ✅ |
 | 3 | Kiến trúc & kế hoạch | `docs/ARCHITECTURE.md`, `docs/plans/*` | ✅ |
 | 4 | Thiết kế UI/UX | `docs/DESIGN.md`, design tokens | ✅ |
-| 5 | MVP lõi: trận đấu offline | Đá được 1 trận với máy | ⬜ |
-| 6 | Hệ thống thẻ & đội hình | Mở thẻ, kho thẻ, xếp đội hình | ⬜ |
-| 7 | Tài khoản, kinh tế, (tuỳ chọn) PvP | Đăng nhập, tiền ảo, ghép trận | ⬜ |
-| 8 | Kiểm thử, bảo mật, tối ưu | Báo cáo test/security | ⬜ |
+| 5 | MVP lõi: trận đấu offline | Đá được 1 trận với máy | ✅ |
+| 6 | Hệ thống thẻ & đội hình | Mở thẻ, kho thẻ, xếp đội hình | ✅ |
+| 7 | Tài khoản, kinh tế, (tuỳ chọn) PvP | Đăng nhập, tiền ảo, ghép trận | ✅ (không làm PvP) |
+| 8 | Kiểm thử, bảo mật, tối ưu | Báo cáo test/security | 🟡 |
 | 9 | Deploy & bàn giao | Link chạy thật, README | ⬜ |
 
 Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
@@ -149,8 +149,8 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 **Phạm vi gợi ý:** đăng ký/đăng nhập, ví tiền ảo, thưởng sau trận, nhiệm vụ ngày, bảng xếp hạng. PvP realtime chỉ làm nếu còn thời gian (server-authoritative).
 
 **Hoàn thành khi:**
-- [ ] Đăng xuất/đăng nhập lại vẫn giữ thẻ và tiền
-- [ ] Không thể tự cộng tiền/thẻ bằng cách sửa request (đã thử)
+- [x] Đăng xuất/đăng nhập lại vẫn giữ thẻ và tiền
+- [x] Không thể tự cộng tiền/thẻ bằng cách sửa request (đã thử: `tamper.test.ts`, `write-routes-auth.test.ts`, curl ở QA-REPORT §1)
 
 ---
 
@@ -162,8 +162,8 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 
 **Hoàn thành khi:**
 - [ ] E2E luồng chính chạy xanh
-- [ ] Không còn lỗi bảo mật mức cao
-- [ ] `docs/QA-REPORT.md`
+- [x] Không còn lỗi bảo mật mức cao (8.2)
+- [ ] `docs/QA-REPORT.md` (đã có mục bảo mật 8.2; 8.4 hoàn thiện)
 
 ---
 

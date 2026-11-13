@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** 7 — Tài khoản, kinh tế (7.1, 7.2, 7.7 xong; 7.7 chờ Client ID Google)
-- **Việc tiếp theo:** task đầu tiên chưa xong trong `docs/plans/phase-7-accounts-economy.md` (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
+- **Giai đoạn đang làm:** 8 — Kiểm thử, bảo mật, tối ưu (8.2 xong; GĐ7 xong, 7.7 chờ Client ID Google)
+- **Việc tiếp theo:** 8.1 E2E luồng chính trong `docs/plans/phase-8-qa-security.md` (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
@@ -66,18 +66,16 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 - Mỗi worktree chạy song song dùng DB test riêng: tạo `pitch_test_a`, `pitch_test_b`, … trong Postgres dev, đặt `DATABASE_URL_TEST=postgres://pitch:pitch@localhost:5432/pitch_test_x` khi chạy test.
 - Worktree tạo thủ công ở thư mục anh em (`../mfg-<agent>-<task>`): công cụ worktree tự động của Claude lỗi với ổ `d:`/`D:`.
 
-## Kế hoạch tuần 13–20/11/2026 (đóng GĐ7, bắt đầu GĐ8) — trạng thái 14/11 01:30
-| Task | Ai làm | Nhánh / worktree | Trạng thái |
-|---|---|---|---|
-| 7.3 Toàn vẹn sổ cái & tamper | Fable | `feat/7.3-ledger` (`../mfg-fable-7.3`, đã push) | Xong `f6382f8` |
-| 8.2 Security review | Gemini | `feat/8.2-security` (`../mfg-gemini-8.2`, tách từ 7.3) | Xong `d5efb6c`, đã sửa 3 lỗi "Phải sửa" của reviewer |
-| 7.4 Nhiệm vụ ngày | Gemini | `feat/7.4-missions` (`../mfg-gemini-7.4`) | Xong `200a4d0` + `fc98a43` (fix theo review) |
-| 7.5 Analytics & retention | Gemini | `feat/7.4-missions` | Xong `c1a1313` |
-| 7.6 Onboarding | Gemini | `feat/7.4-missions` | Đang ở bước fix + commit (script `.claude/collab/pipeline.sh`) |
-| 8.1 E2E | — | — | **Hoãn sang tuần sau** (người dùng quyết định) |
+## Kế hoạch tuần 13–20/11/2026 (đóng GĐ7, bắt đầu GĐ8) — trạng thái 14/11
+| Task | Ai làm | Trạng thái |
+|---|---|---|
+| 7.3 Toàn vẹn sổ cái & tamper | Fable | ✅ Đã gộp `main` |
+| 8.2 Security review | Gemini | ✅ Đã gộp `main` |
+| 7.4 Nhiệm vụ ngày | Gemini | ✅ Đã gộp `main` |
+| 7.5 Analytics & retention | Gemini | ✅ Đã gộp `main` |
+| 7.6 Onboarding | Gemini | ✅ Đã gộp `main` (merge `e0d4954`) |
+| 8.1 E2E | — | **Hoãn sang tuần sau** (người dùng quyết định) |
 
-**Việc tiếp theo: Opus review cuối** (người dùng giao, Gemini không review thay được):
-1. Đọc `.claude/collab/report-*.md` + `review-*.md` trong từng worktree; xem diff từng commit, ưu tiên tiền/thẻ/khoá FOR UPDATE/quyền admin. Chưa sửa xong mục "Phải sửa" nào thì sửa hoặc giữ lại trên nhánh.
-2. Gộp vào `main` theo thứ tự `feat/7.3-ledger` → `feat/8.2-security` → `feat/7.4-missions`; xung đột thường ở `apps/server/src/app.ts`, `services/matches.ts`, `config/economy.ts`.
-3. `pnpm check` xanh trên bản gộp (Postgres: `docker compose -f docker-compose.dev.yml up -d`) → push `main`.
-4. Tick 7.3–7.6, 8.2 trong `docs/plans/*`, ROADMAP (đóng GĐ7), cập nhật "Trạng thái hiện tại" ở đầu file này, ghi PROGRESS; xoá worktree đã gộp (`git worktree remove`), dọn worktree cũ bị khoá `.claude/worktrees/agent-a67…`.
+Opus đã review cuối và gộp cả 3 nhánh (2026-11-14): `pnpm check` 845 test xanh, `ledger:check` 0 lệch, worktree và nhánh đã dọn.
+
+**Tuần sau:** 8.1 E2E (Playwright, dùng `?half=`/`?autopilot=1` để trận ngắn) → 8.3 hiệu năng → 8.4 rà tiêu chí chấp nhận & hoàn thiện `docs/QA-REPORT.md`.
