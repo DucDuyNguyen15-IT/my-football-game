@@ -1,6 +1,6 @@
 // Trận vs máy (ARCHITECTURE §4.3 #15–16, §5.2): bắt đầu trận (match token) + nộp kết quả & thưởng.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { and, count, eq, gt } from 'drizzle-orm';
+import { and, count, eq, gt, lt } from 'drizzle-orm';
 import {
   SquadSlot,
   type Difficulty,
@@ -8,7 +8,7 @@ import {
   type StartedMatch,
   type SubmitMatchResultRequest,
 } from '@pitch/shared';
-import { MATCH_REWARD_DAILY_CAP } from '../config/economy';
+import { MATCH_MAX_AGE_SEC, MATCH_REWARD_DAILY_CAP } from '../config/economy';
 import type { Db, Tx } from '../db/client';
 import { matches, playerCards, squads, squadSlots } from '../db/schema';
 import { buildHomeTeam, generateCpuTeam, type SquadEntry } from '../domain/match-teams';
@@ -62,6 +62,17 @@ export async function startMatch(
 ): Promise<StartedMatch> {
   return db.transaction(async (tx) => {
     await lockUser(tx, userId);
+    const expireBefore = new Date(now.getTime() - MATCH_MAX_AGE_SEC * 1000);
+    await tx
+      .update(matches)
+      .set({ status: 'expired' })
+      .where(
+        and(
+          eq(matches.userId, userId),
+          eq(matches.status, 'started'),
+          lt(matches.startedAt, expireBefore),
+        ),
+      );
     const [squad] = await tx
       .select({ formation: squads.formation })
       .from(squads)
@@ -144,7 +155,11 @@ export async function submitMatchResult(db: Db, input: SubmitResultInput): Promi
       return { outcome: match.outcome, reward: match.reward, balance: user.coins, missions: [] };
     }
     if (match.status !== 'started') throw rejected('Trận đã hết hạn');
-    if (now.getTime() - match.startedAt.getTime() < input.minDurationSec * 1000) {
+    const elapsedMs = now.getTime() - match.startedAt.getTime();
+    if (elapsedMs > MATCH_MAX_AGE_SEC * 1000) {
+      throw rejected('Trận đã hết hạn');
+    }
+    if (elapsedMs < input.minDurationSec * 1000) {
       throw rejected('Trận kết thúc quá sớm — kết quả không được ghi nhận');
     }
     const judged = judgeMatchResult(input);

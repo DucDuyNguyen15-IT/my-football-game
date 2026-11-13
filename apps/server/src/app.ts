@@ -54,10 +54,27 @@ export interface BuildAppOptions {
   onRoute?: (route: RouteOptions) => void;
 }
 
+/** Giới hạn kích thước body JSON (64 KiB) để tránh payload phình to. */
+export const BODY_LIMIT_BYTES = 64 * 1024;
+
 /** Tạo instance Fastify. Tách khỏi `server.ts` để test bằng `app.inject()` mà không mở cổng. */
 export function buildApp(opts: BuildAppOptions = {}) {
-  const app = Fastify({ logger: opts.logger ?? false, trustProxy: opts.trustProxy ?? false });
+  const app = Fastify({
+    logger: opts.logger ?? false,
+    trustProxy: opts.trustProxy ?? false,
+    bodyLimit: BODY_LIMIT_BYTES,
+  });
   if (opts.onRoute) app.addHook('onRoute', opts.onRoute);
+  app.addHook('onSend', async (_req, reply) => {
+    reply
+      .header('x-content-type-options', 'nosniff')
+      .header('x-frame-options', 'DENY')
+      .header('referrer-policy', 'no-referrer')
+      .header('content-security-policy', "default-src 'none'; frame-ancestors 'none'");
+    if (!reply.hasHeader('cache-control')) {
+      reply.header('cache-control', 'no-store');
+    }
+  });
   app.decorate('clock', opts.clock ?? systemClock);
   app.decorate('rng', opts.rng ?? cryptoRng);
   app.decorate('secureCookies', opts.secureCookies ?? true);

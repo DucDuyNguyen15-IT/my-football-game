@@ -45,10 +45,15 @@ export function registerRateLimit(app: FastifyInstance, config: RateLimitConfig 
       max: config.authPerMinute,
       keyGenerator: (req) => `ip:${req.ip}`,
     });
-    app.userRateLimit = app.rateLimit({
+    const userLimiter = app.rateLimit({
       max: config.userPerMinute,
       keyGenerator: (req) => `user:${req.user?.id ?? `ip:${req.ip}`}`,
     });
+    // Các route `/api/v1/auth/*` (kể cả `/logout`) đã qua `authLimit` ở `onRequest` nên không đếm lần 2.
+    app.userRateLimit = async (req, reply) => {
+      if (req.url.startsWith(AUTH_PREFIX)) return;
+      return userLimiter.call(app, req, reply);
+    };
   });
   app.addHook('onRequest', async (req, reply) => {
     if (req.url.startsWith(AUTH_PREFIX)) await authLimit(req, reply);

@@ -1,5 +1,5 @@
 // Đội hình (ARCHITECTURE §4.3 #13–14, PRD §6.4): đọc và thay toàn bộ trong một transaction.
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import {
   evaluateSquad,
   SquadSlot,
@@ -62,8 +62,9 @@ export function getSquad(db: Db, catalog: CardCatalog, userId: number): Promise<
 }
 
 /**
- * PUT /squad: khoá `users` trước (ARCHITECTURE §3.4) rồi `squads`; thẻ không phải của mình → 404,
- * một thẻ ở hai ô → 422 `invalid_squad`; xoá-chèn lại `squad_slots`. Thiếu người chỉ là cảnh báo.
+ * PUT /squad: khoá theo thứ tự `users` → `player_cards` (id tăng dần) → `squads`
+ * (ARCHITECTURE §3.4); thẻ không phải của mình → 404, một thẻ ở hai ô → 422 `invalid_squad`;
+ * xoá-chèn lại `squad_slots`. Thiếu người chỉ là cảnh báo.
  */
 export async function putSquad(
   db: Db,
@@ -84,14 +85,16 @@ export async function putSquad(
   }
   return db.transaction(async (tx) => {
     await lockUser(tx, userId);
-    await tx.select().from(squads).where(eq(squads.userId, userId)).for('update');
     if (ids.length > 0) {
       const owned = await tx
         .select({ id: playerCards.id })
         .from(playerCards)
-        .where(and(eq(playerCards.userId, userId), inArray(playerCards.id, ids)));
+        .where(and(eq(playerCards.userId, userId), inArray(playerCards.id, ids)))
+        .orderBy(asc(playerCards.id))
+        .for('update');
       if (owned.length !== ids.length) throw new AppError('not_found', 404, 'Không tìm thấy thẻ');
     }
+    await tx.select().from(squads).where(eq(squads.userId, userId)).for('update');
     await tx.delete(squadSlots).where(eq(squadSlots.userId, userId));
     if (entries.length > 0) {
       await tx.insert(squadSlots).values(entries.map((e) => ({ userId, ...e })));

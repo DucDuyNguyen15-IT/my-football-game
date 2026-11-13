@@ -63,8 +63,8 @@ export async function destroySession(db: Db, token: string): Promise<void> {
 }
 
 /**
- * Tra phiên còn hạn theo token, gia hạn trượt khi cần. `null` nếu token sai/hết hạn.
- * `renewedUntil` có giá trị khi phiên vừa được gia hạn (để đặt lại cookie).
+ * Tra phiên còn hạn theo token, tính hạn mới nếu cần gia hạn trượt. `null` nếu token sai/hết hạn.
+ * `renewedUntil` có giá trị khi phiên cần gia hạn (nơi gọi ghi DB sau khi qua rate limit).
  */
 export async function resolveSession(
   db: Db,
@@ -81,8 +81,12 @@ export async function resolveSession(
   const age = SESSION_TTL_MS - (row.expiresAt.getTime() - now.getTime());
   if (age < SESSION_RENEW_AFTER_MS) return { user: row.user, renewedUntil: null };
   const renewedUntil = new Date(now.getTime() + SESSION_TTL_MS);
-  await db.update(sessions).set({ expiresAt: renewedUntil }).where(eq(sessions.id, id));
   return { user: row.user, renewedUntil };
+}
+
+/** Ghi hạn mới cho phiên đang dùng khi gia hạn trượt. */
+export async function renewSession(db: Db, token: string, expiresAt: Date): Promise<void> {
+  await db.update(sessions).set({ expiresAt }).where(eq(sessions.id, hashToken(token)));
 }
 
 /** Xoá mọi phiên đã hết hạn (dùng index `sessions_expires_idx`). Trả số phiên đã xoá. */

@@ -18,6 +18,9 @@ export const MATCH_MAX_GOALS = 20;
 /** Thời gian tối thiểu từ lúc phát match token tới lúc nộp kết quả (giây); env ghi đè cho dev/test. */
 export const MATCH_MIN_DURATION_SEC = 360;
 
+/** Thời gian tối đa một match token còn hiệu lực kể từ lúc bắt đầu trận (2 giờ, ARCHITECTURE §5.2 #4). */
+export const MATCH_MAX_AGE_SEC = 2 * 60 * 60;
+
 /** Thành phần hộp 100 phiếu của mỗi người chơi (PRD §6.3). */
 export const BOX_COMPOSITION = { bronze: 58, silver: 30, gold: 10, legend: 2 } as const;
 
