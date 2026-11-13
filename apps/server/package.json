@@ -15,7 +15,9 @@
     "db:seed": "tsx scripts/seed.ts",
     "db:reset": "tsx scripts/reset.ts",
     "admin:grant": "tsx scripts/admin-grant.ts",
-    "ledger:check": "tsx scripts/ledger-check.ts"
+    "ledger:check": "tsx scripts/ledger-check.ts",
+    "bench:packs": "tsx scripts/bench-pack-open.ts",
+    "bench:analytics": "tsx scripts/bench-analytics.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",
@@ -30,8 +32,10 @@
     "zod": "^4.6.7"
   },
   "devDependencies": {
+    "@types/autocannon": "^7.12.7",
     "@types/node": "^24.19.1",
     "@types/pg": "^8.23.1",
+    "autocannon": "^9.0.0",
     "drizzle-kit": "^0.31.11",
     "tsup": "^8.5.1",
     "tsx": "^4.23.15"
