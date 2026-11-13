@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { recordSessionSeen } from '../services/analytics';
 import { resolveSession, type UserRow } from '../services/auth';
 import { AppError } from './errors';
 
@@ -63,9 +64,23 @@ export async function requireAuth(
   reply: FastifyReply,
 ): Promise<void> {
   const token = req.cookies[SESSION_COOKIE];
-  const session = token ? await resolveSession(this.db, token, this.clock.now()) : null;
+  const now = this.clock.now();
+  const session = token ? await resolveSession(this.db, token, now) : null;
   if (!token || !session) throw new AppError('unauthenticated', 401, 'Chưa đăng nhập');
   if (session.renewedUntil) setSessionCookie(reply, token, session.renewedUntil);
   req.user = session.user;
   await this.userRateLimit(req, reply);
+  await recordSessionSeen(this.db, session.user.id, now);
+}
+
+/** preHandler: bắt buộc đăng nhập và có quyền admin (`users.is_admin = true`). */
+export async function requireAdmin(
+  this: FastifyInstance,
+  req: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
+  await requireAuth.call(this, req, reply);
+  if (!req.user?.isAdmin) {
+    throw new AppError('forbidden', 403, 'Chỉ quản trị viên mới có quyền truy cập');
+  }
 }

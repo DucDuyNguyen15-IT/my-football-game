@@ -63,7 +63,13 @@ export function registerPlayerCardRoutes(app: FastifyInstance): void {
       const data = await upgradeCard(
         app.db,
         await app.cardCatalog(),
-        { userId: req.user!.id, playerCardId, materialId: material, idempotencyKey },
+        {
+          userId: req.user!.id,
+          playerCardId,
+          materialId: material,
+          idempotencyKey,
+          now: app.clock.now(),
+        },
         app.rng,
       );
       return { data };

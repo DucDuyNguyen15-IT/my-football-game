@@ -1,6 +1,7 @@
 export * from './domain';
 export * from './avatar';
 export * from './api/common';
+export * from './api/admin';
 export * from './api/auth';
 export * from './api/cards';
 export * from './api/config';

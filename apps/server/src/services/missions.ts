@@ -12,6 +12,7 @@ import {
 } from '../domain/missions';
 import { gameDay } from '../domain/rewards';
 import { AppError } from '../plugins/errors';
+import { track } from './analytics';
 import { applyCoinDelta, lockUser } from './wallet';
 
 const MISSIONS_BY_CODE = new Map<string, MissionDef>(MISSIONS.map((m) => [m.code, m]));
@@ -172,6 +173,7 @@ export async function claimMission(
         ),
       );
     const balance = await applyCoinDelta(tx, userId, row.reward, 'mission_reward', null);
+    await track(tx, userId, 'mission_claim', { missionCode, day, reward: row.reward }, now);
     return { reward: row.reward, balance };
   });
 }

@@ -1,0 +1,98 @@
+/* Giao diện quản trị — retention theo ngày đăng ký (docs/design/screens/admin.html, screens2.js §14) */
+
+.admin-page {
+  padding: 24px 32px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.admin-head {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.admin-head__spacer {
+  flex: 1;
+}
+
+.admin-stats {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.admin-stat {
+  padding: 16px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.admin-stat__num {
+  font-size: 40px;
+  line-height: 1.1;
+}
+
+.admin-stat__sub {
+  font-size: 12px;
+  min-height: 16px;
+}
+
+.admin-table-panel {
+  padding: 8px 12px;
+}
+
+.admin-table-note {
+  margin: 8px 12px;
+  font-size: 12px;
+}
+
+.admin-rate-cell {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.admin-rate-bar {
+  width: 120px;
+}
+
+.admin-rate-val {
+  width: 48px;
+  text-align: right;
+}
+
+.admin-empty {
+  padding: 32px 16px;
+  text-align: center;
+}
+
+.admin-forbidden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  padding: 48px 24px;
+  text-align: center;
+}
+
+.admin-error {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .admin-page {
+    padding: 16px;
+  }
+
+  .admin-stats {
+    grid-template-columns: 1fr;
+  }
+}

@@ -16,6 +16,7 @@ import { gameDay, judgeMatchResult, matchReward } from '../domain/rewards';
 import { cryptoRng, type Rng } from '../domain/rng';
 import { AppError } from '../plugins/errors';
 import type { CardCatalog } from './cards';
+import { track } from './analytics';
 import { applyMissionEvent, ensureTodayMissions } from './missions';
 import { applyCoinDelta, lockUser } from './wallet';
 
@@ -109,6 +110,13 @@ export async function startMatch(
         startedAt: now,
       })
       .returning({ id: matches.id });
+    await track(
+      tx,
+      userId,
+      'match_start',
+      { matchId: match!.id, difficulty, rewardEligible },
+      now,
+    );
     return { matchId: String(match!.id), token, seed, rewardEligible, home: home.team, away };
   });
 }
@@ -181,6 +189,20 @@ export async function submitMatchResult(db: Db, input: SubmitResultInput): Promi
       homeGoals: input.homeGoals,
       awayGoals: input.awayGoals,
     });
+    await track(
+      tx,
+      userId,
+      'match_end',
+      {
+        matchId,
+        difficulty: match.difficulty,
+        outcome: judged.outcome,
+        homeGoals: input.homeGoals,
+        awayGoals: input.awayGoals,
+        reward,
+      },
+      now,
+    );
     return { outcome: judged.outcome, reward, balance, missions };
   });
 }

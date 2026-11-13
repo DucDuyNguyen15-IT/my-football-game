@@ -9,7 +9,7 @@ import {
 } from '@pitch/shared';
 import { PACKS, type PackCode } from '../config/economy';
 import type { Db, Tx } from '../db/client';
-import { analyticsEvents, packBoxes, packOpenings, playerCards, users } from '../db/schema';
+import { packBoxes, packOpenings, playerCards, users } from '../db/schema';
 import {
   boxTotal,
   drawTickets,
@@ -21,6 +21,7 @@ import {
 import { cryptoRng, type Rng } from '../domain/rng';
 import { gameDay } from '../domain/rewards';
 import { AppError } from '../plugins/errors';
+import { track } from './analytics';
 import { isUniqueViolation } from './auth';
 import type { CardCatalog } from './cards';
 import { applyMissionEvent } from './missions';
@@ -201,11 +202,13 @@ async function openInTx(
     });
     if (balance !== result.balance) throw new Error('Số dư lệch khi mở gói');
   }
-  await tx.insert(analyticsEvents).values({
+  await track(
+    tx,
     userId,
-    name: 'pack_open',
-    props: { pack: packCode, payment, price, rarities: drawn.rarities, boxCycle: box.cycle },
-  });
+    'pack_open',
+    { pack: packCode, payment, price, rarities: drawn.rarities, boxCycle: box.cycle },
+    now,
+  );
   await applyMissionEvent(tx, userId, gameDay(now), { type: 'pack_opened' });
   return result;
 }
