@@ -55,3 +55,31 @@ Thực hiện trên server thật (`127.0.0.1:3099`, `DATABASE_URL=postgres://pi
 2. **Sửa body + Replay (`POST /api/v1/packs/pack1/open`):** gửi `"payment":"coins","price":0,"coins":999999,"rarity":"legend"` với cùng `Idempotency-Key` 2 lần → lần 1 trả `200` với `balance: 0` (trừ đúng 100 xu), lần 2 trả `200` với payload giống hệt từng byte (`Replay identical: True`), không trừ thêm xu và không mở thêm thẻ.
 3. **Replay kết quả trận (`POST /api/v1/matches/:id/result`):** nộp `0–1` (thua, +15 xu), sau đó gửi lại cùng match token với `20–0` và `"reward":999999` → server vẫn trả kết quả cũ `{"outcome":"loss","reward":15,"balance":15,"missions":[]}`, không cộng thưởng lần 2.
 4. **Gửi song song (race condition):** tài khoản có đúng 100 xu, bắn đồng thời 5 request `POST /api/v1/packs/pack1/open` với 5 `Idempotency-Key` khác nhau → đúng 1 request thành công (`HTTP 200`, `balance: 0`), 4 request còn lại bị chặn (`HTTP 409`, `insufficient_coins`), kiểm tra lại `/api/v1/me` cho `coins: 0` (không âm).
+
+---
+
+## 2. E2E luồng chính (Task 8.1)
+
+- **Ngày chạy:** 2026-11-14 · **Công cụ:** Playwright 1.65 (`@playwright/test`, Chromium headless) · **File:** `playwright.config.ts`, `e2e/main-flow.spec.ts`.
+- **Cách chạy:** `pnpm e2e` ở gốc repo (lần đầu: `pnpm exec playwright install chromium`; cần Postgres dev đang chạy). Playwright tự migrate + seed DB test rồi bật server Fastify `:3101` (`NODE_ENV=test`, `MATCH_MIN_DURATION_SEC=1`) và web Vite `:5174` (`--mode test`, proxy `/api` → `:3101` qua `API_PROXY_TARGET`), xong thì tắt. DB lấy theo `E2E_DATABASE_URL` → `DATABASE_URL_TEST` → `pitch_test`; cấu hình từ chối DB dev `pitch`. Đổi cổng bằng `E2E_SERVER_PORT` / `E2E_WEB_PORT`. Không xoá dữ liệu: mỗi lần chạy đăng ký một tài khoản mới (`e2e_<thời gian>`). `pnpm check` không chạy E2E (Vitest chỉ quét `apps/*`, `packages/*`), nhưng vẫn lint + typecheck thư mục `e2e/`.
+- **Kịch bản (1 test, 6 bước, thao tác trên giao diện thật, không gọi API tắt):**
+  1. Đăng ký tài khoản mới → được đưa sang `/shop?onboarding=1`, hiện thanh "Luồng tân thủ".
+  2. Mở gói 5 thẻ miễn phí (xé gói → lật tất cả) → "Đã nhận 5 thẻ", số xu không đổi → "Xếp đội".
+  3. Đội hình: chọn ô dự bị đầu tiên → bấm một thẻ trong Kho → Lưu → "Đã lưu đội hình"; tải lại trang thẻ vẫn ở ô đó.
+  4. `/play?difficulty=easy&autopilot=1&half=10` (đồ hoạ Thấp, tắt phát lại): trận tự đá hết 2 hiệp (+ luân lưu nếu hoà) → màn kết quả hiện `+N` xu, ví = số dư cũ + N, "trận có thưởng 1/15".
+  5. Nhiệm vụ ngày: màn kết quả và trang chủ hiện 3 nhiệm vụ kèm tiến độ; mỗi nhiệm vụ đã đạt thì bấm "Nhận" và số xu trên thanh trên tăng đúng phần thưởng.
+  6. Đăng xuất → đăng nhập lại: số xu đúng, trang chủ báo kho 16 thẻ (11 thẻ tân thủ + 5 thẻ vừa mở), mở được Kho thẻ.
+- **Kết quả 3 lần liên tiếp (cùng mã nguồn, DB `pitch_test_a`):**
+
+  | Lần | Kết quả     | Thời gian test | Riêng bước trận | Nhiệm vụ đã nhận thưởng |
+  | --- | ----------- | -------------- | --------------- | ----------------------- |
+  | 1   | ✅ 1 passed | 114 s          | 108 s           | 1                       |
+  | 2   | ✅ 1 passed | 113 s          | 108 s           | 1                       |
+  | 3   | ✅ 1 passed | 98 s           | 92 s            | 2                       |
+
+- **Ghi chú:**
+  - Không phát hiện lỗi ứng dụng. Thay đổi duy nhất trong mã app: `apps/web/vite.config.ts` đọc `API_PROXY_TARGET` (mặc định vẫn `http://127.0.0.1:3000`).
+  - Nút gói thẻ có hiệu ứng "thở" lặp vô hạn nên Playwright không coi là đứng yên để click chuột → test xé gói bằng phím Enter (đường bàn phím của DESIGN §6.3).
+  - Trận `half=10` mất ~90–110 s trên WebGL phần mềm của Chromium headless (giới hạn chờ màn kết quả: 270 s; cả test: 360 s). Máy CI chậm hơn nhiều có thể cần nới giới hạn.
+  - Bộ 3 nhiệm vụ ngày chọn theo `(người chơi, ngày)` nên số nhiệm vụ nhận thưởng thay đổi theo lần chạy; test chỉ bấm "Nhận" khi có nhiệm vụ đã đạt.
+  - Rate limit giữ nguyên mặc định (kịch bản chỉ gọi `/auth/*` 3 lần, ngưỡng 10 lần/phút/IP; mỗi lần `pnpm e2e` bật server mới nên bộ đếm về 0).

@@ -12,6 +12,8 @@ export default tseslint.config(
       'assets-src/**',
       '.claude/**',
       'docs/design/generator/**',
+      'playwright-report/**',
+      'test-results/**',
     ],
   },
   js.configs.recommended,
