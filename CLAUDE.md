@@ -66,11 +66,18 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 - Mỗi worktree chạy song song dùng DB test riêng: tạo `pitch_test_a`, `pitch_test_b`, … trong Postgres dev, đặt `DATABASE_URL_TEST=postgres://pitch:pitch@localhost:5432/pitch_test_x` khi chạy test.
 - Worktree tạo thủ công ở thư mục anh em (`../mfg-<agent>-<task>`): công cụ worktree tự động của Claude lỗi với ổ `d:`/`D:`.
 
-## Kế hoạch tuần 13–20/11/2026 (đóng GĐ7, bắt đầu GĐ8)
-| Task | Ai làm | Nhánh | Trạng thái |
+## Kế hoạch tuần 13–20/11/2026 (đóng GĐ7, bắt đầu GĐ8) — trạng thái 14/11 01:30
+| Task | Ai làm | Nhánh / worktree | Trạng thái |
 |---|---|---|---|
-| 7.3 Toàn vẹn sổ cái & tamper | Fable | `feat/7.3-ledger` | Xong (`f6382f8`), chờ Opus review + merge |
-| 7.4 Nhiệm vụ ngày | Gemini | `feat/7.4-missions` | Đang làm |
-| 7.5 → 7.6 → 8.1 → 8.2 | Gemini, làm tuần tự theo `.claude/collab/brief-rest.md`, mỗi task một commit | `feat/7.4-missions` | Chờ |
-| Review cuối, merge, cập nhật ROADMAP/PROGRESS/mục này | Opus | `main` | Chờ |
-Chuyển máy giữa chừng: `git fetch` rồi xem các nhánh trên; nếu nhánh Gemini chưa push thì chỉ còn trên máy cũ.
+| 7.3 Toàn vẹn sổ cái & tamper | Fable | `feat/7.3-ledger` (`../mfg-fable-7.3`, đã push) | Xong `f6382f8` |
+| 8.2 Security review | Gemini | `feat/8.2-security` (`../mfg-gemini-8.2`, tách từ 7.3) | Xong `d5efb6c`, đã sửa 3 lỗi "Phải sửa" của reviewer |
+| 7.4 Nhiệm vụ ngày | Gemini | `feat/7.4-missions` (`../mfg-gemini-7.4`) | Xong `200a4d0` + `fc98a43` (fix theo review) |
+| 7.5 Analytics & retention | Gemini | `feat/7.4-missions` | Xong `c1a1313` |
+| 7.6 Onboarding | Gemini | `feat/7.4-missions` | Đang ở bước fix + commit (script `.claude/collab/pipeline.sh`) |
+| 8.1 E2E | — | — | **Hoãn sang tuần sau** (người dùng quyết định) |
+
+**Việc tiếp theo: Opus review cuối** (người dùng giao, Gemini không review thay được):
+1. Đọc `.claude/collab/report-*.md` + `review-*.md` trong từng worktree; xem diff từng commit, ưu tiên tiền/thẻ/khoá FOR UPDATE/quyền admin. Chưa sửa xong mục "Phải sửa" nào thì sửa hoặc giữ lại trên nhánh.
+2. Gộp vào `main` theo thứ tự `feat/7.3-ledger` → `feat/8.2-security` → `feat/7.4-missions`; xung đột thường ở `apps/server/src/app.ts`, `services/matches.ts`, `config/economy.ts`.
+3. `pnpm check` xanh trên bản gộp (Postgres: `docker compose -f docker-compose.dev.yml up -d`) → push `main`.
+4. Tick 7.3–7.6, 8.2 trong `docs/plans/*`, ROADMAP (đóng GĐ7), cập nhật "Trạng thái hiện tại" ở đầu file này, ghi PROGRESS; xoá worktree đã gộp (`git worktree remove`), dọn worktree cũ bị khoá `.claude/worktrees/agent-a67…`.
