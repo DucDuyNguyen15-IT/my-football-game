@@ -54,7 +54,8 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 - **Commit + push mỗi tính năng:** xong một tính năng và `pnpm check` xanh thì commit và push ngay, không gom nhiều tính năng.
 - **Không ghi attribution của Claude:** không thêm dòng `Co-Authored-By: Claude …` vào commit, không thêm "Generated with Claude Code" vào PR.
 - **AI LOG** (nếu đồ án yêu cầu): luôn hỏi người dùng trước khi ghi. Không chép nguyên văn câu lệnh ngắn của người dùng; viết lại thành prompt đầy đủ (bối cảnh, mục tiêu, yêu cầu, ràng buộc, kết quả mong muốn), cho xem trước, chỉ ghi khi được đồng ý.
-- **Phân vai agent (từ 14/11/2026):** không giới hạn độ dài phiên. Không dùng Gemini nữa. Opus điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit; Fable 5.2 làm code từng task trong worktree riêng; Haiku làm việc vặt (docs, chạy lệnh).
+- **Tiết kiệm usage:** phiên vượt ~200k token thì dừng và báo người dùng (trừ khi người dùng cho phép riêng phiên đó).
+- **Phân vai agent (từ 14/11/2026):** không dùng Gemini nữa. Opus điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit; Fable 5.2 làm code từng task trong worktree riêng; Haiku làm việc vặt (docs, chạy lệnh).
 
 ## Phối hợp với Gemini (Antigravity)
 - CLI: `C:\Users\Admin\.gemini\bin\agy.exe` (cài Antigravity rồi chạy `agy install`). Model: `gemini-pro-orchestrator-g1-pro` (Orchestrator Argon, **không** nhận cờ `--effort`).
