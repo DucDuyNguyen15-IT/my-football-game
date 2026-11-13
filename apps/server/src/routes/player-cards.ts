@@ -36,12 +36,12 @@ export function registerPlayerCardRoutes(app: FastifyInstance): void {
     { preHandler: requireAuth },
     async (req): Promise<SellCardsResponse> => {
       const { playerCardIds } = SellCardsRequest.parse(req.body);
-      const data = await sellPlayerCards(
-        app.db,
-        await app.cardCatalog(),
-        req.user!.id,
-        playerCardIds.map(Number),
-      );
+      const ids = playerCardIds.map(Number);
+      // Id ngoài phạm vi số nguyên an toàn không thể là thẻ có thật (và làm Postgres báo lỗi kiểu).
+      if (!ids.every(Number.isSafeInteger)) {
+        throw new AppError('not_found', 404, 'Không tìm thấy thẻ');
+      }
+      const data = await sellPlayerCards(app.db, await app.cardCatalog(), req.user!.id, ids);
       return { data };
     },
   );
