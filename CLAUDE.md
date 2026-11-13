@@ -48,3 +48,29 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | `pnpm assets` | Dựng `apps/web/public/models/player.glb` từ file Mixamo trong `assets-src/mixamo/` (cả hai **không commit** — giấy phép Mixamo, repo public; thiếu file thì trận dùng cầu thủ khối) |
 
 Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất biến chung).
+
+## Quy tắc làm việc của người dùng (áp dụng trên mọi máy / tài khoản)
+- **Cài công cụ:** máy thiếu công cụ cần cho công việc (git, node, pnpm, docker, …) thì tự cài (ưu tiên `winget`), không cần hỏi; cài xong báo đã cài gì.
+- **Commit + push mỗi tính năng:** xong một tính năng và `pnpm check` xanh thì commit và push ngay, không gom nhiều tính năng.
+- **Không ghi attribution của Claude:** không thêm dòng `Co-Authored-By: Claude …` vào commit, không thêm "Generated with Claude Code" vào PR.
+- **AI LOG** (nếu đồ án yêu cầu): luôn hỏi người dùng trước khi ghi. Không chép nguyên văn câu lệnh ngắn của người dùng; viết lại thành prompt đầy đủ (bối cảnh, mục tiêu, yêu cầu, ràng buộc, kết quả mong muốn), cho xem trước, chỉ ghi khi được đồng ý.
+- **Tiết kiệm usage:** phiên vượt ~200k token thì dừng và báo người dùng. Việc code thường giao subagent model nhỏ (Sonnet/Haiku, task khó dùng Fable); Opus chỉ điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit.
+
+## Phối hợp với Gemini (Antigravity)
+- CLI: `C:\Users\Admin\.gemini\bin\agy.exe` (cài Antigravity rồi chạy `agy install`). Model: `gemini-pro-orchestrator-g1-pro` (Orchestrator Argon, **không** nhận cờ `--effort`).
+- Giao việc: chạy nền trong worktree riêng của Gemini
+  `agy -p "Đọc và thực hiện brief ở .claude/collab/brief-<task>.md" --model gemini-pro-orchestrator-g1-pro --mode auto --output-format json`
+  → JSON có `conversation_id`; hỏi tiếp bằng `--conversation <id>`.
+- Hộp thư: `.claude/collab/brief-<task>.md` (Claude → Gemini) và `report-<task>.md` (Gemini → Claude). Thư mục `.claude/` bị gitignore nên brief chỉ có trên máy đang chạy.
+- Gemini chỉ commit trong nhánh của mình, **không push**; Claude review, chạy `pnpm check`, merge vào `main` rồi push.
+- Mỗi worktree chạy song song dùng DB test riêng: tạo `pitch_test_a`, `pitch_test_b`, … trong Postgres dev, đặt `DATABASE_URL_TEST=postgres://pitch:pitch@localhost:5432/pitch_test_x` khi chạy test.
+- Worktree tạo thủ công ở thư mục anh em (`../mfg-<agent>-<task>`): công cụ worktree tự động của Claude lỗi với ổ `d:`/`D:`.
+
+## Kế hoạch tuần 13–20/11/2026 (đóng GĐ7, bắt đầu GĐ8)
+| Task | Ai làm | Nhánh | Trạng thái |
+|---|---|---|---|
+| 7.3 Toàn vẹn sổ cái & tamper | Fable | `feat/7.3-ledger` | Xong (`f6382f8`), chờ Opus review + merge |
+| 7.4 Nhiệm vụ ngày | Gemini | `feat/7.4-missions` | Đang làm |
+| 7.5 → 7.6 → 8.1 → 8.2 | Gemini, làm tuần tự theo `.claude/collab/brief-rest.md`, mỗi task một commit | `feat/7.4-missions` | Chờ |
+| Review cuối, merge, cập nhật ROADMAP/PROGRESS/mục này | Opus | `main` | Chờ |
+Chuyển máy giữa chừng: `git fetch` rồi xem các nhánh trên; nếu nhánh Gemini chưa push thì chỉ còn trên máy cũ.
