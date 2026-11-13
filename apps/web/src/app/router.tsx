@@ -1,5 +1,6 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
+import { AdminPage } from '../features/admin/AdminPage';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CollectionPage } from '../features/collection/CollectionPage';
 import { HomePage } from '../features/home/HomePage';
@@ -38,6 +39,7 @@ export const router = createBrowserRouter([
               { path: '/collection', element: <CollectionPage /> },
               { path: '/squad', element: <SquadPage /> },
               { path: '/upgrade', element: <UpgradePage /> },
+              { path: '/admin', element: <AdminPage /> },
             ],
           },
         ],

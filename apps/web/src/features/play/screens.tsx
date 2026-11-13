@@ -4,8 +4,9 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { Difficulty, SquadSlot } from '@pitch/shared';
+import type { Difficulty, MissionProgress, SquadSlot } from '@pitch/shared';
 import type { GraphicsSettings } from '../../game/bridge';
+import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
 import {
   GRAPHICS_TOGGLES,
   TIMES_OF_DAY,
@@ -314,6 +315,7 @@ export function PauseMenu({
   onGraphics,
   onResume,
   onQuit,
+  onReplayTutorial,
   subs,
 }: {
   hud: Pick<HudSnapshot, 'half' | 'clock'> | null;
@@ -321,6 +323,7 @@ export function PauseMenu({
   onGraphics: (g: GraphicsSettings) => void;
   onResume: () => void;
   onQuit: () => void;
+  onReplayTutorial?: () => void;
   subs: PauseSubs;
 }) {
   const [view, setView] = useState<PauseView>('graphics');
@@ -402,6 +405,17 @@ export function PauseMenu({
               Phím điều khiển
             </h3>
             <ControlsTable />
+            {onReplayTutorial && (
+              <div className="pause__actions">
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={onReplayTutorial}
+                >
+                  Xem lại hướng dẫn 5 bước
+                </button>
+              </div>
+            )}
           </>
         )}
         {shown === 'confirm' && (
@@ -564,6 +578,10 @@ interface ResultScreenProps {
   difficulty: Difficulty;
   reward: RewardStatus;
   matches: RewardedMatches | null;
+  missions?: readonly MissionProgress[];
+  claimingMissionCode?: string | null;
+  missionError?: string | null;
+  onClaimMission?: (code: string) => void;
   onRetryReward: () => void;
   onRematch: () => void;
 }
@@ -574,6 +592,10 @@ export function ResultScreen({
   difficulty,
   reward,
   matches,
+  missions,
+  claimingMissionCode,
+  missionError,
+  onClaimMission,
   onRetryReward,
   onRematch,
 }: ResultScreenProps) {
@@ -642,6 +664,16 @@ export function ResultScreen({
             />
           </div>
         </section>
+        {missions && missions.length > 0 && (
+          <DailyMissionsPanel
+            title="Nhiệm vụ vừa tăng"
+            missions={missions}
+            claimingCode={claimingMissionCode ?? null}
+            errorMessage={missionError ?? null}
+            onClaim={onClaimMission}
+            showResetNote={false}
+          />
+        )}
         <div className="result__actions">
           <button type="button" className="btn btn--primary btn--lg" autoFocus onClick={onRematch}>
             Đá tiếp

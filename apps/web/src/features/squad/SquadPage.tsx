@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
-import { useBlocker, type Blocker } from 'react-router';
+import { useBlocker, useNavigate, useSearchParams, type Blocker } from 'react-router';
 import {
   DndContext,
   DragOverlay,
@@ -33,7 +33,9 @@ import { useSaveSquad, useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
 import { ChalkPitch } from '../../components/ChalkPitch';
 import { POSITION_NAME } from '../../components/card/rarity';
+import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import {
+  autoFillSquad,
   changeFormation,
   clearSlot,
   placeCard,
@@ -152,6 +154,9 @@ function changeCount(a: Draft, b: Draft): number {
 }
 
 function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string, Item> }) {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const isOnboarding = searchParams.get('onboarding') === '1';
   const [draft, setDraft] = useState<Draft>(() => ({
     formation: saved.formation,
     slots: { ...saved.slots },
@@ -161,10 +166,11 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   const [notice, setNotice] = useState<Notice | null>(null);
   const [filter, setFilter] = useState<Filter>('role');
   const saver = useSaveSquad();
+  const skipLeaveGuardRef = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
   const dirty = !sameSquad(draft, saved);
-  const blocker = useLeaveGuard(dirty);
+  const blocker = useLeaveGuard(dirty, skipLeaveGuardRef);
 
   const members: Partial<Record<SquadSlot, SquadMember>> = {};
   for (const [slot, id] of Object.entries(draft.slots) as [SquadSlot, string | null][]) {
@@ -275,31 +281,65 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   }
 
   // Thẻ đã bán ở nơi khác (kho làm mới sau lỗi `not_found`) thì bỏ khỏi ô trước khi gửi.
+  const buildPayload = () => ({
+    formation: draft.formation,
+    slots: Object.fromEntries(
+      Object.entries(draft.slots).map(([s, id]) => [s, id && items.has(id) ? id : null]),
+    ) as SlotMap,
+  });
+
   const save = (after?: () => void) =>
-    saver.mutate(
-      {
-        formation: draft.formation,
-        slots: Object.fromEntries(
-          Object.entries(draft.slots).map(([s, id]) => [s, id && items.has(id) ? id : null]),
-        ) as SlotMap,
+    saver.mutate(buildPayload(), {
+      onSuccess: () => {
+        setNotice({
+          tone: 'success',
+          title: 'Đã lưu đội hình',
+          body: `OVR đội ${evaluation.teamRating} · ${draft.formation}`,
+        });
+        after?.();
       },
-      {
-        onSuccess: () => {
-          setNotice({
-            tone: 'success',
-            title: 'Đã lưu đội hình',
-            body: `OVR đội ${evaluation.teamRating} · ${draft.formation}`,
-          });
-          after?.();
-        },
-      },
-    );
+    });
 
   const misplaced = new Set(
     evaluation.warnings.filter((w) => w.code === 'misposition').map((w) => w.slot),
   );
   const missing = evaluation.warnings.filter((w) => w.code !== 'misposition');
   const dragItem = dragging ? items.get(dragging) : undefined;
+
+  function autoFillBest() {
+    const candidates = [...items.values()].map((it) => ({
+      id: it.pc.id,
+      position: it.card.position,
+      ovr: ovrOf(it),
+      level: it.pc.level,
+    }));
+    const filled = autoFillSquad(draft.formation, candidates);
+    setDraft((d) => ({ ...d, slots: filled }));
+    setSelected(null);
+    saver.reset();
+    setNotice({
+      tone: 'success',
+      title: 'Đã tự xếp đội mạnh nhất',
+      body: isOnboarding
+        ? 'Thẻ mạnh nhất đã được xếp sẵn — bấm Đá với máy – Dễ để vào trận đầu.'
+        : 'Bấm Lưu để cập nhật đội hình mới.',
+    });
+  }
+
+  function playEasyNow() {
+    if (missing.length > 0 || saver.isPending) return;
+    const dest = '/play?difficulty=easy&onboarding=1';
+    if (!dirty) {
+      void navigate(dest);
+      return;
+    }
+    saver.mutate(buildPayload(), {
+      onSuccess: () => {
+        skipLeaveGuardRef.current = true;
+        void navigate(dest);
+      },
+    });
+  }
 
   const slotProps = (slot: SquadSlot) => ({
     slot,
@@ -325,6 +365,29 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
           if (e.key === 'Escape') setSelected(null);
         }}
       >
+        {isOnboarding && (
+          <OnboardingFlowBanner
+            currentStep={3}
+            onStepSelect={(step, e) => {
+              if (step === 4) {
+                e.preventDefault();
+                playEasyNow();
+              }
+            }}
+            action={
+              <button
+                type="button"
+                className="btn btn--primary btn--lg"
+                disabled={missing.length > 0 || saver.isPending}
+                aria-busy={saver.isPending}
+                onClick={playEasyNow}
+              >
+                {saver.isPending && <span className="spinner" aria-hidden="true" />}
+                Đá với máy – Dễ →
+              </button>
+            }
+          />
+        )}
         <header className="sq__head">
           <h1 className="h1">Đội hình</h1>
           <div className="seg" role="radiogroup" aria-label="Sơ đồ">
@@ -342,6 +405,9 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
             ))}
           </div>
           <span className="muted sq__formation">{FORMATION_HINT[draft.formation]}</span>
+          <button type="button" className="btn btn--secondary" onClick={autoFillBest}>
+            Tự xếp đội mạnh nhất
+          </button>
           <span className="sq__rating">
             <span className="label">OVR đội</span>
             <span className="display num sq__ovr" aria-live="polite">
@@ -359,6 +425,16 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
             Lưu
             {dirty && <span className="sq__dirty" role="img" aria-label="có thay đổi chưa lưu" />}
           </button>
+          {!isOnboarding && (
+            <button
+              type="button"
+              className="btn btn--secondary"
+              disabled={missing.length > 0 || saver.isPending}
+              onClick={playEasyNow}
+            >
+              Đá với máy – Dễ
+            </button>
+          )}
         </header>
 
         <div className="sq__body">
@@ -759,10 +835,10 @@ function LeaveDialog({
 }
 
 /** Còn thay đổi chưa lưu → hỏi trước khi rời trang (đổi route: hộp thoại; đóng tab: trình duyệt). */
-function useLeaveGuard(dirty: boolean): Blocker {
+function useLeaveGuard(dirty: boolean, bypassRef: { current: boolean }): Blocker {
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
-      dirty && currentLocation.pathname !== nextLocation.pathname,
+      dirty && !bypassRef.current && currentLocation.pathname !== nextLocation.pathname,
   );
   useEffect(() => {
     if (!dirty) return;

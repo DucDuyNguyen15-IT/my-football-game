@@ -77,3 +77,29 @@ export const UPGRADE = {
   ],
   rarityFeeMultiplier: { bronze: 1, silver: 2, gold: 3, legend: 5 },
 } as const;
+
+/** Số nhiệm vụ mỗi người chơi nhận mỗi ngày GMT+7 (PRD §7.1, F12). */
+export const DAILY_MISSION_COUNT = 3;
+
+/**
+ * Danh sách nhiệm vụ ngày (PRD §7.1, F12). Mỗi ngày chọn tất định 3 nhiệm vụ theo `(userId, day)`.
+ * Tiến độ cập nhật trong cùng transaction với nộp kết quả trận hoặc mở gói.
+ */
+export const MISSIONS = [
+  { code: 'win_match', title: 'Thắng 1 trận', event: 'match_win', target: 1, reward: 50 },
+  { code: 'score_goals', title: 'Ghi 3 bàn', event: 'match_goals', target: 3, reward: 50 },
+  { code: 'open_pack', title: 'Mở 1 gói', event: 'pack_open', target: 1, reward: 50 },
+  { code: 'play_hard', title: 'Đá 1 trận mức Khó', event: 'match_hard', target: 1, reward: 50 },
+  { code: 'play_matches', title: 'Đá 2 trận', event: 'match_play', target: 2, reward: 50 },
+  {
+    code: 'clean_sheet',
+    title: 'Giữ sạch lưới 1 trận',
+    event: 'match_clean_sheet',
+    target: 1,
+    reward: 50,
+  },
+] as const;
+
+export type MissionDef = (typeof MISSIONS)[number];
+export type MissionCode = MissionDef['code'];
+export type MissionEventKind = MissionDef['event'];

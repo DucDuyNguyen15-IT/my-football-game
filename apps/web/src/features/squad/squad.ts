@@ -2,6 +2,7 @@ import {
   BENCH_SLOTS,
   FORMATION_LINES,
   FORMATIONS,
+  slotRole,
   SquadSlot,
   STARTER_SLOTS,
   type Formation,
@@ -10,6 +11,13 @@ import {
 
 /** Bản nháp đội hình trên màn: ô → id thẻ (`PlayerCard.id`) hoặc trống. */
 export type SlotMap = Record<SquadSlot, string | null>;
+
+export interface AutoFillCandidate {
+  id: string;
+  position: Position;
+  ovr: number;
+  level?: number;
+}
 
 export const emptySlots = (): SlotMap =>
   Object.fromEntries(SquadSlot.options.map((s) => [s, null])) as SlotMap;
@@ -112,4 +120,60 @@ export function sameSquad(
   b: { formation: Formation; slots: SlotMap },
 ): boolean {
   return a.formation === b.formation && SquadSlot.options.every((s) => a.slots[s] === b.slots[s]);
+}
+
+/**
+ * Tự xếp đội mạnh nhất (7.6 / squad.html):
+ * ưu tiên thẻ OVR cao nhất đúng vị trí cho từng ô đá chính; ô còn thiếu lấp bằng thẻ OVR cao nhất
+ * còn lại; ghế dự bị xếp tối đa 5 thẻ mạnh nhất còn lại (giữ 1 thủ môn dự bị nếu có).
+ */
+export function autoFillSquad(
+  formation: Formation,
+  candidates: ReadonlyArray<AutoFillCandidate>,
+): SlotMap {
+  const sorted = [...candidates].sort((a, b) => {
+    if (b.ovr !== a.ovr) return b.ovr - a.ovr;
+    const lvlDiff = (b.level ?? 0) - (a.level ?? 0);
+    if (lvlDiff !== 0) return lvlDiff;
+    return a.id.localeCompare(b.id);
+  });
+  const used = new Set<string>();
+  const next = emptySlots();
+
+  // Lượt 1: đá chính đúng vị trí.
+  for (const slot of STARTER_SLOTS) {
+    const role = slotRole(formation, slot);
+    const match = sorted.find((c) => !used.has(c.id) && c.position === role);
+    if (match) {
+      next[slot] = match.id;
+      used.add(match.id);
+    }
+  }
+
+  // Lượt 2: lấp ô đá chính còn trống nếu thiếu vị trí chuyên biệt.
+  for (const slot of STARTER_SLOTS) {
+    if (next[slot]) continue;
+    const fallback = sorted.find((c) => !used.has(c.id));
+    if (fallback) {
+      next[slot] = fallback.id;
+      used.add(fallback.id);
+    }
+  }
+
+  // Lượt 3: ghế dự bị B1..B5 (giữ 1 thủ môn dự bị nếu còn, sau đó lấy OVR cao nhất).
+  const benchQueue = [...BENCH_SLOTS];
+  const spareGk = sorted.find((c) => !used.has(c.id) && c.position === 'GK');
+  if (spareGk && benchQueue.length > 0) {
+    const gkBench = benchQueue.shift()!;
+    next[gkBench] = spareGk.id;
+    used.add(spareGk.id);
+  }
+  for (const slot of benchQueue) {
+    const pick = sorted.find((c) => !used.has(c.id));
+    if (!pick) break;
+    next[slot] = pick.id;
+    used.add(pick.id);
+  }
+
+  return next;
 }

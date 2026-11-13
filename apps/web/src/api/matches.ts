@@ -8,6 +8,7 @@ import {
 } from '@pitch/shared';
 import { meKey } from './auth';
 import { apiFetch, ApiClientError } from './client';
+import { missionsKey } from './missions';
 
 /**
  * Bắt đầu trận vs máy (POST /matches): server dựng đội nhà từ đội hình đã lưu, sinh đội máy + seed
@@ -42,6 +43,7 @@ export function useSubmitMatchResult() {
     retry: (count, err) => count < 3 && isTransientError(err),
     onSuccess: (result) => {
       qc.setQueryData<Me | null>(meKey, (me) => me && { ...me, coins: result.balance });
+      qc.setQueryData(missionsKey, result.missions);
       void qc.invalidateQueries({ queryKey: meKey });
     },
   });

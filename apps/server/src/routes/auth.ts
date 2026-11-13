@@ -1,4 +1,4 @@
-import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
   GoogleAuthRequest,
   LoginRequest,
@@ -7,8 +7,10 @@ import {
   type GoogleAuthResponse,
   type MeResponse,
 } from '@pitch/shared';
+import type { Db, Tx } from '../db/client';
 import { clearSessionCookie, requireAuth, SESSION_COOKIE, setSessionCookie } from '../plugins/auth';
 import { AppError } from '../plugins/errors';
+import { track } from '../services/analytics';
 import {
   burnPasswordCheck,
   clearLoginFailures,
@@ -42,18 +44,16 @@ export interface GoogleAuthConfig {
 }
 
 /** Cấp phiên mới, xoay token: bỏ phiên cũ trên trình duyệt này (nếu có), dọn phiên hết hạn. */
-async function startSession(
-  app: FastifyInstance,
+async function rotateSession(
+  db: Db | Tx,
   req: FastifyRequest,
-  reply: FastifyReply,
   user: UserRow,
   now: Date,
-): Promise<void> {
+): Promise<{ token: string; expiresAt: Date }> {
   const old = req.cookies[SESSION_COOKIE];
-  if (old) await destroySession(app.db, old);
-  await purgeExpiredSessions(app.db, now);
-  const { token, expiresAt } = await createSession(app.db, user.id, now);
-  setSessionCookie(reply, token, expiresAt);
+  if (old) await destroySession(db, old);
+  await purgeExpiredSessions(db, now);
+  return createSession(db, user.id, now);
 }
 
 /** GET /config/auth (công khai, không cần DB): web biết có hiện nút Google không (ADR-0010). */
@@ -72,7 +72,8 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
     const input = RegisterRequest.parse(req.body);
     const now = app.clock.now();
     const user = await registerUser(app.db, input, now);
-    await startSession(app, req, reply, user, now);
+    const session = await rotateSession(app.db, req, user, now);
+    setSessionCookie(reply, session.token, session.expiresAt);
     reply.code(201);
     return { data: await meWithRewards(app, user) };
   });
@@ -100,8 +101,12 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
       await recordLoginFailure(app.db, user.id, now);
       throw new AppError('invalid_credentials', 401, 'Sai tên đăng nhập hoặc mật khẩu');
     }
-    await clearLoginFailures(app.db, user);
-    await startSession(app, req, reply, user, now);
+    const session = await app.db.transaction(async (tx) => {
+      await clearLoginFailures(tx, user);
+      await track(tx, user.id, 'login', { method: 'password' }, now);
+      return rotateSession(tx, req, user, now);
+    });
+    setSessionCookie(reply, session.token, session.expiresAt);
     return { data: await meWithRewards(app, user) };
   });
 
@@ -137,7 +142,11 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
         if (!user) throw err;
       }
     }
-    await startSession(app, req, reply, user, now);
+    const session = await app.db.transaction(async (tx) => {
+      if (!created) await track(tx, user.id, 'login', { method: 'google' }, now);
+      return rotateSession(tx, req, user, now);
+    });
+    setSessionCookie(reply, session.token, session.expiresAt);
     if (created) reply.code(201);
     return { data: { status: 'signed_in', me: await meWithRewards(app, user) } };
   });

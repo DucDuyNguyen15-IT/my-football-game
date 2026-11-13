@@ -10,11 +10,13 @@ import { pingDb, registerDb } from './plugins/db';
 import { AppError, registerErrors } from './plugins/errors';
 import { registerAuth } from './plugins/auth';
 import { DEFAULT_RATE_LIMIT, registerRateLimit, type RateLimitConfig } from './plugins/rate-limit';
+import { registerAdminRoutes } from './routes/admin';
 import { registerAuthConfigRoute, registerAuthRoutes } from './routes/auth';
 import { registerCardRoutes } from './routes/cards';
 import { registerConfigRoutes } from './routes/config';
 import { registerDevRoutes } from './routes/dev';
 import { registerMatchRoutes } from './routes/matches';
+import { registerMissionRoutes } from './routes/missions';
 import { registerPackRoutes } from './routes/packs';
 import { registerPlayerCardRoutes } from './routes/player-cards';
 import { registerSquadRoutes } from './routes/squad';
@@ -113,6 +115,8 @@ export function buildApp(opts: BuildAppOptions = {}) {
     registerMatchRoutes(app, {
       minDurationSec: opts.matchMinDurationSec ?? MATCH_MIN_DURATION_SEC,
     });
+    registerMissionRoutes(app);
+    registerAdminRoutes(app);
     if (opts.enableDevRoutes) registerDevRoutes(app);
   }
 

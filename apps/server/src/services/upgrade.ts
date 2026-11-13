@@ -4,10 +4,11 @@ import { and, asc, eq, inArray } from 'drizzle-orm';
 import { UpgradeCardResult } from '@pitch/shared';
 import { UPGRADE } from '../config/economy';
 import type { Db, Tx } from '../db/client';
-import { analyticsEvents, cardUpgrades, playerCards, squadSlots } from '../db/schema';
+import { cardUpgrades, playerCards, squadSlots } from '../db/schema';
 import { cryptoRng, type Rng } from '../domain/rng';
 import { isValidMaterial, rollUpgrade, upgradeFee } from '../domain/upgrade';
 import { AppError } from '../plugins/errors';
+import { track } from './analytics';
 import { isUniqueViolation } from './auth';
 import type { CardCatalog } from './cards';
 import { applyCoinDelta, lockUser } from './wallet';
@@ -17,6 +18,7 @@ export interface UpgradeCardInput {
   playerCardId: number;
   materialId: number;
   idempotencyKey: string;
+  now: Date;
 }
 
 /**
@@ -46,7 +48,7 @@ export async function upgradeCard(
 async function upgradeInTx(
   tx: Tx,
   catalog: CardCatalog,
-  { userId, playerCardId, materialId, idempotencyKey }: UpgradeCardInput,
+  { userId, playerCardId, materialId, idempotencyKey, now }: UpgradeCardInput,
   rng: Rng,
 ): Promise<UpgradeCardResult> {
   const user = await lockUser(tx, userId);
@@ -131,10 +133,11 @@ async function upgradeInTx(
     id: upgrade!.id,
   });
   if (balance !== result.balance) throw new Error('Số dư lệch khi ép thẻ');
-  await tx.insert(analyticsEvents).values({
+  await track(
+    tx,
     userId,
-    name: 'upgrade',
-    props: {
+    'upgrade',
+    {
       fromLevel: target.level,
       success: roll.success,
       rate: roll.rate,
@@ -142,7 +145,8 @@ async function upgradeInTx(
       rarity: targetRarity,
       materialRarity,
     },
-  });
+    now,
+  );
   return result;
 }
 

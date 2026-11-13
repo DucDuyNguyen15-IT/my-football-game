@@ -1,6 +1,7 @@
 export * from './domain';
 export * from './avatar';
 export * from './api/common';
+export * from './api/admin';
 export * from './api/auth';
 export * from './api/cards';
 export * from './api/config';
@@ -8,6 +9,7 @@ export * from './api/dev';
 export * from './api/health';
 export * from './api/matches';
 export * from './api/me';
+export * from './api/missions';
 export * from './api/packs';
 export * from './api/player-cards';
 export * from './match';

@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { Position } from '@pitch/shared';
 import {
+  autoFillSquad,
   changeFormation,
   emptySlots,
   placeCard,
@@ -119,5 +120,60 @@ describe('sameSquad', () => {
     expect(sameSquad(a, { ...a, slots: { ...a.slots } })).toBe(true);
     expect(sameSquad(a, { ...a, formation: '3-2-1' })).toBe(false);
     expect(sameSquad(a, { ...a, slots: swapSlots(a.slots, 'P1', 'P2') })).toBe(false);
+  });
+});
+
+describe('autoFillSquad', () => {
+  it('chọn thẻ OVR cao nhất đúng vị trí cho từng ô, giữ 1 GK dự bị, không trùng thẻ', () => {
+    const cards = [
+      { id: 'gk_bronze', position: 'GK' as const, ovr: 58 },
+      { id: 'gk_silver', position: 'GK' as const, ovr: 68 },
+      { id: 'df1', position: 'DF' as const, ovr: 62 },
+      { id: 'df2', position: 'DF' as const, ovr: 60 },
+      { id: 'df3_gold', position: 'DF' as const, ovr: 76 },
+      { id: 'mf1', position: 'MF' as const, ovr: 63 },
+      { id: 'mf2', position: 'MF' as const, ovr: 61 },
+      { id: 'mf3', position: 'MF' as const, ovr: 59 },
+      { id: 'mf4_silver', position: 'MF' as const, ovr: 70 },
+      { id: 'fw1', position: 'FW' as const, ovr: 62 },
+      { id: 'fw2_gold', position: 'FW' as const, ovr: 78 },
+      { id: 'df4_low', position: 'DF' as const, ovr: 55 },
+      { id: 'mf5_low', position: 'MF' as const, ovr: 54 },
+    ];
+    // 2-3-1: GK, P1-P2 DF, P3-P5 MF, P6 FW
+    const s = autoFillSquad('2-3-1', cards);
+    expect(s.GK).toBe('gk_silver');
+    expect([s.P1, s.P2]).toEqual(['df3_gold', 'df1']);
+    expect([s.P3, s.P4, s.P5]).toEqual(['mf4_silver', 'mf1', 'mf2']);
+    expect(s.P6).toBe('fw2_gold');
+    // Dự bị B1 ưu tiên GK dự bị nếu còn, tiếp theo OVR cao nhất còn lại (fw1=62, df2=60, mf3=59, df4_low=55)
+    expect(s.B1).toBe('gk_bronze');
+    expect(s.B2).toBe('fw1');
+    expect(s.B3).toBe('df2');
+    expect(s.B4).toBe('mf3');
+    expect(s.B5).toBe('df4_low');
+    const assigned = Object.values(s).filter(Boolean);
+    expect(assigned).toHaveLength(12);
+    expect(new Set(assigned).size).toBe(12);
+  });
+
+  it('tự lấp ô đá chính bằng thẻ OVR cao nhất còn lại khi thiếu vị trí chuyên biệt', () => {
+    const cards = [
+      { id: 'gk1', position: 'GK' as const, ovr: 60 },
+      { id: 'df1', position: 'DF' as const, ovr: 62 },
+      { id: 'mf1', position: 'MF' as const, ovr: 64 },
+      { id: 'mf2', position: 'MF' as const, ovr: 63 },
+      { id: 'mf3', position: 'MF' as const, ovr: 61 },
+      { id: 'mf4', position: 'MF' as const, ovr: 68 },
+      { id: 'fw1', position: 'FW' as const, ovr: 65 },
+    ];
+    // 3-2-1 cần 3 DF nhưng chỉ có 1 DF -> 2 ô DF thiếu tự lấp bằng MF/FW dư mạnh nhất
+    const s = autoFillSquad('3-2-1', cards);
+    expect(s.GK).toBe('gk1');
+    expect(s.P1).toBe('df1');
+    expect(s.P4).toBe('mf4');
+    expect(s.P5).toBe('mf1');
+    expect(s.P6).toBe('fw1');
+    expect([s.P2, s.P3]).toEqual(['mf2', 'mf3']);
   });
 });

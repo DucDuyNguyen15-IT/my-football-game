@@ -1,5 +1,6 @@
 import cookie from '@fastify/cookie';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
+import { recordSessionSeen } from '../services/analytics';
 import { renewSession, resolveSession, type UserRow } from '../services/auth';
 import { AppError } from './errors';
 
@@ -63,7 +64,9 @@ export async function requireAuth(
   reply: FastifyReply,
 ): Promise<void> {
   const token = req.cookies[SESSION_COOKIE];
-  const session = token ? await resolveSession(this.db, token, this.clock.now()) : null;
+  const now = this.clock.now();
+  // Ghi chú (8.2): cookie giả vẫn tra DB một lần trước khi bị rate limit — chấp nhận được.
+  const session = token ? await resolveSession(this.db, token, now) : null;
   if (!token || !session) {
     await this.userRateLimit(req, reply);
     throw new AppError('unauthenticated', 401, 'Chưa đăng nhập');
@@ -73,5 +76,18 @@ export async function requireAuth(
   if (session.renewedUntil) {
     await renewSession(this.db, token, session.renewedUntil);
     setSessionCookie(reply, token, session.renewedUntil);
+  }
+  await recordSessionSeen(this.db, session.user.id, now);
+}
+
+/** preHandler: bắt buộc đăng nhập và có quyền admin (`users.is_admin = true`). */
+export async function requireAdmin(
+  this: FastifyInstance,
+  req: FastifyRequest,
+  reply: FastifyReply,
+): Promise<void> {
+  await requireAuth.call(this, req, reply);
+  if (!req.user?.isAdmin) {
+    throw new AppError('forbidden', 403, 'Chỉ quản trị viên mới có quyền truy cập');
   }
 }

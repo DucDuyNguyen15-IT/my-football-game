@@ -8,9 +8,10 @@ import {
   STARTER_FREE_PACK5,
   STARTER_SQUAD,
 } from '../config/economy';
-import type { Db } from '../db/client';
+import type { Db, Tx } from '../db/client';
 import { packBoxes, playerCards, sessions, squads, squadSlots, users } from '../db/schema';
 import { AppError } from '../plugins/errors';
+import { track } from './analytics';
 
 /** Hạn phiên 30 ngày, gia hạn trượt (ARCHITECTURE §4.1). */
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
@@ -48,7 +49,7 @@ export async function findUserByUsername(db: Db, username: string): Promise<User
 }
 
 export async function createSession(
-  db: Db,
+  db: Db | Tx,
   userId: number,
   now: Date,
 ): Promise<{ token: string; expiresAt: Date }> {
@@ -58,7 +59,7 @@ export async function createSession(
   return { token, expiresAt };
 }
 
-export async function destroySession(db: Db, token: string): Promise<void> {
+export async function destroySession(db: Db | Tx, token: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.id, hashToken(token)));
 }
 
@@ -90,7 +91,7 @@ export async function renewSession(db: Db, token: string, expiresAt: Date): Prom
 }
 
 /** Xoá mọi phiên đã hết hạn (dùng index `sessions_expires_idx`). Trả số phiên đã xoá. */
-export async function purgeExpiredSessions(db: Db, now: Date): Promise<number> {
+export async function purgeExpiredSessions(db: Db | Tx, now: Date): Promise<number> {
   const deleted = await db
     .delete(sessions)
     .where(lte(sessions.expiresAt, now))
@@ -136,7 +137,7 @@ export async function recordLoginFailure(db: Db, userId: number, now: Date): Pro
 }
 
 /** Đăng nhập đúng → xoá bộ đếm/khoá cũ (chỉ ghi DB khi có gì để xoá). */
-export async function clearLoginFailures(db: Db, user: UserRow): Promise<void> {
+export async function clearLoginFailures(db: Db | Tx, user: UserRow): Promise<void> {
   if (user.failedLoginCount === 0 && !user.failedLoginWindowStart && !user.lockedUntil) return;
   await db
     .update(users)
@@ -207,6 +208,7 @@ export async function createAccount(
           googleSub: input.googleSub ?? null,
           email: input.email ?? null,
           freePack5Credits: STARTER_FREE_PACK5,
+          createdAt: now,
         })
         .returning();
       const userId = user!.id;
@@ -237,6 +239,13 @@ export async function createAccount(
         .values(
           STARTER_SQUAD.slots.map(([slot], i) => ({ userId, slot, playerCardId: owned[i]!.id })),
         );
+      await track(
+        tx,
+        userId,
+        'register',
+        { method: input.googleSub ? 'google' : 'password' },
+        now,
+      );
       return user!;
     });
   } catch (err) {
