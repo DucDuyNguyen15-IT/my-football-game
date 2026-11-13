@@ -208,7 +208,8 @@ describe('POST /api/v1/matches/:id/result', () => {
     const res = await submit(sid, m.matchId, { token: m.token, homeGoals: 3, awayGoals: 1 });
     expect(res.statusCode).toBe(200);
     const r = MatchResultResponse.parse(res.json()).data;
-    expect(r).toEqual({ outcome: 'win', reward: 60, balance: user.coins + 60, missions: [] });
+    expect(r).toMatchObject({ outcome: 'win', reward: 60, balance: user.coins + 60 });
+    expect(r.missions).toHaveLength(3);
 
     const [row] = await testDb()
       .select()

@@ -3,11 +3,14 @@ import { Link } from 'react-router';
 import { STARTER_SLOTS, type Card, type PlayerCard } from '@pitch/shared';
 import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
+import { ApiClientError } from '../../api/client';
+import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { usePacks } from '../../api/packs';
 import { usePlayerCards } from '../../api/player-cards';
 import { useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
 import { ChalkPitch } from '../../components/ChalkPitch';
+import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
 import { slotLayout } from '../squad/squad';
 import './home.css';
 
@@ -25,6 +28,8 @@ export function HomePage() {
   const catalog = useCardCatalog();
   const list = usePlayerCards();
   const packs = usePacks();
+  const missions = useTodayMissions();
+  const claim = useClaimMission();
   if (!me) return null;
 
   const used = me.rewardedMatchesToday;
@@ -145,6 +150,19 @@ export function HomePage() {
       </div>
 
       <aside className="home__side" aria-label="Lối tắt">
+        <DailyMissionsPanel
+          missions={missions.data}
+          isLoading={missions.isPending}
+          claimingCode={claim.isPending ? (claim.variables ?? null) : null}
+          errorMessage={
+            claim.error
+              ? claim.error instanceof ApiClientError
+                ? claim.error.message
+                : 'Không nhận được thưởng nhiệm vụ.'
+              : null
+          }
+          onClaim={(code) => claim.mutate(code)}
+        />
         {me.freePack5Credits > 0 && (
           <Link to="/shop" className="panel home__tile is-accent">
             <span className="label">Quà tân thủ</span>

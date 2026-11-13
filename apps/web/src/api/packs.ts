@@ -11,6 +11,7 @@ import {
 import { z } from 'zod';
 import { meKey } from './auth';
 import { apiFetch, ApiClientError } from './client';
+import { missionsKey } from './missions';
 
 export const packsKey = ['packs'] as const;
 export const playerCardsKey = ['player-cards'] as const;
@@ -72,6 +73,7 @@ export function useOpenPack() {
       void qc.invalidateQueries({ queryKey: meKey });
       void qc.invalidateQueries({ queryKey: packsKey });
       void qc.invalidateQueries({ queryKey: playerCardsKey });
+      void qc.invalidateQueries({ queryKey: missionsKey });
     },
   });
 

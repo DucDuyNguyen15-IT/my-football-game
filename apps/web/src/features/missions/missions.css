@@ -1,0 +1,63 @@
+/* Bảng nhiệm vụ ngày (docs/design/screens/home.html, result.html). */
+.missions {
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-5);
+}
+.missions__head {
+  margin-bottom: var(--sp-1);
+}
+.missions__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+.missions__row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: var(--sp-2) var(--sp-3);
+  align-items: center;
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--c-line);
+}
+.missions__info {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+.missions__name {
+  font-weight: 600;
+  font-size: var(--fs-sm);
+}
+.missions__prog {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.missions__bar {
+  flex: 1;
+}
+.missions__count {
+  font-size: var(--fs-xs);
+  font-weight: 600;
+}
+.missions__claim-coin {
+  color: var(--c-accent-ink);
+}
+.missions__pending-coin {
+  opacity: 0.85;
+}
+.missions__foot {
+  margin: var(--sp-3) 0 0;
+  font-size: var(--fs-xs);
+}
+.missions__skel {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-2) 0;
+}
+.missions__error {
+  margin-top: var(--sp-3);
+}

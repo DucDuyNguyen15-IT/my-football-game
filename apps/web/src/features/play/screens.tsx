@@ -4,8 +4,9 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
-import type { Difficulty, SquadSlot } from '@pitch/shared';
+import type { Difficulty, MissionProgress, SquadSlot } from '@pitch/shared';
 import type { GraphicsSettings } from '../../game/bridge';
+import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
 import {
   GRAPHICS_TOGGLES,
   TIMES_OF_DAY,
@@ -564,6 +565,10 @@ interface ResultScreenProps {
   difficulty: Difficulty;
   reward: RewardStatus;
   matches: RewardedMatches | null;
+  missions?: readonly MissionProgress[];
+  claimingMissionCode?: string | null;
+  missionError?: string | null;
+  onClaimMission?: (code: string) => void;
   onRetryReward: () => void;
   onRematch: () => void;
 }
@@ -574,6 +579,10 @@ export function ResultScreen({
   difficulty,
   reward,
   matches,
+  missions,
+  claimingMissionCode,
+  missionError,
+  onClaimMission,
   onRetryReward,
   onRematch,
 }: ResultScreenProps) {
@@ -642,6 +651,16 @@ export function ResultScreen({
             />
           </div>
         </section>
+        {missions && missions.length > 0 && (
+          <DailyMissionsPanel
+            title="Nhiệm vụ vừa tăng"
+            missions={missions}
+            claimingCode={claimingMissionCode ?? null}
+            errorMessage={missionError ?? null}
+            onClaim={onClaimMission}
+            showResetNote={false}
+          />
+        )}
         <div className="result__actions">
           <button type="button" className="btn btn--primary btn--lg" autoFocus onClick={onRematch}>
             Đá tiếp

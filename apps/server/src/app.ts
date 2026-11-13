@@ -15,6 +15,7 @@ import { registerCardRoutes } from './routes/cards';
 import { registerConfigRoutes } from './routes/config';
 import { registerDevRoutes } from './routes/dev';
 import { registerMatchRoutes } from './routes/matches';
+import { registerMissionRoutes } from './routes/missions';
 import { registerPackRoutes } from './routes/packs';
 import { registerPlayerCardRoutes } from './routes/player-cards';
 import { registerSquadRoutes } from './routes/squad';
@@ -93,6 +94,7 @@ export function buildApp(opts: BuildAppOptions = {}) {
     registerMatchRoutes(app, {
       minDurationSec: opts.matchMinDurationSec ?? MATCH_MIN_DURATION_SEC,
     });
+    registerMissionRoutes(app);
     if (opts.enableDevRoutes) registerDevRoutes(app);
   }
 

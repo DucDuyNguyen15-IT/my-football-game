@@ -16,6 +16,7 @@ import { gameDay, judgeMatchResult, matchReward } from '../domain/rewards';
 import { cryptoRng, type Rng } from '../domain/rng';
 import { AppError } from '../plugins/errors';
 import type { CardCatalog } from './cards';
+import { applyMissionEvent, ensureTodayMissions } from './missions';
 import { applyCoinDelta, lockUser } from './wallet';
 
 /** Seed của sim là uint32 (`seedRng` trong `@pitch/sim`). */
@@ -141,7 +142,8 @@ export async function submitMatchResult(db: Db, input: SubmitResultInput): Promi
     if (!tokenMatches(token, match.tokenHash)) throw rejected('Match token không hợp lệ');
 
     if (match.status === 'finished' && match.outcome) {
-      return { outcome: match.outcome, reward: match.reward, balance: user.coins, missions: [] };
+      const missions = await ensureTodayMissions(tx, userId, match.rewardDay ?? gameDay(now));
+      return { outcome: match.outcome, reward: match.reward, balance: user.coins, missions };
     }
     if (match.status !== 'started') throw rejected('Trận đã hết hạn');
     if (now.getTime() - match.startedAt.getTime() < input.minDurationSec * 1000) {
@@ -172,6 +174,13 @@ export async function submitMatchResult(db: Db, input: SubmitResultInput): Promi
         rewardDay: day,
       })
       .where(eq(matches.id, matchId));
-    return { outcome: judged.outcome, reward, balance, missions: [] };
+    const missions = await applyMissionEvent(tx, userId, day, {
+      type: 'match_finished',
+      difficulty: match.difficulty,
+      outcome: judged.outcome,
+      homeGoals: input.homeGoals,
+      awayGoals: input.awayGoals,
+    });
+    return { outcome: judged.outcome, reward, balance, missions };
   });
 }

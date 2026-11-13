@@ -19,9 +19,11 @@ import {
   type Box,
 } from '../domain/gacha';
 import { cryptoRng, type Rng } from '../domain/rng';
+import { gameDay } from '../domain/rewards';
 import { AppError } from '../plugins/errors';
 import { isUniqueViolation } from './auth';
 import type { CardCatalog } from './cards';
+import { applyMissionEvent } from './missions';
 import { applyCoinDelta, lockUser } from './wallet';
 
 type BoxRow = typeof packBoxes.$inferSelect;
@@ -204,5 +206,6 @@ async function openInTx(
     name: 'pack_open',
     props: { pack: packCode, payment, price, rarities: drawn.rarities, boxCycle: box.cycle },
   });
+  await applyMissionEvent(tx, userId, gameDay(now), { type: 'pack_opened' });
   return result;
 }

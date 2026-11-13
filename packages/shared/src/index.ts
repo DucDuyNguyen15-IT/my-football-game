@@ -8,6 +8,7 @@ export * from './api/dev';
 export * from './api/health';
 export * from './api/matches';
 export * from './api/me';
+export * from './api/missions';
 export * from './api/packs';
 export * from './api/player-cards';
 export * from './match';

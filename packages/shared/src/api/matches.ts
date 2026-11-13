@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { Difficulty, MatchOutcome, MatchTeamSetup } from '../match';
 import { dataEnvelope, Id } from './common';
+import { MissionProgress } from './missions';
 
 /** POST /api/v1/matches — bắt đầu trận vs máy (ARCHITECTURE §4.3 #15, §5.2). */
 export const StartMatchRequest = z.object({ difficulty: Difficulty });
@@ -49,8 +50,8 @@ export const MatchResult = z.object({
   reward: z.number().int().min(0),
   /** Số dư xu hiện tại. */
   balance: z.number().int().min(0),
-  /** Tiến độ nhiệm vụ ngày — luôn rỗng tới task 7.4. */
-  missions: z.array(z.never()),
+  /** Tiến độ nhiệm vụ ngày sau trận (ARCHITECTURE §4.3 #16, F12). */
+  missions: z.array(MissionProgress),
 });
 export type MatchResult = z.infer<typeof MatchResult>;
 

@@ -5,6 +5,7 @@ import type { MatchSetup, MatchState } from '@pitch/sim';
 import { ApiClientError } from '../../api/client';
 import { useMe } from '../../api/auth';
 import { isTransientError, useStartMatch, useSubmitMatchResult } from '../../api/matches';
+import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
 import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
@@ -177,6 +178,8 @@ const SUBMIT_FAILED = 'Chưa gửi được kết quả lên máy chủ.';
 function MatchResultView({ difficulty, match, hud, onRematch }: MatchResultViewProps) {
   const { mutate, data, error, isError, isPending } = useSubmitMatchResult();
   const me = useMe().data;
+  const missionsQuery = useTodayMissions(Boolean(data));
+  const claimMission = useClaimMission();
   // Đã bấm "Gửi lại" (chỉ có với lỗi mạng/5xx) — khi chờ thì giữ khối lỗi, nút quay chờ.
   const [retried, setRetried] = useState(false);
   const vars = useMemo(
@@ -212,6 +215,16 @@ function MatchResultView({ difficulty, match, hud, onRematch }: MatchResultViewP
         data && me ? { today: me.rewardedMatchesToday, limit: me.rewardedMatchesLimit } : null
       }
       reward={reward}
+      missions={data ? (missionsQuery.data ?? data.missions) : undefined}
+      claimingMissionCode={claimMission.isPending ? (claimMission.variables ?? null) : null}
+      missionError={
+        claimMission.error
+          ? claimMission.error instanceof ApiClientError
+            ? claimMission.error.message
+            : 'Không nhận được thưởng nhiệm vụ.'
+          : null
+      }
+      onClaimMission={(code) => claimMission.mutate(code)}
       onRetryReward={() => {
         setRetried(true);
         mutate(vars);

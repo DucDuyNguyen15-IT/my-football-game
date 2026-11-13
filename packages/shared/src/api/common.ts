@@ -15,6 +15,8 @@ export const ErrorCode = z.enum([
   'max_level',
   'invalid_squad',
   'match_token_invalid',
+  'mission_incomplete',
+  'mission_already_claimed',
   'idempotency_conflict',
   'rate_limited',
   'internal_error',
