@@ -161,7 +161,7 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 > Làm Giai đoạn 8. Viết E2E cho các luồng chính (đăng nhập → mở thẻ → xếp đội → đá trận → nhận thưởng). Chạy security review tập trung vào gacha, ví tiền và API. Đo hiệu năng trận đấu. Ghi kết quả vào docs/QA-REPORT.md, sửa lỗi nghiêm trọng.
 
 **Hoàn thành khi:**
-- [ ] E2E luồng chính chạy xanh
+- [x] E2E luồng chính chạy xanh
 - [x] Không còn lỗi bảo mật mức cao (8.2)
 - [ ] `docs/QA-REPORT.md` (đã có mục bảo mật 8.2; 8.4 hoàn thiện)
 

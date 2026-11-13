@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** 8 — Kiểm thử, bảo mật, tối ưu (8.2 xong; GĐ7 xong, 7.7 chờ Client ID Google)
-- **Việc tiếp theo:** 8.1 E2E luồng chính trong `docs/plans/phase-8-qa-security.md` (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
+- **Giai đoạn đang làm:** 8 — Kiểm thử, bảo mật, tối ưu (8.1, 8.2 xong; GĐ7 xong, 7.7 chờ Client ID Google)
+- **Việc tiếp theo:** 8.4 Rà tiêu chí chấp nhận & QA-REPORT trong `docs/plans/phase-8-qa-security.md` (8.3 phần tự động xong, chờ người dùng đo FPS/bộ nhớ theo QA-REPORT §2.4) (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
@@ -43,6 +43,7 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | `pnpm lint` | ESLint (chặn Three.js/Phaser/DOM/`Math.random` trong `packages/sim`, `Math.random` trong server) |
 | `pnpm typecheck` | `tsc` cho từng package |
 | `pnpm check` | lint + typecheck + test — **phải xanh trước mỗi commit** |
+| `pnpm e2e` | E2E luồng chính bằng Playwright (`e2e/`, task 8.1): tự migrate + seed DB test (`E2E_DATABASE_URL` → `DATABASE_URL_TEST` → `pitch_test`, không bao giờ DB dev `pitch`), bật server :3101 + web :5174 riêng. Lần đầu: `pnpm exec playwright install chromium`. Không nằm trong `pnpm check` |
 | `pnpm build` | Build web (`apps/web/dist`) + server (`apps/server/dist`) |
 | `pnpm format` | Prettier |
 | `pnpm assets` | Dựng `apps/web/public/models/player.glb` từ file Mixamo trong `assets-src/mixamo/` (cả hai **không commit** — giấy phép Mixamo, repo public; thiếu file thì trận dùng cầu thủ khối) |
@@ -75,7 +76,8 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 | 7.4 Nhiệm vụ ngày | Gemini | ✅ Đã gộp `main` |
 | 7.5 Analytics & retention | Gemini | ✅ Đã gộp `main` |
 | 7.6 Onboarding | Gemini | ✅ Đã gộp `main` (merge `e0d4954`) |
-| 8.1 E2E | — | **Hoãn sang tuần sau** (người dùng quyết định) |
+| 8.1 E2E | Fable | ✅ Đã gộp `main` |
+| 8.3 Hiệu năng | Fable | 🟡 Phần tự động đã gộp `main`; chờ người dùng đo FPS/bộ nhớ |
 
 Opus đã review cuối và gộp cả 3 nhánh (2026-11-14): `pnpm check` 845 test xanh, `ledger:check` 0 lệch, worktree và nhánh đã dọn.
 

@@ -3,11 +3,11 @@
 **Mục tiêu:** chứng minh MVP đạt các tiêu chí PRD và an toàn trước khi phát hành.
 **Hoàn thành giai đoạn khi** (ROADMAP): E2E luồng chính xanh · không còn lỗi bảo mật mức cao · có `docs/QA-REPORT.md`.
 
-**Tiến độ (2026-11-14):** xong 8.2 (gộp `main`): body limit 64 KiB, security headers + `cache-control: no-store`, match token hết hạn sau 2 giờ, chặn `ENABLE_DEV_ROUTES` ở production, rate limit chạy trước 401, gia hạn phiên sau rate limit, thứ tự khoá `putSquad`, nâng zod 4.6.7 (`pnpm audit` 0 High/Critical); chi tiết `docs/QA-REPORT.md`. **8.1 E2E hoãn sang tuần sau** (người dùng quyết định). **8.3 phần tự động xong, chờ người dùng đo FPS/bộ nhớ** (bundle, p95 mở gói, truy vấn retention/onboarding đã có số; hướng dẫn + bảng trống ở `docs/QA-REPORT.md` §2.4, đo bằng `/play?perf=1`). Tiếp theo: 8.1 → người dùng đo FPS/bộ nhớ để đóng 8.3 → 8.4. Ghi chú còn mở: cookie `sid` giả vẫn tra DB một lần trước khi bị rate limit (chấp nhận được).
+**Tiến độ (2026-11-14):** xong 8.2 (gộp `main`): body limit 64 KiB, security headers + `cache-control: no-store`, match token hết hạn sau 2 giờ, chặn `ENABLE_DEV_ROUTES` ở production, rate limit chạy trước 401, gia hạn phiên sau rate limit, thứ tự khoá `putSquad`, nâng zod 4.6.7 (`pnpm audit` 0 High/Critical); chi tiết `docs/QA-REPORT.md` §1. Xong 8.1 (gộp `main`): Playwright + `pnpm e2e` (`playwright.config.ts`, `e2e/main-flow.spec.ts`) chạy server :3101 + web :5174 trên DB test, kịch bản đăng ký → mở gói miễn phí → xếp đội → trận Dễ autopilot → thưởng trận → nhiệm vụ ngày → đăng nhập lại; xanh 3 lần liên tiếp, chi tiết `docs/QA-REPORT.md` §3. **8.3 phần tự động xong, chờ người dùng đo FPS/bộ nhớ** (bundle, p95 mở gói, truy vấn retention/onboarding đã có số; hướng dẫn + bảng trống ở `docs/QA-REPORT.md` §2.4, đo bằng `/play?perf=1`). Tiếp theo: 8.4 (song song chờ người dùng đo FPS để đóng 8.3). Ghi chú còn mở: cookie `sid` giả vẫn tra DB một lần trước khi bị rate limit (chấp nhận được).
 
 ---
 
-### 8.1 — E2E luồng chính `[ ]`
+### 8.1 — E2E luồng chính `[x]`
 - **Phụ thuộc:** GĐ7 xong · **Model:** default
 - **Bối cảnh:** PRD §9; ARCHITECTURE §8 (`MATCH_MIN_DURATION_SEC`); `docs/plans/phase-5-match-offline.md` task 5.10 (tham số `?half=` và `?autopilot=1`); skill `ecc:e2e-testing`.
 - **Việc cần làm:** cài Playwright; cấu hình chạy server + web + DB test (`DATABASE_URL_TEST`, `MATCH_MIN_DURATION_SEC=1`, web ở mode test). Kịch bản: đăng ký → mở gói miễn phí → đổi 1 thẻ vào đội hình → đá trận Dễ với `?autopilot=1&half=10` → nhận thưởng → số dư tăng → đăng xuất/đăng nhập lại còn thẻ và xu. Script `pnpm e2e`.
