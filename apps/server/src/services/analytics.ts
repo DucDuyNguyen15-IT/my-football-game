@@ -1,5 +1,5 @@
 // Analytics & retention (PRD §8, §10 F13; ARCHITECTURE §3.2 analytics_events, §4.3 #19).
-import { sql } from 'drizzle-orm';
+import { sql, type SQL } from 'drizzle-orm';
 import type { OnboardingStats, RetentionCohort, RetentionQuery } from '@pitch/shared';
 import type { Db, Tx } from '../db/client';
 import { analyticsEvents } from '../db/schema';
@@ -106,13 +106,32 @@ export async function getRetentionCohorts(
   now: Date,
   filter: RetentionQuery = {},
 ): Promise<RetentionCohort[]> {
-  const { today, fromDay, toDay } = resolveDateRange(now, filter);
+  const { today } = resolveDateRange(now, filter);
+  const res = await db.execute<CohortSqlRow>(retentionCohortsQuery(now, filter));
+
+  return res.rows.map((row) => {
+    const cohortDay = row.cohort_day;
+    const registered = Number(row.registered);
+    const d1Ready = addDays(cohortDay, 1) <= today;
+    const d7Ready = addDays(cohortDay, 7) <= today;
+    return {
+      cohortDay,
+      registered,
+      d1: d1Ready && registered > 0 ? Number(row.d1_users) / registered : null,
+      d7: d7Ready && registered > 0 ? Number(row.d7_users) / registered : null,
+    };
+  });
+}
+
+/** Câu SQL của {@link getRetentionCohorts} (tách riêng để script đo hiệu năng chạy `EXPLAIN`). */
+export function retentionCohortsQuery(now: Date, filter: RetentionQuery = {}): SQL {
+  const { fromDay, toDay } = resolveDateRange(now, filter);
   const fromFilter = fromDay ? sql`and u.created_at >= ${gmt7DayStartUtc(fromDay)}` : sql``;
   const toFilter = toDay
     ? sql`and u.created_at < ${gmt7DayStartUtc(addDays(toDay, 1))}`
     : sql``;
 
-  const res = await db.execute<CohortSqlRow>(sql`
+  return sql`
     with cohorts as (
       select
         u.id as user_id,
@@ -143,20 +162,7 @@ export async function getRetentionCohorts(
       and d7.event_day = c.cohort_day + 7
     group by c.cohort_day
     order by c.cohort_day asc
-  `);
-
-  return res.rows.map((row) => {
-    const cohortDay = row.cohort_day;
-    const registered = Number(row.registered);
-    const d1Ready = addDays(cohortDay, 1) <= today;
-    const d7Ready = addDays(cohortDay, 7) <= today;
-    return {
-      cohortDay,
-      registered,
-      d1: d1Ready && registered > 0 ? Number(row.d1_users) / registered : null,
-      d7: d7Ready && registered > 0 ? Number(row.d7_users) / registered : null,
-    };
-  });
+  `;
 }
 
 interface OnboardingSqlRow extends Record<string, unknown> {
@@ -195,12 +201,29 @@ export async function getOnboardingStats(
     };
   }
 
+  const res = await db.execute<OnboardingSqlRow>(onboardingStatsQuery(now, filter));
+
+  const row = res.rows[0];
+  return {
+    from: fromDay ?? null,
+    to: toDay ?? null,
+    totalRegistered: Number(row?.total_registered ?? 0),
+    completedUsers: Number(row?.completed_users ?? 0),
+    withinTargetUsers: Number(row?.within_target_users ?? 0),
+    medianSeconds: roundTenth(row?.median_seconds),
+    p90Seconds: roundTenth(row?.p90_seconds),
+  };
+}
+
+/** Câu SQL của {@link getOnboardingStats} (tách riêng để script đo hiệu năng chạy `EXPLAIN`). */
+export function onboardingStatsQuery(now: Date, filter: RetentionQuery = {}): SQL {
+  const { fromDay, toDay } = resolveDateRange(now, filter);
   const fromFilter = fromDay ? sql`and e.created_at >= ${gmt7DayStartUtc(fromDay)}` : sql``;
   const toFilter = toDay
     ? sql`and e.created_at < ${gmt7DayStartUtc(addDays(toDay, 1))}`
     : sql``;
 
-  const res = await db.execute<OnboardingSqlRow>(sql`
+  return sql`
     with reg as (
       select
         e.user_id,
@@ -230,16 +253,5 @@ export async function getOnboardingStats(
       percentile_cont(0.5) within group (order by delta_seconds) as median_seconds,
       percentile_cont(0.9) within group (order by delta_seconds) as p90_seconds
     from first_match
-  `);
-
-  const row = res.rows[0];
-  return {
-    from: fromDay ?? null,
-    to: toDay ?? null,
-    totalRegistered: Number(row?.total_registered ?? 0),
-    completedUsers: Number(row?.completed_users ?? 0),
-    withinTargetUsers: Number(row?.within_target_users ?? 0),
-    medianSeconds: roundTenth(row?.median_seconds),
-    p90Seconds: roundTenth(row?.p90_seconds),
-  };
+  `;
 }

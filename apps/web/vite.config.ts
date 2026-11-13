@@ -10,8 +10,16 @@ export default defineConfig({
     proxy: { '/api': { target: 'http://127.0.0.1:3000', changeOrigin: false } },
   },
   build: {
-    // Chunk trận đấu chứa Three.js (~600 KB, ADR-0009), chỉ tải khi vào /play.
-    chunkSizeWarningLimit: 700,
+    // Three.js (ADR-0009) nằm riêng một chunk `three-*.js`, chỉ tải khi vào /play hoặc chạy intro 3D;
+    // tách khỏi mã cảnh của game để trình duyệt giữ cache thư viện qua các lần phát hành (task 8.3).
+    chunkSizeWarningLimit: 800,
+    rolldownOptions: {
+      output: {
+        codeSplitting: {
+          groups: [{ name: 'three', test: /[\\/]node_modules[\\/]three[\\/]/ }],
+        },
+      },
+    },
   },
   test: {
     environment: 'node',

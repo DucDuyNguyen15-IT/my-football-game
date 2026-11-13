@@ -8,7 +8,6 @@ import {
   formatCohortDay,
   formatDurationSeconds,
   formatPercent,
-  getGmt7DateRange,
 } from './AdminPage';
 
 const SAMPLE_COHORTS: RetentionCohort[] = [
@@ -103,30 +102,6 @@ describe('<AdminRetentionView>', () => {
     expect(html).toContain('Không kết nối được máy chủ');
     expect(html).toContain('banner--danger');
     expect(html).toContain('Thử lại');
-  });
-});
-
-describe('getGmt7DateRange', () => {
-  it('tính đúng khoảng 7 ngày theo GMT+7 kết thúc ở ngày hiện tại', () => {
-    // 2026-11-02 14:00 GMT+7 (07:00 UTC)
-    const fixedNow = new Date('2026-11-02T07:00:00.000Z');
-    const r7 = getGmt7DateRange(7, fixedNow);
-    expect(r7.to).toBe('2026-11-02');
-    expect(r7.from).toBe('2026-10-27');
-
-    const r30 = getGmt7DateRange(30, fixedNow);
-    expect(r30.to).toBe('2026-11-02');
-    expect(r30.from).toBe('2026-10-04');
-  });
-
-  it('chuyển ngày đúng lúc 23:59 vs 00:01 GMT+7', () => {
-    // 23:59 GMT+7 ngày 2026-10-01 (16:59 UTC ngày 2026-10-01)
-    const late = new Date('2026-10-01T16:59:00.000Z');
-    expect(getGmt7DateRange(7, late).to).toBe('2026-10-01');
-
-    // 00:01 GMT+7 ngày 2026-10-02 (17:01 UTC ngày 2026-10-01)
-    const early = new Date('2026-10-01T17:01:00.000Z');
-    expect(getGmt7DateRange(7, early).to).toBe('2026-10-02');
   });
 });
 

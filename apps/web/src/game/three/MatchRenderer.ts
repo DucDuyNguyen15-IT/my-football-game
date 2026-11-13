@@ -26,6 +26,7 @@ import { followCamera, initialCamera, type CameraState } from '../render/camera'
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
 import { chargeMeter, lerp, lerpPos } from '../render/view';
+import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
 import {
   REPLAY_AFTER_TICKS,
   ReplayBuffer,
@@ -145,6 +146,9 @@ export class MatchRenderer {
   private readonly taps = createTapLatch();
   private readonly resizeObserver: ResizeObserver;
   private debug: { el: HTMLElement; frames: number; at: number } | null = null;
+  /** Đo FPS cả trận khi mở `/play?perf=1` (task 8.3); null khi chơi thường. */
+  private perf: FrameStats | null = null;
+  private perfReported = false;
   /** Các tick gần nhất để phát lại bàn thắng; `replayAt` = tick bắt đầu phát lại (chờ bóng rung lưới). */
   private readonly history = new ReplayBuffer();
   private replayAt: number | null = null;
@@ -210,7 +214,8 @@ export class MatchRenderer {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
-    if (import.meta.env.DEV) this.createDebugOverlay();
+    if (perfEnabled(window.location.search)) this.perf = new FrameStats();
+    if (import.meta.env.DEV || this.perf) this.createDebugOverlay();
 
     this.draw(this.prev, this.curr, 1, 0);
     this.bridge?.onState(this.curr);
@@ -326,6 +331,7 @@ export class MatchRenderer {
 
   dispose(): void {
     this.disposed = true;
+    this.reportPerf();
     cancelAnimationFrame(this.raf);
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
@@ -370,6 +376,11 @@ export class MatchRenderer {
   private readonly frame = (now: number): void => {
     this.raf = requestAnimationFrame(this.frame);
     const dt = this.lastTime === 0 ? 0 : Math.min((now - this.lastTime) / 1000, MAX_FRAME_SEC);
+    if (this.perf && this.lastTime !== 0) {
+      // Không tính lúc tạm dừng; hết trận thì in kết quả một lần.
+      if (this.curr.phase === 'full_time') this.reportPerf();
+      else if (!this.bridge?.isPaused()) this.perf.record(now - this.lastTime);
+    }
     this.lastTime = now;
     this.applyCommands();
 
@@ -613,7 +624,16 @@ export class MatchRenderer {
     this.camera.updateProjectionMatrix();
   }
 
-  /** Overlay FPS chỉ khi dev. */
+  /** In FPS trung bình / 1% thấp nhất ra console (một lần: lúc hết trận hoặc khi rời trận). */
+  private reportPerf(): void {
+    if (!this.perf || this.perfReported) return;
+    const summary = this.perf.summary();
+    if (!summary) return;
+    this.perfReported = true;
+    console.info(formatFrameSummary(summary));
+  }
+
+  /** Overlay FPS khi dev hoặc `?perf=1`. */
   private createDebugOverlay(): void {
     const el = document.createElement('div');
     Object.assign(el.style, {

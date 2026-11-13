@@ -1,6 +1,6 @@
 # Báo cáo QA & Bảo mật — MFG (My Football Game)
 
-_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Các mục E2E (8.1), Hiệu năng (8.3) và Tiêu chí chấp nhận (8.4) được bổ sung theo tiến độ từng task._
+_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Đã có: Bảo mật (8.2), Hiệu năng (8.3 — phần đo tự động; FPS/bộ nhớ chờ người dùng đo). Các mục E2E (8.1) và Tiêu chí chấp nhận (8.4) được bổ sung theo tiến độ từng task._
 
 ---
 
@@ -55,3 +55,99 @@ Thực hiện trên server thật (`127.0.0.1:3099`, `DATABASE_URL=postgres://pi
 2. **Sửa body + Replay (`POST /api/v1/packs/pack1/open`):** gửi `"payment":"coins","price":0,"coins":999999,"rarity":"legend"` với cùng `Idempotency-Key` 2 lần → lần 1 trả `200` với `balance: 0` (trừ đúng 100 xu), lần 2 trả `200` với payload giống hệt từng byte (`Replay identical: True`), không trừ thêm xu và không mở thêm thẻ.
 3. **Replay kết quả trận (`POST /api/v1/matches/:id/result`):** nộp `0–1` (thua, +15 xu), sau đó gửi lại cùng match token với `20–0` và `"reward":999999` → server vẫn trả kết quả cũ `{"outcome":"loss","reward":15,"balance":15,"missions":[]}`, không cộng thưởng lần 2.
 4. **Gửi song song (race condition):** tài khoản có đúng 100 xu, bắn đồng thời 5 request `POST /api/v1/packs/pack1/open` với 5 `Idempotency-Key` khác nhau → đúng 1 request thành công (`HTTP 200`, `balance: 0`), 4 request còn lại bị chặn (`HTTP 409`, `insufficient_coins`), kiểm tra lại `/api/v1/me` cho `coins: 0` (không âm).
+
+---
+
+## 2. Hiệu năng (8.3)
+
+- **Ngày đo:** 2026-11-14 · **Trạng thái:** phần đo tự động xong; **FPS và rò bộ nhớ chờ người dùng đo trên laptop thật** (mục 2.4).
+- **Máy đo:** Intel Core i7-13620H (16 luồng), 16 GB RAM, Windows 11, Node 26.13, PostgreSQL 16.15 (Docker). Server và công cụ bắn tải chạy cùng máy, lúc đo có tiến trình khác chạy song song nên số dao động giữa các lần.
+- **Script đo** (không nằm trong `pnpm check`; chỉ chạy trên DB tên chứa `perf`, từ chối DB khác):
+  - `DATABASE_URL=postgres://pitch:pitch@localhost:5432/pitch_perf_b pnpm --filter @pitch/server bench:packs`
+  - `DATABASE_URL=postgres://pitch:pitch@localhost:5432/pitch_perf_b pnpm --filter @pitch/server bench:analytics` (xoá sạch dữ liệu DB đó rồi sinh lại)
+
+### 2.1 Kích thước bundle web (`pnpm build`, Vite 8)
+
+Kết luận: Three.js và màn trận **đã được tách chunk và chỉ tải khi cần** từ trước 8.3 (`router.tsx` dùng `React.lazy` cho `PlayPage`, `IntroGate` dùng `import()` cho `IntroRenderer`). `dist/index.html` chỉ nạp `index-*.js` và `modulepreload` `src-*.js`; các chunk 3D chỉ nằm trong danh sách `import()` động. Lưu ý: intro 3D ở lần mở đầu tiên của phiên cũng tải Three.js (theo thiết kế, tải song song với màn đăng nhập/menu; bỏ qua khi `prefers-reduced-motion`).
+
+Thay đổi ở 8.3: tách thư viện Three.js khỏi mã cảnh của game thành chunk `three-*.js` riêng (`build.rolldownOptions.output.codeSplitting.groups` trong `apps/web/vite.config.ts`). Tổng dung lượng gần như không đổi; lợi ích là tên chunk rõ ràng và trình duyệt giữ cache thư viện (~216 kB gzip) khi chỉ mã game đổi giữa các lần phát hành.
+
+| Chunk | Khi nào tải | Trước (raw / gzip) | Sau (raw / gzip) |
+|---|---|---|---|
+| `index-*.js` (React, router, TanStack Query, dnd-kit, mọi màn ngoài trận) | Ngay khi mở trang | 510,81 kB / 157,99 kB | 510,66 kB / 157,93 kB |
+| `src-*.js` (Zod, `@pitch/shared`, phần `@pitch/sim` dùng chung) | Ngay (modulepreload) | 140,07 kB / 44,63 kB | 140,07 kB / 44,63 kB |
+| `index-*.css` | Ngay | 68,38 kB / 14,02 kB | 68,38 kB / 14,02 kB |
+| `PlayPage-*.js` (màn trận, HUD, renderer) | Vào `/play` | 72,97 kB / 24,45 kB | 74,00 kB / 24,82 kB |
+| `PlayPage-*.css` | Vào `/play` | 13,46 kB / 3,45 kB | 13,46 kB / 3,45 kB |
+| `lighting-*.js` | Vào `/play` hoặc intro 3D | 781,24 kB / 222,38 kB (Three.js + mã cảnh dùng chung) | 12,20 kB / 5,66 kB (chỉ còn mã cảnh dùng chung) |
+| `three-*.js` (thư viện Three.js) | Vào `/play` hoặc intro 3D | — (nằm trong `lighting`) | 768,73 kB / 216,32 kB |
+| `IntroRenderer-*.js` | Intro 3D | 6,48 kB / 2,78 kB | 6,51 kB / 2,80 kB |
+| **JS tải ban đầu** | | **650,88 kB / 202,62 kB** | **650,73 kB / 202,56 kB** |
+| **JS chỉ tải khi vào trận/intro** | | **860,69 kB / 249,61 kB** | **861,44 kB / 249,60 kB** |
+
+Font (`@fontsource`, woff/woff2 6–22 kB mỗi file): trình duyệt chỉ tải subset đang dùng. Chưa làm: lazy-load từng màn menu (Đội hình có dnd-kit, Admin) để giảm `index-*.js` — đã ghi `docs/BACKLOG.md`.
+
+### 2.2 `POST /api/v1/packs/:code/open` dưới tải (autocannon)
+
+Cấu hình: `apps/server/scripts/bench-pack-open.ts`, autocannon 9, **20 kết nối × 15 giây**, bắn liên tục không giới hạn tốc độ (nặng hơn "tải nhẹ" thực tế). Mỗi kết nối là một người chơi riêng (đăng ký qua `POST /auth/register`, cấp 5.000.000 xu qua `POST /dev/grant-coins` — có ghi sổ cái), mỗi request một `Idempotency-Key` mới, trả bằng xu. Server dựng trong cùng tiến trình ở `127.0.0.1:3102`, DB `pitch_perf_b` (đang chứa sẵn 5.000 user + 204.000 `analytics_events` của mục 2.3), pool Postgres 10 kết nối (mặc định). **Rate limit tắt** qua option có sẵn `buildApp({ rateLimit: false })` (bật thì mỗi người chơi chỉ được 100 req/phút nên không đo được); route dev bật qua `enableDevRoutes: true`. Phân vị tính từ thời gian phản hồi của từng request (nearest-rank).
+
+| Lần đo | Gói | Số request | req/s | p50 | p95 | p99 | max | Không phải 2xx / lỗi / timeout | Sổ cái lệch sau đo |
+|---|---|---|---|---|---|---|---|---|---|
+| 1 | `pack1` | 8.791 | 586 | 33,5 ms | **41,5 ms** | 48,7 ms | 73,7 ms | 0 / 0 / 0 | 0 |
+| 2 | `pack1` | 6.066 | 404 | 48,0 ms | **61,4 ms** | 74,3 ms | 95,2 ms | 0 / 0 / 0 | 0 |
+| 3 | `pack5` | 5.468 | 365 | 52,8 ms | **71,0 ms** | 83,9 ms | 116,0 ms | 0 / 0 / 0 | 0 |
+
+Kết luận: p95 41–71 ms khi 20 người chơi mở gói liên tục, không lỗi, `findLedgerMismatches` = 0 sau hơn 20.000 lượt mở. Không có điểm nghẽn cần tối ưu nên **không đổi code mở gói** (không có số "sau"). Độ trễ chủ yếu do xếp hàng: 20 kết nối HTTP dùng chung 10 kết nối DB, mỗi lượt mở là một transaction khoảng 12 câu lệnh.
+
+### 2.3 Truy vấn retention / onboarding trên dữ liệu lớn
+
+Cấu hình: `apps/server/scripts/bench-analytics.ts` sinh dữ liệu giả tất định trong `pitch_perf_b`: **5.000 user** đăng ký rải đều 60 ngày, **204.000 `analytics_events`** (5.000 `register`, 4.000 `match_start` đầu tiên, còn lại rải theo ngày từ lúc đăng ký tới hôm nay). Mỗi truy vấn chạy 1 lần làm nóng + 7 lần đo, lấy trung vị (thời gian đo ở Node, gồm cả đường đi tới Postgres).
+
+| Khoảng | `getRetentionCohorts` p50 / max | `getOnboardingStats` p50 / max |
+|---|---|---|
+| `days=7` (6 cohort) | 84,9 ms / 90,8 ms | 5,1 ms / 5,3 ms |
+| `days=30` (29 cohort) | 90,9 ms / 99,4 ms | 8,1 ms / 8,4 ms |
+| Không lọc (60 cohort) | 92,0 ms / 97,1 ms | 12,7 ms / 13,3 ms |
+
+`EXPLAIN (ANALYZE, BUFFERS)` với `days=30`:
+- **Retention** (114 ms, gồm cả chi phí đo của EXPLAIN): CTE `activity` quét tuần tự song song toàn bộ `analytics_events` (204.000 dòng, 1.801 buffer, ~12 ms) → `HashAggregate` còn 126.079 cặp (user, ngày) (xong ở ~72 ms, tràn 3,5 MB ra đĩa do `work_mem` mặc định 4 MB) → hai `Hash Right Join` với 2.427 user của khoảng → `GroupAggregate` 29 dòng. Lọc `users.created_at` dùng `Seq Scan` (5.000 dòng, 0,3 ms).
+- **Onboarding** (10 ms): `Bitmap Index Scan` trên `analytics_events_name_created_idx` cho `register` trong khoảng (2.427 dòng) và cho `match_start` (39.000 dòng) → `Hash Right Join` → phân vị.
+
+Kết luận: cả hai thấp hơn nhiều so với ngưỡng 500 ms nên **không đổi câu truy vấn, không thêm index/migration** (không có số "sau"). Thay đổi code duy nhất ở server: tách phần dựng SQL thành `retentionCohortsQuery` / `onboardingStatsQuery` (giữ nguyên câu SQL) để script chạy được `EXPLAIN`. Ghi chú mở: thời gian retention tỉ lệ với **tổng** số sự kiện chứ không theo khoảng `days` (CTE `activity` không lọc `created_at`); ước lượng tuyến tính chạm 500 ms ở khoảng 1 triệu sự kiện. Khi tới gần mức đó: giới hạn `activity` theo `created_at` trong `[from + 1 ngày, to + 8 ngày)` — đã ghi `docs/BACKLOG.md`.
+
+### 2.4 FPS và rò bộ nhớ — người dùng tự đo trên laptop thật
+
+Mục tiêu PRD §10: **≥ 55 FPS trung bình** cả trận trên laptop tầm trung (GPU tích hợp), Chrome; không rò bộ nhớ sau 20 lần vào/ra trận.
+
+Công cụ có sẵn trong game (8.3 thêm): mở trận với **`?perf=1`** (VD `/play?perf=1`). Góc trên trái hiện FPS tức thời; khi hết trận (hoặc khi thoát trận giữa chừng) console in một dòng dạng:
+`[perf] FPS TB 58.7 · 1% thấp nhất 41.2 · khung chậm nhất 35.1 ms · 20540 khung / 350.0 s` (số minh hoạ).
+"1% thấp nhất" = FPS trung bình của 1% khung hình chậm nhất. Không tính lúc tạm dừng và khung dài hơn 1 giây (tab bị ẩn); có tính đoạn phát lại bàn thắng. Không có `?perf=1` thì game không đo gì.
+
+**Chuẩn bị**
+1. Cắm sạc, chế độ nguồn Windows "Hiệu suất tốt nhất", đóng ứng dụng nặng. Chrome bản mới, bật tăng tốc phần cứng (`chrome://settings/system`), kiểm `chrome://gpu` thấy "WebGL: Hardware accelerated". Dùng cửa sổ ẩn danh (không extension), phóng to toàn màn hình.
+2. Chạy bản build (số đo sát thực tế hơn bản dev): `docker compose -f docker-compose.dev.yml up -d`, `pnpm build`, rồi mở 2 terminal: `pnpm --filter @pitch/server dev` và `pnpm --filter @pitch/web preview` → mở `http://localhost:4173`, đăng nhập. (Muốn trận ngắn để thử nhanh thì dùng `pnpm dev` và `http://localhost:5173/play?perf=1&autopilot=1&half=60`; số chính thức lấy từ bản build, trận đủ thời lượng, tự chơi.)
+
+**Đo FPS** (mỗi preset đồ hoạ một trận: Cao và Thấp — đổi trong menu tạm dừng → Đồ hoạ)
+1. Mở DevTools (F12) → tab Console, rồi vào `http://localhost:4173/play?perf=1`, chọn độ khó, chơi hết trận.
+2. Hết trận, chép dòng `[perf] …` vào bảng dưới.
+3. (Tuỳ chọn, để tìm điểm nghẽn nếu < 55 FPS) DevTools → Performance → Record khoảng 20 giây giữa trận → xem biểu đồ Frames và phần Main/GPU.
+
+| Preset | Máy (CPU / GPU / độ phân giải) | FPS TB | 1% thấp nhất | Khung chậm nhất (ms) | Đạt ≥ 55? |
+|---|---|---|---|---|---|
+| Cao | | | | | |
+| Thấp | | | | | |
+
+**Kiểm rò bộ nhớ (vào/ra trận 20 lần)**
+1. Mở `http://localhost:4173` (trang chủ), DevTools → tab Memory, chọn "Heap snapshot".
+2. Một vòng = vào `/play` → bắt đầu trận → chờ khoảng 10 giây → Esc → thoát trận về trang chủ.
+3. Sau vòng 1: bấm biểu tượng thùng rác (Collect garbage) rồi "Take snapshot", ghi dung lượng snapshot (MB). Lặp lại sau vòng 10 và vòng 20 (luôn bấm thùng rác trước khi chụp).
+4. Đồng thời mở Trình quản lý tác vụ của Chrome (Shift+Esc), bật cột "Bộ nhớ GPU", ghi số của tab ở 3 mốc.
+5. Đạt nếu heap và bộ nhớ GPU sau vòng 20 không tăng đều so với vòng 10 (chênh ≤ ~10% hoặc vài MB). Nếu tăng đều: trong tab Memory chọn snapshot 20 → "Comparison" với snapshot 1, lọc `WebGL`, `Texture`, `BufferGeometry`, `MatchRenderer`, `Detached` để tìm đối tượng còn bị giữ; console báo "Too many active WebGL contexts" cũng là dấu hiệu rò.
+
+| Mốc | JS heap sau GC (MB) | Bộ nhớ GPU của tab (MB) | Ghi chú |
+|---|---|---|---|
+| Sau 1 lần vào/ra | | | |
+| Sau 10 lần | | | |
+| Sau 20 lần | | | |
+
+Rà tĩnh phía code (không thay cho số đo): `MatchCanvas` huỷ renderer khi unmount; `MatchRenderer.dispose()` huỷ vòng `requestAnimationFrame`, listener phím/blur, `ResizeObserver`, hậu kỳ, toàn bộ geometry/material/texture của scene và model cầu thủ, gọi `renderer.dispose()` + `forceContextLoss()` và gỡ canvas.
