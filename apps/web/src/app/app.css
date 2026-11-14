@@ -1,4 +1,4 @@
-/* Giao diện ngoài trận: khung, nút, form, menu chính, intro (docs/DESIGN.md §4–6). Token ở styles/tokens.css. */
+/* Giao diện ngoài trận v3 — Sa Bàn Hoàng Kim (Editorial Luxury · Chế độ Sáng). Token ở styles/tokens.css. */
 *,
 *::before,
 *::after {
@@ -7,11 +7,17 @@
 
 body {
   margin: 0;
-  background: var(--c-bg);
+  min-height: 100vh;
+  background:
+    radial-gradient(circle at 12% 14%, rgb(10 104 71 / 0.06), transparent 44%),
+    linear-gradient(90deg, rgb(158 146 125 / 0.08) 1px, transparent 1px) 0 0 / 48px 48px,
+    linear-gradient(rgb(158 146 125 / 0.08) 1px, transparent 1px) 0 0 / 48px 48px,
+    var(--c-bg);
   color: var(--c-text);
   font-family: var(--font-body);
   font-size: var(--fs-md);
   line-height: var(--lh-normal);
+  -webkit-font-smoothing: antialiased;
 }
 
 a {
@@ -37,7 +43,7 @@ a {
   white-space: nowrap;
 }
 
-/* Chờ server: nút khoá + spinner, không đổi kích thước (DESIGN.md §4) */
+/* Chờ server: nút khoá + spinner, không đổi kích thước */
 .spinner {
   width: 1em;
   height: 1em;
@@ -64,6 +70,7 @@ a {
   max-width: var(--layout-max);
   margin: 0 auto;
   padding: var(--sp-5);
+  counter-reset: ed-panel;
 }
 
 .field__hint {
@@ -77,14 +84,15 @@ a {
   font-size: var(--fs-sm);
 }
 
-/* Intro 3D (task 6.6) */
+/* Intro 3D (mở game trên nền sân đêm có đèn pha → giữ nền tối ăn khớp Three.js canvas) */
 .intro {
   position: fixed;
   inset: 0;
   z-index: var(--z-overlay);
   display: grid;
   place-items: center;
-  background: var(--c-bg);
+  background: var(--c-pitch-felt-deep);
+  color: var(--c-card-ink);
   cursor: pointer;
   transition: opacity var(--dur-base) var(--ease-out);
 }
@@ -109,8 +117,10 @@ a {
   font-size: clamp(4rem, 14vw, 10rem);
   line-height: var(--lh-tight);
   letter-spacing: 0.16em;
-  color: var(--c-text);
-  text-shadow: 0 0 32px rgb(200 240 49 / 0.45);
+  color: var(--c-card-ink);
+  text-shadow:
+    0 2px 28px rgb(212 155 26 / 0.45),
+    0 8px 24px rgb(0 0 0 / 0.65);
   opacity: 0;
   animation: intro-logo 900ms var(--ease-out) forwards;
 }
@@ -118,7 +128,7 @@ a {
   font-size: var(--fs-lg);
   letter-spacing: 0.4em;
   text-transform: uppercase;
-  color: var(--c-accent);
+  color: var(--r-gold-hi);
   text-shadow: none;
 }
 .intro__skip {
@@ -126,7 +136,7 @@ a {
   bottom: var(--sp-6);
   margin: 0;
   font-size: var(--fs-sm);
-  color: var(--c-text-muted);
+  color: var(--c-card-muted);
 }
 @keyframes intro-logo {
   from {
@@ -149,5 +159,11 @@ a {
 @keyframes intro-fade {
   to {
     opacity: 1;
+  }
+}
+
+@media (max-width: 720px) {
+  .page {
+    padding: var(--sp-3);
   }
 }

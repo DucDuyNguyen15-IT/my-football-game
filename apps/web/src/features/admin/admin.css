@@ -1,134 +1,118 @@
-/* Giao diện quản trị — retention theo ngày đăng ký (docs/design/screens/admin.html, screens2.js §14) */
-
+/*
+ * Trang Quản trị Retention v3 — Hướng B "Sa Bàn Hoàng Kim" (Editorial Luxury · Chế độ Sáng).
+ * Bảng số liệu kem ngà ấm, đường kẻ mảnh và chữ số tabular có độ tương phản cao.
+ */
 .admin-page {
-  padding: 24px 32px;
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
+  display: grid;
+  gap: var(--sp-5);
 }
-
 .admin-head {
   display: flex;
-  align-items: center;
-  gap: 16px;
   flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--c-line);
 }
-
 .admin-head__spacer {
   flex: 1;
+}
+.admin-forbidden {
+  max-width: 520px;
+  display: grid;
+  justify-items: start;
+  gap: var(--sp-3);
+}
+.admin-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
 }
 
 .admin-stats {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 16px;
+  gap: var(--sp-4);
 }
-
-.admin-stat {
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.admin-stat__num {
-  font-size: 40px;
-  line-height: 1.1;
-}
-
-.admin-stat__sub {
-  font-size: 12px;
-  min-height: 16px;
-}
-
-.admin-table-panel {
-  padding: 8px 12px;
-}
-
-.admin-table-note {
-  margin: 8px 12px;
-  font-size: 12px;
-}
-
-.admin-rate-cell {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  justify-content: flex-end;
-}
-
-.admin-rate-bar {
-  width: 120px;
-}
-
-.admin-rate-val {
-  width: 48px;
-  text-align: right;
-}
-
-.admin-empty {
-  padding: 32px 16px;
-  text-align: center;
-}
-
-.admin-forbidden {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 16px;
-  padding: 48px 24px;
-  text-align: center;
-}
-
-.admin-error {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-}
-
-.admin-onboarding {
-  padding: 16px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.admin-onboarding__head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  flex-wrap: wrap;
-}
-
-.admin-onboarding__grid {
-  display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-}
-
-.admin-onboarding__metric {
-  display: flex;
-  flex-direction: column;
-  gap: 2px;
-}
-
-.admin-onboarding__val {
-  font-size: 28px;
-  line-height: 1.1;
-}
-
-@media (max-width: 768px) {
-  .admin-page {
-    padding: 16px;
-  }
-
+@media (max-width: 780px) {
   .admin-stats {
     grid-template-columns: 1fr;
   }
+}
+.admin-stat {
+  display: grid;
+  gap: var(--sp-1);
+}
+.admin-stat__num {
+  font-size: var(--fs-2xl);
+  color: var(--c-text);
+  line-height: 1.05;
+}
+.admin-stat__sub {
+  font-size: var(--fs-xs);
+}
 
+.admin-onboarding {
+  display: grid;
+  gap: var(--sp-4);
+}
+.admin-onboarding__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+.admin-onboarding__grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+@media (max-width: 820px) {
   .admin-onboarding__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
+}
+.admin-onboarding__metric {
+  display: grid;
+  gap: var(--sp-1);
+  padding: var(--sp-3);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+}
+.admin-onboarding__val {
+  font-size: var(--fs-xl);
+  color: var(--c-accent);
+}
+
+.admin-table-panel {
+  display: grid;
+  gap: var(--sp-3);
+  overflow-x: auto;
+}
+.admin-empty {
+  margin: var(--sp-4) 0;
+  text-align: center;
+}
+.admin-table-note {
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+.admin-rate-cell {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.admin-rate-bar {
+  width: 76px;
+}
+.admin-rate-val {
+  min-width: 50px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-sm);
 }

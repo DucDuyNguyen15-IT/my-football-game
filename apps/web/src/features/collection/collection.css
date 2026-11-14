@@ -1,21 +1,28 @@
-/* Kho thẻ — theo docs/design/screens/collection*.html. Component chung ở styles/ui.css. */
+/*
+ * Kho thẻ v3 — Hướng B "Sa Bàn Hoàng Kim" (Editorial Luxury · Chế độ Sáng).
+ * Lưới thẻ trưng bày nổi bật trên nền giấy ngà ấm cùng bảng chi tiết kem đôi viền.
+ */
 .coll {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 380px;
+  grid-template-columns: 1fr;
   gap: var(--sp-5);
   align-items: start;
 }
+.coll.has-detail {
+  grid-template-columns: 1fr 410px;
+}
 .coll__main {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
+  display: grid;
+  gap: var(--sp-4);
   min-width: 0;
 }
 .coll__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
+  padding-bottom: var(--sp-3);
+  border-bottom: 1px solid var(--c-line);
 }
 .coll__count {
   font-size: var(--fs-xl);
@@ -24,7 +31,7 @@
   flex: 1;
 }
 .coll__search {
-  width: 220px;
+  width: 240px;
 }
 .coll__sort {
   display: inline-flex;
@@ -33,10 +40,13 @@
   font-size: var(--fs-sm);
 }
 .coll__sort .input {
-  width: 170px;
+  width: auto;
   height: 36px;
+  padding-right: 28px;
   font-size: var(--fs-sm);
 }
+
+/* Bộ lọc chip vị trí, độ hiếm & đang trong đội hình */
 .coll__filters {
   display: flex;
   flex-wrap: wrap;
@@ -44,53 +54,52 @@
   gap: var(--sp-2) var(--sp-4);
 }
 .chips {
-  display: flex;
+  display: inline-flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-2);
-}
-.coll__pips {
-  color: var(--hi);
-  font-size: 10px;
-}
-.coll__dot {
-  color: var(--c-info);
+  gap: 6px;
 }
 .coll-skel__chip {
-  width: 56px;
+  width: 72px;
   height: 32px;
-  border-radius: 999px;
+}
+.coll__pips {
+  font-size: 9px;
+  letter-spacing: 1px;
+  color: var(--ink, var(--c-text));
+}
+.chip.is-on .coll__pips,
+.chip[aria-pressed='true'] .coll__pips {
+  color: var(--hi, var(--c-accent-ink));
+}
+.coll__dot {
+  font-size: 9px;
+  color: var(--c-info);
+}
+.chip.is-on .coll__dot,
+.chip[aria-pressed='true'] .coll__dot {
+  color: #9fd0ff;
 }
 .coll__toast {
-  width: auto;
-  margin: 0;
-}
-.coll__toast > span:last-child {
-  color: var(--c-text);
-}
-.coll .banner {
   margin: 0;
 }
 
+/* Lưới thẻ */
 .coll__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: 14px 12px;
+  list-style: none;
   margin: 0;
   padding: 0;
-  list-style: none;
-}
-.coll__grid .skel--card,
-.coll-item .card {
-  --card-w: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(var(--card-w-md), 1fr));
+  gap: var(--sp-4);
+  justify-items: center;
 }
 .coll-item {
-  display: block;
-  width: 100%;
   padding: 0;
-  border: 0;
+  border: none;
   background: none;
   cursor: pointer;
+  border-radius: var(--radius-md);
   transition: transform var(--dur-fast) var(--ease-out);
 }
 .coll-item:hover:not(:disabled) {
@@ -103,59 +112,54 @@
   outline: 2px solid var(--c-focus);
   outline-offset: 4px;
 }
+
 .coll__legend {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2) 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   font-size: var(--fs-xs);
 }
 .coll__empty {
-  border: 1px dashed var(--c-line-strong);
-  border-radius: var(--radius-lg);
+  padding: var(--sp-7) var(--sp-5);
 }
 .coll__empty-actions {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
 }
 
-/* Panel chi tiết */
+/* Bảng chi tiết thẻ bên phải */
+.panel.coll__detail,
 .coll__detail {
   position: sticky;
-  top: var(--sp-5);
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 20px;
-  min-height: 420px;
-}
-.coll__hint {
-  margin: auto 0;
-  text-align: center;
-  font-size: var(--fs-sm);
-}
-.coll__detail .coll__close {
-  display: none;
-  position: absolute;
-  top: 8px;
-  right: 8px;
-}
-.coll__who {
-  display: flex;
+  top: 76px;
+  display: grid;
   gap: var(--sp-4);
 }
-.coll__who .card {
-  --card-w: 150px;
-  flex: none;
+.coll__hint {
+  margin: 0;
+  font-size: var(--fs-sm);
+}
+.coll__close {
+  justify-self: end;
+}
+.coll__who {
+  --card-w-lg: 156px;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
 }
 .coll__who-info {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: var(--sp-2);
   min-width: 0;
+  flex: 1;
+  display: grid;
+  gap: 4px;
 }
 .coll__name {
-  font-size: var(--fs-xl);
+  margin: 0;
+  word-break: break-word;
 }
 .coll__nick {
   font-size: var(--fs-sm);
@@ -163,26 +167,27 @@
 .coll__badges {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 6px;
+  margin-top: 4px;
 }
+.coll__badges .tag {
+  white-space: nowrap;
+}
+
+/* Bảng chỉ số chi tiết */
 .coll__stats td {
-  padding: 5px 0;
-  border-bottom: 0;
-}
-.coll__stats td:first-child {
-  width: 44px;
-}
-.coll__stats td:nth-child(2) {
-  padding: 5px 8px;
+  padding: 6px 6px;
 }
 .coll__stat-bar {
-  width: 120px;
+  width: 90px;
 }
 .coll__stat-n {
-  width: 36px;
-  padding-left: 10px !important;
-  font-size: var(--fs-lg);
+  width: 34px;
+  font-size: var(--fs-md);
+  color: var(--c-text);
 }
+
 .coll__level {
   display: flex;
   align-items: center;
@@ -190,132 +195,81 @@
 }
 .coll__level .bar {
   flex: 1;
+  height: 8px;
 }
 .coll__level-n {
   font-size: var(--fs-lg);
+  color: var(--c-accent);
 }
+
 .coll__actions {
-  margin-top: auto;
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: var(--sp-2);
+  padding-top: var(--sp-3);
+  border-top: 1px solid var(--c-line);
 }
 .coll__actions-row {
   display: flex;
-  gap: 10px;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
 }
-.coll__actions-row .btn {
-  flex: 1;
+.coll__actions-row > * {
+  flex: 1 1 120px;
 }
 .coll__reason {
   font-size: var(--fs-xs);
+  line-height: 1.45;
 }
 
-/* Thanh bán nhiều thẻ */
+/* Thanh chọn bán hàng loạt nổi dưới chân trang */
 .coll__bar {
   position: fixed;
   left: 50%;
-  bottom: var(--sp-5);
+  bottom: 20px;
+  transform: translateX(-50%);
   z-index: var(--z-overlay);
-  translate: -50% 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3);
-  padding: 10px 14px;
-  background: var(--c-surface-3);
-  border: 1px solid var(--c-line-strong);
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface-1);
+  color: var(--c-text);
+  border: 2px solid var(--c-gold-leaf);
+  outline: 1px solid var(--c-line-strong);
+  outline-offset: -5px;
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2);
+  max-width: calc(100vw - 32px);
 }
 
-/* Hộp thoại bán */
-.sell-dialog {
-  color: var(--c-text);
-}
-.sell-dialog::backdrop {
-  background: var(--c-scrim);
-}
+/* Hộp thoại xác nhận bán */
 .sell-dialog__one {
   display: flex;
-  gap: 14px;
   align-items: center;
-}
-.sell-dialog__one .card {
-  --card-w: 72px;
-  flex: none;
-}
-.dialog__body b {
-  color: var(--c-text);
-  font-weight: 600;
-}
-.dialog__body p {
-  margin: 0;
+  gap: var(--sp-4);
 }
 .sell-dialog__warn {
   margin: var(--sp-2) 0 0;
-  padding-left: 1.2em;
+  padding-left: 18px;
+  display: grid;
+  gap: 4px;
   color: var(--c-warning);
+  font-size: var(--fs-sm);
 }
 
-/* Màn hẹp: chi tiết thành tấm trượt dưới đáy khi đã chọn thẻ. */
-@media (max-width: 1000px) {
-  .coll {
+@media (max-width: 1080px) {
+  .coll.has-detail {
     grid-template-columns: 1fr;
   }
-  .coll__grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-  }
+  .panel.coll__detail,
   .coll__detail {
-    display: none;
-  }
-  .coll.has-detail .coll__detail {
-    display: flex;
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    top: auto;
-    z-index: var(--z-overlay);
-    max-height: 70vh;
-    min-height: 0;
-    overflow: auto;
-    background: var(--c-surface-2);
-    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
-    box-shadow: 0 -12px 32px rgb(0 0 0 / 0.5);
-  }
-  .coll.has-detail {
-    padding-bottom: 70vh;
-  }
-  .coll__detail .coll__close {
-    display: inline-flex;
-  }
-}
-@media (max-width: 560px) {
-  .coll__grid {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    position: static;
   }
 }
 
-/* Nút bấm giữ (components/HoldButton.tsx) */
-.hold {
-  position: relative;
-  overflow: hidden;
-}
-.hold__fill {
-  position: absolute;
-  inset: 0;
-  background: rgb(255 90 78 / 0.35);
-  transform: scaleX(0);
-  transform-origin: left;
-}
-.hold.is-holding .hold__fill {
-  transform: scaleX(1);
-  transition: transform var(--hold-ms, 1s) linear;
-}
-.hold__label {
-  position: relative;
-  display: inline-flex;
-  align-items: center;
-  gap: var(--sp-2);
+@media (prefers-reduced-motion: reduce) {
+  .coll-item {
+    transition: none;
+  }
 }

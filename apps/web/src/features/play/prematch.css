@@ -1,271 +1,346 @@
-/* Trước trận + đối đầu — theo docs/design/screens/prematch*.html, versus.html. */
+/*
+ * Trước trận & Màn Đối Đầu (VS) v3 — Hướng B "Sa Bàn Hoàng Kim".
+ * Chọn độ khó (.pm) dùng nền giấy ngà ấm & panel kem viền đôi ấn phẩm;
+ * màn Đối đầu (.vs) chuyển sang nỉ xanh đậm để nối liền mượt vào trận 3D không loé trắng.
+ */
 .pm-shell {
+  min-height: 100vh;
   height: 100%;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
 }
 .pm {
-  flex: 1;
   width: 100%;
-  max-width: 1040px;
+  max-width: 1060px;
   margin: 0 auto;
   padding: var(--sp-6) var(--sp-5);
-  box-sizing: border-box;
-  display: flex;
-  flex-direction: column;
-  gap: 22px;
+  display: grid;
+  gap: var(--sp-5);
 }
 .pm__crumbs {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-4);
+  gap: var(--sp-3);
 }
 .pm__title {
-  font-size: 56px;
+  margin: 0;
 }
-.pm .banner svg,
-.vs .banner svg {
-  flex: none;
-}
+
 .pm__options {
-  display: flex;
-  gap: var(--sp-5);
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
 }
+@media (max-width: 720px) {
+  .pm__options {
+    grid-template-columns: 1fr;
+  }
+}
+
 .pm-opt {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-  padding: 28px;
   text-align: left;
-  color: var(--c-text);
-  font: inherit;
-  border-width: 2px;
-  border-color: var(--c-line);
-  background: var(--c-surface-1);
   cursor: pointer;
+  display: grid;
+  gap: var(--sp-3);
+  align-content: start;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    transform var(--dur-fast) var(--ease-out),
+    box-shadow var(--dur-fast) var(--ease-out);
 }
 .pm-opt:hover {
   border-color: var(--c-line-control);
+  transform: translateY(-2px);
 }
 .pm-opt.is-on {
   border-color: var(--c-accent);
-  background: rgb(200 240 49 / 0.06);
-}
-.pm-opt:focus-visible {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
+  outline-color: var(--c-accent);
+  background:
+    radial-gradient(90% 60% at 50% 0%, rgb(10 104 71 / 0.08), transparent 64%),
+    var(--c-surface-1);
+  box-shadow:
+    inset 0 0 0 1px var(--c-accent),
+    var(--shadow-2);
 }
 .pm-opt__title {
-  font-size: 48px;
-  text-transform: uppercase;
+  font-size: var(--fs-xl);
+  color: var(--c-text);
+}
+.pm-opt.is-on .pm-opt__title {
+  color: var(--c-accent);
 }
 .pm-opt__desc {
-  font-size: var(--fs-md);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+  min-height: 2.8em;
 }
 .pm-opt__rewards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-2);
-  padding-top: 14px;
-  border-top: 1px solid var(--c-line);
+  padding: var(--sp-3);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
 }
 .pm-opt__reward {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
+  display: grid;
+  gap: 2px;
 }
 .pm-opt__shootout {
   font-size: var(--fs-xs);
+  line-height: 1.45;
 }
+
 .pm__foot {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-5);
-  margin-top: auto;
-  font-size: var(--fs-sm);
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4) var(--sp-5);
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-md);
 }
 .pm__cap {
   color: var(--c-warning);
+  font-weight: 600;
 }
 .pm__spacer {
   flex: 1;
 }
-@media (max-width: 760px) {
-  .pm__options {
-    flex-direction: column;
-  }
-  .pm__title {
-    font-size: var(--fs-2xl);
+.pm__team {
+  font-size: var(--fs-sm);
+}
+
+/* =========================================================
+ * MÀN ĐỐI ĐẦU (VERSUS) — Nỉ xanh đậm trước giờ giao bóng
+ * ========================================================= */
+.vs {
+  position: relative;
+  min-height: 100vh;
+  display: grid;
+  grid-template-rows: 1fr auto;
+  padding: var(--sp-6) var(--sp-6) var(--sp-7);
+  background:
+    radial-gradient(85% 75% at 50% 45%, var(--c-pitch-felt) 0%, #0d2e20 58%, var(--c-pitch-felt-deep) 100%);
+  color: var(--c-card-ink);
+  overflow: hidden;
+}
+.vs .muted,
+.vs .label {
+  color: var(--c-card-muted);
+}
+.vs .coin {
+  color: var(--r-gold-hi);
+}
+.vs .btn--ghost {
+  color: var(--c-card-ink);
+}
+.vs .btn--ghost:hover:not(:disabled) {
+  background: rgb(250 248 243 / 0.12);
+  border-color: rgb(250 248 243 / 0.28);
+  color: var(--c-card-ink);
+}
+.vs .banner {
+  background: rgb(11 26 19 / 0.9);
+  border-color: var(--r-gold-hi);
+  color: var(--c-card-ink);
+}
+
+.vs__sides {
+  position: relative;
+  z-index: 2;
+  max-width: 1260px;
+  width: 100%;
+  margin: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: clamp(32px, 8vw, 120px);
+  align-items: center;
+}
+@media (max-width: 900px) {
+  .vs__sides {
+    grid-template-columns: 1fr;
+    gap: var(--sp-5);
   }
 }
 
-/* ---------- Màn đối đầu ---------- */
-.vs {
-  position: relative;
-  height: 100%;
-  overflow: hidden;
-}
-.vs__sides {
-  position: absolute;
-  inset: 0;
-  display: flex;
-}
-.vs-side {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
-  gap: 18px;
-  padding: 0 56px 120px;
-  --team: var(--c-team-home);
-}
-.vs-side--home {
-  align-items: flex-start;
-  background: linear-gradient(90deg, rgb(63 169 245 / 0.13), transparent 70%);
-}
-.vs-side--away {
-  --team: var(--c-team-away);
-  align-items: flex-end;
-  background: linear-gradient(270deg, rgb(255 122 69 / 0.13), transparent 70%);
-}
-.vs-side__sub {
-  color: var(--team);
-}
-.vs-side__name {
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  font-size: 56px;
-  text-transform: uppercase;
-  overflow-wrap: anywhere;
-}
-.vs-side--away .vs-side__name {
-  flex-direction: row-reverse;
-}
-.vs-side__sw {
-  flex: none;
-  width: 16px;
-  height: 40px;
-  background: var(--team);
-}
-.vs-side__ovr {
-  display: flex;
-  align-items: baseline;
-  gap: 10px;
-}
-.vs-side__num {
-  font-size: var(--fs-3xl);
-  line-height: 0.9;
-}
-.vs-side__cards {
-  --card-w: 60px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--sp-2);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.vs-side--away .vs-side__cards {
-  justify-content: flex-end;
-}
-.vs-side__cards .card {
-  --card-w: 60px;
-}
-.vs-side__blank {
-  display: grid;
-  place-items: center;
-  width: 60px;
-  aspect-ratio: 5 / 7;
-  border: 1px solid var(--c-line-strong);
-  color: var(--c-text-muted);
-  font-family: var(--font-display);
-  font-weight: 700;
-}
 .vs__line {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
+  stroke: rgb(250 248 243 / 0.22);
+  stroke-width: 1.5;
   pointer-events: none;
-}
-.vs__line line {
-  stroke: rgb(232 240 230 / 0.25);
-  stroke-width: 2;
+  z-index: 1;
 }
 .vs__ring {
   position: absolute;
   left: 50%;
-  top: calc(50% - 40px);
-  width: 192px;
-  height: 192px;
-  border-radius: 50%;
+  top: 46%;
+  width: 112px;
+  height: 112px;
   transform: translate(-50%, -50%);
-  background: var(--c-bg);
-  border: 2px solid rgb(232 240 230 / 0.35);
+  border-radius: 50%;
+  border: 2px solid rgb(255 229 143 / 0.45);
   pointer-events: none;
+  z-index: 1;
 }
 .vs__mark {
   position: absolute;
   left: 50%;
-  top: calc(50% - 40px);
+  top: 46%;
   transform: translate(-50%, -50%);
-  font-size: 72px;
-  line-height: 1;
-  color: var(--c-accent);
-  pointer-events: none;
-}
-.vs__back {
-  position: absolute;
-  left: var(--sp-5);
-  top: var(--sp-5);
-}
-.vs__foot {
-  position: absolute;
-  left: 0;
-  right: 0;
-  bottom: var(--sp-7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-3);
-}
-.vs__meta {
-  font-size: var(--fs-sm);
-}
-.vs__link {
-  padding: 0;
-  border: 0;
-  background: none;
-  color: var(--c-text);
-  font: inherit;
-  text-decoration: underline;
-  cursor: pointer;
-}
-.vs__link:hover {
-  color: #fff;
+  z-index: 3;
+  display: inline-grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  background: #0b2419;
+  border: 2px solid var(--c-gold-leaf);
+  box-shadow: 0 10px 26px rgb(0 0 0 / 0.45);
+  font-size: var(--fs-xl);
+  color: var(--r-gold-hi);
 }
 @media (max-width: 900px) {
-  .vs__sides {
-    flex-direction: column;
-  }
-  .vs-side {
-    padding: var(--sp-5) var(--sp-5) 0;
-  }
-  .vs-side--away {
-    padding-bottom: 180px;
-  }
-  .vs-side__name {
-    font-size: var(--fs-2xl);
-  }
   .vs__line,
   .vs__ring,
   .vs__mark {
     display: none;
+  }
+}
+
+.vs__back {
+  position: absolute;
+  top: var(--sp-5);
+  left: var(--sp-5);
+  z-index: 4;
+}
+
+.vs__foot {
+  position: relative;
+  z-index: 4;
+  display: grid;
+  justify-items: center;
+  gap: var(--sp-3);
+  margin-top: var(--sp-4);
+}
+.vs__meta {
+  display: inline-flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-size: var(--fs-sm);
+}
+.vs__link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--r-gold-hi);
+  font-weight: 600;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.vs__link:hover {
+  color: var(--c-card-ink);
+}
+
+.vs-side {
+  display: grid;
+  gap: var(--sp-2);
+  padding: var(--sp-5);
+  background: rgb(11 26 19 / 0.68);
+  border: 1px solid rgb(250 248 243 / 0.2);
+  outline: 1px solid rgb(184 134 11 / 0.35);
+  outline-offset: -6px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+}
+.vs-side--away {
+  justify-items: end;
+  text-align: right;
+}
+.vs-side__sub {
+  letter-spacing: 0.12em;
+}
+.vs-side__name {
+  margin: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-3);
+  font-size: var(--fs-2xl);
+  color: var(--c-card-ink);
+}
+.vs-side--away .vs-side__name {
+  flex-direction: row-reverse;
+}
+.vs-side__sw {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid rgb(250 248 243 / 0.5);
+  flex: none;
+}
+.vs-side--home .vs-side__sw {
+  background: var(--c-team-home);
+}
+.vs-side--away .vs-side__sw {
+  background: var(--c-team-away);
+}
+.vs-side__ovr {
+  display: inline-flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+}
+.vs-side__num {
+  font-size: var(--fs-xl);
+  color: var(--r-gold-hi);
+}
+.vs-side__cards {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+.vs-side__cards .card--xs {
+  --card-w: 60px;
+}
+.vs-side--away .vs-side__cards {
+  justify-content: flex-end;
+}
+.vs-side__blank {
+  width: 72px;
+  aspect-ratio: 5 / 7;
+  display: grid;
+  place-items: center;
+  border: 1px dashed rgb(250 248 243 / 0.35);
+  background: rgb(8 24 17 / 0.72);
+  color: var(--c-card-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  clip-path: polygon(
+    7px 0,
+    calc(100% - 7px) 0,
+    100% 7px,
+    100% calc(100% - 7px),
+    calc(100% - 7px) 100%,
+    7px 100%,
+    0 calc(100% - 7px),
+    0 7px
+  );
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pm-opt {
+    transition: none;
   }
 }

@@ -1,288 +1,364 @@
-/* <CardView> (DESIGN.md §3.2, §4) — theo prototype docs/design/prototypes/pack-opening.html. */
+/*
+ * Thẻ cầu thủ v3 — Hướng B "Sa Bàn Hoàng Kim".
+ * Mặt thẻ luôn giữ bảng trưng bày tối (--r-*-lo) với 4 góc vát bát giác cân xứng
+ * và chữ trắng ngà (--c-card-ink) để nổi bật sắc nét trên nền giấy sáng lẫn sân nỉ xanh.
+ */
 @property --foil-angle {
   syntax: '<angle>';
   inherits: false;
   initial-value: 0deg;
 }
 
-/* Biến độ hiếm dùng chung: thẻ, thanh hộp phiếu, hào quang. */
-.r-bronze {
-  --base: var(--r-bronze-base);
-  --hi: var(--r-bronze-hi);
-  --lo: var(--r-bronze-lo);
-  --glow: var(--r-bronze-glow);
-}
-.r-silver {
-  --base: var(--r-silver-base);
-  --hi: var(--r-silver-hi);
-  --lo: var(--r-silver-lo);
-  --glow: var(--r-silver-glow);
-}
-.r-gold {
-  --base: var(--r-gold-base);
-  --hi: var(--r-gold-hi);
-  --lo: var(--r-gold-lo);
-  --glow: var(--r-gold-glow);
-}
-.r-legend {
-  --base: var(--r-legend-base);
-  --hi: var(--r-legend-hi);
-  --lo: var(--r-legend-lo);
-  --glow: var(--r-legend-glow);
-}
-
-.card {
-  --notch: var(--card-notch);
-  position: relative;
-  width: var(--card-w, var(--card-w-md));
-  aspect-ratio: 5 / 7;
-  padding: 3px;
-  container-type: inline-size;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--notch)) 0,
-    100% var(--notch),
-    100% 100%,
-    var(--notch) 100%,
-    0 calc(100% - var(--notch))
-  );
-  background: var(--frame, var(--base));
-  color: var(--c-text);
-  user-select: none;
-}
-.card--lg {
-  --card-w: var(--card-w-lg);
-}
-.card--md {
-  --card-w: var(--card-w-md);
-}
-.card--sm {
-  --card-w: var(--card-w-sm);
-  --notch: 9px;
-}
-.r-bronze.card {
-  --frame: linear-gradient(150deg, var(--hi), var(--base) 45%, #7a4523);
-}
-.r-silver.card {
-  --frame: repeating-linear-gradient(135deg, var(--hi) 0 3px, var(--base) 3px 7px);
-}
-.r-gold.card {
-  --frame: linear-gradient(150deg, var(--hi), var(--base) 40%, #9a7412 70%, var(--hi));
-}
-.r-legend.card {
-  --frame: conic-gradient(from var(--foil-angle), #9b6bff, #46e0d0, #ff6bd5, #ffe48a, #9b6bff);
-  animation: card-foil 6s linear infinite;
-}
 @keyframes card-foil {
   to {
     --foil-angle: 360deg;
   }
 }
 
+.card {
+  --card-w: var(--card-w-md);
+  --notch: var(--card-notch);
+  --card-clip: polygon(
+    var(--notch) 0,
+    calc(100% - var(--notch)) 0,
+    100% var(--notch),
+    100% calc(100% - var(--notch)),
+    calc(100% - var(--notch)) 100%,
+    var(--notch) 100%,
+    0 calc(100% - var(--notch)),
+    0 var(--notch)
+  );
+  position: relative;
+  width: var(--card-w);
+  aspect-ratio: 5 / 7;
+  padding: 2px;
+  color: var(--c-card-ink);
+  user-select: none;
+  flex: none;
+  filter: drop-shadow(0 6px 14px rgb(20 24 22 / 0.26));
+  transition:
+    transform var(--dur-fast) var(--ease-out),
+    filter var(--dur-fast) var(--ease-out);
+}
+.card--xs {
+  --card-w: 72px;
+  --notch: 7px;
+}
+.card--sm {
+  --card-w: var(--card-w-sm);
+  --notch: 9px;
+}
+.card--md {
+  --card-w: var(--card-w-md);
+  --notch: var(--card-notch);
+}
+.card--lg {
+  --card-w: var(--card-w-lg);
+  --notch: 14px;
+}
+
+.r-bronze.card {
+  --glow: var(--r-bronze-glow);
+}
+.r-silver.card {
+  --glow: var(--r-silver-glow);
+}
+.r-gold.card {
+  --glow: var(--r-gold-glow);
+}
+.r-legend.card {
+  --glow: var(--r-legend-glow);
+}
+
+/* Viền ngoài bát giác khắc kim loại */
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  clip-path: var(--card-clip);
+  background: linear-gradient(
+    145deg,
+    var(--hi) 0%,
+    var(--base) 42%,
+    rgb(14 18 16 / 0.9) 70%,
+    var(--hi) 100%
+  );
+  z-index: 0;
+}
+
+/* Huyền Thoại có khung nhũ ngũ sắc xoay nhẹ */
+.r-legend.card::before {
+  background: conic-gradient(
+    from var(--foil-angle),
+    #e6d4ff,
+    #7e42f5,
+    #0a6847,
+    #ffe58f,
+    #b51f1f,
+    #e6d4ff
+  );
+  animation: card-foil 7s linear infinite;
+}
+html.tab-hidden .r-legend.card::before {
+  animation-play-state: paused;
+}
+
+.card.is-selected {
+  transform: translateY(-4px);
+  filter: drop-shadow(0 0 0 1px var(--c-card-ink)) drop-shadow(0 0 10px var(--glow));
+}
+.card.is-dim {
+  opacity: 0.42;
+  filter: saturate(0.5);
+}
+
 .card__body {
   position: relative;
-  height: 100%;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-  padding: 7cqw 7cqw 5cqw;
-  clip-path: polygon(
-    0 0,
-    calc(100% - var(--notch) + 1px) 0,
-    100% calc(var(--notch) - 1px),
-    100% 100%,
-    calc(var(--notch) - 1px) 100%,
-    0 calc(100% - var(--notch) + 1px)
-  );
-  background: radial-gradient(
-    120% 70% at 50% 0%,
-    color-mix(in srgb, var(--base) 28%, var(--lo)),
-    var(--lo) 70%
-  );
-}
-.r-gold .card__body {
-  box-shadow: inset 0 0 0 1.5px color-mix(in srgb, var(--hi) 60%, transparent);
-}
-.card__ovr {
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: 21cqw;
-  line-height: 0.85;
-  color: var(--hi);
-  font-variant-numeric: tabular-nums;
-}
-.card__pos {
-  font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: 9cqw;
-  letter-spacing: var(--tracking-caps);
-}
-.card__pips {
-  position: absolute;
-  top: 8cqw;
-  right: 12cqw;
-  color: var(--hi);
-  font-size: 6cqw;
-  letter-spacing: 0.5cqw;
-}
-.card__avatar {
-  width: 56%;
-  aspect-ratio: 1;
-  margin: -10cqw auto 0;
-}
-.card__avatar .avatar {
-  display: block;
+  z-index: 1;
   width: 100%;
   height: 100%;
+  clip-path: var(--card-clip);
+  background:
+    radial-gradient(110% 72% at 50% 6%, color-mix(in srgb, var(--base) 34%, transparent), transparent 64%),
+    linear-gradient(180deg, color-mix(in srgb, var(--base) 14%, var(--lo)) 0%, var(--lo) 100%);
+  box-shadow: inset 0 0 0 1px rgb(250 248 243 / 0.14);
+  padding: 8% 8.5% 7%;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  overflow: hidden;
 }
-.card__name {
-  margin-top: 1cqw;
+
+/* Nhãn hạng hiếm dưới đáy thẻ (ẩn ở cỡ nhỏ) */
+.card__tier {
   font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: 12.5cqw;
+  font-weight: 700;
+  font-size: max(6.5px, calc(var(--card-w) * 0.056));
+  letter-spacing: 0.14em;
   line-height: 1;
   text-transform: uppercase;
   text-align: center;
+  color: var(--hi);
+  opacity: 0.85;
+  padding-top: 2px;
+  border-top: 1px solid color-mix(in srgb, var(--hi) 24%, transparent);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Đầu thẻ: OVR + vị trí + dấu hiếm + cờ trạng thái */
+.card__ovr {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: calc(var(--card-w) * 0.21);
+  line-height: 0.88;
+  letter-spacing: -0.02em;
+  color: var(--hi);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 10px rgb(0 0 0 / 0.65);
+  margin-bottom: calc(var(--card-w) * 0.085);
+}
+.card__pos {
+  position: absolute;
+  top: calc(8% + var(--card-w) * 0.2);
+  left: 8.5%;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: max(8px, calc(var(--card-w) * 0.088));
+  letter-spacing: 0.08em;
+  color: var(--c-card-ink);
+  text-transform: uppercase;
+}
+.card__pips {
+  position: absolute;
+  top: 8.5%;
+  right: 8.5%;
+  font-size: max(6px, calc(var(--card-w) * 0.068));
+  letter-spacing: 1.5px;
+  color: var(--hi);
+  line-height: 1;
+}
+.card__level {
+  position: absolute;
+  top: calc(8.5% + var(--card-w) * 0.095);
+  right: 8.5%;
+  padding: 1px 5px;
+  border-radius: 2px;
+  background: rgb(11 22 17 / 0.9);
+  border: 1px solid var(--hi);
+  color: var(--hi);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: max(9px, calc(var(--card-w) * 0.078));
+  line-height: 1.2;
+  font-variant-numeric: tabular-nums;
+}
+.card__flag {
+  position: absolute;
+  bottom: calc(42% + 2px);
+  right: 8.5%;
+  padding: 2px 5px;
+  border-radius: 2px;
+  background: rgb(11 22 17 / 0.9);
+  border: 1px solid rgb(250 248 243 / 0.3);
+  color: var(--c-card-ink);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: max(8px, calc(var(--card-w) * 0.072));
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  z-index: 2;
+}
+.card__flag--dup {
+  background: #5c3f00;
+  border-color: var(--r-gold-hi);
+  color: var(--r-gold-hi);
+}
+.card__squad {
+  position: absolute;
+  top: calc(8% + var(--card-w) * 0.315);
+  left: 9%;
+  width: max(7px, calc(var(--card-w) * 0.062));
+  height: max(7px, calc(var(--card-w) * 0.062));
+  border-radius: 50%;
+  background: #5cb8ff;
+  border: 1.5px solid #faf8f3;
+  box-shadow: 0 0 8px rgb(92 184 255 / 0.85);
+  z-index: 2;
+}
+
+/* Khung chân dung SVG giữa thẻ */
+.card__avatar {
+  flex: 1;
+  min-height: 14px;
+  position: relative;
+  display: grid;
+  place-items: end center;
+  overflow: hidden;
+  border-bottom: 1px solid color-mix(in srgb, var(--hi) 38%, transparent);
+}
+.card__avatar svg {
+  width: 88%;
+  height: 100%;
+  max-height: 100%;
+  display: block;
+  filter: drop-shadow(0 3px 8px rgb(0 0 0 / 0.45));
+}
+
+/* Tên & biệt danh */
+.card__name {
+  margin-top: 2px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: max(9px, calc(var(--card-w) * 0.1));
+  line-height: 1.05;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  text-align: center;
+  color: var(--c-card-ink);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .card__sub {
-  margin-bottom: 2cqw;
-  font-size: 5.6cqw;
-  color: var(--c-text-muted);
+  font-family: var(--font-body);
+  font-size: max(8px, calc(var(--card-w) * 0.072));
+  line-height: 1.15;
   text-align: center;
+  color: var(--c-card-muted);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+/* Lưới 6 chỉ số mini */
 .card__stats {
-  margin-top: auto;
-  padding-top: 3cqw;
-  border-top: 1px solid color-mix(in srgb, var(--base) 45%, transparent);
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  row-gap: 1cqw;
+  gap: 2px 5px;
+  padding-top: 3px;
+  border-top: 1px solid rgb(250 248 243 / 0.14);
 }
 .card__stat {
   display: flex;
   justify-content: center;
-  gap: 1.5cqw;
-  font-family: var(--font-display);
-  font-size: 7.4cqw;
-}
-.card__stat b {
-  font-weight: var(--fw-bold);
+  align-items: baseline;
+  gap: 2.5px;
+  font-size: max(7px, calc(var(--card-w) * 0.064));
+  line-height: 1.25;
+  white-space: nowrap;
   font-variant-numeric: tabular-nums;
 }
 .card__stat span {
-  color: var(--c-text-muted);
-  font-weight: var(--fw-medium);
+  color: var(--c-card-muted);
+  font-weight: 600;
+  font-size: 0.85em;
+  opacity: 0.9;
 }
-.card__tier {
-  margin-top: 2cqw;
+.card__stat b {
   font-family: var(--font-display);
-  font-weight: var(--fw-semibold);
-  font-size: 5.6cqw;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  text-align: center;
-  color: var(--hi);
+  font-weight: 700;
+  color: var(--c-card-ink);
 }
-.card--sm .card__tier {
-  margin-top: auto;
-}
-.card--sm .card__sub {
+
+/* Cỡ nhỏ thu gọn chi tiết */
+.card--sm .card__sub,
+.card--sm .card__stats,
+.card--sm .card__tier,
+.card--xs .card__sub,
+.card--xs .card__stats,
+.card--xs .card__tier,
+.card--xs .card__pips,
+.card--xs .card__squad {
   display: none;
 }
+.card--xs .card__body {
+  padding: 10% 9%;
+}
+.card--xs .card__ovr {
+  font-size: 16px;
+  margin-bottom: 10px;
+}
+.card--xs .card__pos {
+  top: 23px;
+  font-size: 8px;
+}
+.card--xs .card__name {
+  font-size: 8.5px;
+}
 .card--sm .card__name {
-  font-size: 15cqw;
+  font-size: 10px;
 }
-.card__level {
-  position: absolute;
-  right: 6cqw;
-  bottom: 5cqw;
-  padding: 0 2cqw;
-  background: var(--hi);
-  color: var(--lo);
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: 8cqw;
-}
+
+/* Ánh kim lướt trên Vàng / Huyền Thoại */
 .card__sheen {
   position: absolute;
   inset: 0;
-  pointer-events: none;
   background: linear-gradient(
-    105deg,
-    transparent 35%,
-    rgb(255 255 255 / 0.55) 50%,
-    transparent 65%
+    112deg,
+    transparent 32%,
+    rgb(255 248 220 / 0.24) 48%,
+    rgb(255 255 255 / 0.42) 50%,
+    rgb(255 248 220 / 0.18) 54%,
+    transparent 70%
   );
-  transform: translateX(-130%);
+  transform: translateX(-125%);
+  transition: transform 0.65s var(--ease-out);
+  pointer-events: none;
+  z-index: 3;
+}
+.r-gold.card:hover .card__sheen,
+.r-legend.card:hover .card__sheen {
+  transform: translateX(125%);
 }
 
-html.tab-hidden .r-legend.card {
-  animation-play-state: paused;
-}
 @media (prefers-reduced-motion: reduce) {
-  .r-legend.card {
+  .r-legend.card::before {
     animation: none;
   }
-}
-
-/* v2 (docs/design/generator/mfg.css): cỡ xs, cờ, chấm đội hình, mặt sau, chọn/mờ */
-.card--xs {
-  --card-w: 72px;
-  --notch: 7px;
-  padding: 2px;
-}
-.card--xs .card__tier,
-.card--xs .card__sub {
-  display: none;
-}
-.card--xs .card__name {
-  font-size: 15cqw;
-}
-.card__flag {
-  position: absolute;
-  top: 18cqw;
-  right: 6cqw;
-  padding: 0.5cqw 2.5cqw;
-  font-family: var(--font-display);
-  font-weight: var(--fw-bold);
-  font-size: 6.5cqw;
-  letter-spacing: var(--tracking-caps);
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
-}
-.card__flag--dup {
-  background: var(--c-surface-3);
-  color: var(--c-text);
-}
-.card__squad {
-  position: absolute;
-  top: 31cqw;
-  right: 6cqw;
-  width: 9cqw;
-  height: 9cqw;
-  border-radius: 50%;
-  background: var(--c-info);
-  box-shadow: 0 0 0 1cqw var(--lo);
-}
-.r-gold.card:hover .card__sheen {
-  transition: transform 700ms var(--ease-out);
-  transform: translateX(130%);
-}
-.card.is-selected {
-  outline: 2px solid var(--c-accent);
-  outline-offset: 3px;
-}
-.card.is-dim {
-  opacity: 0.4;
-}
-@media (prefers-reduced-motion: reduce) {
-  .r-gold.card:hover .card__sheen {
+  .card,
+  .card__sheen {
     transition: none;
   }
 }

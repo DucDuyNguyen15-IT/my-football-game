@@ -1,11 +1,11 @@
-/* Giao diện luồng tân thủ 4 bước (onboarding-flow.html) & lớp hướng dẫn trận đầu (onboarding.html). */
+/* Giao diện v3 luồng tân thủ 4 bước (trên nền sáng) & lớp hướng dẫn trận đầu (nổi trên sân 3D tối). */
 
 .ob-flow {
   padding: 18px 22px;
   display: flex;
   flex-direction: column;
   gap: 14px;
-  margin-bottom: var(--sp-4);
+  margin-bottom: var(--sp-5);
 }
 
 .ob-flow__head {
@@ -37,21 +37,28 @@
   gap: 4px;
   padding: 12px 14px;
   text-decoration: none;
-  color: inherit;
-  border-color: var(--c-line);
+  color: var(--c-text);
+  background: var(--c-bg);
+  border-color: var(--c-line-strong);
+  outline: none;
+  box-shadow: none;
   transition:
     border-color var(--dur-fast) var(--ease-out),
     background-color var(--dur-fast) var(--ease-out);
 }
+.ob-flow__step:hover {
+  background: var(--c-surface-2);
+}
 
 .ob-flow__step.is-done {
-  border-color: rgb(61 214 140 / 0.45);
-  background: rgb(61 214 140 / 0.06);
+  border-color: rgb(14 116 82 / 0.48);
+  background: rgb(14 116 82 / 0.08);
 }
 
 .ob-flow__step.is-current {
   border-color: var(--c-accent);
   background: var(--c-accent-soft);
+  box-shadow: inset 0 -3px 0 var(--c-accent);
 }
 
 .ob-flow__time {
@@ -67,8 +74,9 @@
 }
 
 .ob-flow__step-title {
-  font-size: 20px;
+  font-size: 19px;
   text-transform: uppercase;
+  color: var(--c-text);
 }
 
 .ob-flow__step-sub {
@@ -79,12 +87,13 @@
   align-self: center;
   width: 28px;
   text-align: center;
-  color: var(--c-accent);
+  color: var(--c-gold-leaf);
+  font-weight: 700;
   font-size: 18px;
   flex: none;
 }
 
-/* ---------- Lớp hướng dẫn phím 5 bước trong trận đầu (onboarding.html) ---------- */
+/* ---------- Lớp hướng dẫn phím 5 bước trong trận đầu (đè lên canvas 3D → nền tối, chữ sáng) ---------- */
 .tut-scrim {
   position: absolute;
   inset: 0;
@@ -95,7 +104,7 @@
 .tut-scrim__veil {
   position: absolute;
   inset: 0;
-  background: rgb(4 8 6 / 0.25);
+  background: rgb(6 14 10 / 0.28);
   pointer-events: none;
 }
 
@@ -103,7 +112,7 @@
   position: absolute;
   left: 20px;
   top: 168px;
-  width: 240px;
+  width: 244px;
   padding: 16px;
   display: flex;
   flex-direction: column;
@@ -116,7 +125,7 @@
   gap: 10px;
   align-items: center;
   font-size: var(--fs-sm);
-  color: var(--c-text);
+  color: var(--c-card-ink);
   background: none;
   border: 0;
   padding: 0;
@@ -125,11 +134,11 @@
 }
 
 .tut-list__item.is-done {
-  color: var(--c-text-muted);
+  color: var(--c-card-muted);
 }
 
 .tut-list__item.is-current {
-  color: var(--c-accent);
+  color: var(--r-gold-hi);
   font-weight: 600;
 }
 
@@ -141,27 +150,35 @@
   place-items: center;
   font-size: var(--fs-xs);
   flex: none;
-  border: 1px solid var(--c-line-strong);
+  color: var(--c-card-ink);
+  border: 1px solid rgb(250 248 243 / 0.35);
 }
 
 .tut-list__item.is-done .tut-list__badge {
-  border-color: var(--c-success);
-  background: var(--c-success);
-  color: #04120a;
+  border-color: #3dd68c;
+  background: #3dd68c;
+  color: #091d14;
 }
 
 .tut-list__item.is-current .tut-list__badge {
-  border-color: var(--c-accent);
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
+  border-color: var(--r-gold-hi);
+  background: var(--r-gold-hi);
+  color: #141816;
 }
 
 .tut-skip {
   position: absolute;
   right: 20px;
   top: 150px;
-  background: rgb(10 19 16 / 0.78);
+  background: var(--c-hud-bg);
+  border: 1px solid rgb(250 248 243 / 0.35);
+  color: var(--c-card-ink);
   pointer-events: auto;
+}
+.tut-skip:hover:not(:disabled) {
+  background: var(--c-hud-surface);
+  border-color: var(--r-gold-hi);
+  color: var(--r-gold-hi);
 }
 
 .tut-card {
@@ -175,14 +192,16 @@
   align-items: center;
   gap: 12px;
   padding: 22px 26px;
-  background: rgb(17 29 24 / 0.94);
-  border: 1px solid var(--c-accent);
-  box-shadow: var(--shadow-2);
+  background: var(--c-hud-bg);
+  color: var(--c-card-ink);
+  border: 1px solid rgb(212 155 26 / 0.55);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 36px rgb(0 0 0 / 0.55);
   pointer-events: auto;
 }
 
 .tut-card__kicker {
-  color: var(--c-accent);
+  color: var(--r-gold-hi);
 }
 
 .tut-card__hero {
@@ -202,14 +221,15 @@
   min-width: 56px;
   height: 56px;
   font-size: 26px;
-  border-color: var(--c-accent);
-  color: var(--c-accent);
+  border-color: var(--r-gold-hi);
+  color: var(--r-gold-hi);
 }
 
 .tut-card__title {
   font-size: var(--fs-lg);
   font-weight: 600;
   text-align: center;
+  color: var(--c-card-ink);
 }
 
 .tut-card__power {
@@ -228,10 +248,11 @@
   margin: 0;
   font-size: var(--fs-sm);
   text-align: center;
+  color: var(--c-card-muted);
 }
 
 .tut-card__desc b {
-  color: var(--c-text);
+  color: var(--c-card-ink);
 }
 
 .tut-card__dots {
@@ -242,11 +263,11 @@
 .tut-card__dot {
   width: 24px;
   height: 4px;
-  background: var(--c-surface-3);
+  background: rgb(250 248 243 / 0.2);
 }
 
 .tut-card__dot.is-on {
-  background: var(--c-accent);
+  background: var(--r-gold-hi);
 }
 
 .tut-card__actions {

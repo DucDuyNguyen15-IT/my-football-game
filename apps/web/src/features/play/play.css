@@ -1,31 +1,41 @@
-/* Màn trận đấu, HUD, tạm dừng, kết quả — docs/design/screens/match*.html, pause.html, result*.html.
- * Component chung (.hud-score, .hud-panel, .event-strip, .power, .keyhint, .kbd, .dot, .switch, .seg,
- * .btn, .panel…) ở styles/ui.css; file này chỉ bố cục riêng. Chỉ animate transform/opacity (§5). */
-
+/*
+ * Màn trong trận 3D, HUD, Tạm dừng & Kết quả v3 — Hướng B "Sa Bàn Hoàng Kim".
+ * Màn chờ vào trận (.play-screen) & HUD/Tạm dừng đè lên sân 3D dùng bảng nỉ/than tối (--c-hud-bg);
+ * màn Kết quả sau trận (.result) quay về giấy ngà sáng ấn phẩm để ăn khớp trang chủ & kho thẻ.
+ */
 .play-root {
-  position: fixed;
-  inset: 0;
+  position: relative;
+  width: 100%;
+  height: 100vh;
   overflow: hidden;
-  background: var(--c-bg);
-  color: var(--c-text);
-  font-family: var(--font-body);
-  font-size: var(--fs-md);
-  line-height: var(--lh-normal);
+}
+.play-root:has(> .pm-shell),
+.play-root:has(> .result),
+.play-root:has(> .vs) {
+  height: auto;
+  min-height: 100vh;
+  overflow: visible;
 }
 
-/* ---------- Chờ server dựng trận / lỗi vào trận ---------- */
+/* Màn chuyển tiếp trước lúc giao bóng (nền nỉ xanh để nối liền mượt vào WebGL 3D) */
 .play-screen {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--sp-5);
-  min-height: 100%;
-  padding: var(--sp-6) var(--sp-4);
+  min-height: 100vh;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-6);
   text-align: center;
+  background:
+    radial-gradient(85% 75% at 50% 45%, var(--c-pitch-felt) 0%, #0d2e20 60%, var(--c-pitch-felt-deep) 100%);
+  color: var(--c-card-ink);
 }
-.play-screen p {
+.play-screen .muted {
+  color: var(--c-card-muted);
+}
+.play-screen__title {
   margin: 0;
+  color: var(--c-card-ink);
 }
 .play-screen__actions {
   display: flex;
@@ -34,26 +44,47 @@
   gap: var(--sp-3);
 }
 
-/* ---------- HUD ---------- */
+/* =========================================================
+ * HUD TRÊN SÂN 3D
+ * ========================================================= */
 .hud {
-  position: absolute;
+  position: fixed;
   inset: 0;
   z-index: var(--z-hud);
   pointer-events: none;
+  color: var(--c-card-ink);
 }
+.hud button {
+  pointer-events: auto;
+}
+
 .hud-top {
   position: absolute;
-  top: 18px;
+  top: 16px;
   left: 50%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-2);
   transform: translateX(-50%);
+  display: grid;
+  justify-items: center;
+  gap: 8px;
 }
-/* Bảng tỉ số: 6 cột (vạch, tên, bàn, bàn, tên, vạch) + hàng đồng hồ. */
-.hud .hud-score {
-  grid-template-columns: repeat(6, auto);
+
+.hud-score {
+  display: grid;
+  grid-template-columns: 4px auto auto auto auto 4px;
+  align-items: center;
+  gap: 0 10px;
+  padding: 6px 12px 4px;
+  background: var(--c-hud-bg);
+  border: 1px solid var(--c-hud-line);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-2);
+  color: var(--c-card-ink);
+  backdrop-filter: blur(6px);
+}
+.hud-score__sw {
+  width: 4px;
+  height: 22px;
+  border-radius: 1px;
 }
 .hud-score__sw--home {
   background: var(--c-team-home);
@@ -61,215 +92,74 @@
 .hud-score__sw--away {
   background: var(--c-team-away);
 }
-.hud-score__goals--away {
-  background: var(--c-surface-3);
-}
-
-.hud-events {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: var(--sp-1);
-  margin: 0;
-  padding: 0;
-  list-style: none;
-}
-.hud-event {
-  animation: hud-in var(--dur-base) var(--ease-out);
-}
-.hud-event .event-strip__mark {
-  background: var(--c-surface-3);
-  color: var(--c-text);
-}
-.hud-event--goal .event-strip__mark {
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
-}
-.hud-event--yellow .event-strip__mark {
-  background: var(--c-warning);
-  color: #1a1405;
-}
-.hud-event--red .event-strip__mark {
-  background: var(--c-danger);
-  color: #1a0705;
-}
-.hud-event--shootout .event-strip__mark,
-.hud-event--foul .event-strip__mark {
-  background: var(--c-info);
-  color: #04121c;
-}
-.hud-event--half .event-strip__mark {
-  background: var(--c-text);
-  color: var(--c-accent-ink);
-}
-.hud-event .kbd {
-  height: 20px;
-  min-width: 20px;
-}
-
-.hud-minimap {
-  position: absolute;
-  top: 18px;
-  right: 20px;
-  line-height: 0;
-}
-
-/* Góc trên-trái: chú thích thanh lực + nút tạm dừng. */
-.hud-tl {
-  position: absolute;
-  top: 18px;
-  left: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  width: 250px;
-}
-.hud-legend {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-.hud-legend .label {
-  align-self: flex-start;
-  padding: 0 4px;
-  background: rgb(10 19 16 / 0.7);
-}
-.hud-legend__row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: var(--fs-xs);
-  text-shadow: 0 1px 2px rgb(0 0 0 / 0.8);
-}
-.hud-legend__bar--pass {
-  --tone: var(--c-power-pass);
-  --v: 45%;
-}
-.hud-legend__bar--through {
-  --tone: var(--c-power-through);
-  --v: 70%;
-}
-.hud-legend__bar--shot {
-  --tone: var(--c-power-shot);
-  --v: 90%;
-}
-.hud-pause {
-  align-self: flex-start;
-  margin-top: 6px;
-  background: rgb(10 19 16 / 0.7);
-  pointer-events: auto;
-}
-
-/* Panel cầu thủ đang điều khiển. */
-.hud-player {
-  position: absolute;
-  bottom: 20px;
-  left: 20px;
-  display: flex;
-  align-items: center;
-  gap: 14px;
-  width: 300px;
-  padding: 10px 16px 10px 10px;
-}
-.hud-player__num {
-  display: grid;
-  place-items: center;
-  flex: none;
-  width: 48px;
-  height: 48px;
-  background: var(--c-team-home);
-  color: #04121c;
-  font-size: 30px;
-}
-.hud-player__body {
-  display: flex;
-  flex: 1;
-  flex-direction: column;
-  gap: 6px;
-  min-width: 0;
-}
-.hud-player__name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.hud-score__team {
+  font-family: var(--font-display);
+  font-weight: 700;
   font-size: var(--fs-sm);
-  font-weight: 600;
+  letter-spacing: var(--tracking-caps);
 }
-.hud-player__name abbr {
-  text-decoration: none;
+.hud-score__goals {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-xl);
+  line-height: 1;
+  min-width: 22px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  color: var(--r-gold-hi);
 }
-.hud-player__stamina {
-  display: flex;
-  align-items: center;
-  gap: 8px;
+.hud-score__goals--away {
+  color: var(--c-card-ink);
 }
-.hud-player__stamina .label {
-  font-size: 10px;
-}
-.hud-stamina {
-  flex: 1;
-}
-.hud-stamina .bar__fill {
-  background: var(--c-success);
-}
-.hud-stamina--low .bar__fill {
-  background: var(--c-warning);
-}
-.hud-stamina--critical .bar__fill {
-  background: var(--c-danger);
-}
-.hud-player__pct {
-  min-width: 4ch;
+.hud-score__clock {
+  grid-column: 1 / -1;
+  text-align: center;
   font-size: var(--fs-xs);
-  font-weight: 600;
-  text-align: right;
+  color: var(--c-card-muted);
+  border-top: 1px solid rgb(250 248 243 / 0.14);
+  margin-top: 4px;
+  padding-top: 3px;
+}
+.hud-score__clock b {
+  color: var(--c-card-ink);
 }
 
-/* Dải gợi ý phím cạnh dưới (bên phải panel cầu thủ). */
-.hud-keys {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  left: 340px;
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: 6px 12px;
-  width: fit-content;
-  max-width: calc(100% - 360px);
-  margin: 0 auto;
-  padding: 8px 16px;
-}
-
-/* Bảng luân lưu. */
+/* Thanh luân lưu */
 .so {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  width: 440px;
-  margin-top: var(--sp-2);
-  padding: 16px 22px;
+  display: grid;
+  gap: 6px;
+  min-width: 280px;
 }
 .so__head {
   display: flex;
-  align-items: baseline;
+  align-items: center;
   justify-content: space-between;
+  gap: var(--sp-3);
+}
+.so__head h2 {
+  margin: 0;
+  font-size: var(--fs-md);
+  color: var(--r-gold-hi);
+}
+.so__head .label {
+  color: var(--c-card-muted);
 }
 .so-row {
   display: grid;
-  grid-template-columns: 110px 1fr 40px;
+  grid-template-columns: 76px 1fr auto;
   align-items: center;
-  gap: 12px;
+  gap: var(--sp-3);
 }
 .so-row__team {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 8px;
-  font-size: var(--fs-lg);
+  gap: 6px;
+  font-size: var(--fs-xs);
 }
 .so-row__sw {
   width: 8px;
-  height: 18px;
+  height: 8px;
+  border-radius: 2px;
 }
 .so-row__sw--home {
   background: var(--c-team-home);
@@ -279,259 +169,542 @@
 }
 .so-row__dots {
   display: flex;
-  flex-wrap: wrap;
-  gap: 6px;
+  align-items: center;
+  gap: 5px;
 }
 .so-row__dots .dot {
-  width: 20px;
-  height: 20px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  border: 1px solid rgb(250 248 243 / 0.45);
+  background: rgb(250 248 243 / 0.08);
+}
+.so-row__dots .dot.hit {
+  background: #2bd491;
+  border-color: #a3f5d4;
+}
+.so-row__dots .dot.miss {
+  background: #e5484d;
+  border-color: #ffb8ba;
 }
 .so-row__score {
-  font-size: 32px;
+  font-size: var(--fs-md);
+  color: var(--c-card-ink);
+}
+
+/* Dải sự kiện trận đấu */
+.hud-events {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  justify-items: center;
+  gap: 4px;
+}
+.hud-event {
+  background: var(--c-hud-bg);
+  border-color: var(--c-hud-line);
+  color: var(--c-card-ink);
+  backdrop-filter: blur(6px);
+}
+.hud-event--goal {
+  border-color: #7ee3bd;
+  border-left: 3px solid #2bd491;
+  background: rgb(10 60 40 / 0.92);
+}
+.hud-event--yellow {
+  border-color: var(--r-gold-hi);
+  border-left: 3px solid var(--r-gold-hi);
+  background: rgb(52 38 6 / 0.92);
+  color: #fff6d6;
+}
+.hud-event--red {
+  border-color: #ff9c9c;
+  border-left: 3px solid #ff6b6b;
+  background: rgb(74 16 16 / 0.94);
+  color: #fff0f0;
+}
+.hud-event--foul,
+.hud-event--half,
+.hud-event--shootout,
+.hud-event--sub {
+  border-color: var(--c-hud-line);
+  color: var(--c-card-ink);
+}
+
+/* Góc trên-trái: chú thích lực & nút tạm dừng */
+.hud-tl {
+  position: absolute;
+  top: 16px;
+  left: 16px;
+  display: grid;
+  justify-items: start;
+  gap: 8px;
+}
+.hud-pause {
+  background: var(--c-hud-bg);
+  border-color: var(--c-hud-line);
+  color: var(--c-card-ink);
+  backdrop-filter: blur(6px);
+}
+.hud-pause:hover:not(:disabled) {
+  background: #1d352b;
+  border-color: var(--r-gold-hi);
+  color: var(--c-card-ink);
+}
+.hud-legend {
+  display: grid;
+  gap: 4px;
+  padding: 8px 10px;
+  background: var(--c-hud-bg);
+  border: 1px solid var(--c-hud-line);
+  border-radius: var(--radius-md);
+  color: var(--c-card-ink);
+  font-size: var(--fs-xs);
+  backdrop-filter: blur(6px);
+}
+.hud-legend .label {
+  color: var(--c-card-muted);
+}
+.hud-legend__row {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.hud-legend__bar--pass i {
+  width: 68%;
+  background: var(--c-power-pass);
+}
+.hud-legend__bar--through i {
+  width: 76%;
+  background: var(--c-power-through);
+}
+.hud-legend__bar--shot i {
+  width: 84%;
+  background: var(--c-power-shot);
+}
+
+/* Góc trên-phải: Minimap */
+.hud-minimap {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  padding: 6px;
+  background: var(--c-hud-bg);
+  border-color: var(--c-hud-line);
+}
+.hud-minimap canvas {
+  display: block;
+}
+
+/* Góc dưới-trái: Cầu thủ đang điều khiển */
+.hud-player {
+  position: absolute;
+  left: 16px;
+  bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 240px;
+  background: var(--c-hud-bg);
+  border-color: var(--c-hud-line);
+  backdrop-filter: blur(6px);
+}
+.hud-player .pos {
+  background: #0d1914;
+  border-color: var(--c-hud-line);
+  color: var(--c-card-ink);
+}
+.hud-player .label {
+  color: var(--c-card-muted);
+}
+.hud-player__num {
+  font-size: var(--fs-xl);
+  color: var(--r-gold-hi);
+  min-width: 30px;
+  text-align: center;
+  line-height: 1;
+}
+.hud-player__body {
+  flex: 1;
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+.hud-player__name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  color: var(--c-card-ink);
+}
+.hud-player__stamina {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.hud-player__stamina .bar {
+  flex: 1;
+  background: rgb(250 248 243 / 0.14);
+  border-color: rgb(250 248 243 / 0.24);
+}
+.hud-stamina--ok .bar__fill {
+  background: #2bd491;
+}
+.hud-stamina--low .bar__fill {
+  background: var(--r-gold-hi);
+}
+.hud-stamina--critical .bar__fill {
+  background: #ff6b6b;
+}
+.hud-player__pct {
+  font-size: var(--fs-xs);
+  color: var(--c-card-ink);
+  min-width: 34px;
   text-align: right;
 }
 
-/* "VÀO!" quét ngang 1,2s (match-events.html). */
-.goal-banner {
+/* Giữa dưới: Gợi ý phím */
+.hud-keys {
   position: absolute;
-  top: 32%;
-  left: 0;
-  right: 0;
-  z-index: var(--z-overlay);
+  left: 50%;
+  bottom: 16px;
+  transform: translateX(-50%);
+  margin: 0;
   display: flex;
+  flex-wrap: wrap;
   justify-content: center;
-  overflow: hidden;
-  pointer-events: none;
-}
-.goal-banner__text {
-  display: block;
-  padding: 4px 64px;
-  background: var(--c-accent);
-  color: var(--c-accent-ink);
-  font-size: clamp(64px, 10vw, 120px);
-  line-height: 1;
-  letter-spacing: 0.06em;
-  animation: goal-sweep 1200ms cubic-bezier(0.22, 1, 0.36, 1) both;
-}
-@keyframes goal-sweep {
-  0% {
-    transform: translateX(-110vw) skewX(-12deg);
-  }
-  25%,
-  75% {
-    transform: skewX(-12deg);
-  }
-  100% {
-    transform: translateX(110vw) skewX(-12deg);
-  }
-}
-@keyframes hud-in {
-  from {
-    transform: translateY(-4px);
-    opacity: 0;
-  }
-}
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
+  gap: 8px 16px;
+  background: var(--c-hud-bg);
+  border-color: var(--c-hud-line);
+  color: var(--c-card-ink);
+  backdrop-filter: blur(6px);
 }
 
-/* ---------- Tạm dừng (pause.html) ---------- */
+/* Banner VÀO! */
+@keyframes goal-pop {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.75);
+  }
+  20% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1.05);
+  }
+  80% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.96);
+  }
+}
+.goal-banner {
+  position: fixed;
+  left: 50%;
+  top: 42%;
+  transform: translate(-50%, -50%);
+  z-index: var(--z-overlay);
+  padding: var(--sp-3) var(--sp-7);
+  background: rgb(11 26 19 / 0.9);
+  border: 2px solid var(--r-gold-hi);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  pointer-events: none;
+  animation: goal-pop 1.2s var(--ease-out) forwards;
+}
+.goal-banner__text {
+  font-size: var(--fs-3xl);
+  color: var(--r-gold-hi);
+  letter-spacing: 0.08em;
+}
+
+/* Nhãn phát lại bàn thắng (MatchRenderer.ts gắn trực tiếp DOM) */
+@keyframes replay-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+.replay-tag {
+  position: fixed;
+  top: 76px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--c-hud-bg);
+  border-color: var(--r-gold-hi);
+  color: var(--c-card-ink);
+}
+.replay-tag__dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  animation: replay-pulse 1s ease-in-out infinite;
+}
+.replay-tag__text {
+  color: var(--r-gold-hi);
+  letter-spacing: 0.1em;
+}
+.replay-tag .keyhint {
+  color: var(--c-card-muted);
+}
+
+/* =========================================================
+ * MENU TẠM DỪNG OVERLAY (trên sân 3D)
+ * ========================================================= */
 .pause {
+  position: fixed;
+  inset: 0;
   z-index: var(--z-modal);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  gap: 60px;
-  padding: 110px var(--sp-5) var(--sp-5);
-  overflow-y: auto;
-  animation: fade-in var(--dur-base) var(--ease-out);
+  display: grid;
+  grid-template-columns: minmax(270px, 320px) minmax(360px, 540px);
+  place-content: center;
+  align-items: start;
+  gap: var(--sp-6);
+  padding: var(--sp-5);
+  color: var(--c-card-ink);
+}
+@media (max-width: 820px) {
+  .pause {
+    grid-template-columns: 1fr;
+    overflow-y: auto;
+    place-content: start center;
+  }
 }
 .pause__menu {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 320px;
-  flex: none;
+  display: grid;
+  gap: var(--sp-2);
+}
+.pause__menu .label,
+.pause__hint {
+  color: var(--c-card-muted);
+}
+.pause__hint {
+  font-size: var(--fs-xs);
+  margin-bottom: var(--sp-2);
 }
 .pause__title {
-  margin-bottom: 10px;
+  margin: 0 0 var(--sp-2);
+  color: var(--c-card-ink);
 }
 .pause__btn {
-  justify-content: flex-start;
+  justify-content: center;
 }
 .pause__btn--split {
   justify-content: space-between;
 }
-.pause__btn[aria-pressed='true']:not(.btn--primary, .btn--danger) {
-  border-color: var(--c-accent);
-  background: var(--c-accent-soft);
-}
-.pause__btn.btn--danger[aria-pressed='true'] {
-  outline: 2px solid var(--c-danger);
-  outline-offset: 2px;
-}
-.pause__hint {
-  margin: -4px 0 4px;
-  font-size: var(--fs-xs);
+.pause__btn--split .tag {
+  background: var(--c-surface-2);
+  border-color: var(--c-line-control);
+  color: var(--c-text);
 }
 .pause__quit {
-  margin-top: 14px;
+  margin-top: var(--sp-2);
 }
+
+/* Panel bên phải trong menu Tạm dừng giữ bảng tối đồng nhất với scrim */
 .pause__panel {
-  display: flex;
-  flex-direction: column;
-  gap: 18px;
-  width: 520px;
-  max-width: 100%;
-  box-shadow: var(--shadow-2);
+  background: var(--c-hud-surface);
+  border: 1px solid var(--c-hud-line);
+  outline: 1px solid rgb(184 134 11 / 0.35);
+  outline-offset: -5px;
+  color: var(--c-card-ink);
+  display: grid;
+  gap: var(--sp-4);
+  max-height: 82vh;
+  overflow-y: auto;
 }
 .pause__panel .panel__title {
-  margin: 0;
+  color: var(--c-card-ink);
+  border-bottom-color: var(--c-hud-line);
 }
-.pause__panel p {
-  margin: 0;
+.pause__panel .panel__title::before {
+  color: var(--r-gold-hi);
 }
-.pause-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: var(--sp-4);
+.pause__panel .panel__title .meta,
+.pause__panel .muted,
+.pause__panel .label {
+  color: var(--c-card-muted);
 }
-.pause-switches {
-  padding-top: 6px;
-  border-top: 1px solid var(--c-line);
+.pause__panel .table th {
+  color: var(--c-card-muted);
+  border-bottom-color: var(--c-hud-line);
 }
-.pause-switch__text {
-  display: flex;
-  flex-direction: column;
+.pause__panel .table td {
+  color: var(--c-card-ink);
+  border-bottom-color: rgb(250 248 243 / 0.12);
 }
-.pause-switch__text .muted {
-  font-size: var(--fs-xs);
+.pause__panel .table tr:hover td {
+  background: rgb(250 248 243 / 0.06);
 }
-.switch {
-  cursor: pointer;
+.pause__panel .seg {
+  background: #0d1914;
+  border-color: var(--c-hud-line);
 }
-.switch input:focus-visible + .switch__track {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
+.pause__panel .seg__opt {
+  color: var(--c-card-muted);
 }
-.switch.is-blocked {
-  cursor: not-allowed;
+.pause__panel .seg__opt:hover {
+  color: var(--c-card-ink);
 }
-.switch.is-blocked .switch__track {
-  opacity: 0.4;
+.pause__panel .seg__opt.is-on {
+  background: var(--c-accent);
+  color: var(--c-card-ink);
 }
+.pause__panel .btn--secondary {
+  background: #1d3229;
+  border-color: var(--c-hud-line);
+  color: var(--c-card-ink);
+}
+.pause__panel .btn--secondary:hover:not(:disabled) {
+  background: #274437;
+}
+.pause__panel .pos {
+  background: #0d1914;
+  border-color: var(--c-hud-line);
+  color: var(--c-card-ink);
+}
+
 .pause__actions {
   display: flex;
+  flex-wrap: wrap;
   justify-content: flex-end;
   gap: var(--sp-3);
 }
 .pause__confirm {
-  align-self: flex-end;
+  justify-self: end;
 }
-.seg__opt:focus-visible {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
+.pause-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+.pause-switches {
+  display: grid;
+  gap: var(--sp-2);
+}
+.pause-switch__text {
+  display: grid;
+  gap: 2px;
+}
+.pause-switch__text .muted {
+  font-size: var(--fs-xs);
 }
 
-/* Thay người. */
+/* Thay người trong Pause */
 .subs {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: var(--sp-4);
 }
+@media (max-width: 560px) {
+  .subs {
+    grid-template-columns: 1fr;
+  }
+}
 .subs__col {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  min-width: 0;
   margin: 0;
   padding: 0;
   border: 0;
+  display: grid;
+  gap: 6px;
+  align-content: start;
 }
 .subs__col legend {
   margin-bottom: 6px;
-  padding: 0;
 }
 .subs__item {
   display: flex;
   align-items: center;
-  gap: 10px;
-  min-height: 40px;
-  padding: 0 10px;
-  border: 1px solid var(--c-line);
+  gap: var(--sp-2);
+  padding: 7px 10px;
   border-radius: var(--radius-md);
-  background: var(--c-surface-1);
+  border: 1px solid var(--c-hud-line);
+  background: rgb(11 22 17 / 0.55);
+  color: var(--c-card-ink);
   cursor: pointer;
 }
-.subs__item:hover {
-  border-color: var(--c-line-control);
-}
-.subs__item:has(input:checked) {
-  border-color: var(--c-accent);
-  background: var(--c-accent-soft);
-}
-.subs__item:has(input:focus-visible) {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 2px;
-}
-.subs__item abbr {
-  text-decoration: none;
+.subs__item:has(:checked) {
+  border-color: var(--r-gold-hi);
+  background: rgb(10 104 71 / 0.35);
 }
 .subs__num {
-  min-width: 2ch;
-  font-size: var(--fs-lg);
+  min-width: 24px;
+  color: var(--r-gold-hi);
 }
 .subs__stamina {
   margin-left: auto;
-  font-size: var(--fs-sm);
-  color: var(--c-success);
+  font-size: var(--fs-xs);
+  color: #7ee3bd;
 }
 .subs__stamina.is-low {
-  color: var(--c-warning);
+  color: var(--r-gold-hi);
 }
 .subs__stamina.is-critical {
-  color: var(--c-danger);
+  color: #ff9c9c;
 }
 .subs__warn {
-  color: var(--c-warning);
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  border: 1px solid #ff8787;
+  background: rgb(181 31 31 / 0.22);
+  color: #ffd5d5;
   font-size: var(--fs-sm);
 }
 
-/* ---------- Kết quả (result.html) ---------- */
+/* =========================================================
+ * MÀN KẾT QUẢ SAU TRẬN — Nền giấy ngà ấm ấn phẩm
+ * ========================================================= */
 .result {
+  min-height: 100vh;
+  padding: var(--sp-7) max(var(--sp-5), calc((100% - 1220px) / 2));
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 400px;
-  gap: 40px;
-  min-height: 100%;
-  padding: 40px 64px;
-  box-sizing: border-box;
-  overflow-y: auto;
+  grid-template-columns: 1fr 440px;
+  gap: var(--sp-6);
+  align-items: start;
 }
+@media (max-width: 980px) {
+  .result {
+    grid-template-columns: 1fr;
+  }
+}
+
 .result__main {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  min-width: 0;
+  display: grid;
+  gap: var(--sp-4);
 }
 .result__score {
+  margin: 0;
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 28px;
-  margin: 0;
+  gap: var(--sp-4);
 }
 .result__team {
-  display: flex;
+  display: inline-flex;
   align-items: center;
-  gap: 10px;
-  font-size: 28px;
+  gap: 8px;
+  font-size: var(--fs-xl);
+  color: var(--c-text);
 }
 .result__sw {
   width: 12px;
-  height: 36px;
+  height: 12px;
+  border-radius: 3px;
 }
 .result__sw--home {
   background: var(--c-team-home);
@@ -540,164 +713,96 @@
   background: var(--c-team-away);
 }
 .result__goals {
-  font-size: clamp(72px, 10vw, 132px);
-  line-height: 0.85;
+  font-size: clamp(2.75rem, 6vw, 4rem);
+  line-height: 0.95;
+  color: var(--c-text);
 }
 .result__pens {
   font-size: var(--fs-md);
 }
-.result__pens b {
-  color: var(--c-text);
-}
 .result__outcome {
   margin: 0;
-  font-size: 56px;
-  line-height: 1;
+  font-size: var(--fs-2xl);
   text-transform: uppercase;
 }
 .result__outcome--win {
   color: var(--c-accent);
 }
 .result__outcome--draw {
-  color: var(--c-text);
+  color: var(--c-coin);
 }
 .result__outcome--loss {
-  color: var(--c-team-away);
+  color: var(--c-danger);
 }
+
 .result__stats {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  padding: 18px 24px;
+  display: grid;
+  gap: var(--sp-3);
 }
 .result-stat {
   display: grid;
   grid-template-columns: 44px 1fr 44px;
   align-items: center;
-  gap: 12px;
-}
-.result-stat .display {
-  font-size: 22px;
-}
-.result-stat__r {
-  text-align: right;
+  gap: var(--sp-3);
 }
 .result-stat__mid {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 4px;
-}
-.result-stat__mid .label {
   text-align: center;
 }
 .result-stat__bars {
   display: flex;
   gap: 3px;
-  height: 6px;
+  height: 8px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--c-surface-3);
 }
-.result-stat__bars span {
-  flex-basis: 0;
+.result-stat__bars.is-empty {
+  opacity: 0.45;
 }
 .result-stat__home {
-  border-radius: 3px 0 0 3px;
   background: var(--c-team-home);
 }
 .result-stat__away {
-  border-radius: 0 3px 3px 0;
   background: var(--c-team-away);
 }
-.result-stat__bars.is-empty span {
-  background: var(--c-surface-3);
+.result-stat__r {
+  text-align: right;
 }
 .result__bookings {
-  font-size: var(--fs-sm);
+  margin: 0;
+  font-size: var(--fs-xs);
+  line-height: 1.5;
 }
+
 .result__side {
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
+  display: grid;
+  gap: var(--sp-4);
 }
 .result-reward {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 10px;
-}
-.result-reward .muted {
-  font-size: var(--fs-sm);
+  display: grid;
+  gap: var(--sp-2);
+  justify-items: start;
 }
 .result-reward__skel {
-  width: 180px;
-  height: 48px;
+  width: 140px;
+  height: 28px;
 }
 .result-coin--none {
   color: var(--c-text-muted);
 }
 .result__actions {
   display: flex;
-  gap: 12px;
-  margin-top: auto;
+  flex-wrap: wrap;
+  gap: var(--sp-3);
 }
-.result__actions .btn {
-  flex: 1;
-}
-
-@media (max-width: 960px) {
-  .result {
-    grid-template-columns: 1fr;
-    padding: 32px 24px;
-  }
-  .pause {
-    flex-direction: column;
-    align-items: center;
-    padding-top: 48px;
-  }
+.result__actions > * {
+  flex: 1 1 160px;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .goal-banner__text {
-    animation: fade-in 200ms linear both;
-    transform: skewX(-12deg);
-  }
-  .hud-event,
-  .pause {
-    animation-name: fade-in;
-    animation-duration: 160ms;
-  }
-}
-
-/* Nhãn "PHÁT LẠI" do MatchRenderer gắn vào khung canvas khi quay chậm bàn thắng. */
-.replay-tag {
-  position: absolute;
-  right: 20px;
-  bottom: 20px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 14px 6px 12px;
-  pointer-events: none;
-}
-.replay-tag__dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--c-danger);
-  animation: replay-blink 1s steps(2, jump-none) infinite;
-}
-.replay-tag__text {
-  font-size: 22px;
-  letter-spacing: 0.2em;
-}
-.replay-tag .keyhint {
-  font-size: var(--fs-sm);
-}
-@keyframes replay-blink {
-  50% {
-    opacity: 0.25;
-  }
-}
-@media (prefers-reduced-motion: reduce) {
+  .goal-banner,
   .replay-tag__dot {
     animation: none;
   }

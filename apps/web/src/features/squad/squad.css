@@ -1,254 +1,310 @@
-/* Đội hình — theo docs/design/screens/squad*.html. Component chung ở styles/ui.css. */
+/*
+ * Đội hình v3 — Hướng B "Sa Bàn Hoàng Kim".
+ * Sa bàn chiến thuật nỉ xanh đậm bên trái cho thẻ cầu thủ nổi bật; thanh công cụ,
+ * băng ghế dự bị và kho thẻ bên phải dùng nền kem ngà đôi viền ấn phẩm.
+ */
 .sq {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
+  display: grid;
+  gap: var(--sp-4);
 }
+.sq-skel__head {
+  height: 62px;
+}
+.sq-skel__pitch {
+  height: 640px;
+}
+.sq-skel__side {
+  height: 640px;
+}
+
 .sq__head {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: var(--sp-3) 20px;
+  gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-line-strong);
+  outline: 1px solid var(--c-line);
+  outline-offset: -4px;
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-1);
 }
 .sq__formation {
   font-size: var(--fs-sm);
 }
 .sq__rating {
-  display: flex;
+  margin-left: auto;
+  display: inline-flex;
   align-items: baseline;
   gap: var(--sp-2);
-  margin-left: auto;
+  padding-right: var(--sp-3);
+  border-right: 1px solid var(--c-line);
 }
 .sq__ovr {
-  font-size: var(--fs-2xl);
+  font-size: var(--fs-xl);
+  color: var(--c-accent);
+  line-height: 1;
 }
 .sq__dirty {
-  width: 8px;
-  height: 8px;
+  display: inline-block;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
-  background: var(--c-accent-ink);
-}
-.sq__body {
-  display: flex;
-  gap: var(--sp-5);
-  align-items: flex-start;
+  background: var(--r-gold-hi);
+  margin-left: 2px;
 }
 
-/* Sân: vạch phấn + ô cầu thủ */
+.sq__body {
+  display: grid;
+  grid-template-columns: minmax(460px, 560px) minmax(0, 1fr);
+  gap: var(--sp-5);
+  align-items: start;
+}
+@media (max-width: 1080px) {
+  .sq__body {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Sa bàn sân nỉ xanh 7v7 */
 .sq__pitch-wrap {
   position: relative;
-  flex: none;
-  width: 520px;
-  height: 560px;
+  width: 100%;
+  aspect-ratio: 100 / 132;
+  min-height: 600px;
+  background: var(--c-pitch-felt);
+  border: 2px solid var(--c-text);
+  outline: 1px solid var(--c-gold-leaf);
+  outline-offset: -5px;
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  overflow: hidden;
+  --card-w-sm: 76px;
 }
-.sq__pitch-wrap .chalk-pitch {
+.chalk-pitch {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  opacity: 0.85;
+  pointer-events: none;
 }
 .sq__pitch {
-  --card-w-sm: 84px;
-  position: absolute;
-  inset: 0;
+  list-style: none;
   margin: 0;
   padding: 0;
-  list-style: none;
+  position: relative;
+  z-index: 2;
+  width: 100%;
+  height: calc(100% - 14px);
+}
+
+/* Ô cầu thủ trên sân & băng ghế dự bị */
+.sq-slot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
 }
 .sq__pitch .sq-slot {
   position: absolute;
   transform: translate(-50%, -50%);
-  /* Đổi sơ đồ: ô trượt sang vị trí mới */
   transition:
-    left 240ms var(--ease-out, ease-out),
-    top 240ms var(--ease-out, ease-out);
+    left var(--dur-base) var(--ease-out),
+    top var(--dur-base) var(--ease-out);
 }
-@media (prefers-reduced-motion: reduce) {
-  .sq__pitch .sq-slot {
-    transition: none;
-  }
+.sq-slot__btn {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: grab;
+  border-radius: var(--radius-md);
+  display: grid;
+  place-items: center;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.sq-slot__btn:active {
+  cursor: grabbing;
+}
+.sq-slot__btn:hover {
+  transform: translateY(-2px);
+}
+.sq-slot__btn:focus-visible {
+  outline: 2px solid var(--r-gold-hi);
+  outline-offset: 4px;
+}
+.sq-slot.is-over .sq-slot__btn {
+  filter: drop-shadow(0 0 12px var(--r-gold-hi));
+  transform: scale(1.04);
+}
+.sq-slot.is-dragging {
+  opacity: 0.45;
+}
+.sq-slot.is-selected .card {
+  filter: drop-shadow(0 0 2px var(--r-gold-hi)) drop-shadow(0 0 12px rgb(255 229 143 / 0.72));
+}
+.sq-slot.is-wrong .card {
+  filter: drop-shadow(0 0 0 2px #ff6b6b) drop-shadow(0 4px 12px rgb(181 31 31 / 0.5));
 }
 
-/* Ô cầu thủ (mfg.css .slot) */
-.slot {
-  position: relative;
-  display: grid;
-  justify-items: center;
-  gap: 4px;
-  list-style: none;
-}
 .slot__empty {
   width: var(--card-w-sm);
   aspect-ratio: 5 / 7;
   display: grid;
   place-items: center;
-  border: 1.5px dashed rgb(232 240 230 / 0.45);
-  clip-path: polygon(0 0, calc(100% - 9px) 0, 100% 9px, 100% 100%, 9px 100%, 0 calc(100% - 9px));
-  color: var(--c-text-muted);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: var(--fs-lg);
-  background: rgb(10 19 16 / 0.35);
+  font-size: var(--fs-md);
+  letter-spacing: var(--tracking-caps);
+  clip-path: polygon(
+    9px 0,
+    calc(100% - 9px) 0,
+    100% 9px,
+    100% calc(100% - 9px),
+    calc(100% - 9px) 100%,
+    9px 100%,
+    0 calc(100% - 9px),
+    0 9px
+  );
+  transition:
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
 }
-.slot__empty.is-selected {
-  border-color: var(--c-accent);
-  border-style: solid;
+.sq__pitch .slot__empty {
+  border: 1.5px dashed rgb(250 248 243 / 0.58);
+  background: rgb(11 38 27 / 0.68);
+  color: var(--c-card-ink);
+}
+.sq__pitch .slot__empty.is-selected {
+  background: rgb(10 104 71 / 0.78);
+  border: 2px solid var(--r-gold-hi);
+  color: var(--r-gold-hi);
+}
+.sq__bench .slot__empty {
+  border: 1.5px dashed var(--c-line-control);
+  background: var(--c-surface-2);
+  color: var(--c-text-muted);
+}
+.sq__bench .slot__empty.is-selected {
+  border: 2px solid var(--c-accent);
+  background: rgb(10 104 71 / 0.1);
   color: var(--c-accent);
 }
-/* Thẻ bị clip-path cắt góc → viền đặt trên nút bọc ngoài */
-.slot.is-wrong .sq-slot__btn {
-  outline: 2px solid var(--c-danger);
-  outline-offset: 2px;
+.sq__bench .sq-slot__btn:focus-visible {
+  outline-color: var(--c-focus);
 }
-.slot.is-selected .sq-slot__btn {
-  outline: 3px solid var(--c-accent);
-  outline-offset: 3px;
+
+.slot__role {
+  padding: 1px 7px;
+  border-radius: 2px;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-text);
+  color: var(--c-text);
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 11px;
+  letter-spacing: 0.08em;
+  line-height: 1.3;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.25);
 }
 .slot__penalty {
   display: inline-flex;
-  gap: 4px;
   align-items: center;
-  height: 20px;
-  padding: 0 6px;
+  gap: 3px;
+  padding: 1px 7px;
+  border-radius: 2px;
   background: var(--c-danger);
-  color: #1a0705;
+  border: 1px solid #ffd5d5;
+  color: var(--c-card-ink);
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: var(--fs-xs);
-  letter-spacing: 0.05em;
+  font-size: 11px;
+  letter-spacing: 0.04em;
+  line-height: 1.3;
+  box-shadow: 0 2px 6px rgb(0 0 0 / 0.3);
 }
 .slot__penalty svg {
   width: 12px;
   height: 12px;
 }
-.slot__role {
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--fs-xs);
-  letter-spacing: 0.12em;
-  color: var(--c-text);
-  background: rgb(10 19 16 / 0.7);
-  padding: 0 6px;
-  border-radius: var(--radius-sm);
-}
-.sq-slot__btn,
-.sq-pool__card {
-  position: relative;
-  display: block;
-  padding: 0;
-  border: 0;
-  background: none;
-  color: inherit;
-  font: inherit;
-  cursor: pointer;
-  touch-action: none;
-}
-.sq-slot__btn:focus-visible,
-.sq-pool__card:focus-visible {
-  outline: 2px solid var(--c-focus);
-  outline-offset: 3px;
-}
-.sq-slot.is-over .sq-slot__btn,
-.sq__pool.is-over {
-  outline: 2px dashed var(--c-info);
-  outline-offset: 3px;
-}
-.is-dragging {
-  opacity: 0.35;
-}
 
-/* Cột phải */
+/* Cột phải: cảnh báo, dự bị & kho thẻ */
 .sq__side {
-  flex: 1;
+  display: grid;
+  gap: var(--sp-4);
   min-width: 0;
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-.sq__side .banner svg {
-  flex: none;
+  --card-w-sm: 76px;
 }
 .sq__toast {
-  width: auto;
-}
-.sq__panel {
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-3);
-  padding: var(--sp-4) 20px;
-}
-.sq__panel .panel__title {
   margin: 0;
 }
-.sq__bench,
-.sq__pool-grid {
-  --card-w-sm: 76px;
+.sq__panel {
+  display: grid;
+  gap: var(--sp-3);
+}
+.sq__bench {
+  list-style: none;
+  margin: 0;
+  padding: 0;
   display: flex;
   flex-wrap: wrap;
   gap: var(--sp-3);
-  margin: 0;
-  padding: 0;
-  list-style: none;
 }
-.sq__bench .slot__empty {
-  font-size: var(--fs-sm);
+.sq__pool.is-over {
+  border-color: var(--c-accent);
+  background:
+    linear-gradient(180deg, rgb(10 104 71 / 0.07), transparent),
+    var(--c-surface-1);
+}
+.sq__pool .chips {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
 }
 .sq__pool-grid {
-  max-height: 300px;
-  overflow-y: auto;
-  padding: 4px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(96px, 1fr));
+  gap: var(--sp-3);
+  justify-items: center;
 }
 .sq-pool__item {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
 }
-.sq-pool__item .tag {
-  height: 18px;
+.sq-pool__item.is-dragging {
+  opacity: 0.45;
+}
+.sq-pool__card {
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-radius: var(--radius-md);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.sq-pool__card:hover {
+  transform: translateY(-2px);
+}
+.sq-pool__card:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 3px;
 }
 .sq__hint {
   margin: 0;
   font-size: var(--fs-xs);
-}
-.sq-leave:not([open]) {
-  display: none;
-}
-.sq-leave::backdrop {
-  background: var(--c-scrim);
+  line-height: 1.5;
 }
 
-/* Skeleton khi tải */
-.sq-skel__head {
-  width: 480px;
-  height: 40px;
-}
-.sq-skel__pitch {
-  flex: none;
-  width: 520px;
-  height: 560px;
-}
-.sq-skel__side {
-  flex: 1;
-  height: 560px;
-}
-
-@media (max-width: 980px) {
-  .sq__body {
-    flex-direction: column;
-    align-items: stretch;
-  }
-  .sq__pitch-wrap {
-    width: min(100%, 520px);
-    height: auto;
-    aspect-ratio: 520 / 560;
-    margin: 0 auto;
-  }
-  .sq__pitch {
-    --card-w-sm: 68px;
-  }
-  .sq-skel__pitch {
-    width: 100%;
+@media (prefers-reduced-motion: reduce) {
+  .sq__pitch .sq-slot,
+  .sq-slot__btn,
+  .sq-pool__card {
+    transition: none;
   }
 }

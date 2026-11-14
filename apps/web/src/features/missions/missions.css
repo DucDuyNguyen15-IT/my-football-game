@@ -1,11 +1,11 @@
-/* Bảng nhiệm vụ ngày (docs/design/screens/home.html, result.html). */
+/* Bảng nhiệm vụ ngày v3 — Hướng B "Sa Bàn Hoàng Kim". */
 .missions {
   display: flex;
   flex-direction: column;
   padding: var(--sp-5);
 }
 .missions__head {
-  margin-bottom: var(--sp-1);
+  margin-bottom: var(--sp-2);
 }
 .missions__list {
   list-style: none;
@@ -20,6 +20,9 @@
   padding: var(--sp-3) 0;
   border-bottom: 1px solid var(--c-line);
 }
+.missions__row:last-child {
+  border-bottom: 0;
+}
 .missions__info {
   display: flex;
   flex-direction: column;
@@ -29,6 +32,7 @@
 .missions__name {
   font-weight: 600;
   font-size: var(--fs-sm);
+  color: var(--c-text);
 }
 .missions__prog {
   display: flex;
@@ -46,7 +50,8 @@
   color: var(--c-accent-ink);
 }
 .missions__pending-coin {
-  opacity: 0.85;
+  color: var(--c-coin);
+  opacity: 1;
 }
 .missions__foot {
   margin: var(--sp-3) 0 0;

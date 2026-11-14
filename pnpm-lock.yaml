@@ -257,10 +257,10 @@ importers:
       '@dnd-kit/core':
         specifier: ^6.3.1
         version: 6.3.1(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
-      '@fontsource/barlow-condensed':
+      '@fontsource/ibm-plex-sans':
         specifier: 5.3.0
         version: 5.3.0
-      '@fontsource/be-vietnam-pro':
+      '@fontsource/space-grotesk':
         specifier: 5.3.0
         version: 5.3.0
       '@pitch/shared':
@@ -1116,11 +1116,11 @@ packages:
   '@fastify/rate-limit@11.2.1':
     resolution: {integrity: sha512-uTQjii3tJUnb6ZyEMcunuvKE3FDKNZEaPpxdyWADDgthHnUV1swdvwuiZfi3DDDgxm1iBrhOkQ/w0yDBQ8qJtA==}
 
-  '@fontsource/barlow-condensed@5.3.0':
-    resolution: {integrity: sha512-RA7MmIx0v3eQ6Gcf74qLVLOwLB0GpPOzx+eU9iG/AmCnSJGcIWYeU8y6CEMGZ210MGwGg5CZhzLkkvyZdTTk1g==}
+  '@fontsource/ibm-plex-sans@5.3.0':
+    resolution: {integrity: sha512-CbE4CbbEEZJX860XyUiRpsksXIQR8Rp2XDva2VO53NJox9tVNtusrysd2x5YkUEY3ErQ66W1IiiQL8/wihhw5w==}
 
-  '@fontsource/be-vietnam-pro@5.3.0':
-    resolution: {integrity: sha512-xhAQBGHDxP5BF8IJxedy5MoWUmc1DlPCcZbMLhvnPkf8TaYCbbUVs3LjpuJ4BYdTrdiCLaewNaY8z+owq/FqFw==}
+  '@fontsource/space-grotesk@5.3.0':
+    resolution: {integrity: sha512-ksnGizDPXIDuvqcTYTSrmZ+evx9sDlS8rp7+42BQ7wU+spt3twEoXfbJz672C+5CLg6VeUQwRy5RXshWb67LcQ==}
 
   '@gltf-transform/core@4.5.1':
     resolution: {integrity: sha512-OWgBYssKHKoXMIrMb2N20jXqWRnMP9HdtcTFQBEAJtz4P+OOxx5fozl5eAeK7nktIs5uDE/lu4NbkE5VCZaR9g==}
@@ -3676,9 +3676,9 @@ snapshots:
       ip-address: 10.7.5
       toad-cache: 3.7.4
 
-  '@fontsource/barlow-condensed@5.3.0': {}
+  '@fontsource/ibm-plex-sans@5.3.0': {}
 
-  '@fontsource/be-vietnam-pro@5.3.0': {}
+  '@fontsource/space-grotesk@5.3.0': {}
 
   '@gltf-transform/core@4.5.1':
     dependencies:
