@@ -520,6 +520,69 @@
   color: var(--c-card-muted);
 }
 
+/* Nhãn trọng tài "PHẠM LỖI" (+ thẻ) trong ~1,25 s diễn tiếp pha phạm lỗi trước khi khép stinger. */
+.foul-call {
+  position: fixed;
+  top: 172px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: var(--z-overlay);
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--c-hud-bg);
+  border-color: #ff6b6b;
+  color: var(--c-card-ink);
+  pointer-events: none;
+  animation: foul-call-in 0.18s ease-out;
+}
+.foul-call[hidden] {
+  display: none;
+}
+.foul-call__whistle {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #ff6b6b;
+  animation: replay-pulse 0.5s ease-in-out infinite;
+}
+.foul-call__text {
+  color: #ffd6d6;
+  letter-spacing: 0.1em;
+}
+.foul-call__card {
+  width: 12px;
+  height: 17px;
+  border-radius: 2px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 35%);
+}
+.foul-call__card--yellow {
+  background: #ffd23f;
+}
+.foul-call__card--red {
+  background: #e53935;
+}
+.foul-call__who {
+  color: var(--c-card-muted);
+  letter-spacing: 0.06em;
+}
+@keyframes foul-call-in {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) scale(1);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .foul-call,
+  .foul-call__whistle {
+    animation: none;
+  }
+}
+
 /* =========================================================
  * MENU TẠM DỪNG OVERLAY (trên sân 3D)
  * ========================================================= */

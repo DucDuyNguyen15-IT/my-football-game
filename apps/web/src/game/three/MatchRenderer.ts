@@ -64,6 +64,7 @@ import {
   type TransitionKind,
   type TransitionSpec,
 } from '../render/transition';
+import { CutHold } from '../render/cutHold';
 import { MatchStinger, type TransitionPlayOptions } from './stinger';
 
 /** Khung hình bị treo lâu (tab ẩn, debugger) thì bỏ bớt thời gian, không chạy dồn hàng trăm tick. */
@@ -187,6 +188,13 @@ export class MatchRenderer {
   private frozen: { state: MatchState; cam: CameraState } | null = null;
   /** Khung hình giữ ở cầu môn sau bàn thắng (trong lúc chờ bóng rung lưới trước khi vào replay). */
   private goalHold: MatchState | null = null;
+  /**
+   * Pha phạm lỗi / bóng ra biên đang được diễn tiếp (người bị phạm lỗi té, bóng lăn qua vạch) trước
+   * khi khép stinger; sim vẫn chạy phía sau.
+   */
+  private cutHold: CutHold | null = null;
+  /** Nhãn trọng tài "PHẠM LỖI" (+ thẻ) trong lúc diễn tiếp pha phạm lỗi; tạo một lần, ẩn/hiện. */
+  private foulCall: HTMLElement | null = null;
   private goalSide: 1 | -1 = 1;
   private goalScoredTeam: 'home' | 'away' = 'home';
 
@@ -395,6 +403,7 @@ export class MatchRenderer {
     this.renderer.domElement.remove();
     this.debug?.el.remove();
     this.replayLabel?.remove();
+    this.foulCall?.remove();
     delete (this.parent as HTMLElement & { __matchRenderer?: MatchRenderer }).__matchRenderer;
   }
 
@@ -407,21 +416,110 @@ export class MatchRenderer {
   }
 
   /**
-   * Bật stinger chuyển cảnh và giữ nguyên khung hình trước lúc đặt lại vị trí (`this.prev`) tới đúng
-   * thời điểm stinger che kín 100% (`onCovered`), sau đó cắt camera sang vị trí bóng mới.
+   * Chuyển cảnh cho tình huống vừa phát hiện. Phạm lỗi / bóng ra biên từ bóng sống (`delaySec > 0`):
+   * diễn tiếp khung bóng sống trước đó (`CutHold`) cho thấy pha bóng rồi mới khép stinger; còn lại khép
+   * stinger ngay.
    */
   private triggerTransition(spec: TransitionSpec): void {
     if (!this.stingerEnabled) return;
-    const holdState = this.frozen?.state ?? this.goalHold ?? this.prev;
+    const hold = this.cutHold;
+    if (hold && !hold.started) {
+      // Tình huống mới khi đang diễn tiếp: cắt cảnh luôn từ khung đang giữ.
+      this.startStinger(spec);
+      return;
+    }
+    if (spec.delaySec > 0 && !this.frozen && !this.goalHold && !hold) {
+      this.cutHold = new CutHold(this.prev, this.curr, spec);
+      this.showFoulCall(spec);
+      return;
+    }
+    this.startStinger(spec);
+  }
+
+  /**
+   * Bật stinger và giữ khung hình trước lúc đặt lại vị trí (khung đang diễn tiếp, hoặc `this.prev`) tới
+   * đúng thời điểm stinger che kín 100% (`onCovered`), sau đó cắt camera sang vị trí bóng mới.
+   */
+  private startStinger(spec: TransitionSpec): void {
+    const hold = this.cutHold;
+    if (hold) {
+      hold.started = true;
+      this.hideFoulCall();
+    }
+    const holdState = hold?.state ?? this.frozen?.state ?? this.goalHold ?? this.prev;
     const holdCam = this.frozen?.cam ?? this.cam;
     this.transition.play(spec, {
       onCovered: () => {
         this.frozen = null;
         this.goalHold = null;
+        this.endCutHold();
         this.cam = followCamera(this.cam, this.curr.ball.pos, 100);
       },
     });
     this.frozen = { state: holdState, cam: holdCam };
+  }
+
+  /** Tiến cảnh diễn tiếp; đủ độ trễ thì khép stinger. Hết hiệp/hết trận giữa chừng thì bỏ. */
+  private advanceCutHold(dt: number): void {
+    const hold = this.cutHold;
+    if (!hold) return;
+    if (!hold.started && (this.curr.phase === 'half_time' || this.curr.phase === 'full_time')) {
+      this.endCutHold();
+      return;
+    }
+    hold.advance(dt);
+    if (!hold.started && hold.ready) this.startStinger(hold.spec);
+  }
+
+  private endCutHold(): void {
+    const hold = this.cutHold;
+    if (!hold) return;
+    this.cutHold = null;
+    this.hideFoulCall();
+    const victimId = hold.foul?.victimId;
+    const actor = victimId ? this.actors.get(victimId) : undefined;
+    if (actor && victimId && !this.models.has(victimId)) actor.rotation.x = 0;
+  }
+
+  /** Cầu thủ khối (chưa nạp model, không có clip ngã): nghiêng đổ người bị phạm lỗi về trước. */
+  private applyFallTilt(): void {
+    const hold = this.cutHold;
+    const victimId = hold?.foul?.victimId;
+    if (!hold || !victimId || this.models.has(victimId)) return;
+    const actor = this.actors.get(victimId);
+    if (!actor) return;
+    // Nghiêng quanh trục X cục bộ sau khi đã xoay hướng mặt (Y) → đổ đúng về phía trước mặt.
+    if (actor.rotation.order !== 'YXZ') actor.rotation.order = 'YXZ';
+    actor.rotation.x = hold.victimTilt();
+  }
+
+  /** Nhãn "PHẠM LỖI" kiểu trọng tài thổi còi, kèm thẻ vàng/đỏ (nếu rút) trong lúc diễn tiếp. */
+  private showFoulCall(spec: TransitionSpec): void {
+    const foul = spec.foul;
+    if (!foul) return;
+    let el = this.foulCall;
+    if (!el) {
+      // Class HUD chung (styles/ui.css, features/play/play.css).
+      el = document.createElement('div');
+      el.className = 'hud-panel foul-call';
+      el.setAttribute('role', 'status');
+      this.parent.appendChild(el);
+      this.foulCall = el;
+    }
+    const card = foul.card
+      ? `<span class="foul-call__card foul-call__card--${foul.card}" aria-hidden="true"></span>` +
+        `<span class="foul-call__who">${foul.card === 'red' ? 'THẺ ĐỎ' : 'THẺ VÀNG'}` +
+        `${foul.bookedNumber !== null ? ` · SỐ ${foul.bookedNumber}` : ''}</span>`
+      : '';
+    el.innerHTML =
+      '<span class="foul-call__whistle" aria-hidden="true"></span>' +
+      `<span class="display foul-call__text">${spec.kind === 'penalty' ? 'PHẠM LỖI TRONG VÒNG CẤM' : 'PHẠM LỖI'}</span>` +
+      card;
+    el.hidden = false;
+  }
+
+  private hideFoulCall(): void {
+    if (this.foulCall) this.foulCall.hidden = true;
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
@@ -525,6 +623,7 @@ export class MatchRenderer {
         this.bridge?.onState(this.curr);
       }
     }
+    this.advanceCutHold(activeDt);
     if (this.pendingReplay) {
       const hold = this.frozen?.state ?? this.goalHold ?? this.curr;
       const holdCam = this.frozen?.cam;
@@ -538,6 +637,11 @@ export class MatchRenderer {
         activeDt,
         this.frozen.cam,
       );
+      this.applyFallTilt();
+    } else if (this.cutHold) {
+      // Diễn tiếp pha bóng: camera vẫn bám bóng đang lăn.
+      this.draw(this.cutHold.state, this.cutHold.state, 1, activeDt, activeDt);
+      this.applyFallTilt();
     } else if (this.goalHold) {
       this.draw(this.goalHold, this.goalHold, 1, dt, activeDt);
     } else {
@@ -696,6 +800,7 @@ export class MatchRenderer {
    * nên lấy vị trí bóng từ `this.prev` để rung đúng lưới và giữ khung hình cầu môn tới khi chuyển cảnh.
    */
   private onGoal(): void {
+    this.endCutHold();
     const prevBall = this.prev.ball;
     const side: 1 | -1 = prevBall.pos.x >= 0 ? 1 : -1;
     this.goalSide = side;
@@ -818,7 +923,7 @@ export class MatchRenderer {
     this.boards.update(timeSec);
     this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + dolly.z);
     this.camera.lookAt(look.x, look.y, look.z);
-    this.drawCountdown(cameraOverride ? null : countdownRing(this.curr));
+    this.drawCountdown(cameraOverride || this.cutHold ? null : countdownRing(this.curr));
   }
 
   /**
