@@ -107,14 +107,14 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Kết quả | Thắng / Hòa (thua hay thắng luân lưu) / Thua. Tỉ số và thẻ phạt hiển thị cuối trận |
 
 **Tiêu chí chấp nhận F1–F3**
-- [ ] Trận chạy đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, đạt **≥ 55 FPS trung bình** trên laptop tầm trung (Chrome, tích hợp GPU) với 14 cầu thủ.
-- [ ] Vật lý bóng chạy theo bước thời gian cố định (60 tick/s). Cùng trạng thái ban đầu và cùng chuỗi input thì cho cùng kết quả (test tự động).
-- [ ] Bóng qua hết vạch biên dọc → ném biên cho đội không chạm bóng cuối; qua vạch cuối sân → phạt góc hoặc phát bóng đúng luật (test tự động cho cả 3 trường hợp).
-- [ ] Xoạc không chạm bóng trước → phạm lỗi, đá phạt; phạm lỗi trong vòng cấm → phạt đền; vàng thứ 2 → đỏ và cầu thủ rời sân (test tự động).
+- [ ] Trận chạy đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, đạt **≥ 55 FPS trung bình** trên laptop tầm trung (Chrome, tích hợp GPU) với 14 cầu thủ. _(8.4, 2026-11-14: thời lượng và đổi sân đã đạt; chờ số đo FPS — `docs/QA-REPORT.md` §2.4, §4.2.)_
+- [x] Vật lý bóng chạy theo bước thời gian cố định (60 tick/s). Cùng trạng thái ban đầu và cùng chuỗi input thì cho cùng kết quả (test tự động).
+- [x] Bóng qua hết vạch biên dọc → ném biên cho đội không chạm bóng cuối; qua vạch cuối sân → phạt góc hoặc phát bóng đúng luật (test tự động cho cả 3 trường hợp).
+- [x] Xoạc không chạm bóng trước → phạm lỗi, đá phạt; phạm lỗi trong vòng cấm → phạt đền; vàng thứ 2 → đỏ và cầu thủ rời sân (test tự động).
 - [x] Hòa sau 2 hiệp → luân lưu 5 lượt, rồi sudden death cho tới khi có kết quả.
 - [x] Thay người chỉ mở được khi bóng chết, tối đa 3 lượt, cầu thủ bị thẻ đỏ không được thay.
-- [ ] Mức Khó cho tỉ lệ thắng của máy cao hơn Dễ rõ rệt: mô phỏng AI-vs-AI 100 trận, đội "người" dùng đội khởi đầu, thắng máy Dễ ≥ 60% số trận và thắng máy Khó ≤ 30%.
-- [ ] Cùng một tình huống sút, cầu thủ Sút 90 vào khung thành nhiều hơn cầu thủ Sút 55 ít nhất 25 điểm % (mô phỏng 1.000 cú sút).
+- [x] Mức Khó cho tỉ lệ thắng của máy cao hơn Dễ rõ rệt: mô phỏng AI-vs-AI 100 trận, đội "người" dùng đội khởi đầu, thắng máy Dễ ≥ 60% số trận và thắng máy Khó ≤ 30%.
+- [x] Cùng một tình huống sút, cầu thủ Sút 90 vào khung thành nhiều hơn cầu thủ Sút 55 ít nhất 25 điểm % (mô phỏng 1.000 cú sút).
 
 ## 6. Hệ thống thẻ (F4–F6, F10–F11)
 
@@ -167,14 +167,14 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Gói 5 thẻ | 450 xu (rẻ 10%) | Bốc 5 phiếu. **Đảm bảo ≥ 1 Bạc trở lên**: nếu 4 phiếu đầu đều là Đồng và hộp còn phiếu Bạc+, phiếu thứ 5 được bốc trong nhóm Bạc+ (theo tỉ lệ số còn lại). Nếu hộp chỉ còn Đồng thì không đảm bảo, và UI báo trước khi mua |
 
 **Tiêu chí chấp nhận F5**
-- [ ] Toàn bộ việc bốc thẻ, trừ xu, thêm thẻ vào kho chạy ở **server** trong **một DB transaction**. Client chỉ gửi "mua gói X" và nhận kết quả.
-- [ ] Không đủ xu → server từ chối, xu và hộp giữ nguyên.
-- [ ] Mở hết 100 phiếu thì nhận **đúng** 2/10/30/58 thẻ theo độ hiếm (test tự động trên nhiều hộp).
-- [ ] Mô phỏng 10.000 hộp: tần suất độ hiếm của từng vị trí bốc khớp lý thuyết (kiểm định chi-bình phương, p > 0,01).
-- [ ] Gói 5 không bao giờ ra 5 Đồng khi hộp còn ít nhất 1 phiếu Bạc+ (test tự động).
-- [ ] Bộ sinh ngẫu nhiên phía server dùng CSPRNG (`crypto`), không dùng `Math.random`.
-- [ ] Gửi trùng request (bấm 2 lần, gửi lại) không mở 2 lần: request mang idempotency key.
-- [ ] Sau khi mở, kho thẻ và số phiếu còn lại hiển thị đúng mà không cần tải lại trang.
+- [x] Toàn bộ việc bốc thẻ, trừ xu, thêm thẻ vào kho chạy ở **server** trong **một DB transaction**. Client chỉ gửi "mua gói X" và nhận kết quả.
+- [x] Không đủ xu → server từ chối, xu và hộp giữ nguyên.
+- [x] Mở hết 100 phiếu thì nhận **đúng** 2/10/30/58 thẻ theo độ hiếm (test tự động trên nhiều hộp).
+- [x] Mô phỏng 10.000 hộp: tần suất độ hiếm của từng vị trí bốc khớp lý thuyết (kiểm định chi-bình phương, p > 0,01).
+- [x] Gói 5 không bao giờ ra 5 Đồng khi hộp còn ít nhất 1 phiếu Bạc+ (test tự động).
+- [x] Bộ sinh ngẫu nhiên phía server dùng CSPRNG (`crypto`), không dùng `Math.random`.
+- [x] Gửi trùng request (bấm 2 lần, gửi lại) không mở 2 lần: request mang idempotency key.
+- [x] Sau khi mở, kho thẻ và số phiếu còn lại hiển thị đúng mà không cần tải lại trang.
 
 ### 6.4 Đội hình (F6)
 
@@ -184,11 +184,11 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - **Chỉ số đội** = trung bình OVR hiệu lực (đã trừ phạt sai vị trí) của 7 người đá chính.
 
 **Tiêu chí chấp nhận F6**
-- [ ] Kéo-thả thẻ từ kho vào ô; đổi sơ đồ thì giữ các thẻ còn hợp lệ, thẻ thừa chuyển về dự bị hoặc kho.
-- [ ] Không vào được trận nếu thiếu thủ môn hoặc chưa đủ 7 người đá chính (thông báo rõ thiếu gì).
-- [ ] Chỉ số đội và cảnh báo sai vị trí cập nhật ngay khi thay đổi.
-- [ ] Đội hình lưu ở server, đăng nhập máy khác vẫn còn.
-- [ ] Thẻ đang nằm trong đội hình không thể bán hay dùng làm nguyên liệu ép.
+- [x] Kéo-thả thẻ từ kho vào ô; đổi sơ đồ thì giữ các thẻ còn hợp lệ, thẻ thừa chuyển về dự bị hoặc kho.
+- [x] Không vào được trận nếu thiếu thủ môn hoặc chưa đủ 7 người đá chính (thông báo rõ thiếu gì).
+- [x] Chỉ số đội và cảnh báo sai vị trí cập nhật ngay khi thay đổi.
+- [x] Đội hình lưu ở server, đăng nhập máy khác vẫn còn.
+- [x] Thẻ đang nằm trong đội hình không thể bán hay dùng làm nguyên liệu ép.
 
 ### 6.5 Ép thẻ +1→+5 (F10)
 
@@ -203,11 +203,11 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - **Thất bại:** giữ nguyên cấp, mất nguyên liệu và phí, thẻ được **+10% điểm may mắn** cộng vào tỉ lệ lần ép sau (cộng dồn, tỉ lệ tối đa 100%). Điểm may mắn reset về 0 khi ép thành công. Điểm may mắn gắn với từng thẻ.
 
 **Tiêu chí chấp nhận F10**
-- [ ] Trước khi ép, UI hiển thị: tỉ lệ = cơ bản + may mắn, phí, chỉ số sau khi ép.
-- [ ] Ép chạy hoàn toàn ở server trong 1 DB transaction (trừ xu, xoá nguyên liệu, quay tỉ lệ, cập nhật cấp/may mắn, ghi giao dịch).
-- [ ] Mô phỏng 10.000 lần ép mỗi cấp (may mắn = 0) cho tỉ lệ thành công lệch không quá ±1,5 điểm % so với bảng.
-- [ ] Sau 3 lần trượt liên tiếp ở +5, lần thứ 4 có tỉ lệ 55%.
-- [ ] Không ép được thẻ đã +5; không ép khi thiếu xu hoặc nguyên liệu không hợp lệ.
+- [x] Trước khi ép, UI hiển thị: tỉ lệ = cơ bản + may mắn, phí, chỉ số sau khi ép.
+- [x] Ép chạy hoàn toàn ở server trong 1 DB transaction (trừ xu, xoá nguyên liệu, quay tỉ lệ, cập nhật cấp/may mắn, ghi giao dịch).
+- [x] Mô phỏng 10.000 lần ép mỗi cấp (may mắn = 0) cho tỉ lệ thành công lệch không quá ±1,5 điểm % so với bảng.
+- [x] Sau 3 lần trượt liên tiếp ở +5, lần thứ 4 có tỉ lệ 55%.
+- [x] Không ép được thẻ đã +5; không ép khi thiếu xu hoặc nguyên liệu không hợp lệ.
 
 ### 6.6 Bán thẻ (F11)
 
@@ -218,8 +218,8 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - Giá bán không phụ thuộc cấp +. Giá trị kỳ vọng khi bán lại một thẻ từ gói ≈ 27 xu, thấp hơn nhiều so với giá gói 90–100 xu/thẻ, nên không thể "mua gói rồi bán lời".
 
 **Tiêu chí chấp nhận F11**
-- [ ] Bán một hoặc nhiều thẻ cùng lúc, có hộp xác nhận nếu trong số đó có thẻ Vàng+ hoặc thẻ đã +.
-- [ ] Không bán được thẻ trong đội hình. Bán thẻ và cộng xu xảy ra trong cùng 1 DB transaction.
+- [x] Bán một hoặc nhiều thẻ cùng lúc, có hộp xác nhận nếu trong số đó có thẻ Vàng+ hoặc thẻ đã +.
+- [x] Không bán được thẻ trong đội hình. Bán thẻ và cộng xu xảy ra trong cùng 1 DB transaction.
 
 ## 7. Kinh tế tiền ảo (F7, F9, F12)
 
@@ -254,11 +254,11 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - Mọi con số trong mục 6–7 nằm trong file config phía server.
 
 **Tiêu chí chấp nhận F7, F9, F12**
-- [ ] Số dư xu luôn bằng tổng các bản ghi giao dịch của người chơi (test đối soát).
-- [ ] Số dư không bao giờ âm, kể cả khi 2 request mua gói đến gần như cùng lúc (test đồng thời).
-- [ ] Thưởng trận chỉ được cấp khi: có **match token** do server phát lúc bắt đầu trận; mỗi token chỉ dùng 1 lần; thời gian từ lúc phát token tới lúc nộp kết quả ≥ 6 phút; tỉ số hợp lý (mỗi đội ≤ 20 bàn); chưa vượt 15 trận có thưởng trong ngày.
-- [ ] Tài khoản mới nhận đúng 11 thẻ khởi đầu + 1 gói 5 miễn phí, đúng một lần.
-- [ ] Nhiệm vụ ngày cập nhật tiến độ theo sự kiện ở server, nhận thưởng một lần, reset lúc 00:00 GMT+7.
+- [x] Số dư xu luôn bằng tổng các bản ghi giao dịch của người chơi (test đối soát).
+- [x] Số dư không bao giờ âm, kể cả khi 2 request mua gói đến gần như cùng lúc (test đồng thời).
+- [x] Thưởng trận chỉ được cấp khi: có **match token** do server phát lúc bắt đầu trận; mỗi token chỉ dùng 1 lần; thời gian từ lúc phát token tới lúc nộp kết quả ≥ 6 phút; tỉ số hợp lý (mỗi đội ≤ 20 bàn); chưa vượt 15 trận có thưởng trong ngày.
+- [x] Tài khoản mới nhận đúng 11 thẻ khởi đầu + 1 gói 5 miễn phí, đúng một lần.
+- [x] Nhiệm vụ ngày cập nhật tiến độ theo sự kiện ở server, nhận thưởng một lần, reset lúc 00:00 GMT+7.
 
 ## 8. Tài khoản & phân tích (F8, F13)
 
@@ -268,9 +268,9 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - Người chơi **"quay lại ngày N"** = có ít nhất 1 sự kiện bất kỳ vào ngày thứ N (GMT+7) sau ngày đăng ký.
 
 **Tiêu chí chấp nhận F8, F13**
-- [ ] Đăng ký → đăng nhập → đăng xuất hoạt động. Sai mật khẩu 5 lần trong 15 phút thì tạm khoá đăng nhập 15 phút.
-- [ ] Mọi API thay đổi dữ liệu đều yêu cầu đăng nhập và chỉ tác động lên tài khoản của chính người gọi.
-- [ ] Có một truy vấn hoặc trang admin đơn giản cho ra D7 retention theo nhóm ngày đăng ký.
+- [x] Đăng ký → đăng nhập → đăng xuất hoạt động. Sai mật khẩu 5 lần trong 15 phút thì tạm khoá đăng nhập 15 phút.
+- [x] Mọi API thay đổi dữ liệu đều yêu cầu đăng nhập và chỉ tác động lên tài khoản của chính người gọi.
+- [x] Có một truy vấn hoặc trang admin đơn giản cho ra D7 retention theo nhóm ngày đăng ký.
 
 ## 9. Luồng người chơi chính
 
