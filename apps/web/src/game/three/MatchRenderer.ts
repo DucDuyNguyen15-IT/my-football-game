@@ -25,7 +25,7 @@ import {
 import { followCamera, initialCamera, type CameraState } from '../render/camera';
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
-import { chargeMeter, lerp, lerpPos } from '../render/view';
+import { chargeMeter, countdownRing, lerp, lerpPos } from '../render/view';
 import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
 import {
   REPLAY_AFTER_TICKS,
@@ -37,6 +37,7 @@ import {
   type Replay,
 } from '../render/replay';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
+import { CountdownRingView } from './countdown';
 import { buildGrass, type Grass } from './grass';
 import { buildPitch, NetRig } from './pitch';
 import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
@@ -64,6 +65,11 @@ const MAX_FRAME_SEC = 0.25;
 const TONE_EXPOSURE = 1.15;
 const MARKER_Y = 2.2;
 const CHARGE_BAR_Y = 2.75;
+/** Tâm vòng đếm ngược (m): trên mũi tên người điều khiển và thanh lực. */
+const COUNTDOWN_Y = 3.55;
+/** Đường kính vòng đếm ngược theo mét trong cảnh; trên màn hình không nhỏ hơn COUNTDOWN_MIN_PX. */
+const COUNTDOWN_SIZE = 0.95;
+const COUNTDOWN_MIN_PX = 34;
 /** Màu thanh lực: chuyền xanh dương, sút màu chanh (nút chính). */
 /** Chuyền: xanh dương · chọc khe: tím · sút: màu nhấn (chanh). */
 const CHARGE_COLORS = {
@@ -118,6 +124,9 @@ export class MatchRenderer {
   private readonly models = new Map<string, ModelActor>();
   private playerModel: PlayerModel | null = null;
   private readonly kit = new ActorKit();
+  private readonly countdown: CountdownRingView;
+  private readonly ringPos = new THREE.Vector3();
+  private readonly ringEdge = new THREE.Vector3();
   private modelMaterials: ModelMaterials | null = null;
   private disposed = false;
   private readonly ball: THREE.Mesh;
@@ -205,6 +214,7 @@ export class MatchRenderer {
     this.ballShadow = kit.createBlobShadow();
     this.marker = kit.createMarker();
     this.chargeBar = kit.createChargeBar();
+    this.countdown = new CountdownRingView(parent);
     this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -338,6 +348,7 @@ export class MatchRenderer {
     window.removeEventListener('blur', this.onBlur);
     this.resizeObserver.disconnect();
     this.postFx.dispose();
+    this.countdown.dispose();
     disposeTree(this.scene);
     if (this.playerModel) disposeTree(this.playerModel.scene);
     this.renderer.dispose();
@@ -597,6 +608,37 @@ export class MatchRenderer {
     this.boards.update(timeSec);
     this.camera.position.set(pos.x, pos.y, pos.z);
     this.camera.lookAt(look.x, look.y, look.z);
+    this.drawCountdown(cameraOverride ? null : countdownRing(curr));
+  }
+
+  /**
+   * Vòng đếm ngược trên đầu thủ môn đang ôm bóng / người đá phạt của đội người chơi: SVG đè lên
+   * canvas, đặt tại điểm trên đầu cầu thủ chiếu ra màn hình (gọi sau khi đã đặt camera khung này).
+   */
+  private drawCountdown(ring: ReturnType<typeof countdownRing>): void {
+    const actor = ring ? this.actors.get(ring.playerId) : undefined;
+    if (!ring || !actor) {
+      this.countdown.hide();
+      return;
+    }
+    const { camera, ringPos, ringEdge } = this;
+    camera.updateMatrixWorld();
+    ringPos.set(actor.position.x, COUNTDOWN_Y, actor.position.z);
+    // Điểm cách tâm nửa đường kính theo phương ngang của camera, để đổi mét → px ở đúng độ sâu đó.
+    ringEdge
+      .setFromMatrixColumn(camera.matrixWorld, 0)
+      .multiplyScalar(COUNTDOWN_SIZE / 2)
+      .add(ringPos);
+    ringPos.project(camera);
+    ringEdge.project(camera);
+    if (ringPos.z < -1 || ringPos.z > 1) {
+      this.countdown.hide();
+      return;
+    }
+    const w = this.parent.clientWidth;
+    const h = this.parent.clientHeight;
+    const size = Math.max(COUNTDOWN_MIN_PX, Math.abs(ringEdge.x - ringPos.x) * w);
+    this.countdown.show(ring, ((ringPos.x + 1) / 2) * w, ((1 - ringPos.y) / 2) * h, size);
   }
 
   /** Điểm bóng trong tay người cầm: theo xương tay của model, cầu thủ khối thì trước ngực/trên đầu. */
