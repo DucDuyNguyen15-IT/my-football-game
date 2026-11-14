@@ -1,0 +1,130 @@
+/*
+ * Hướng A: "Sóng Cầu Trường" (Broadcast Esports / Prime-Time Matchday)
+ * Bộ token v3 giữ nguyên toàn bộ tên biến của apps/web/src/styles/tokens.css
+ * để có thể thay thế trực tiếp khi chuyển sang code thật.
+ */
+:root {
+  /* Nền & bề mặt — Xanh navy trường quay truyền hình */
+  --c-bg: #070b16;
+  --c-surface-1: #0d1426;
+  --c-surface-2: #141f38;
+  --c-surface-3: #1d2c4f;
+  --c-line: #23345c;
+  --c-line-strong: #344d85;
+  --c-line-control: #4d6db5;
+  --c-chalk: #e6f0ff;
+
+  /* Chữ — Trắng lạnh sắc nét, độ tương phản cao */
+  --c-text: #f0f5ff;
+  --c-text-muted: #9bb0d6;
+  --c-text-faint: #6d84ad; /* chỉ dùng trên --c-bg (5.20:1) */
+
+  /* Hành động & trạng thái — Xanh băng điện tử + Đỏ phát sóng */
+  --c-accent: #00e5ff;
+  --c-accent-hover: #4df0ff;
+  --c-accent-ink: #050912;
+  --c-accent-soft: rgb(0 229 255 / 0.14);
+  --c-danger: #ff3b5c;
+  --c-warning: #ffb830;
+  --c-success: #00e676;
+  --c-info: #38b6ff;
+  --c-coin: #ffd13b;
+  --c-focus: #00e5ff;
+  --c-scrim: rgb(3 6 14 / 0.84);
+
+  /* Sân & đội (HUD, vẽ trận 3D) */
+  --c-pitch-a: #0f3d3e;
+  --c-pitch-b: #134b4c;
+  --c-pitch-line: #b8dcff;
+  --c-team-home: #00e5ff;
+  --c-team-away: #ff3b5c;
+  --c-power-pass: #38b6ff;
+  --c-power-through: #b84dff; /* chỉ dùng trong HUD trận hoặc thẻ Huyền thoại */
+  --c-power-shot: #00e5ff;
+
+  /* Độ hiếm: giữ thứ bậc Đồng < Bạc < Vàng < Huyền thoại, độ nổi tăng dần */
+  --r-bronze-base: #c47442;
+  --r-bronze-hi: #f5b58b;
+  --r-bronze-lo: #2b160b;
+  --r-bronze-glow: rgb(245 181 139 / 0.45);
+
+  --r-silver-base: #94a8c4;
+  --r-silver-hi: #e6f0fa;
+  --r-silver-lo: #172030;
+  --r-silver-glow: rgb(230 240 250 / 0.5);
+
+  --r-gold-base: #f0b429;
+  --r-gold-hi: #fff099;
+  --r-gold-lo: #2e2005;
+  --r-gold-glow: rgb(255 215 70 / 0.65);
+
+  --r-legend-base: #b84dff;
+  --r-legend-hi: #f0d6ff;
+  --r-legend-lo: #160829;
+  --r-legend-glow: rgb(184 77 255 / 0.78);
+  --r-legend-foil: conic-gradient(from 0deg, #b84dff, #00e5ff, #ff2a5f, #fff099, #b84dff);
+
+  /* Chữ — OFL hỗ trợ tiếng Việt đầy đủ */
+  --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --fs-xs: 0.75rem; /* 12 */
+  --fs-sm: 0.875rem; /* 14 */
+  --fs-md: 1rem; /* 16 */
+  --fs-lg: 1.25rem; /* 20 */
+  --fs-xl: 1.75rem; /* 28 */
+  --fs-2xl: 2.5rem; /* 40 */
+  --fs-3xl: 4rem; /* 64 */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.04;
+  --lh-normal: 1.5;
+  --tracking-caps: 0.08em;
+
+  /* Khoảng cách (bước 4px) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* Bo góc & vát cạnh broadcast sắc lẹm */
+  --radius-sm: 2px;
+  --radius-md: 3px;
+  --radius-lg: 4px;
+  --card-notch: 18px;
+  --panel-notch: 16px;
+
+  /* Bóng & lớp */
+  --shadow-1: 0 1px 0 rgb(0 229 255 / 0.12) inset, 0 6px 18px rgb(2 5 12 / 0.55);
+  --shadow-2: 0 14px 36px rgb(2 5 12 / 0.72);
+  --z-hud: 10;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+
+  /* Chuyển động — tốc độ cao, sắc lẹm */
+  --dur-instant: 70ms;
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 380ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.28, 1.45, 0.55, 1);
+  --stagger: 70ms;
+
+  /* Bố cục */
+  --layout-max: 1400px;
+  --card-w-lg: 200px;
+  --card-w-md: 146px;
+  --card-w-sm: 94px;
+
+  /* === Biến mới thêm cho Hướng A (chưa có trong tokens.css v2) === */
+  --c-accent-alt: #ff2a5f; /* Nhãn sự kiện nóng / LIVE phát sóng (tương phản 5.02:1 trên surface-1, dùng chữ #050912 đạt 5.45:1) */
+  --c-accent-alt-ink: #050912; /* Chữ tối trên nền --c-accent-alt */
+  --slash-angle: -18deg; /* Góc nghiêng của vạch tốc độ và ruy-băng broadcast */
+}
