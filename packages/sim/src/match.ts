@@ -106,6 +106,7 @@ import {
   keeperReactionTicks,
   keeperSaveChance,
   CONTAIN_STEER_WEIGHT,
+  PENALTY_ERROR_MULT,
   lobRangeFor,
   STAND_TACKLE_COOLDOWN_TICKS,
 } from './stats/params';
@@ -804,6 +805,8 @@ function stepDeadBall(
   const goalSign = attackSign(restart.team, state.half);
   const pass = (kind: PassKind, dir: Vec2) =>
     kickPass(state.players, taker, restart.spot, dir, kind, state.rng, tick);
+  // Phạt đền có hệ số sai số riêng (không theo mức độ khó); đá phạt sút như bóng sống.
+  const penalty = restart.type === 'penalty';
   const humanShot = (chargeTicks: number) => ({
     ...shootBall(
       taker,
@@ -811,6 +814,7 @@ function stepDeadBall(
       shotTarget(goalSign, input.move.y),
       shotPower(chargeTicks),
       state.rng,
+      penalty ? PENALTY_ERROR_MULT : 1,
     ),
     shot: true,
   });
@@ -866,7 +870,8 @@ function stepDeadBall(
       windup = startWindup(taker.id, tick, 'kick', decided.action);
       rng = decided.rng;
     } else if (decided.action.type !== 'dribble') {
-      const profile = aiProfile(state, restart.team);
+      const ai = aiProfile(state, restart.team);
+      const profile = penalty ? { ...ai, shotErrorMult: PENALTY_ERROR_MULT } : ai;
       kicked = {
         ...performKick(taker, restart.spot, decided.action, decided.rng, profile),
         // Máy đá hộ người chơi: người chơi cầm luôn người nhận như khi tự chuyền.

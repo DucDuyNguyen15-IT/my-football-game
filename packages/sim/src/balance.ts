@@ -95,3 +95,47 @@ export function runBalance(
   r.winRate = r.matches === 0 ? 0 : r.wins / r.matches;
   return r;
 }
+
+/** Phạt đền thành bàn ~75% (PRD §5); test chậm chấp nhận lệch trong khoảng này (đo 1.000 lượt, sai số ~±3 điểm %). */
+export const PENALTY_TARGET = { rate: 0.75, min: 0.7, max: 0.8 } as const;
+
+export interface PenaltyResult {
+  opponent: Difficulty;
+  /** Số lượt sút / số lượt vào của từng đội (nhà = đội người chơi, khách = máy). */
+  kicks: Record<'home' | 'away', number>;
+  goals: Record<'home' | 'away', number>;
+  /** Tỉ lệ vào chung cả hai đội. */
+  rate: number;
+}
+
+/**
+ * Đo tỉ lệ phạt đền thành bàn bằng luân lưu AI-vs-AI: mỗi seed một trận nhảy thẳng tới cuối hiệp 2
+ * (hoà 0–0) rồi sút luân lưu tới khi phân định; lặp seed 1, 2, … tới khi đủ `minKicks` lượt.
+ * Tham số liên quan: `PENALTY_ERROR_MULT`, `GK_PENALTY_GUESS_RANGE` (`stats/params.ts`).
+ */
+export function runPenalties(
+  opponent: Difficulty,
+  minKicks = 1000,
+  teams: BalanceTeams = FIXTURE_BALANCE_TEAMS,
+): PenaltyResult {
+  const kicks = { home: 0, away: 0 };
+  const goals = { home: 0, away: 0 };
+  for (let seed = 1; kicks.home + kicks.away < minKicks; seed++) {
+    const s0 = createMatch({
+      home: teams.home,
+      away: teams.away(opponent, seed),
+      seed,
+      difficulty: opponent,
+      halfLengthSec: 1,
+      autopilot: true,
+    });
+    let s: MatchState = { ...s0, half: 2, halfTick: TICK_RATE - 1, addedMinutes: 0 };
+    for (let i = 0; i < 60 * 60 * TICK_RATE && s.phase !== 'full_time'; i++) s = step(s, NO_INPUT);
+    for (const team of ['home', 'away'] as const) {
+      kicks[team] += s.shootout?.[team].length ?? 0;
+      goals[team] += s.shootout?.[team].filter(Boolean).length ?? 0;
+    }
+  }
+  const all = kicks.home + kicks.away;
+  return { opponent, kicks, goals, rate: all === 0 ? 0 : (goals.home + goals.away) / all };
+}
