@@ -125,6 +125,29 @@ describe('luân lưu trong trận', () => {
     }
   });
 
+  it('sút vào lưới: cầu thủ ở nguyên chỗ, không bị đưa về vị trí giao bóng giữa hai lượt', () => {
+    let scoredKicks = 0;
+    for (const seed of [1, 2, 3]) {
+      let s = step(endOfSecondHalf(seed, { home: 1, away: 1 }), NO_INPUT);
+      for (let i = 0; i < 60 * 60 * TICK_RATE && s.phase !== 'full_time'; i++) {
+        const prev = s;
+        s = step(s, NO_INPUT);
+        const kicks = (x: MatchState) => x.shootout!.home.length + x.shootout!.away.length;
+        if (kicks(s) === kicks(prev)) continue;
+        const kicked = prev.shootout!.kicking;
+        if (s.shootout![kicked].at(-1)) scoredKicks++;
+        // Một tick không ai đi được quá 1 m (nước rút ~9 m/s = 0,15 m/tick).
+        for (const p of s.players) {
+          const before = prev.players.find((q) => q.id === p.id)!;
+          expect(Math.abs(p.pos.x - before.pos.x) + Math.abs(p.pos.y - before.pos.y)).toBeLessThan(
+            1,
+          );
+        }
+      }
+    }
+    expect(scoredKicks).toBeGreaterThan(0);
+  });
+
   it('lượt của đội người chơi: người chơi cầm người sút, giữ-thả D để sút', () => {
     const s0 = endOfSecondHalf(3, { home: 0, away: 0 });
     const entered = step({ ...s0, autopilot: false }, NO_INPUT);

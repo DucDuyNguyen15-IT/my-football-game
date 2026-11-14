@@ -97,6 +97,37 @@ describe('substitute — luật thay người (F3)', () => {
     expect(r.state.restart!.takerId).toBe('home-B2');
   });
 
+  it('thay thủ môn đang lấy đà phát bóng → người vào phát bóng tiếp, không lỗi', () => {
+    // Đội nhà có thêm thủ môn dự bị (B5).
+    const gk = starterLikeTeam.players.find((p) => p.slot === 'GK')!;
+    const home = {
+      ...starterLikeTeam,
+      players: [...starterLikeTeam.players, { ...gk, slot: 'B5' as const }],
+    };
+    const s0 = createMatch({ home, away: cpuEasyTeam, seed: 5, difficulty: 'easy' });
+    // Đội khách sút ra ngoài vạch cuối phía khung thành đội nhà → đội nhà phát bóng.
+    let s: MatchState = {
+      ...live(s0),
+      lastTouchTeam: 'away',
+      ball: { pos: { x: -28, y: 12 }, vel: { x: -12, y: 0 }, z: 0, vz: 0 },
+    };
+    // Bấm chuyền (nhấp nhả) tới khi thủ môn bắt đầu lấy đà.
+    for (let i = 0; i < 1200 && !s.windup; i++) {
+      s = step(s, i % 2 === 0 ? { ...NO_INPUT, pass: true } : NO_INPUT);
+    }
+    expect(s.restart).toMatchObject({ type: 'goal_kick', team: 'home', takerId: 'home-GK' });
+    expect(s.windup).toMatchObject({ playerId: 'home-GK' });
+
+    const r = substitute(s, 'home', 'home-GK', 'B5');
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    expect(r.state.windup).toMatchObject({ playerId: 'home-B5' });
+    s = r.state;
+    for (let i = 0; i < 60 && s.phase !== 'play'; i++) s = step(s, NO_INPUT);
+    expect(s.phase).toBe('play');
+    expect(s.kickLock).toMatchObject({ playerId: 'home-B5' });
+  });
+
   it('sau khi thay, trận chạy tiếp bình thường', () => {
     const r = substitute(base(), 'away', 'away-P4', 'B2');
     if (!r.ok) throw new Error('phải hợp lệ');

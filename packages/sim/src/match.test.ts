@@ -82,8 +82,44 @@ describe('createMatch', () => {
     expect(() => createMatch({ ...setup, home: bad })).toThrow();
   });
 
-  it.each([0, -5, Number.NaN, Number.POSITIVE_INFINITY])('từ chối halfLengthSec = %s', (h) => {
-    expect(() => createMatch({ ...setup, halfLengthSec: h })).toThrow();
+  // 0,001 s làm tròn thành 0 tick giờ chính thức: bù giờ ra NaN, hiệp không bao giờ hết.
+  it.each([0, -5, 0.001, Number.NaN, Number.POSITIVE_INFINITY])(
+    'từ chối halfLengthSec = %s',
+    (h) => {
+      expect(() => createMatch({ ...setup, halfLengthSec: h })).toThrow();
+    },
+  );
+
+  describe('vai trên sân theo ô (xếp sai vị trí)', () => {
+    // Đổi thẻ giữa ô GK và ô P6: tiền đạo đứng ô thủ môn, thủ môn đứng ô tiền đạo.
+    const cardAt = (slot: string) => starterLikeTeam.players.find((p) => p.slot === slot)!;
+    const swapped = {
+      ...starterLikeTeam,
+      players: starterLikeTeam.players.map((p) =>
+        p.slot === 'GK'
+          ? { ...cardAt('P6'), slot: p.slot }
+          : p.slot === 'P6'
+            ? { ...cardAt('GK'), slot: p.slot }
+            : p,
+      ),
+    };
+    const m = createMatch({ ...setup, home: swapped });
+    const at = (id: string) => m.players.find((p) => p.id === id)!;
+
+    it('ô GK luôn là thủ môn dù thẻ là cầu thủ ngoài sân; chỉ số giữ nguyên của thẻ', () => {
+      expect(at('home-GK').position).toBe('GK');
+      expect(at('home-GK').stats).toEqual(cardAt('P6').stats);
+    });
+
+    it('thẻ thủ môn xếp ô ngoài sân đá theo vai của ô, không thành thủ môn thứ hai', () => {
+      expect(at('home-P6').position).toBe('FW');
+      expect(m.players.filter((p) => p.team === 'home' && p.position === 'GK')).toHaveLength(1);
+    });
+
+    it('cầu thủ ngoài sân xếp lệch tuyến giữ vị trí của thẻ; dự bị không đổi', () => {
+      expect(at('home-P1').position).toBe('DF');
+      expect(m.bench.home).toEqual(starterLikeTeam.players.filter((p) => p.slot.startsWith('B')));
+    });
   });
 
   it('cùng đội hình thì hai đội đối xứng tâm (lật cả x và y) — AI dùng chung hệ toạ độ theo đội', () => {
