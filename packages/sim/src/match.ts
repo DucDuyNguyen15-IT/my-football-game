@@ -671,7 +671,16 @@ function stepShootout(
     tick - (so.kickTick ?? tick) >= SHOOTOUT_KICK_TICKS;
   if (!over) return { ...next, phase: 'shootout', shots: state.shots };
   const tally = { ...so, [team]: [...so[team], scored] };
-  const after: MatchState = { ...next, score: state.score, shots: state.shots, shootout: tally };
+  // Vào lưới: `stepPlay` đã xếp mọi người về vị trí giao bóng — luân lưu không giao bóng, ai ở đâu
+  // đứng yên đó (người sút lượt kế tự đi tới chấm phạt đền).
+  const players = scored ? state.players : next.players;
+  const after: MatchState = {
+    ...next,
+    players,
+    score: state.score,
+    shots: state.shots,
+    shootout: tally,
+  };
   if (shootoutWinner(tally) === null) return setupShootoutKick(after, tick);
   return whistle({ ...after, ball: restingBall(after.ball.pos) }, 'full_time');
 }
