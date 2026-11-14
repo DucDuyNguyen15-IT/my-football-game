@@ -19,7 +19,7 @@ import {
 import { COLORS } from '../render/colors';
 import { LIGHTING } from '../render/lighting';
 import { buildFloodSpots, buildSky, createPostFx, setFloodLevels, setSkyLook } from './effects';
-import { buildPitch, NetRig } from './pitch';
+import { buildPitch, NetRig, stripeColors } from './pitch';
 import { loadBallModel, loadGoalModel, swapGoals } from './propModels';
 import { buildRoofs, buildStadium, FLOOD_LAMP_NAME, floodlightSpots } from './stadium';
 
@@ -109,6 +109,7 @@ export class IntroRenderer {
       this.key,
       this.key.target,
       this.pitch,
+      groundSkirt(),
       stadium,
       buildRoofs(),
       sky,
@@ -143,7 +144,16 @@ export class IntroRenderer {
       if (model && !this.disposed) swapGoals(this.pitch, model, this.nets);
     });
     const timeout = new Promise<void>((resolve) => window.setTimeout(resolve, MODEL_WAIT_MS));
-    return Promise.race([Promise.all([ball, goal]).then(() => {}), timeout]).catch(() => {});
+    return (
+      Promise.race([Promise.all([ball, goal]).then(() => {}), timeout])
+        // Biên dịch sẵn shader mọi material trước khi đồng hồ intro chạy — không thì khung đầu (và
+        // lúc đèn bật) khựng cả trăm ms trên máy lần đầu mở game.
+        .then(() =>
+          this.disposed ? undefined : this.renderer.compileAsync(this.scene, this.camera),
+        )
+        .then(() => {})
+        .catch(() => {})
+    );
   }
 
   /** Mặt đèn pha → cột gần nhất trong `floodlightSpots()`; tách material để bật từng cột. */
@@ -229,6 +239,22 @@ export class IntroRenderer {
     this.renderer.dispose();
     this.renderer.domElement.remove();
   }
+}
+
+/**
+ * Mặt đất cỏ tối rộng dưới sân. Phía gần camera không có khán đài nên góc toàn cảnh cuối (camera cao,
+ * lùi xa) nhìn quá mép cỏ → lộ màu nền thành một dải tối sát đáy màn hình.
+ */
+function groundSkirt(): THREE.Mesh {
+  const mesh = new THREE.Mesh(
+    new THREE.PlaneGeometry(600, 600),
+    // Cùng màu + kiểu vật liệu với dải cỏ quanh sân → không có mép; ra xa tối dần theo đèn pha.
+    new THREE.MeshLambertMaterial({ color: stripeColors()[0] }),
+  );
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = -0.02;
+  mesh.receiveShadow = true;
+  return mesh;
 }
 
 /** Bóng trắng trơn khi chưa có `ball.glb`. */

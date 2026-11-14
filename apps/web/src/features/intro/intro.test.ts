@@ -83,10 +83,23 @@ describe('introBall', () => {
       if (prev.x < HALF_LENGTH && p.x >= HALF_LENGTH) {
         expect(Math.abs(p.z)).toBeLessThan(GOAL_WIDTH / 2 - BALL_R);
         expect(p.y).toBeLessThan(GOAL_HEIGHT - BALL_R);
+        // Góc chữ A: sát xà và sát cột.
+        expect(p.y).toBeGreaterThan(GOAL_HEIGHT * 0.75);
+        expect(Math.abs(p.z)).toBeGreaterThan(GOAL_WIDTH * 0.35);
       }
       prev = p;
     }
     expect(prev.x).toBeGreaterThan(HALF_LENGTH);
+    // Không xuyên lưới bên.
+    expect(Math.abs(prev.z) + BALL_R).toBeLessThan(GOAL_WIDTH / 2);
+  });
+
+  it('cong từ ngoài vào: giữa đường bóng ở ngoài cột, cuối đường đi vào trong', () => {
+    const mid = introBall((KICK_SEC + NET_HIT_SEC) / 2).pos;
+    expect(mid.z).toBeGreaterThan(GOAL_WIDTH / 2 + 0.5);
+    const a = introBall(NET_HIT_SEC - 0.02).pos;
+    const b = introBall(NET_HIT_SEC).pos;
+    expect(b.z).toBeLessThan(a.z);
   });
 
   it('không lún xuống cỏ, nằm yên trong lưới ở cuối', () => {

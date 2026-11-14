@@ -41,8 +41,9 @@ export function setFloodLevels(spots: THREE.Object3D, levels: readonly number[])
   const lights = spots.children.filter((o) => o instanceof THREE.SpotLight);
   lights.forEach((o, i) => {
     const level = levels[i] ?? 0;
+    // Giữ `visible` = true: bật/tắt đèn làm đổi số đèn trong cảnh → Three.js biên dịch lại shader
+    // mọi material ngay giữa intro (giật mạnh mỗi lần một cột đèn bật). Cường độ 0 là đủ tắt.
     o.intensity = SPOT_INTENSITY * level;
-    o.visible = level > 0;
   });
 }
 

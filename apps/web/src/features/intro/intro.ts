@@ -78,13 +78,19 @@ const lerp3 = (a: Vec3, b: Vec3, k: number): Vec3 => ({
 
 /** Chấm phạt đền trước khung thành phía +x — nơi đặt bóng. */
 export const BALL_SPOT: Vec3 = v3(HALF_LENGTH - PENALTY_SPOT_DIST, BALL_R, 0);
-/** Điểm bóng găm vào lưới: góc trên bên phải (nhìn từ chấm phạt đền), sau vạch cuối. */
-export const NET_TARGET: Vec3 = v3(HALF_LENGTH + 0.7, GOAL_HEIGHT * 0.72, GOAL_WIDTH * 0.32);
+/**
+ * Điểm bóng găm vào lưới: sát góc chữ A trên bên phải (nhìn từ chấm phạt đền), ngay sau vạch cuối —
+ * qua vạch ở khoảng y ≈ 1,75, z ≈ 2,0 (sát xà và cột), không chạm lưới bên.
+ */
+export const NET_TARGET: Vec3 = v3(HALF_LENGTH + 0.25, GOAL_HEIGHT * 0.845, GOAL_WIDTH * 0.354);
 /** Bóng nằm yên trong lưới sau khi rơi. */
-const BALL_REST: Vec3 = v3(HALF_LENGTH + 0.9, BALL_R, GOAL_WIDTH * 0.36);
-/** Độ vồng và độ cong ngang (m) của đường bóng bay. */
+const BALL_REST: Vec3 = v3(HALF_LENGTH + 0.8, BALL_R, GOAL_WIDTH * 0.32);
+/**
+ * Độ vồng và độ cong ngang (m) của đường bóng bay: cong từ ngoài vào — bóng bay chếch ra ngoài cột
+ * phải rồi bẻ vào góc, vồng lên cao hơn xà ở giữa đường rồi chúi xuống dưới xà.
+ */
 const SHOT_LOFT = 0.9;
-const SHOT_CURL = -1.1;
+const SHOT_CURL = 2.4;
 
 export interface IntroBall {
   pos: Vec3;
@@ -127,10 +133,11 @@ const KEYS: readonly Key[] = [
   { t: 0, pos: v3(20.4, 0.32, -1.5), look: v3(22.2, 0.16, 0) },
   // Lượn sang ngang bóng.
   { t: 1.4, pos: v3(22.6, 0.4, -1.7), look: v3(22, 0.18, 0) },
-  // Vòng ra sau bóng, nhìn về khung thành khi đèn pha bật.
-  { t: 2.7, pos: v3(20.3, 0.7, 0.8), look: v3(25, 0.8, 0.2) },
+  // Vòng ra sau-trái bóng, nhìn về khung thành khi đèn pha bật (bóng cong ra phía phải nên camera
+  // đứng bên trái để thấy trọn đường cong từ ngoài vào và không bị bóng lao qua sát ống kính).
+  { t: 2.7, pos: v3(20.3, 0.7, -0.9), look: v3(25, 0.8, 0.4) },
   // Bám theo đường bóng.
-  { t: 3.6, pos: v3(25.2, 1.2, 1.1), look: v3(HALF_LENGTH, 1.3, 1.4) },
+  { t: 3.6, pos: v3(25.2, 1.2, -0.5), look: v3(HALF_LENGTH, 1.3, 1.6) },
   // Né sang bên thấy lưới rung.
   { t: 4.5, pos: v3(25.5, 3.5, 8), look: v3(HALF_LENGTH, 1, 0.8) },
   { t: 6.8, ...INTRO_END },

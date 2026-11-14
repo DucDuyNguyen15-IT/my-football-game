@@ -1,4 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+// Font logo MFG — chỉ cần bộ Latin (3 chữ cái), @fontsource đã đặt `font-display: swap`.
+import '@fontsource/anton/latin-400.css';
+import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Outlet, useLocation } from 'react-router';
 import {
   introMode,
@@ -106,12 +108,17 @@ function IntroOverlay({
       <div ref={host} className="intro__canvas" aria-hidden="true" />
       <h1
         className="intro__logo"
-        style={{
-          animationDelay: mode === 'full' ? `${LOGO_AT_SEC}s` : '0s',
-          animationPlayState: started || mode === 'static' ? 'running' : 'paused',
-        }}
+        // Biến CSS để vệt sáng lướt chữ (::after của .intro__mark) canh cùng nhịp với logo.
+        style={
+          {
+            '--logo-delay': mode === 'full' ? `${LOGO_AT_SEC}s` : '0s',
+            '--logo-play': started || mode === 'static' ? 'running' : 'paused',
+          } as CSSProperties
+        }
       >
-        MFG
+        <span className="intro__mark" data-text="MFG">
+          MFG
+        </span>
         <span className="intro__tag">My Football Game</span>
       </h1>
       <p className="intro__skip">Bấm phím bất kỳ để bỏ qua</p>
