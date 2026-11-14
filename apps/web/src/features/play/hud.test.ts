@@ -8,6 +8,7 @@ import {
   readDevOptions,
   resultBody,
   sameHud,
+  stoppageMinutes,
   shootoutOutcome,
   shootoutScore,
   staminaLevel,
@@ -222,5 +223,33 @@ describe('resultBody', () => {
   it('không có luân lưu → không gửi `shootout`', () => {
     const hud = { ...toHudSnapshot(match()), score: { home: 2, away: 1 } };
     expect(resultBody('abc', hud)).toEqual({ token: 'abc', homeGoals: 2, awayGoals: 1 });
+  });
+});
+
+describe('bù giờ trên HUD', () => {
+  it('chưa hết giờ chính thức, hoặc bù 0 phút: không hiện', () => {
+    expect(stoppageMinutes({ phase: 'play', addedMinutes: null })).toBeNull();
+    expect(stoppageMinutes({ phase: 'play', addedMinutes: 0 })).toBeNull();
+  });
+
+  it('đã công bố và hiệp còn đá (cả lúc bóng chết): hiện tổng số phút bù', () => {
+    expect(stoppageMinutes({ phase: 'play', addedMinutes: 2 })).toBe(2);
+    expect(stoppageMinutes({ phase: 'dead_ball', addedMinutes: 3 })).toBe(3);
+    expect(stoppageMinutes({ phase: 'kickoff', addedMinutes: 1 })).toBe(1);
+  });
+
+  it('hết hiệp / luân lưu / hết trận: thôi hiện', () => {
+    for (const phase of ['half_time', 'shootout', 'full_time'] as const) {
+      expect(stoppageMinutes({ phase, addedMinutes: 2 })).toBeNull();
+    }
+  });
+
+  it('snapshot đổi khi vừa công bố bù giờ (React vẽ lại, bảng bật lên)', () => {
+    const s = match();
+    const before = toHudSnapshot({ ...s, phase: 'play' });
+    const after = toHudSnapshot({ ...s, phase: 'play', addedMinutes: 2 });
+    expect(before.stoppage).toBeNull();
+    expect(after.stoppage).toBe(2);
+    expect(sameHud(before, after)).toBe(false);
   });
 });

@@ -26,8 +26,12 @@
   gap: var(--sp-4);
   padding: var(--sp-6);
   text-align: center;
-  background:
-    radial-gradient(85% 75% at 50% 45%, var(--c-pitch-felt) 0%, #0d2e20 60%, var(--c-pitch-felt-deep) 100%);
+  background: radial-gradient(
+    85% 75% at 50% 45%,
+    var(--c-pitch-felt) 0%,
+    #0d2e20 60%,
+    var(--c-pitch-felt-deep) 100%
+  );
   color: var(--c-card-ink);
 }
 .play-screen .muted {
@@ -122,6 +126,62 @@
 }
 .hud-score__clock b {
   color: var(--c-card-ink);
+}
+/* "+N" nhỏ cạnh đồng hồ suốt thời gian bù giờ */
+.hud-score__added {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  background: var(--r-gold-base);
+  color: var(--r-gold-lo);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* Bảng bù giờ (bảng điện của trọng tài thứ tư): nổi bật vài giây lúc hiệp bước vào bù giờ */
+@keyframes stoppage-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.stoppage-board {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0 var(--sp-3);
+  padding: 8px 18px 8px 14px;
+  background: #050807;
+  border: 2px solid var(--r-gold-base);
+  border-radius: var(--radius-md);
+  box-shadow:
+    var(--shadow-2),
+    0 0 24px var(--r-gold-glow);
+  animation: stoppage-in var(--dur-base) var(--ease-out);
+}
+.stoppage-board__label {
+  color: var(--c-card-muted);
+  align-self: end;
+}
+.stoppage-board__unit {
+  color: var(--c-card-muted);
+  grid-column: 1;
+  align-self: start;
+}
+.stoppage-board__num {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: var(--fs-3xl);
+  line-height: 1;
+  color: var(--r-gold-hi);
+  text-shadow: 0 0 14px var(--r-gold-glow);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Thanh luân lưu */
@@ -803,6 +863,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .goal-banner,
+  .stoppage-board,
   .replay-tag__dot {
     animation: none;
   }

@@ -38,6 +38,8 @@ export interface HudSnapshot {
   score: Score;
   half: 1 | 2;
   clock: string;
+  /** Số phút bù giờ đã công bố của hiệp đang đá (> 0); null khi chưa vào bù giờ hoặc hiệp đã hết. */
+  stoppage: number | null;
   phase: MatchPhase;
   controlled: { id: string; number: number; position: Position; stamina: number } | null;
   bookings: HudBooking[];
@@ -66,6 +68,18 @@ export function formatClock(c: MatchClock): string {
   return c.addedMinute > 0 ? `${c.minute}+${c.addedMinute}'` : `${c.minute}'`;
 }
 
+/**
+ * Số phút bù giờ trọng tài đã công bố (sim đặt `addedMinutes` lúc hết giờ chính thức của hiệp), chỉ
+ * tính khi hiệp còn đang đá và có bù ít nhất 1 phút.
+ */
+export function stoppageMinutes(state: Pick<MatchState, 'phase' | 'addedMinutes'>): number | null {
+  const live = state.phase === 'play' || state.phase === 'kickoff' || state.phase === 'dead_ball';
+  return live && state.addedMinutes !== null && state.addedMinutes > 0 ? state.addedMinutes : null;
+}
+
+/** Câu đọc cho trình đọc màn hình khi bắt đầu bù giờ. */
+export const stoppageLabel = (minutes: number): string => `Bù giờ ${minutes} phút`;
+
 /** Mốc màu thanh thể lực: vàng < 50%, đỏ < 30% (mốc PRD làm giảm tốc). */
 export function staminaLevel(stamina: number): StaminaLevel {
   if (stamina < 30) return 'critical';
@@ -91,6 +105,7 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
     score: state.score,
     half: state.half,
     clock,
+    stoppage: stoppageMinutes(state),
     phase: state.phase,
     controlled: c
       ? {
@@ -135,6 +150,7 @@ export function sameHud(a: HudSnapshot, b: HudSnapshot): boolean {
     a.score.away === b.score.away &&
     a.half === b.half &&
     a.clock === b.clock &&
+    a.stoppage === b.stoppage &&
     a.phase === b.phase &&
     a.bookings.length === b.bookings.length &&
     a.controlled?.id === b.controlled?.id &&
