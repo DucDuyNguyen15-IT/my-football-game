@@ -6,8 +6,8 @@ import { TICK_RATE } from '../tick';
  * RESTART_DELAY_TICKS / GK_HOLD_TICKS. Hạn chót đang chạy lộ ra ở `MatchState.actionDeadline`.
  */
 
-/** Thủ môn đội người chơi ôm bóng (bằng tay, trong vòng cấm) tối đa chừng này tick (6 s). */
-export const KEEPER_HOLD_MAX_TICKS = 6 * TICK_RATE;
+/** Thủ môn đội người chơi ôm bóng (bằng tay, trong vòng cấm) tối đa chừng này tick (10 s). */
+export const KEEPER_HOLD_MAX_TICKS = 10 * TICK_RATE;
 /** Đá phạt, phạt đền, lượt sút luân lưu của người chơi: chờ tối đa chừng này tick (15 s) kể từ lúc đặt bóng. */
 export const SET_PIECE_MAX_TICKS = 15 * TICK_RATE;
 /** Nghỉ giữa hiệp: không bấm gì thì tự đá hiệp 2 sau chừng này tick (30 s). */

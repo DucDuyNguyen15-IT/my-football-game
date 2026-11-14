@@ -17,7 +17,7 @@ import { TICK_RATE } from './tick';
 import { NO_INPUT, type MatchState, type PlayerInput, type TeamSide } from './types';
 
 /*
- * Giới hạn thời gian (quyết định 2026-11-14, PRD §5): thủ môn đội người chơi ôm bóng tối đa 6 s, đá
+ * Giới hạn thời gian (quyết định 2026-11-14, PRD §5): thủ môn đội người chơi ôm bóng tối đa 10 s, đá
  * phạt / phạt đền / lượt luân lưu của người chơi tối đa 15 s, nghỉ giữa hiệp tối đa 30 s — hết hạn
  * thì máy tự thực hiện. Còi hết hiệp chờ phạt đền và cú sút đang bay.
  */
@@ -80,8 +80,8 @@ const atHalfEnd = (s: MatchState): MatchState => ({
   addedMinutes: 0,
 });
 
-describe('thủ môn đội người chơi ôm bóng tối đa 6 s (B1-05)', () => {
-  it('lộ hạn chót trong state; hết 6 s thì tự lấy đà phát bóng như AI', () => {
+describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', () => {
+  it('lộ hạn chót trong state; hết 10 s thì tự lấy đà phát bóng như AI', () => {
     const s0 = keeperHolding();
     let s = step(s0, NO_INPUT);
     expect(s.actionDeadline).toEqual({
@@ -90,6 +90,7 @@ describe('thủ môn đội người chơi ôm bóng tối đa 6 s (B1-05)', () 
       startTick: s.tick,
       deadlineTick: s.tick + KEEPER_HOLD_MAX_TICKS,
     });
+    expect(KEEPER_HOLD_MAX_TICKS).toBe(10 * TICK_RATE);
     const deadline = s.actionDeadline!.deadlineTick;
     while (s.tick < deadline - 1) {
       s = step(s, NO_INPUT);
