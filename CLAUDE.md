@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** 8 — Kiểm thử, bảo mật, tối ưu (8.1, 8.2 xong; GĐ7 xong, 7.7 chờ Client ID Google)
-- **Việc tiếp theo:** 8.4 Rà tiêu chí chấp nhận & QA-REPORT trong `docs/plans/phase-8-qa-security.md` (8.3 phần tự động xong, chờ người dùng đo FPS/bộ nhớ theo QA-REPORT §2.4) (cách chọn task: `docs/plans/README.md`); thiết kế UI theo `docs/DESIGN.md`
+- **Giai đoạn đang làm:** GĐ8 xong (2026-11-14). Trước GĐ9: làm lại giao diện v3 "Bộ áo mới" (Gemini, ngoại lệ có đồng ý của người dùng) → review toàn bộ đồ án (Fable làm, Opus review chéo)
+- **Việc tiếp theo:** chọn 1 trong 3 hướng thiết kế v3 ở `docs/design/v3/` (nhánh `feat/ui-v3-directions`); sau đó áp vào `apps/web` theo 3 đợt. Việc còn tồn: `docs/QA-REPORT.md` §6
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
@@ -77,7 +77,8 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 | 7.5 Analytics & retention | Gemini | ✅ Đã gộp `main` |
 | 7.6 Onboarding | Gemini | ✅ Đã gộp `main` (merge `e0d4954`) |
 | 8.1 E2E | Fable | ✅ Đã gộp `main` |
-| 8.3 Hiệu năng | Fable | 🟡 Phần tự động đã gộp `main`; chờ người dùng đo FPS/bộ nhớ |
+| 8.3 Hiệu năng | Fable + Opus | ✅ Opus đo FPS/bộ nhớ bằng Chrome thật (Cao 74,6 / Thấp 166 FPS TB, không rò) |
+| 8.4 Rà tiêu chí & QA-REPORT | Fable | ✅ Đã gộp `main` (36/36 tiêu chí) |
 
 Opus đã review cuối và gộp cả 3 nhánh (2026-11-14): `pnpm check` 845 test xanh, `ledger:check` 0 lệch, worktree và nhánh đã dọn.
 

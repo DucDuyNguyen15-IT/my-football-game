@@ -21,14 +21,14 @@
 - **Kiểm chứng:** báo cáo không còn High/Critical; test hồi quy xanh.
 - **Xong khi:** phần "Bảo mật" trong `docs/QA-REPORT.md` có danh sách phát hiện + trạng thái.
 
-### 8.3 — Hiệu năng `[ ]`
+### 8.3 — Hiệu năng `[x]`
 - **Phụ thuộc:** 8.1 · **Model:** default
 - **Bối cảnh:** PRD §10 (≥ 55 FPS TB, laptop tầm trung, GPU tích hợp); agent `ecc:performance-optimizer`.
 - **Việc cần làm:** đo FPS trung bình/1% thấp nhất cả trận trên Chrome; đo kích thước bundle (Three.js tách chunk, chỉ tải khi vào trận); đo p95 `POST /packs/:code/open` dưới tải nhẹ (autocannon, 20 kết nối); kiểm rò bộ nhớ vào/ra trận 20 lần. Tối ưu điểm nghẽn.
 - **Kiểm chứng:** số đo trước/sau ghi vào QA-REPORT.
 - **Xong khi:** ≥ 55 FPS TB; không rò bộ nhớ.
 
-### 8.4 — Rà tiêu chí chấp nhận & QA-REPORT `[ ]`
+### 8.4 — Rà tiêu chí chấp nhận & QA-REPORT `[x]`
 - **Phụ thuộc:** 8.2, 8.3 · **Model:** default
 - **Bối cảnh:** mọi mục "Tiêu chí chấp nhận" trong `docs/PRD.md`.
 - **Việc cần làm:** bảng: từng tiêu chí → test tự động (đường dẫn) hoặc kiểm tay (kết quả, ngày). Tick tiêu chí trong PRD. Lập checklist playtest 5–10 người (PRD §10). Viết `docs/QA-REPORT.md` (E2E, bảo mật, hiệu năng, tiêu chí, việc còn tồn).

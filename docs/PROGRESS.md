@@ -4,6 +4,12 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
+## Giai đoạn 8 — Kiểm thử, bảo mật, tối ưu (2026-11-14) ✅
+- E2E luồng chính bằng Playwright (8.1); security review gacha/ví/API (8.2); hiệu năng (8.3): bundle, p95 mở gói 41–71 ms, truy vấn retention < 100 ms, **FPS cả trận trên Intel UHD: Cao 74,6 / Thấp 166,0 FPS TB**, 20 lần vào/ra trận không rò bộ nhớ; rà 36/36 tiêu chí PRD + checklist playtest (8.4). Tất cả ghi ở `docs/QA-REPORT.md`.
+- Chốt: FPS đo tự động bằng Playwright điều khiển Chrome có giao diện (GPU thật), bản `vite build --mode test` cho phép `?autopilot=1`.
+- Cách làm: Fable làm 8.1, 8.3 (phần tự động), 8.4; Opus review chéo, tự đo FPS/bộ nhớ, gộp `main`.
+- Còn tồn (QA-REPORT §6): playtest 5–10 người chưa tổ chức; lỗi lưới nguyên liệu màn Ép thẻ lặp thẻ (T3, trung bình); trận có giật ngắn, 1% thấp nhất 6–19 FPS (T12); 7.7 chờ Client ID Google.
+
 ## Giai đoạn 7 — Tài khoản & kinh tế (2026-11-14) ✅
 - Khoá đăng nhập + rate limit (7.1), kiểm kết quả trận & thưởng theo trần ngày GMT+7 (7.2), đối soát sổ cái + `ledger:check` + test đồng thời/tamper/401 mọi route ghi (7.3), nhiệm vụ ngày ghi `mission_reward` (7.4), analytics + trang admin retention/onboarding (7.5), onboarding + hướng dẫn trận đầu (7.6), đăng nhập Google (7.7). Kèm 8.2 security review (gộp cùng đợt).
 - Chốt: mọi ghi nhiệm vụ/analytics chạy trong transaction nghiệp vụ sau `lockUser`; thứ tự khoá users → pack_boxes → player_cards (id tăng) → squads; rate limit chạy trước 401; không làm PvP trong MVP.

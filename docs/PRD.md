@@ -107,7 +107,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 | Kết quả | Thắng / Hòa (thua hay thắng luân lưu) / Thua. Tỉ số và thẻ phạt hiển thị cuối trận |
 
 **Tiêu chí chấp nhận F1–F3**
-- [ ] Trận chạy đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, đạt **≥ 55 FPS trung bình** trên laptop tầm trung (Chrome, tích hợp GPU) với 14 cầu thủ. _(8.4, 2026-11-14: thời lượng và đổi sân đã đạt; chờ số đo FPS — `docs/QA-REPORT.md` §2.4, §4.2.)_
+- [x] Trận chạy đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, đạt **≥ 55 FPS trung bình** trên laptop tầm trung (Chrome, tích hợp GPU) với 14 cầu thủ. _(2026-11-14: Intel UHD, Cao 74,6 / Thấp 166,0 FPS TB — `docs/QA-REPORT.md` §2.4, §4.2.)_
 - [x] Vật lý bóng chạy theo bước thời gian cố định (60 tick/s). Cùng trạng thái ban đầu và cùng chuỗi input thì cho cùng kết quả (test tự động).
 - [x] Bóng qua hết vạch biên dọc → ném biên cho đội không chạm bóng cuối; qua vạch cuối sân → phạt góc hoặc phát bóng đúng luật (test tự động cho cả 3 trường hợp).
 - [x] Xoạc không chạm bóng trước → phạm lỗi, đá phạt; phạm lỗi trong vòng cấm → phạt đền; vàng thứ 2 → đỏ và cầu thủ rời sân (test tự động).

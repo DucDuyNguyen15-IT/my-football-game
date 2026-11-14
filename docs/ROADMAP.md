@@ -20,7 +20,7 @@ Người dùng chỉ cần copy "Câu lệnh mẫu" dán cho agent. Agent đọc
 | 5 | MVP lõi: trận đấu offline | Đá được 1 trận với máy | ✅ |
 | 6 | Hệ thống thẻ & đội hình | Mở thẻ, kho thẻ, xếp đội hình | ✅ |
 | 7 | Tài khoản, kinh tế, (tuỳ chọn) PvP | Đăng nhập, tiền ảo, ghép trận | ✅ (không làm PvP) |
-| 8 | Kiểm thử, bảo mật, tối ưu | Báo cáo test/security | 🟡 |
+| 8 | Kiểm thử, bảo mật, tối ưu | Báo cáo test/security | ✅ |
 | 9 | Deploy & bàn giao | Link chạy thật, README | ⬜ |
 
 Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
@@ -163,7 +163,7 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 **Hoàn thành khi:**
 - [x] E2E luồng chính chạy xanh
 - [x] Không còn lỗi bảo mật mức cao (8.2)
-- [ ] `docs/QA-REPORT.md` (đã có mục bảo mật 8.2; 8.4 hoàn thiện)
+- [x] `docs/QA-REPORT.md` (E2E, bảo mật, hiệu năng, 36/36 tiêu chí PRD, việc còn tồn — 2026-11-14)
 
 ---
 

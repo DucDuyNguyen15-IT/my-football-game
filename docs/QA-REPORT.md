@@ -7,16 +7,16 @@ _Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/pla
 | Hạng mục | Kết quả | Chi tiết |
 |---|---|---|
 | Bảo mật (8.2) | Không còn lỗi High/Critical; 6 phát hiện đã sửa, 2 ghi nhận theo thiết kế MVP; `pnpm audit` 0 High/Critical | §1 |
-| Hiệu năng (8.3) | Bundle, p95 mở gói (41–71 ms), truy vấn retention/onboarding (< 100 ms) đã đo; **FPS và rò bộ nhớ chờ người dùng đo** | §2 (bảng trống ở §2.4) |
+| Hiệu năng (8.3) | Bundle, p95 mở gói (41–71 ms), truy vấn retention/onboarding (< 100 ms) đã đo; FPS cả trận trên Intel UHD: **Cao 74,6 · Thấp 166,0 FPS TB** (≥ 55); 20 lần vào/ra trận không rò bộ nhớ | §2 |
 | E2E luồng chính (8.1) | `pnpm e2e` xanh 3 lần liên tiếp | §3 |
-| Tiêu chí chấp nhận PRD (8.4) | 36 tiêu chí: **35 Đạt, 1 Chưa đạt** (AC-F1-1 — chờ số đo FPS), 0 Không áp dụng | §4 |
+| Tiêu chí chấp nhận PRD (8.4) | 36 tiêu chí: **36 Đạt**, 0 Chưa đạt, 0 Không áp dụng | §4 |
 | Playtest 5–10 người (PRD §10) | Chưa tổ chức; đã có checklist và bảng ghi | §5 |
-| Việc còn tồn | 2 việc chặn (đo FPS/bộ nhớ, playtest); 1 lỗi giao diện mức trung bình phát hiện ở 8.4 (lưới nguyên liệu màn Ép thẻ lặp thẻ — T3); còn lại mức thấp hoặc ghi nhận | §6 |
+| Việc còn tồn | 1 việc chặn phát hành (playtest); T1 (đo FPS/bộ nhớ) đã xong; 1 lỗi giao diện mức trung bình phát hiện ở 8.4 (lưới nguyên liệu màn Ép thẻ lặp thẻ — T3); còn lại mức thấp hoặc ghi nhận | §6 |
 
 **Mục lục**
 
 1. Bảo mật (Task 8.2) — 1.1 Đánh giá theo 9 hạng mục · 1.2 Danh sách phát hiện · 1.3 `pnpm audit` · 1.4 Kiểm thử thủ công bằng `curl`
-2. Hiệu năng (Task 8.3) — 2.1 Bundle web · 2.2 Mở gói dưới tải · 2.3 Truy vấn retention/onboarding · 2.4 FPS và rò bộ nhớ (chờ đo)
+2. Hiệu năng (Task 8.3) — 2.1 Bundle web · 2.2 Mở gói dưới tải · 2.3 Truy vấn retention/onboarding · 2.4 FPS và rò bộ nhớ
 3. E2E luồng chính (Task 8.1)
 4. Tiêu chí chấp nhận (Task 8.4) — 4.1 Tổng hợp · 4.2 F1–F3 · 4.3 F5 · 4.4 F6 · 4.5 F10 · 4.6 F11 · 4.7 F7/F9/F12, F8/F13 · 4.8 Chỉ số §9–§10 · 4.9 Nhật ký kiểm tay
 5. Checklist playtest 5–10 người (PRD §10)
@@ -80,7 +80,7 @@ Thực hiện trên server thật (`127.0.0.1:3099`, `DATABASE_URL=postgres://pi
 
 ## 2. Hiệu năng (Task 8.3)
 
-- **Ngày đo:** 2026-11-14 · **Trạng thái:** phần đo tự động xong; **FPS và rò bộ nhớ chờ người dùng đo trên laptop thật** (mục 2.4).
+- **Ngày đo:** 2026-11-14 · **Trạng thái:** đã đo đủ, kể cả FPS và rò bộ nhớ trên laptop thật (mục 2.4).
 - **Máy đo:** Intel Core i7-13620H (16 luồng), 16 GB RAM, Windows 11, Node 26.13, PostgreSQL 16.15 (Docker). Server và công cụ bắn tải chạy cùng máy, lúc đo có tiến trình khác chạy song song nên số dao động giữa các lần.
 - **Script đo** (không nằm trong `pnpm check`; chỉ chạy trên DB tên chứa `perf`, từ chối DB khác):
   - `DATABASE_URL=postgres://pitch:pitch@localhost:5432/pitch_perf_b pnpm --filter @pitch/server bench:packs`
@@ -135,7 +135,33 @@ Cấu hình: `apps/server/scripts/bench-analytics.ts` sinh dữ liệu giả t�
 
 Kết luận: cả hai thấp hơn nhiều so với ngưỡng 500 ms nên **không đổi câu truy vấn, không thêm index/migration** (không có số "sau"). Thay đổi code duy nhất ở server: tách phần dựng SQL thành `retentionCohortsQuery` / `onboardingStatsQuery` (giữ nguyên câu SQL) để script chạy được `EXPLAIN`. Ghi chú mở: thời gian retention tỉ lệ với **tổng** số sự kiện chứ không theo khoảng `days` (CTE `activity` không lọc `created_at`); ước lượng tuyến tính chạm 500 ms ở khoảng 1 triệu sự kiện. Khi tới gần mức đó: giới hạn `activity` theo `created_at` trong `[from + 1 ngày, to + 8 ngày)` — đã ghi `docs/BACKLOG.md`.
 
-### 2.4 FPS và rò bộ nhớ — người dùng tự đo trên laptop thật
+### 2.4 FPS và rò bộ nhớ (đo 2026-11-14)
+
+**Kết quả** — đo tự động bằng Playwright điều khiển **Chrome có giao diện (không headless), GPU thật**: Intel Core i7-13620H, **Intel UHD Graphics** (ANGLE Direct3D11 — GPU tích hợp, đúng đối tượng PRD), màn 1536×960 @ DPR 1,25 (cửa sổ 1536×826), Windows 11. Bản build `vite build --mode test` + `vite preview` (mã giống production, chỉ thêm cho phép `?autopilot=1`), trận Dễ tự đá (`/play?perf=1&autopilot=1`) đủ 2 × 180 s, có phát lại bàn thắng. Kiểm GPU bằng `WEBGL_debug_renderer_info` trước khi đo để loại WebGL phần mềm (SwiftShader).
+
+| Preset | FPS TB | 1% thấp nhất | Khung chậm nhất (ms) | Số khung / thời gian | Đạt ≥ 55? |
+|---|---|---|---|---|---|
+| Cao | **74,6** | 6,0 | 1000 (trần đo) | 28.213 / 378,0 s | **Đạt** |
+| Thấp | **166,0** | 18,9 | 1000 (trần đo) | 68.963 / 415,3 s | **Đạt** |
+
+- Màn hình máy đo có tần số quét cao nên FPS không bị trần ở 60.
+- Lần đo Cao đầu tiên cho 48,0 FPS TB (1% thấp 1,3) vì máy đang chạy song song `pnpm check` + Playwright của task 8.4; số trên là lần đo lại khi máy rảnh. Số FPS nhạy với tải nền.
+- **Ghi nhận (không chặn):** "1% thấp nhất" thấp (6–19 FPS) và có khung chạm trần 1 s → trận có những lần giật ngắn (nghi: biên dịch shader lần đầu, đổi cảnh phát lại bàn thắng, GC). Không ảnh hưởng tiêu chí PRD (chỉ đòi FPS TB) nhưng nên tìm nguyên nhân bằng DevTools Performance — xem §6 T12.
+
+**Rò bộ nhớ** — 20 vòng: vào `/play?autopilot=1` bằng điều hướng trong ứng dụng (không tải lại trang) → chờ 10 s → Esc → Bỏ trận → về trang chủ. Đo qua CDP: `HeapProfiler.collectGarbage` ×3 rồi `Runtime.getHeapUsage`, kèm số node DOM và số `<canvas>`.
+
+| Mốc | JS heap sau GC (MB) | Node DOM | `<canvas>` còn trong trang |
+|---|---|---|---|
+| Trước vòng 1 (trang chủ) | 4,7 | 379 | 0 |
+| Sau vòng 1 | 8,7 | 383 | 0 |
+| Sau vòng 5 | 9,9 | 383 | 0 |
+| Sau vòng 10 | 10,7 | 383 | 0 |
+| Sau vòng 15 | 10,8 | 383 | 0 |
+| Sau vòng 20 | 11,0 | 383 | 0 |
+
+Kết luận: **không rò**. Heap tăng chậm dần rồi gần như đứng (vòng 10 → 20 chỉ +0,3 MB, ~3%, nằm trong ngưỡng ≤ 10%; phần tăng ban đầu là module/cache đã tải), DOM không đổi, canvas WebGL được gỡ hết, không có cảnh báo "Too many active WebGL contexts". Bộ nhớ GPU không đo được qua CDP (không thay bằng số đoán). Console có cảnh báo Three.js `PCFSoftShadowMap has been removed. Using PCFShadowMap instead.` (không ảnh hưởng, §6 T12).
+
+#### Hướng dẫn tự đo lại (cách cũ, thủ công)
 
 Mục tiêu PRD §10: **≥ 55 FPS trung bình** cả trận trên laptop tầm trung (GPU tích hợp), Chrome; không rò bộ nhớ sau 20 lần vào/ra trận.
 
@@ -154,8 +180,8 @@ Công cụ có sẵn trong game (8.3 thêm): mở trận với **`?perf=1`** (VD
 
 | Preset | Máy (CPU / GPU / độ phân giải) | FPS TB | 1% thấp nhất | Khung chậm nhất (ms) | Đạt ≥ 55? |
 |---|---|---|---|---|---|
-| Cao | | | | | |
-| Thấp | | | | | |
+| Cao | i7-13620H / Intel UHD / 1536×960 | 74,6 | 6,0 | 1000 | Đạt |
+| Thấp | i7-13620H / Intel UHD / 1536×960 | 166,0 | 18,9 | 1000 | Đạt |
 
 **Kiểm rò bộ nhớ (vào/ra trận 20 lần)**
 1. Mở `http://localhost:4173` (trang chủ), DevTools → tab Memory, chọn "Heap snapshot".
@@ -166,9 +192,9 @@ Công cụ có sẵn trong game (8.3 thêm): mở trận với **`?perf=1`** (VD
 
 | Mốc | JS heap sau GC (MB) | Bộ nhớ GPU của tab (MB) | Ghi chú |
 |---|---|---|---|
-| Sau 1 lần vào/ra | | | |
-| Sau 10 lần | | | |
-| Sau 20 lần | | | |
+| Sau 1 lần vào/ra | 8,7 | không đo | |
+| Sau 10 lần | 10,7 | không đo | |
+| Sau 20 lần | 11,0 | không đo | Không rò |
 
 Rà tĩnh phía code (không thay cho số đo): `MatchCanvas` huỷ renderer khi unmount; `MatchRenderer.dispose()` huỷ vòng `requestAnimationFrame`, listener phím/blur, `ResizeObserver`, hậu kỳ, toàn bộ geometry/material/texture của scene và model cầu thủ, gọi `renderer.dispose()` + `forceContextLoss()` và gỡ canvas.
 
@@ -210,22 +236,22 @@ Rà tĩnh phía code (không thay cho số đo): `MatchCanvas` huỷ renderer kh
 
 | Nhóm | Số tiêu chí | Đạt | Chưa đạt | Không áp dụng |
 |---|---|---|---|---|
-| F1–F3 Trận đấu (PRD §5) | 8 | 7 | 1 | 0 |
+| F1–F3 Trận đấu (PRD §5) | 8 | 8 | 0 | 0 |
 | F5 Mở gói (PRD §6.3) | 8 | 8 | 0 | 0 |
 | F6 Đội hình (PRD §6.4) | 5 | 5 | 0 | 0 |
 | F10 Ép thẻ (PRD §6.5) | 5 | 5 | 0 | 0 |
 | F11 Bán thẻ (PRD §6.6) | 2 | 2 | 0 | 0 |
 | F7, F9, F12 Kinh tế (PRD §7) | 5 | 5 | 0 | 0 |
 | F8, F13 Tài khoản & phân tích (PRD §8) | 3 | 3 | 0 | 0 |
-| **Tổng** | **36** | **35** | **1** | **0** |
+| **Tổng** | **36** | **36** | **0** | **0** |
 
-Tiêu chí duy nhất chưa đạt là **AC-F1-1**: phần thời lượng và đổi sân đã đạt, nhưng vế "≥ 55 FPS trung bình trên laptop tầm trung" **chưa có số đo chính thức** (chờ người dùng đo theo §2.4) nên chưa xác nhận được cả tiêu chí. 35 tiêu chí Đạt đã được tick `[x]` trong `docs/PRD.md`. Chỉ số §9–§10 (không phải checkbox) rà riêng ở 4.8.
+AC-F1-1 (vế ≥ 55 FPS) được xác nhận sau khi đo §2.4 (2026-11-14). Cả 36 tiêu chí đã được tick `[x]` trong `docs/PRD.md`. Chỉ số §9–§10 (không phải checkbox) rà riêng ở 4.8.
 
 ### 4.2 F1–F3 — Trận đấu (PRD §5)
 
 | Mã | Tiêu chí | Cách kiểm | Kết quả |
 |---|---|---|---|
-| AC-F1-1 | Trận đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, ≥ 55 FPS TB trên laptop tầm trung (Chrome, GPU tích hợp) với 14 cầu thủ | **Tự động (thời lượng theo tick, đổi sân):** `packages/sim/src/match.rules.test.ts` — "hiệp 1 kết thúc đúng 180 s (10.800 tick) khi không có bù giờ → nghỉ giữa hiệp", "sang hiệp 2: đổi sân, đội khách giao bóng, đồng hồ về 45'", "trận đủ 2 × 180 s: hết giờ hiệp 2 → full_time; sau đó step không đổi gì", "chờ giao bóng quá 3 s bị tính bù giờ: hiệp kéo dài thêm đúng số phút bù"; `packages/sim/src/rules/clock.test.ts` (công thức bù giờ, tối đa 3'); `packages/sim/src/match.test.ts` — "mỗi đội 7 cầu thủ trên sân…" (14 cầu thủ). **Kiểm tay (đồng hồ thật, 2026-11-14):** trận tự đá đủ thời lượng trên Chromium (GPU Intel UHD qua ANGLE D3D11), ghi thời điểm thật mỗi lần đồng hồ HUD đổi phút: hiệp 1 từ 1' → 44' mất 172,00 s, hiệp 2 từ 46' → 89' mất 171,99 s (chuẩn 43 phút game × 4 s = 172,00 s) → lệch ≤ 0,01 s, trong ngưỡng ±1 giây; hiệp 1 có bù giờ 45+1' → 45+3' (4.9, KT-6). Vòng lặp chỉ chậm hơn đồng hồ thật khi một khung hình dài hơn 0,25 s (`MAX_FRAME_SEC` trong `apps/web/src/game/three/MatchRenderer.ts`, tức dưới 4 FPS). **FPS:** chưa có số đo chính thức — bảng §2.4 còn trống, chờ người dùng đo. | **Chưa đạt** (chờ đo FPS — xem §6, T1). Phần thời lượng/đổi sân: đạt |
+| AC-F1-1 | Trận đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, ≥ 55 FPS TB trên laptop tầm trung (Chrome, GPU tích hợp) với 14 cầu thủ | **Tự động (thời lượng theo tick, đổi sân):** `packages/sim/src/match.rules.test.ts` — "hiệp 1 kết thúc đúng 180 s (10.800 tick) khi không có bù giờ → nghỉ giữa hiệp", "sang hiệp 2: đổi sân, đội khách giao bóng, đồng hồ về 45'", "trận đủ 2 × 180 s: hết giờ hiệp 2 → full_time; sau đó step không đổi gì", "chờ giao bóng quá 3 s bị tính bù giờ: hiệp kéo dài thêm đúng số phút bù"; `packages/sim/src/rules/clock.test.ts` (công thức bù giờ, tối đa 3'); `packages/sim/src/match.test.ts` — "mỗi đội 7 cầu thủ trên sân…" (14 cầu thủ). **Kiểm tay (đồng hồ thật, 2026-11-14):** trận tự đá đủ thời lượng trên Chromium (GPU Intel UHD qua ANGLE D3D11), ghi thời điểm thật mỗi lần đồng hồ HUD đổi phút: hiệp 1 từ 1' → 44' mất 172,00 s, hiệp 2 từ 46' → 89' mất 171,99 s (chuẩn 43 phút game × 4 s = 172,00 s) → lệch ≤ 0,01 s, trong ngưỡng ±1 giây; hiệp 1 có bù giờ 45+1' → 45+3' (4.9, KT-6). Vòng lặp chỉ chậm hơn đồng hồ thật khi một khung hình dài hơn 0,25 s (`MAX_FRAME_SEC` trong `apps/web/src/game/three/MatchRenderer.ts`, tức dưới 4 FPS). **FPS (2026-11-14, §2.4):** Chrome, Intel UHD (GPU tích hợp), trận đủ thời lượng: preset Cao 74,6 FPS TB, Thấp 166,0 FPS TB. | **Đạt** |
 | AC-F1-2 | Vật lý bóng theo bước cố định 60 tick/s; cùng trạng thái đầu + cùng chuỗi input → cùng kết quả (test tự động) | `packages/sim/src/tick.ts` (`TICK_RATE = 60`). `packages/sim/src/match.test.ts` — "2 lần chạy 600 tick cùng seed + cùng input → state giống hệt"; `packages/sim/src/physics/ball.test.ts` — "cùng đầu vào → cùng kết quả"; `packages/sim/src/match.ai.test.ts` — "cùng seed + cùng input cho kết quả y hệt, kể cả sau JSON khứ hồi (AI tất định)". Vòng lặp web gom thời gian thực rồi chạy `step` theo `TICK_DT` (`apps/web/src/game/three/MatchRenderer.ts`). ESLint cấm `Math.random` trong `packages/sim`. | **Đạt** |
 | AC-F1-3 | Bóng qua vạch biên dọc → ném biên cho đội không chạm cuối; qua vạch cuối → phạt góc hoặc phát bóng đúng luật (test cả 3 trường hợp) | `packages/sim/src/match.rules.test.ts` — "qua vạch biên, đội nhà chạm cuối → ném biên cho đội khách tại điểm bóng ra", "qua vạch cuối ngoài khung thành, đội tấn công chạm cuối → phát bóng cho đội phòng ngự", "qua vạch cuối ngoài khung thành, đội phòng ngự chạm cuối → phạt góc cho đội tấn công" (+ "hiệp 2 đổi sân…"); `packages/sim/src/rules/restarts.test.ts` (`decideRestart`, cùng 3 trường hợp); `packages/sim/src/physics/ball.test.ts` — "qua hẳn vạch biên dọc → ball_out touch…", "bóng đè vạch … vẫn trong sân". | **Đạt** |
 | AC-F1-4 | Xoạc không chạm bóng trước → phạm lỗi, đá phạt; trong vòng cấm → phạt đền; vàng thứ 2 → đỏ và rời sân (test tự động) | `packages/sim/src/match.fouls.test.ts` — "trượt bóng (không chạm bóng trước) → phạm lỗi, đội khách đá phạt tại chỗ, không thẻ", "phạm lỗi trong vòng cấm đội nhà → phạt đền cho đội khách", "vàng thứ hai → đỏ, cầu thủ rời sân, đội nhà còn 6 người, người chơi được đổi sang người khác"; `packages/sim/src/rules/fouls.test.ts` (`foulRestart`, `decideCards`). | **Đạt** |
@@ -295,7 +321,7 @@ Các chỉ số này đo trên người chơi thật nên chưa thể kết lu�
 |---|---|---|---|
 | Retention D7 (§10) | ≥ 15% | Trang `/admin` + `GET /api/v1/admin/retention` (test: AC-F8-3) | **Không áp dụng** trước phát hành — công cụ sẵn sàng |
 | Người chơi thật tháng đầu (§10) | ≥ 50 tài khoản có ≥ 1 trận | Bảng `analytics_events` (`match_start`) | **Không áp dụng** trước phát hành — chưa có truy vấn/trang riêng, đếm bằng SQL (§6, T4) |
-| Hiệu năng trận (§10) | ≥ 55 FPS TB, laptop tầm trung | `/play?perf=1` (§2.4) | **Chưa đạt** — chờ người dùng đo (trùng AC-F1-1) |
+| Hiệu năng trận (§10) | ≥ 55 FPS TB, laptop tầm trung | `/play?perf=1` (§2.4) | **Đạt** — Cao 74,6 / Thấp 166,0 FPS TB trên Intel UHD |
 | Thời gian tới trận đầu (§9, §10) | ≤ 2 phút (trung vị) | `GET /api/v1/admin/onboarding` + thẻ phễu ở `/admin` (`apps/server/src/routes/admin.test.ts` — "tính trung vị register -> match_start chính xác bằng FakeClock, bỏ qua user chưa đá") | **Không áp dụng** trước khi có người chơi thật — đo ở playtest (§5) |
 | Playtest trước phát hành (§10) | ≥ 7/10 người thấy "thẻ tốt khác biệt rõ trên sân" | Checklist §5 | **Chưa đạt** — chưa tổ chức playtest (§6, T3) |
 
@@ -403,7 +429,7 @@ Trạng thái 2026-11-14. Mức độ: **Chặn** = phải xong mới đóng đ�
 
 | Mã | Mức | Việc | Nguồn | Cách tái hiện / việc cần làm |
 |---|---|---|---|---|
-| T1 | Chặn (đóng GĐ8) | Chưa có số đo FPS (≥ 55 FPS TB) và kiểm rò bộ nhớ 20 lần vào/ra trận trên laptop thật → tiêu chí **AC-F1-1** và chỉ số hiệu năng PRD §10 chưa xác nhận | §2.4, §4.2 | Người dùng đo theo hướng dẫn §2.4 (`/play?perf=1`), điền 2 bảng trống; đạt thì tick tiêu chí đầu tiên của PRD §5 và đóng task 8.3 |
+| T1 | ~~Chặn (đóng GĐ8)~~ **Xong** | Đo FPS và rò bộ nhớ trên laptop thật | §2.4, §4.2 | Đã đo 2026-11-14: Cao 74,6 / Thấp 166,0 FPS TB, không rò bộ nhớ sau 20 lần vào/ra trận; AC-F1-1 đã tick |
 | T2 | Chặn (trước phát hành) | Chưa tổ chức playtest 5–10 người (PRD §10: ≥ 7/10 thấy "thẻ tốt khác biệt rõ trên sân"; thời gian tới trận đầu ≤ 2 phút) | §4.8, §5 | Làm theo checklist §5, điền bảng 5.5 |
 | T3 | Trung bình | **Lỗi giao diện màn Ép thẻ:** trong lưới "Chọn nguyên liệu", mỗi thẻ nguyên liệu hợp lệ hiện **hai lần** — một ô "Hợp lệ" (chọn được) và một ô bị khoá với nhãn sai "Thấp hơn … (tên độ hiếm)"; React báo lỗi console "Encountered two children with the same key". Không ảnh hưởng dữ liệu (ép vẫn đúng, server tự kiểm nguyên liệu) nhưng gây khó hiểu cho người chơi. Nguyên nhân: `apps/web/src/features/upgrade/UpgradePage.tsx` lọc danh sách thẻ khoá bằng `!materials.includes(it)`, trong khi `materialCandidates` (`upgrade.ts`) trả về object `{ pc, card }` mới nên so sánh theo tham chiếu không bao giờ khớp | §4.9 KT-5 | Đăng ký → mở gói 5 miễn phí → `/upgrade` → chọn một thẻ Đồng làm thẻ cần ép → nhìn lưới nguyên liệu: mỗi thẻ vừa mở xuất hiện 2 lần (lần kiểm 2026-11-14: 1 ô hợp lệ + 11 ô khoá = 12 ô, đúng ra 11), console có lỗi trùng key. Hướng sửa: lọc theo `pc.id` (tập id của `materials`) và thêm test cho lưới nguyên liệu |
 | T4 | Thấp | Chưa có truy vấn/trang cho chỉ số "≥ 50 tài khoản có ≥ 1 trận trong tháng đầu" (PRD §10); D7 và thời gian tới trận đầu đã có ở `/admin` | §4.8 | Thêm một số đếm vào trang `/admin` (số tài khoản có `match_start`), hoặc chạy SQL trên `analytics_events` khi cần; chỉ có ý nghĩa sau phát hành |
@@ -414,3 +440,4 @@ Trạng thái 2026-11-14. Mức độ: **Chặn** = phải xong mới đóng đ�
 | T9 | Ghi nhận | `pnpm audit`: còn 6 moderate + 6 low (đa số ở công cụ dev/build; `fastify`/`fast-uri` ở runtime mức low/moderate) | §1.3 | Nâng phiên bản khi có bản vá; chạy lại `pnpm audit` trước phát hành |
 | T10 | Ghi nhận | Hiệu năng: `getRetentionCohorts` quét toàn bộ `analytics_events` (ước chạm 500 ms ở ~1 triệu sự kiện); `index-*.js` 511 kB chưa lazy-load màn menu | §2.1, §2.3 | Đã có trong `docs/BACKLOG.md`; làm khi dữ liệu/bundle tới ngưỡng |
 | T11 | Ghi nhận | Câu hỏi mở PRD §12 chưa chốt: phím điều khiển chi tiết, OVR/độ trễ AI (chờ playtest), xác minh trận bằng log input, hosting, chính sách quyền riêng tư khi thu analytics | PRD §12 | Phím/AI: lấy từ playtest §5 (Q4, Q6); hosting và quyền riêng tư: Giai đoạn 9 |
+| T12 | Thấp | Trận có giật ngắn: "1% thấp nhất" 6,0 (Cao) / 18,9 (Thấp) FPS, có khung chạm 1 s; console có cảnh báo Three.js `PCFSoftShadowMap has been removed` | §2.4 | DevTools → Performance ghi một trận có bàn thắng, tìm khung dài (biên dịch shader, phát lại, GC); đổi sang `PCFShadowMap` để hết cảnh báo. Đã ghi `docs/BACKLOG.md` |
