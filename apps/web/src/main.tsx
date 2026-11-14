@@ -7,12 +7,13 @@ import { router } from './app/router';
 import './styles/tokens.css';
 import './app/app.css';
 import './styles/ui.css';
-// Font tự host (DESIGN.md §2): chỉ tải file của dải ký tự trang cần (Latin + tiếng Việt).
-import '@fontsource/barlow-condensed/600.css';
-import '@fontsource/barlow-condensed/700.css';
-import '@fontsource/be-vietnam-pro/400.css';
-import '@fontsource/be-vietnam-pro/500.css';
-import '@fontsource/be-vietnam-pro/600.css';
+// Font tự host cho Direction B "Sa Bàn Hoàng Kim" (DESIGN.md §2): bao gồm Vietnamese + Latin.
+import '@fontsource/space-grotesk/600.css';
+import '@fontsource/space-grotesk/700.css';
+import '@fontsource/ibm-plex-sans/400.css';
+import '@fontsource/ibm-plex-sans/500.css';
+import '@fontsource/ibm-plex-sans/600.css';
+import '@fontsource/ibm-plex-sans/700.css';
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Thiếu #root trong index.html');
