@@ -58,6 +58,13 @@ import {
   resolveQuality,
   type QualitySettings,
 } from '../render/quality';
+import {
+  buildTransitionSpec,
+  detectTransition,
+  type TransitionKind,
+  type TransitionSpec,
+} from '../render/transition';
+import { MatchStinger, type TransitionPlayOptions } from './stinger';
 
 /** Khung hình bị treo lâu (tab ẩn, debugger) thì bỏ bớt thời gian, không chạy dồn hàng trăm tick. */
 const MAX_FRAME_SEC = 0.25;
@@ -94,7 +101,10 @@ function disposeTree(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   root.traverse((obj) => {
-    if (!(obj instanceof THREE.Mesh)) return;
+    if (
+      !(obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line)
+    )
+      return;
     geometries.add(obj.geometry as THREE.BufferGeometry);
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     for (const m of mats as THREE.Material[]) materials.add(m);
@@ -125,6 +135,7 @@ export class MatchRenderer {
   private playerModel: PlayerModel | null = null;
   private readonly kit = new ActorKit();
   private readonly countdown: CountdownRingView;
+  private readonly transition: MatchStinger;
   private readonly ringPos = new THREE.Vector3();
   private readonly ringEdge = new THREE.Vector3();
   private modelMaterials: ModelMaterials | null = null;
@@ -157,14 +168,27 @@ export class MatchRenderer {
   private debug: { el: HTMLElement; frames: number; at: number } | null = null;
   /** Đo FPS cả trận khi mở `/play?perf=1` (task 8.3); null khi chơi thường. */
   private perf: FrameStats | null = null;
+  /** Đo riêng thời gian khung hình trong lúc chuyển cảnh khi bật `?perf=1`. */
+  private transitionPerf: FrameStats | null = null;
   private perfReported = false;
+  private readonly stingerEnabled =
+    typeof window === 'undefined' ||
+    new URLSearchParams(window.location.search).get('stinger') !== '0';
   /** Các tick gần nhất để phát lại bàn thắng; `replayAt` = tick bắt đầu phát lại (chờ bóng rung lưới). */
   private readonly history = new ReplayBuffer();
   private replayAt: number | null = null;
   private replay: Replay | null = null;
+  private pendingReplay: Replay | null = null;
+  private replayExiting = false;
   private replayCam: CameraState | null = null;
   private skipReplay = false;
   private replayLabel: HTMLElement | null = null;
+  /** Khung hình giữ tạm ở nửa đầu stinger (trước `onCovered`) để che đoạn nhảy vị trí cầu thủ/bóng. */
+  private frozen: { state: MatchState; cam: CameraState } | null = null;
+  /** Khung hình giữ ở cầu môn sau bàn thắng (trong lúc chờ bóng rung lưới trước khi vào replay). */
+  private goalHold: MatchState | null = null;
+  private goalSide: 1 | -1 = 1;
+  private goalScoredTeam: 'home' | 'away' = 'home';
 
   constructor(
     private readonly parent: HTMLElement,
@@ -215,6 +239,7 @@ export class MatchRenderer {
     this.marker = kit.createMarker();
     this.chargeBar = kit.createChargeBar();
     this.countdown = new CountdownRingView(parent);
+    this.transition = new MatchStinger(parent, this.renderer);
     this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -224,14 +249,24 @@ export class MatchRenderer {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
-    if (perfEnabled(window.location.search)) this.perf = new FrameStats();
+    if (perfEnabled(window.location.search)) {
+      this.perf = new FrameStats();
+      this.transitionPerf = new FrameStats();
+    }
     if (import.meta.env.DEV || this.perf) this.createDebugOverlay();
 
     this.draw(this.prev, this.curr, 1, 0);
+    this.render();
+    this.transition.warmUp();
     this.bridge?.onState(this.curr);
     this.raf = requestAnimationFrame(this.frame);
     void loadPlayerModel().then((model) => {
-      if (model && !this.disposed) this.useModel(model);
+      if (!model) return;
+      if (this.disposed) {
+        disposeTree(model.scene);
+        return;
+      }
+      this.useModel(model);
     });
   }
 
@@ -275,6 +310,7 @@ export class MatchRenderer {
         actor.root.position.copy(placeholder.position);
         actor.root.rotation.y = placeholder.rotation.y;
         this.scene.remove(placeholder);
+        disposeTree(placeholder);
       }
       this.actors.set(p.id, actor.root);
       this.models.set(p.id, actor);
@@ -285,6 +321,7 @@ export class MatchRenderer {
   setGraphics(graphics: GraphicsSettings): void {
     const q = resolveQuality(graphics);
     this.q = q;
+    this.transition.setPreset(graphics.preset);
     const { renderer, sun } = this;
     renderer.setPixelRatio(pixelRatioFor(q, window.devicePixelRatio));
     const shadowType = q.softShadows ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
@@ -349,6 +386,7 @@ export class MatchRenderer {
     this.resizeObserver.disconnect();
     this.postFx.dispose();
     this.countdown.dispose();
+    this.transition.dispose();
     disposeTree(this.scene);
     if (this.playerModel) disposeTree(this.playerModel.scene);
     this.renderer.dispose();
@@ -357,12 +395,39 @@ export class MatchRenderer {
     this.renderer.domElement.remove();
     this.debug?.el.remove();
     this.replayLabel?.remove();
+    delete (this.parent as HTMLElement & { __matchRenderer?: MatchRenderer }).__matchRenderer;
+  }
+
+  /** Phát hiệu ứng chuyển cảnh độc lập (hỗ trợ gọi trực tiếp từ mọi nơi trong `MatchRenderer`). */
+  playTransition(
+    kindOrSpec: TransitionKind | TransitionSpec,
+    options?: TransitionPlayOptions,
+  ): void {
+    this.transition.play(kindOrSpec, options);
+  }
+
+  /**
+   * Bật stinger chuyển cảnh và giữ nguyên khung hình trước lúc đặt lại vị trí (`this.prev`) tới đúng
+   * thời điểm stinger che kín 100% (`onCovered`), sau đó cắt camera sang vị trí bóng mới.
+   */
+  private triggerTransition(spec: TransitionSpec): void {
+    if (!this.stingerEnabled) return;
+    const holdState = this.frozen?.state ?? this.goalHold ?? this.prev;
+    const holdCam = this.frozen?.cam ?? this.cam;
+    this.transition.play(spec, {
+      onCovered: () => {
+        this.frozen = null;
+        this.goalHold = null;
+        this.cam = followCamera(this.cam, this.curr.ball.pos, 100);
+      },
+    });
+    this.frozen = { state: holdState, cam: holdCam };
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
     const name = keyForCode(e.code);
-    if (this.replay) {
-      // Đang phát lại: S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
+    if (this.replay || this.pendingReplay) {
+      // Đang phát lại (hoặc đang vào phát lại): S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
       if (e.code === CONTROL_KEYS.pass) this.skipReplay = true;
       if (name) e.preventDefault();
       return;
@@ -386,17 +451,45 @@ export class MatchRenderer {
 
   private readonly frame = (now: number): void => {
     this.raf = requestAnimationFrame(this.frame);
-    const dt = this.lastTime === 0 ? 0 : Math.min((now - this.lastTime) / 1000, MAX_FRAME_SEC);
-    if (this.perf && this.lastTime !== 0) {
-      // Không tính lúc tạm dừng; hết trận thì in kết quả một lần.
-      if (this.curr.phase === 'full_time') this.reportPerf();
-      else if (!this.bridge?.isPaused()) this.perf.record(now - this.lastTime);
+    const frameMs = this.lastTime === 0 ? 0 : now - this.lastTime;
+    const dt = this.lastTime === 0 ? 0 : Math.min(frameMs / 1000, MAX_FRAME_SEC);
+    if (frameMs > 0 && !this.bridge?.isPaused()) {
+      this.transition.recordFrame(frameMs);
+      if (this.perf) {
+        // Không tính lúc tạm dừng; hết trận thì in kết quả một lần.
+        if (this.curr.phase === 'full_time') this.reportPerf();
+        else {
+          this.perf.record(frameMs);
+          if (this.transition.isActive()) this.transitionPerf?.record(frameMs);
+        }
+      }
+    } else if (this.perf && this.curr.phase === 'full_time') {
+      this.reportPerf();
     }
     this.lastTime = now;
     this.applyCommands();
 
+    const activeDt = this.bridge?.isPaused() ? 0 : dt;
+    this.transition.update(activeDt);
+
     if (this.replay) {
-      this.frameReplay(this.bridge?.isPaused() ? 0 : dt);
+      this.frameReplay(activeDt);
+      if (this.debug) this.refreshDebug(now);
+      return;
+    }
+    if (this.pendingReplay) {
+      // Đang khép stinger "XEM LẠI": dừng sim ở điểm giao bóng, vẽ khung bàn thắng giữ lại tới khi onCovered.
+      this.accumulator = 0;
+      this.taps.consume();
+      if (this.skipReplay) {
+        this.pendingReplay = null;
+        this.skipReplay = false;
+        this.exitReplayWithTransition();
+      }
+      const hold = this.frozen?.state ?? this.goalHold ?? this.curr;
+      const holdCam = this.frozen?.cam;
+      this.draw(hold, hold, 1, activeDt, activeDt, holdCam);
+      this.render();
       if (this.debug) this.refreshDebug(now);
       return;
     }
@@ -415,8 +508,13 @@ export class MatchRenderer {
         ticked = true;
         for (const e of animationEvents(this.prev, this.curr))
           this.models.get(e.playerId)?.trigger(e.clip);
-        this.history.push(this.curr);
-        if (isGoal(this.prev, this.curr)) this.onGoal();
+        if (isGoal(this.prev, this.curr)) {
+          this.onGoal();
+        } else {
+          const tr = detectTransition(this.prev, this.curr, { replay: this.q.replay });
+          if (tr) this.triggerTransition(tr);
+        }
+        this.history.push(this.goalHold ?? this.curr);
         if (this.replayAt !== null && this.curr.tick >= this.replayAt) {
           this.beginReplay();
           break;
@@ -427,39 +525,94 @@ export class MatchRenderer {
         this.bridge?.onState(this.curr);
       }
     }
-    this.draw(
-      this.prev,
-      this.curr,
-      this.accumulator / TICK_DT,
-      dt,
-      this.bridge?.isPaused() ? 0 : dt,
-    );
+    if (this.pendingReplay) {
+      const hold = this.frozen?.state ?? this.goalHold ?? this.curr;
+      const holdCam = this.frozen?.cam;
+      this.draw(hold, hold, 1, activeDt, activeDt, holdCam);
+    } else if (this.frozen) {
+      this.draw(
+        this.frozen.state,
+        this.frozen.state,
+        1,
+        activeDt,
+        activeDt,
+        this.frozen.cam,
+      );
+    } else if (this.goalHold) {
+      this.draw(this.goalHold, this.goalHold, 1, dt, activeDt);
+    } else {
+      this.draw(
+        this.prev,
+        this.curr,
+        this.accumulator / TICK_DT,
+        dt,
+        activeDt,
+      );
+    }
     this.render();
     if (this.debug) this.refreshDebug(now);
   };
 
   private render(): void {
-    if (this.q.postFx) this.postFx.render();
-    else this.renderer.render(this.scene, this.camera);
+    const covered = this.transition.isFullyCovering();
+    if (!covered) {
+      if (this.q.postFx) this.postFx.render();
+      else this.renderer.render(this.scene, this.camera);
+    }
+    this.transition.render(covered);
   }
 
-  /** Bắt đầu phát lại quay chậm: sim đứng yên tới khi phát xong hoặc người chơi bỏ qua. */
+  /** Bắt đầu phát lại quay chậm: khép stinger "XEM LẠI", khi che kín (`onCovered`) mới mở cảnh replay. */
   private beginReplay(): void {
     this.replayAt = null;
     const frames = this.history.frames();
-    const goal = frames[Math.max(0, frames.length - 1 - REPLAY_AFTER_TICKS)] ?? this.curr;
-    this.replay = startReplay(frames, goal.ball.pos.x >= 0 ? 1 : -1);
+    const prepared = startReplay(frames, this.goalSide);
     this.replayCam = null;
     this.skipReplay = false;
     this.accumulator = 0;
     this.held = { ...NO_KEYS };
     this.taps.consume();
-    this.showReplayLabel(true);
+
+    if (!this.stingerEnabled) {
+      this.goalHold = null;
+      this.replay = prepared;
+      this.showReplayLabel(true);
+      return;
+    }
+
+    this.pendingReplay = prepared;
+    const holdState = this.goalHold ?? this.prev;
+    const holdCam = this.cam;
+    this.transition.play(
+      buildTransitionSpec('replay_in', { team: this.goalScoredTeam }),
+      {
+        onCovered: () => {
+          this.frozen = null;
+          this.goalHold = null;
+          if (!this.pendingReplay) return;
+          this.replay = this.pendingReplay;
+          this.pendingReplay = null;
+          this.replayCam = null;
+          this.replayExiting = false;
+          this.showReplayLabel(true);
+        },
+      },
+    );
+    this.frozen = { state: holdState, cam: holdCam };
   }
 
   private frameReplay(dt: number): void {
     const before = this.replay;
     if (!before) return;
+    if (this.replayExiting) {
+      // Đang đóng stinger "GIAO BÓNG": giữ khung hình cuối của replay cho tới khi onCovered gọi finishReplay().
+      const { prev, curr, alpha } = replayFrame(before);
+      const ball = lerpPos(prev.ball.pos, curr.ball.pos, alpha);
+      this.replayCam = replayCamera(this.replayCam, ball, before.side, dt);
+      this.draw(prev, curr, alpha, dt, 0, this.replayCam);
+      this.render();
+      return;
+    }
     const r = advanceReplay(before, dt);
     // Hoạt ảnh sút/chuyền/bắt bóng ở các tick vừa phát qua.
     for (let i = Math.floor(before.head) + 1; i <= Math.floor(r.head); i++) {
@@ -479,17 +632,42 @@ export class MatchRenderer {
     this.draw(prev, curr, alpha, dt, (r.head - before.head) * TICK_DT, this.replayCam);
     this.render();
     this.replay = r;
-    if (r.done || this.skipReplay) this.endReplay();
+    if (r.done || this.skipReplay) this.exitReplayWithTransition();
   }
 
-  private endReplay(): void {
+  /** Thoát khỏi phát lại (tự kết thúc hoặc bấm `S` bỏ qua) bằng stinger "GIAO BÓNG". */
+  private exitReplayWithTransition(): void {
+    if (!this.stingerEnabled) {
+      this.finishReplay();
+      return;
+    }
+    if (this.replayExiting) return;
+    this.replayExiting = true;
+    this.skipReplay = false;
+    this.showReplayLabel(false);
+    this.transition.play(
+      buildTransitionSpec('replay_out', { team: this.curr.restart?.team ?? null }),
+      {
+        onCovered: () => {
+          this.finishReplay();
+        },
+      },
+    );
+  }
+
+  private finishReplay(): void {
     this.replay = null;
+    this.pendingReplay = null;
+    this.replayExiting = false;
     this.replayCam = null;
     this.skipReplay = false;
+    this.frozen = null;
+    this.goalHold = null;
     this.history.clear();
-    // Quay về đúng trạng thái sim đang dừng, không nội suy từ khung phát lại.
+    // Quay về đúng trạng thái sim đang dừng ở giữa sân, cắt camera ngay lúc màn che kín.
     this.prev = this.curr;
-    this.lastTime = 0;
+    this.accumulator = 0;
+    this.cam = followCamera(this.cam, this.curr.ball.pos, 100);
     this.showReplayLabel(false);
   }
 
@@ -513,15 +691,46 @@ export class MatchRenderer {
     this.replayLabel = el;
   }
 
-  /** Bàn thắng vừa được ghi (tick này): lưới rung ở khung thành bóng vào. */
+  /**
+   * Bàn thắng vừa được ghi (tick này): ở `this.curr` sim đã đặt ngay bóng và 14 cầu thủ về giữa sân,
+   * nên lấy vị trí bóng từ `this.prev` để rung đúng lưới và giữ khung hình cầu môn tới khi chuyển cảnh.
+   */
   private onGoal(): void {
-    const { ball } = this.curr;
-    const side = ball.pos.x >= 0 ? 1 : -1;
-    this.nets.hit(side, new THREE.Vector3(ball.pos.x, BALL_DRAW_RADIUS + ball.z, ball.pos.y));
+    const prevBall = this.prev.ball;
+    const side: 1 | -1 = prevBall.pos.x >= 0 ? 1 : -1;
+    this.goalSide = side;
+    this.goalScoredTeam = this.curr.score.home > this.prev.score.home ? 'home' : 'away';
+    const netY = Math.max(-2.7, Math.min(2.7, prevBall.pos.y));
+    const netX = side * 30.45;
+    this.nets.hit(
+      side,
+      new THREE.Vector3(side * 30, BALL_DRAW_RADIUS + prevBall.z, netY),
+    );
     this.crowd.cheer();
-    // Luân lưu không phát lại; người chơi tắt replay trong menu đồ hoạ thì thôi.
-    if (this.q.replay && this.curr.phase !== 'shootout')
+
+    this.goalHold = {
+      ...this.prev,
+      tick: this.curr.tick,
+      score: this.curr.score,
+      ball: {
+        pos: { x: netX, y: netY },
+        vel: { x: 0, y: 0 },
+        z: Math.max(0, prevBall.z * 0.35),
+        vz: 0,
+      },
+      players: this.prev.players.map((p) => ({
+        ...p,
+        vel: { x: 0, y: 0 },
+      })),
+    };
+
+    // Luân lưu không phát lại; người chơi tắt replay trong menu đồ hoạ thì chuyển thẳng về giao bóng.
+    if (this.q.replay && this.curr.phase !== 'shootout') {
       this.replayAt = this.curr.tick + REPLAY_AFTER_TICKS;
+    } else if (this.curr.phase !== 'shootout') {
+      const tr = detectTransition(this.prev, this.curr, { replay: false });
+      if (tr) this.triggerTransition(tr);
+    }
   }
 
   /** Vẽ trạng thái nội suy: `alpha` = 0 là tick trước, 1 là tick hiện tại. */
@@ -601,14 +810,15 @@ export class MatchRenderer {
 
     if (dt > 0 && !cameraOverride) this.cam = followCamera(this.cam, ground, dt);
     const { pos, look } = cameraOverride ?? this.cam;
+    const dolly = cameraOverride ? { y: 0, z: 0 } : this.transition.currentDollyOffset();
     this.nets.update(animDt);
     const timeSec = performance.now() / 1000;
     if (this.grass.object.visible) this.grass.update(look.x, look.z, timeSec);
     this.crowd.update(animDt, timeSec, this.q.crowd);
     this.boards.update(timeSec);
-    this.camera.position.set(pos.x, pos.y, pos.z);
+    this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + dolly.z);
     this.camera.lookAt(look.x, look.y, look.z);
-    this.drawCountdown(cameraOverride ? null : countdownRing(curr));
+    this.drawCountdown(cameraOverride ? null : countdownRing(this.curr));
   }
 
   /**
@@ -664,6 +874,7 @@ export class MatchRenderer {
     this.postFx.setSize(w, h, this.renderer.getPixelRatio());
     this.camera.aspect = w / h;
     this.camera.updateProjectionMatrix();
+    this.transition.resize(w, h);
   }
 
   /** In FPS trung bình / 1% thấp nhất ra console (một lần: lúc hết trận hoặc khi rời trận). */
@@ -673,6 +884,10 @@ export class MatchRenderer {
     if (!summary) return;
     this.perfReported = true;
     console.info(formatFrameSummary(summary));
+    const trSummary = this.transitionPerf?.summary();
+    if (trSummary) {
+      console.info(formatFrameSummary(trSummary).replace('[perf]', '[perf:transition]'));
+    }
   }
 
   /** Overlay FPS khi dev hoặc `?perf=1`. */
@@ -689,8 +904,12 @@ export class MatchRenderer {
       pointerEvents: 'none',
       zIndex: '5',
     });
+    const mem = this.renderer.info.memory;
+    el.dataset.geometries = String(mem.geometries);
+    el.dataset.textures = String(mem.textures);
     this.parent.appendChild(el);
     this.debug = { el, frames: 0, at: performance.now() };
+    (this.parent as HTMLElement & { __matchRenderer?: MatchRenderer }).__matchRenderer = this;
   }
 
   private refreshDebug(now: number): void {
@@ -702,6 +921,9 @@ export class MatchRenderer {
     d.frames = 0;
     d.at = now;
     const { curr } = this;
+    const mem = this.renderer.info.memory;
+    d.el.dataset.geometries = String(mem.geometries);
+    d.el.dataset.textures = String(mem.textures);
     d.el.textContent = `FPS ${fps} · tick ${curr.tick} · ${curr.phase} · ${curr.score.home}–${curr.score.away}`;
   }
 }

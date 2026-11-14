@@ -84,6 +84,7 @@ export class CountdownRingView {
       pointerEvents: 'none',
       overflow: 'visible',
       willChange: 'transform',
+      zIndex: '8',
     });
     // Mép sáng mảnh hai bên viền để phần đen vẫn tách khỏi nền tối (khán đài, cỏ ban đêm).
     const edge = circle('rgb(250 248 243 / 0.5)', STROKE + 1.6);
