@@ -1,4 +1,10 @@
-import { MatchTeamSetup, isStarterSlot, type MatchPlayerSetup } from '@pitch/shared';
+import {
+  MatchTeamSetup,
+  isStarterSlot,
+  slotRole,
+  type MatchPlayerSetup,
+  type Position,
+} from '@pitch/shared';
 import { AI_PROFILES, type AiProfile } from './ai/difficulty';
 import {
   AI_MIN_HOLD_TICKS,
@@ -56,7 +62,7 @@ import { HALF_LENGTH, PENALTY_SPOT_DIST } from './pitch';
 import { separatePlayers, stepPlayer } from './physics/player';
 import { nextFloat, type RngState, seedRng } from './rng';
 import { TICK_DT } from './tick';
-import { advanceClock, RESTART_GRACE_TICKS } from './rules/clock';
+import { advanceClock, regulationTicks, RESTART_GRACE_TICKS } from './rules/clock';
 import { isKeeperHandling, judgeFoul } from './rules/fouls';
 import { autoSubstitute } from './rules/substitution';
 import { nextShooter, SHOOTOUT_KICK_TICKS, shooterFor, shootoutWinner } from './rules/shootout';
@@ -120,6 +126,18 @@ const restingBall = (pos: Vec2): BallState => ({ pos, vel: ZERO, z: 0, vz: 0 });
 /** Luật chuyền về: cầu thủ (không phải thủ môn) cố ý đá/ném bóng đi → thủ môn đội đó không được bắt tay. */
 const kickedBy = (p: PlayerState): TeamSide | null => (p.position === 'GK' ? null : p.team);
 
+/**
+ * Vai trên sân của người đá chính. Đội hình cho phép xếp thẻ sai vị trí (PRD §6.4, chỉ bị −15% chỉ
+ * số), còn sim phân biệt thủ môn với cầu thủ ngoài sân theo `position` — nên thủ môn là người ở ô GK
+ * dù thẻ gì, và thẻ thủ môn xếp ô ngoài sân đá theo vai của ô (không thành thủ môn thứ hai). Cầu thủ
+ * ngoài sân xếp lệch tuyến giữ vị trí của thẻ (chỗ đứng đã theo ô).
+ */
+function pitchPosition(team: MatchTeamSetup, p: MatchPlayerSetup): Position {
+  if (p.slot === 'GK') return 'GK';
+  if (p.position !== 'GK') return p.position;
+  return slotRole(team.formation, p.slot) ?? p.position;
+}
+
 function spawnTeam(team: MatchTeamSetup, side: TeamSide): PlayerState[] {
   return team.players
     .filter((p) => isStarterSlot(p.slot))
@@ -127,7 +145,7 @@ function spawnTeam(team: MatchTeamSetup, side: TeamSide): PlayerState[] {
       id: `${side}-${p.slot}`,
       team: side,
       slot: p.slot,
-      position: p.position,
+      position: pitchPosition(team, p),
       stats: p.stats,
       // Vị trí thật do kickoffPlayers đặt.
       pos: ZERO,
@@ -201,8 +219,9 @@ export function createMatch(setup: MatchSetup): MatchState {
   const home = MatchTeamSetup.parse(setup.home);
   const away = MatchTeamSetup.parse(setup.away);
   const halfLengthSec = setup.halfLengthSec ?? DEFAULT_HALF_LENGTH_SEC;
-  if (!Number.isFinite(halfLengthSec) || halfLengthSec <= 0) {
-    throw new RangeError(`halfLengthSec phải là số dương, nhận ${halfLengthSec}`);
+  // Ngắn hơn nửa tick thì giờ chính thức làm tròn thành 0 tick: bù giờ chia cho 0, hiệp không hết.
+  if (!Number.isFinite(halfLengthSec) || regulationTicks(halfLengthSec) < 1) {
+    throw new RangeError(`halfLengthSec phải đủ dài cho ít nhất 1 tick, nhận ${halfLengthSec}`);
   }
   const kickoffTeam: TeamSide = 'home';
   const blank: MatchState = {
