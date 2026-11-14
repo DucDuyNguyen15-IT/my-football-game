@@ -4,36 +4,46 @@
  */
 
 export const AVATAR_SKINS = [
-  '#f3d2b5',
-  '#e5b48f',
-  '#c98e64',
-  '#a46a43',
-  '#7a4a2c',
-  '#553220',
+  '#f4d4b8',
+  '#e6b690',
+  '#cc9166',
+  '#a66c44',
+  '#7d4c2e',
+  '#583522',
 ] as const;
+
 export const AVATAR_HAIRS = [
-  '#1b1410',
-  '#3b2414',
-  '#6b4423',
-  '#a8743a',
-  '#d9b26a',
-  '#8c8c8c',
+  '#181310',
+  '#362112',
+  '#663f20',
+  '#9e6a32',
+  '#d6ae62',
+  '#8a9098',
 ] as const;
-/** Nửa bề ngang khuôn mặt (đơn vị viewBox 100) cho 3 dáng mặt. */
-export const AVATAR_FACE_WIDTHS = [19, 20.5, 22] as const;
-export const AVATAR_HAIR_STYLES = 7;
-export const AVATAR_BEARDS = 4;
+
+/** Nửa bề ngang khuôn mặt tại gò má (đơn vị viewBox 100) cho 3 dáng mặt cân đối với vai. */
+export const AVATAR_FACE_WIDTHS = [17.5, 18.8, 20] as const;
+export const AVATAR_HAIR_STYLES = 8;
+export const AVATAR_BEARDS = 5;
+export const AVATAR_MOUTH_STYLES = 3;
+export const AVATAR_JAW_RATIOS = [0.76, 0.8, 0.84] as const;
 
 export interface AvatarSpec {
   faceWidth: number;
   skin: string;
   hair: string;
-  /** 0 = trọc … 6 = tóc dài. */
+  /** 0 = cạo sát/trọc thể thao … 7 = búi cao/tóc dài. */
   hairStyle: number;
-  /** 0 = không râu. */
+  /** 0 = không râu, 1 = quai nón, 2 = ria mép, 3 = goatee cằm, 4 = quai hàm mảnh. */
   beard: number;
   browY: number;
   eyeGap: number;
+  /** Độ nghiêng chân mày (-1.0 .. 1.2): dương = quyết đoán, âm = điềm tĩnh. */
+  browTilt: number;
+  /** 0 = mỉm cười nhẹ, 1 = điềm tĩnh, 2 = cười tự tin. */
+  mouthStyle: number;
+  /** Tỉ lệ độ rộng góc hàm so với gò má (0.76 = mặt thon, 0.8 = chuẩn, 0.84 = hàm vuông). */
+  jawRatio: number;
 }
 
 /** FNV-1a 32 bit — biến chuỗi seed thành số cho PRNG. */
@@ -64,7 +74,10 @@ export function avatarSpec(seed: string): AvatarSpec {
     faceWidth: pick(AVATAR_FACE_WIDTHS),
     hairStyle: Math.floor(rnd() * AVATAR_HAIR_STYLES),
     beard: Math.floor(rnd() * AVATAR_BEARDS),
-    browY: Math.round((41 + rnd() * 1.5) * 10) / 10,
-    eyeGap: Math.round((7 + rnd() * 1.5) * 10) / 10,
+    browY: Math.round((36.4 + rnd() * 1.4) * 10) / 10,
+    eyeGap: Math.round((7.3 + rnd() * 1.0) * 10) / 10,
+    browTilt: Math.round((-0.8 + rnd() * 2.0) * 10) / 10,
+    mouthStyle: Math.floor(rnd() * AVATAR_MOUTH_STYLES),
+    jawRatio: pick(AVATAR_JAW_RATIOS),
   };
 }

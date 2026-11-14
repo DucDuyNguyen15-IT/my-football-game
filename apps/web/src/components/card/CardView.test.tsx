@@ -78,4 +78,19 @@ describe('<CardView>', () => {
       renderToStaticMarkup(<Avatar seed="s1" />),
     );
   });
+
+  it('nhiều Avatar render cùng cây không trùng id gradient/clipPath và đủ viewBox chuẩn', () => {
+    const html = renderToStaticMarkup(
+      <div>
+        <Avatar seed="cd681195" />
+        <Avatar seed="10d062c0" />
+        <Avatar seed="d1e61956" />
+      </div>,
+    );
+    const clipIds = [...html.matchAll(/<clipPath id="([^"]+)"/g)].map((m) => m[1]);
+    expect(clipIds).toHaveLength(3);
+    expect(new Set(clipIds).size).toBe(3);
+    expect(html).toContain('viewBox="0 0 100 100"');
+    expect(html).toContain('preserveAspectRatio="xMidYMax meet"');
+  });
 });

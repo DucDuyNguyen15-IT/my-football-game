@@ -33,6 +33,7 @@
   aspect-ratio: 5 / 7;
   padding: 2px;
   color: var(--c-card-ink);
+  text-align: left;
   user-select: none;
   flex: none;
   filter: drop-shadow(0 6px 14px rgb(20 24 22 / 0.26));
@@ -232,17 +233,25 @@ html.tab-hidden .r-legend.card::before {
 .card__avatar {
   flex: 1;
   min-height: 14px;
+  margin-top: calc(var(--card-w) * -0.13);
   position: relative;
-  display: grid;
-  place-items: end center;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
   overflow: hidden;
+  background: radial-gradient(
+    72% 72% at 50% 54%,
+    color-mix(in srgb, var(--hi) 11%, transparent),
+    transparent 72%
+  );
   border-bottom: 1px solid color-mix(in srgb, var(--hi) 38%, transparent);
 }
 .card__avatar svg {
-  width: 88%;
+  width: 92%;
   height: 100%;
   max-height: 100%;
   display: block;
+  margin: 0 auto;
   filter: drop-shadow(0 3px 8px rgb(0 0 0 / 0.45));
 }
 
