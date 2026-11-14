@@ -5,13 +5,16 @@
  */
 .pm-shell {
   min-height: 100vh;
-  display: grid;
-  place-items: center;
-  padding: var(--sp-6) var(--sp-5);
+  height: 100%;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
 }
 .pm {
   width: 100%;
   max-width: 1060px;
+  margin: 0 auto;
+  padding: var(--sp-6) var(--sp-5);
   display: grid;
   gap: var(--sp-5);
 }
@@ -27,10 +30,10 @@
 
 .pm__options {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-4);
 }
-@media (max-width: 860px) {
+@media (max-width: 720px) {
   .pm__options {
     grid-template-columns: 1fr;
   }

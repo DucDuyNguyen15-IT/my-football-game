@@ -131,6 +131,7 @@
 }
 
 /* Bảng chi tiết thẻ bên phải */
+.panel.coll__detail,
 .coll__detail {
   position: sticky;
   top: 76px;
@@ -261,6 +262,7 @@
   .coll.has-detail {
     grid-template-columns: 1fr;
   }
+  .panel.coll__detail,
   .coll__detail {
     position: static;
   }

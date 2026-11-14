@@ -17,7 +17,7 @@ const LEG_H = 0.55;
 const CHARGE_BAR_W = 1.5;
 const CHARGE_BAR_H = 0.22;
 
-const NUMBER_FONT = 'bold 44px "Barlow Condensed", "Arial Narrow", sans-serif';
+const NUMBER_FONT = '700 44px "Space Grotesk", "Arial Narrow", sans-serif';
 
 export function numberTexture(n: number, ink: string): THREE.CanvasTexture {
   const canvas = document.createElement('canvas');

@@ -130,6 +130,7 @@
 }
 
 /* Cột phải: tỉ lệ, phí & bảng chỉ số */
+.panel.upg__sum,
 .upg__sum {
   position: sticky;
   top: 76px;
@@ -137,6 +138,7 @@
   gap: var(--sp-3);
 }
 @media (max-width: 1120px) {
+  .panel.upg__sum,
   .upg__sum {
     position: static;
   }
