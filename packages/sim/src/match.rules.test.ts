@@ -137,6 +137,46 @@ describe('bóng ra ngoài — đúng đội được hưởng', () => {
     expect(s.restart).toMatchObject({ type: 'throw_in', team: 'away' });
   });
 
+  /** Tắt AI, cầu thủ `id` đứng ở `pos` quay mặt theo `facing`, bóng nằm yên ở `ballPos`. */
+  const trapAt = (id: string, pos: Vec2, facing: Vec2, ballPos: Vec2): MatchState => {
+    const s0 = inPlay(rolling(ballPos, ZERO), 'away');
+    return {
+      ...s0,
+      ai: null,
+      controlledId: id,
+      players: s0.players.map((p) => (p.id === id ? { ...p, pos, facing } : p)),
+    };
+  };
+
+  it('khống chế bóng sát vạch biên khi quay mặt ra ngoài (bóng dính chân nằm ngoài vạch) → ném biên', () => {
+    // Bóng còn trong sân (đè vạch); cầu thủ đội nhà đứng cách vạch 0,3 m, mặt hướng ra ngoài.
+    const start = trapAt('home-P3', vec2(0, HALF_WIDTH - 0.3), vec2(0, 1), vec2(0, HALF_WIDTH));
+    const s = step(start, NO_INPUT);
+    expect(s.phase).toBe('dead_ball');
+    expect(s.restart).toMatchObject({ type: 'throw_in', team: 'away' });
+    expect(s.restart!.spot).toEqual(vec2(0, HALF_WIDTH));
+  });
+
+  it('khống chế bóng trên vạch cuối khi quay mặt vào khung thành nhà → bóng qua vạch, phản lưới', () => {
+    const start = trapAt(
+      'home-P1',
+      vec2(-HALF_LENGTH + 0.2, 0.5),
+      vec2(-1, 0),
+      vec2(-HALF_LENGTH, 0.5),
+    );
+    const s = step(start, NO_INPUT);
+    expect(s.score).toEqual({ home: 0, away: 1 });
+    expect(s.phase).toBe('kickoff');
+    expect(s.restart).toMatchObject({ type: 'kickoff', team: 'home' });
+  });
+
+  it('khống chế bóng sát vạch nhưng bóng dính chân còn trong sân → bóng vẫn sống', () => {
+    const start = trapAt('home-P3', vec2(0, HALF_WIDTH - 0.3), vec2(1, 0), vec2(0, HALF_WIDTH));
+    const s = step(start, NO_INPUT);
+    expect(s.phase).toBe('play');
+    expect(s.ballOwnerId).toBe('home-P3');
+  });
+
   it('đội nào khống chế bóng thì đội đó là đội chạm cuối', () => {
     // Bóng lăn ngay tới chân cầu thủ đội khách đứng ở (0, 3).
     const s = step(inPlay(rolling(vec2(0, 2.5), vec2(0, 2)), 'home'), NO_INPUT);

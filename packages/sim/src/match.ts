@@ -1262,18 +1262,21 @@ function stepPlay(
     ai,
   };
 
-  // 5. Bóng ra ngoài hoặc vào lưới → bóng chết.
-  if (event?.type === 'goal') {
-    const scored: MatchState = {
-      ...played,
-      score: { ...state.score, [event.team]: state.score[event.team] + 1 },
-      stoppage: { ...state.stoppage, goals: state.stoppage.goals + 1 },
-    };
-    return enterKickoff(scored, other(event.team), tick);
-  }
-  if (event?.type === 'ball_out') {
-    return enterDeadBall(played, players, decideRestart(event, lastTouchTeam, state.half), tick);
-  }
+  // 5. Bóng ra ngoài hoặc vào lưới → bóng chết. `touch`: đội chạm bóng cuối.
+  const exitPlay = (e: BallEvent, touch: TeamSide): MatchState => {
+    if (e.type === 'goal') {
+      const scored: MatchState = {
+        ...played,
+        lastTouchTeam: touch,
+        score: { ...state.score, [e.team]: state.score[e.team] + 1 },
+        stoppage: { ...state.stoppage, goals: state.stoppage.goals + 1 },
+      };
+      return enterKickoff(scored, other(e.team), tick);
+    }
+    const out: MatchState = { ...played, lastTouchTeam: touch };
+    return enterDeadBall(out, players, decideRestart(e, touch, state.half), tick);
+  };
+  if (event) return exitPlay(event, lastTouchTeam);
 
   // 6. Bắt bóng tự do.
   if (!owner) {
@@ -1286,9 +1289,14 @@ function stepPlay(
     );
     const captured = capturer === null ? undefined : players.find((p) => p.id === capturer);
     if (captured) {
+      const dribbled = dribbleBall(captured);
+      // Khống chế bóng sát vạch khi quay mặt ra ngoài: bóng dính chân đã nằm ngoài vạch → bóng chết
+      // ngay (không xét ở đây thì tick sau bóng "đã ở ngoài" nên không bao giờ sinh sự kiện nữa).
+      const trapOut = exitEvent(ball, dribbled, attackingPlusX);
+      if (trapOut) return exitPlay(trapOut, captured.team);
       ballOwnerId = captured.id;
       lastShot = null;
-      ball = dribbleBall(captured);
+      ball = dribbled;
       if (captured.team === HUMAN_TEAM) controlledId = captured.id;
     }
   }
