@@ -1,6 +1,26 @@
 # Báo cáo QA & Bảo mật — MFG (My Football Game)
 
-_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Đã có: Bảo mật (8.2), Hiệu năng (8.3 — phần đo tự động; FPS/bộ nhớ chờ người dùng đo). Các mục E2E (8.1) và Tiêu chí chấp nhận (8.4) được bổ sung theo tiến độ từng task._
+_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Cập nhật lần cuối: 2026-11-14 (task 8.4)._
+
+**Tóm tắt (2026-11-14)**
+
+| Hạng mục | Kết quả | Chi tiết |
+|---|---|---|
+| Bảo mật (8.2) | Không còn lỗi High/Critical; 6 phát hiện đã sửa, 2 ghi nhận theo thiết kế MVP; `pnpm audit` 0 High/Critical | §1 |
+| Hiệu năng (8.3) | Bundle, p95 mở gói (41–71 ms), truy vấn retention/onboarding (< 100 ms) đã đo; **FPS và rò bộ nhớ chờ người dùng đo** | §2 (bảng trống ở §2.4) |
+| E2E luồng chính (8.1) | `pnpm e2e` xanh 3 lần liên tiếp | §3 |
+| Tiêu chí chấp nhận PRD (8.4) | 36 tiêu chí: **35 Đạt, 1 Chưa đạt** (AC-F1-1 — chờ số đo FPS), 0 Không áp dụng | §4 |
+| Playtest 5–10 người (PRD §10) | Chưa tổ chức; đã có checklist và bảng ghi | §5 |
+| Việc còn tồn | 2 việc chặn (đo FPS/bộ nhớ, playtest); 1 lỗi giao diện mức trung bình phát hiện ở 8.4 (lưới nguyên liệu màn Ép thẻ lặp thẻ — T3); còn lại mức thấp hoặc ghi nhận | §6 |
+
+**Mục lục**
+
+1. Bảo mật (Task 8.2) — 1.1 Đánh giá theo 9 hạng mục · 1.2 Danh sách phát hiện · 1.3 `pnpm audit` · 1.4 Kiểm thử thủ công bằng `curl`
+2. Hiệu năng (Task 8.3) — 2.1 Bundle web · 2.2 Mở gói dưới tải · 2.3 Truy vấn retention/onboarding · 2.4 FPS và rò bộ nhớ (chờ đo)
+3. E2E luồng chính (Task 8.1)
+4. Tiêu chí chấp nhận (Task 8.4) — 4.1 Tổng hợp · 4.2 F1–F3 · 4.3 F5 · 4.4 F6 · 4.5 F10 · 4.6 F11 · 4.7 F7/F9/F12, F8/F13 · 4.8 Chỉ số §9–§10 · 4.9 Nhật ký kiểm tay
+5. Checklist playtest 5–10 người (PRD §10)
+6. Việc còn tồn
 
 ---
 
@@ -58,7 +78,7 @@ Thực hiện trên server thật (`127.0.0.1:3099`, `DATABASE_URL=postgres://pi
 
 ---
 
-## 2. Hiệu năng (8.3)
+## 2. Hiệu năng (Task 8.3)
 
 - **Ngày đo:** 2026-11-14 · **Trạng thái:** phần đo tự động xong; **FPS và rò bộ nhớ chờ người dùng đo trên laptop thật** (mục 2.4).
 - **Máy đo:** Intel Core i7-13620H (16 luồng), 16 GB RAM, Windows 11, Node 26.13, PostgreSQL 16.15 (Docker). Server và công cụ bắn tải chạy cùng máy, lúc đo có tiến trình khác chạy song song nên số dao động giữa các lần.
@@ -177,3 +197,220 @@ Rà tĩnh phía code (không thay cho số đo): `MatchCanvas` huỷ renderer kh
   - Trận `half=10` mất ~90–110 s trên WebGL phần mềm của Chromium headless (giới hạn chờ màn kết quả: 270 s; cả test: 360 s). Máy CI chậm hơn nhiều có thể cần nới giới hạn.
   - Bộ 3 nhiệm vụ ngày chọn theo `(người chơi, ngày)` nên số nhiệm vụ nhận thưởng thay đổi theo lần chạy; test chỉ bấm "Nhận" khi có nhiệm vụ đã đạt.
   - Rate limit giữ nguyên mặc định (kịch bản chỉ gọi `/auth/*` 3 lần, ngưỡng 10 lần/phút/IP; mỗi lần `pnpm e2e` bật server mới nên bộ đếm về 0).
+
+---
+
+## 4. Tiêu chí chấp nhận (Task 8.4)
+
+- **Ngày rà:** 2026-11-14 · **Nguồn:** mọi mục "Tiêu chí chấp nhận" trong `docs/PRD.md` (§5, §6.3–§6.6, §7, §8) — 36 tiêu chí — cùng mục tiêu ở §9 và bảng chỉ số §10.
+- **Cách rà:** với từng tiêu chí, mở file test và đọc phần thân test để chắc test kiểm đúng điều tiêu chí yêu cầu (không suy theo tên file). Tiêu chí về giao diện chưa có test tự động thì kiểm tay bằng Playwright trên giao diện thật (nhật ký ở 4.9). Đường dẫn test tính từ gốc repo; tên trong ngoặc kép là tên `it(...)`.
+- **Trạng thái nền:** `pnpm check` xanh (lint + typecheck + 87 file / 852 test Vitest) ngày 2026-11-14 trên DB `pitch_test_a`; mọi test nêu dưới đây nằm trong `pnpm check`, trừ chỗ ghi rõ "chạy riêng".
+
+### 4.1 Tổng hợp
+
+| Nhóm | Số tiêu chí | Đạt | Chưa đạt | Không áp dụng |
+|---|---|---|---|---|
+| F1–F3 Trận đấu (PRD §5) | 8 | 7 | 1 | 0 |
+| F5 Mở gói (PRD §6.3) | 8 | 8 | 0 | 0 |
+| F6 Đội hình (PRD §6.4) | 5 | 5 | 0 | 0 |
+| F10 Ép thẻ (PRD §6.5) | 5 | 5 | 0 | 0 |
+| F11 Bán thẻ (PRD §6.6) | 2 | 2 | 0 | 0 |
+| F7, F9, F12 Kinh tế (PRD §7) | 5 | 5 | 0 | 0 |
+| F8, F13 Tài khoản & phân tích (PRD §8) | 3 | 3 | 0 | 0 |
+| **Tổng** | **36** | **35** | **1** | **0** |
+
+Tiêu chí duy nhất chưa đạt là **AC-F1-1**: phần thời lượng và đổi sân đã đạt, nhưng vế "≥ 55 FPS trung bình trên laptop tầm trung" **chưa có số đo chính thức** (chờ người dùng đo theo §2.4) nên chưa xác nhận được cả tiêu chí. 35 tiêu chí Đạt đã được tick `[x]` trong `docs/PRD.md`. Chỉ số §9–§10 (không phải checkbox) rà riêng ở 4.8.
+
+### 4.2 F1–F3 — Trận đấu (PRD §5)
+
+| Mã | Tiêu chí | Cách kiểm | Kết quả |
+|---|---|---|---|
+| AC-F1-1 | Trận đủ 2 hiệp × 3 phút + bù giờ (±1 giây), đổi sân sau hiệp 1, ≥ 55 FPS TB trên laptop tầm trung (Chrome, GPU tích hợp) với 14 cầu thủ | **Tự động (thời lượng theo tick, đổi sân):** `packages/sim/src/match.rules.test.ts` — "hiệp 1 kết thúc đúng 180 s (10.800 tick) khi không có bù giờ → nghỉ giữa hiệp", "sang hiệp 2: đổi sân, đội khách giao bóng, đồng hồ về 45'", "trận đủ 2 × 180 s: hết giờ hiệp 2 → full_time; sau đó step không đổi gì", "chờ giao bóng quá 3 s bị tính bù giờ: hiệp kéo dài thêm đúng số phút bù"; `packages/sim/src/rules/clock.test.ts` (công thức bù giờ, tối đa 3'); `packages/sim/src/match.test.ts` — "mỗi đội 7 cầu thủ trên sân…" (14 cầu thủ). **Kiểm tay (đồng hồ thật, 2026-11-14):** trận tự đá đủ thời lượng trên Chromium (GPU Intel UHD qua ANGLE D3D11), ghi thời điểm thật mỗi lần đồng hồ HUD đổi phút: hiệp 1 từ 1' → 44' mất 172,00 s, hiệp 2 từ 46' → 89' mất 171,99 s (chuẩn 43 phút game × 4 s = 172,00 s) → lệch ≤ 0,01 s, trong ngưỡng ±1 giây; hiệp 1 có bù giờ 45+1' → 45+3' (4.9, KT-6). Vòng lặp chỉ chậm hơn đồng hồ thật khi một khung hình dài hơn 0,25 s (`MAX_FRAME_SEC` trong `apps/web/src/game/three/MatchRenderer.ts`, tức dưới 4 FPS). **FPS:** chưa có số đo chính thức — bảng §2.4 còn trống, chờ người dùng đo. | **Chưa đạt** (chờ đo FPS — xem §6, T1). Phần thời lượng/đổi sân: đạt |
+| AC-F1-2 | Vật lý bóng theo bước cố định 60 tick/s; cùng trạng thái đầu + cùng chuỗi input → cùng kết quả (test tự động) | `packages/sim/src/tick.ts` (`TICK_RATE = 60`). `packages/sim/src/match.test.ts` — "2 lần chạy 600 tick cùng seed + cùng input → state giống hệt"; `packages/sim/src/physics/ball.test.ts` — "cùng đầu vào → cùng kết quả"; `packages/sim/src/match.ai.test.ts` — "cùng seed + cùng input cho kết quả y hệt, kể cả sau JSON khứ hồi (AI tất định)". Vòng lặp web gom thời gian thực rồi chạy `step` theo `TICK_DT` (`apps/web/src/game/three/MatchRenderer.ts`). ESLint cấm `Math.random` trong `packages/sim`. | **Đạt** |
+| AC-F1-3 | Bóng qua vạch biên dọc → ném biên cho đội không chạm cuối; qua vạch cuối → phạt góc hoặc phát bóng đúng luật (test cả 3 trường hợp) | `packages/sim/src/match.rules.test.ts` — "qua vạch biên, đội nhà chạm cuối → ném biên cho đội khách tại điểm bóng ra", "qua vạch cuối ngoài khung thành, đội tấn công chạm cuối → phát bóng cho đội phòng ngự", "qua vạch cuối ngoài khung thành, đội phòng ngự chạm cuối → phạt góc cho đội tấn công" (+ "hiệp 2 đổi sân…"); `packages/sim/src/rules/restarts.test.ts` (`decideRestart`, cùng 3 trường hợp); `packages/sim/src/physics/ball.test.ts` — "qua hẳn vạch biên dọc → ball_out touch…", "bóng đè vạch … vẫn trong sân". | **Đạt** |
+| AC-F1-4 | Xoạc không chạm bóng trước → phạm lỗi, đá phạt; trong vòng cấm → phạt đền; vàng thứ 2 → đỏ và rời sân (test tự động) | `packages/sim/src/match.fouls.test.ts` — "trượt bóng (không chạm bóng trước) → phạm lỗi, đội khách đá phạt tại chỗ, không thẻ", "phạm lỗi trong vòng cấm đội nhà → phạt đền cho đội khách", "vàng thứ hai → đỏ, cầu thủ rời sân, đội nhà còn 6 người, người chơi được đổi sang người khác"; `packages/sim/src/rules/fouls.test.ts` (`foulRestart`, `decideCards`). | **Đạt** |
+| AC-F1-5 | Hoà sau 2 hiệp → luân lưu 5 lượt, rồi sudden death tới khi có kết quả | `packages/sim/src/rules/shootout.test.ts` — "hết 5 lượt hơn nhau thì xong; hoà thì sudden death", "sudden death: chỉ phân định khi đã sút bằng số lượt", "1.000 loạt ngẫu nhiên (xác suất vào 75%) đều kết thúc", "hoà sau 2 hiệp → luân lưu; tự đá tới khi có đội thắng, tỉ số trận giữ nguyên"; `packages/sim/src/match.rules.test.ts` — "hoà khi hết hiệp 2 → luân lưu, đồng hồ dừng". | **Đạt** |
+| AC-F1-6 | Thay người chỉ khi bóng chết, tối đa 3 lượt, cầu thủ bị thẻ đỏ không được thay | `packages/sim/src/rules/substitution.test.ts` — "bóng sống → từ chối", "tối đa 3 lượt: lượt thứ 4 bị từ chối", "người đã bị thẻ đỏ (rời sân) không thay được"; giao diện: `apps/web/src/features/play/MatchHud.test.tsx` — "bóng sống: nút thay người mờ kèm lời nhắc", "bóng chết: nút thay người bật". | **Đạt** |
+| AC-F1-7 | Mô phỏng AI-vs-AI 100 trận, đội "người" dùng đội khởi đầu: thắng máy Dễ ≥ 60%, thắng máy Khó ≤ 30% | **Tự động, chạy riêng (chậm, không nằm trong `pnpm check`):** `packages/sim/src/balance.slow.test.ts` — "người chơi trung bình thắng máy Dễ ≥ 60%", "… thắng máy Khó ≤ 30%" (`pnpm --filter @pitch/sim test:slow`, 100 seed cố định, đội mẫu): chạy 2026-11-14 → 2/2 xanh (180 s). **Đội thật** (11 thẻ khởi đầu + đội máy do server sinh): `pnpm --filter @pitch/server balance` ngày 2026-11-14 → Dễ **79%** (T79/H18/B3), Khó **13%** (T13/H25/B62). | **Đạt** |
+| AC-F1-8 | Cùng tình huống sút, Sút 90 vào khung thành nhiều hơn Sút 55 ít nhất 25 điểm % (1.000 cú sút) | `packages/sim/src/actions/shoot.test.ts` — "PRD §5: Sút 90 vào khung thành nhiều hơn Sút 55 ít nhất 25 điểm %" (1.000 seed mỗi cầu thủ, cùng vị trí và mục tiêu). | **Đạt** |
+
+### 4.3 F5 — Mở gói box draw (PRD §6.3)
+
+| Mã | Tiêu chí | Cách kiểm | Kết quả |
+|---|---|---|---|
+| AC-F5-1 | Bốc thẻ, trừ xu, thêm thẻ vào kho chạy ở server trong một DB transaction; client chỉ gửi "mua gói X" | Code: `apps/server/src/services/packs.ts` (`db.transaction` → `openInTx`: khoá `users` → `pack_boxes`). `apps/server/src/routes/packs.test.ts` — "mở bằng xu: trừ giá, ledger pack_purchase trỏ tới pack_opening, tổng ledger = coins", "không đủ xu → 409 insufficient_coins; xu, hộp, kho không đổi"; `apps/server/src/routes/tamper.test.ts` — "price: 0 / rarity: legend / userId người khác → vẫn trừ đủ giá, thẻ theo phiếu trong hộp của mình". Thử tay bằng curl: §1.4 mục 2. | **Đạt** |
+| AC-F5-2 | Không đủ xu → server từ chối, xu và hộp giữ nguyên | `apps/server/src/routes/packs.test.ts` — "không đủ xu → 409 insufficient_coins; xu, hộp, kho không đổi"; `apps/server/src/routes/tamper.test.ts` — "không đủ xu thì price: 0 cũng không cứu được…". | **Đạt** |
+| AC-F5-3 | Mở hết 100 phiếu nhận đúng 2/10/30/58 (test trên nhiều hộp) | `apps/server/src/domain/gacha.test.ts` — "bốc hết 100 phiếu → đúng 2/10/30/58, lặp nhiều hộp (gói 1 và gói 5)" (50 hộp mỗi loại gói); qua API: `apps/server/src/routes/packs.test.ts` — "mở liên tục hết hộp → hộp tự làm mới (cycle 2), đúng 2/10/30/58 trong 100 phiếu đầu". | **Đạt** |
+| AC-F5-4 | Mô phỏng 10.000 hộp: tần suất độ hiếm từng vị trí bốc khớp lý thuyết (chi-bình phương, p > 0,01) | `apps/server/src/domain/gacha.test.ts` — "10.000 hộp: tần suất độ hiếm ở từng vị trí bốc khớp lý thuyết (chi-bình phương)": p gộp 100 vị trí > 0,01; từng vị trí > 0,01/100 (hiệu chỉnh Bonferroni cho 100 phép thử). | **Đạt** |
+| AC-F5-5 | Gói 5 không bao giờ ra 5 Đồng khi hộp còn ≥ 1 phiếu Bạc+ | `apps/server/src/domain/gacha.test.ts` — "gói 5 không bao giờ ra 5 Đồng khi hộp còn Bạc+" (5.000 hộp ngẫu nhiên), "phiếu bảo đảm bốc trong nhóm Bạc+ theo tỉ lệ số còn lại", "hộp chỉ còn Đồng → không bảo đảm"; UI báo trước: `apps/web/src/features/shop/BoxMeter.test.tsx` — "hộp chỉ còn Đồng → cảnh báo gói 5 không bảo đảm". | **Đạt** |
+| AC-F5-6 | Server dùng CSPRNG (`crypto`), không dùng `Math.random` | `apps/server/src/domain/rng.test.ts` — "dùng crypto.randomInt (CSPRNG) và trả giá trị trong [0, max)"; `cryptoRng` là mặc định của `openPack`, `upgradeCard`, `startMatch` và `app.rng`; ESLint cấm `Math.random` trong `apps/server` (`eslint.config.js`, chạy trong `pnpm check`). | **Đạt** |
+| AC-F5-7 | Gửi trùng request không mở 2 lần (idempotency key) | `apps/server/src/routes/packs.test.ts` — "gửi lại cùng key → cùng kết quả, chỉ trừ xu một lần", "2 request song song cùng key → một kết quả, mở một lần", "cùng key nhưng khác gói hoặc cách trả → 409 idempotency_conflict", "request sai: thiếu/hỏng Idempotency-Key → 400…"; phía web: `apps/web/src/features/shop/BoxMeter.test.tsx` — "lần mua mới → key mới; thử lại cùng gói + cách trả → giữ key". | **Đạt** |
+| AC-F5-8 | Sau khi mở, kho thẻ và số phiếu còn lại hiển thị đúng, không cần tải lại trang | **Kiểm tay 2026-11-14 (4.9, KT-1):** hộp 100/100 → mở gói 5 → hộp hiện 95/100, tổng 4 dòng độ hiếm = 95, tỉ lệ lần bốc kế tính lại; sang Kho thẻ / Đội hình bằng điều hướng trong trang thấy đủ 5 thẻ mới; không có sự kiện tải lại trang. Phần hiển thị: `apps/web/src/features/shop/BoxMeter.test.tsx` — "hiện số phiếu còn và tỉ lệ lần bốc kế (1 chữ số thập phân)". | **Đạt** |
+
+### 4.4 F6 — Đội hình (PRD §6.4)
+
+| Mã | Tiêu chí | Cách kiểm | Kết quả |
+|---|---|---|---|
+| AC-F6-1 | Kéo-thả thẻ từ kho vào ô; đổi sơ đồ giữ thẻ còn hợp lệ, thẻ thừa về dự bị hoặc kho | **Kiểm tay 2026-11-14 (KT-2):** kéo chuột một thẻ từ Kho thả vào ô GK → ô GK nhận thẻ mới, thủ môn cũ về Kho; đổi 2-3-1 → 2-2-2 → thông báo "1 thẻ không còn chỗ trong sơ đồ 2-2-2 … xuống dự bị". Logic: `apps/web/src/features/squad/squad.test.ts` — "thẻ từ kho thay người đang ở ô (người cũ về kho)", "2-3-1 → 3-2-1: thẻ hợp vị trí giữ ô, tiền vệ thừa xuống dự bị", "dự bị đầy → thẻ thừa về kho", "không mất và không nhân đôi thẻ nào". | **Đạt** |
+| AC-F6-2 | Không vào được trận nếu thiếu thủ môn hoặc chưa đủ 7 người đá chính (thông báo rõ thiếu gì) | `apps/server/src/routes/matches.test.ts` — "đội thiếu thủ môn → 422 invalid_squad nêu rõ, không tạo trận", "thiếu người đá chính (đủ GK) → 422 nêu số người và ô trống". **Kiểm tay 2026-11-14 (KT-3):** gỡ thủ môn → màn Đội hình báo ngay "Mới có 5/7 người đá chính · Chưa có thủ môn. Cần đủ 7 người, có 1 GK, để vào trận.", nút "Đá với máy – Dễ" bị khoá; vào thẳng `/play` → màn "Đội hình chưa đủ": "Đội hình thiếu thủ môn — cần đủ 7 người đá chính (ô trống: GK, P5)" + nút "Sửa đội hình". | **Đạt** |
+| AC-F6-3 | Chỉ số đội và cảnh báo sai vị trí cập nhật ngay khi thay đổi | **Kiểm tay 2026-11-14 (KT-2):** thả một thẻ không phải thủ môn vào ô GK → ngay lập tức (chưa bấm Lưu) OVR đội đổi 55 → 56, nhãn ô "sai vị trí −15%", cảnh báo đỏ "… đang đá GK: mọi chỉ số −15% (OVR 71 → 61)". Công thức: `packages/shared/src/squad.test.ts` — "sai vị trí → cảnh báo + chỉ số người đó −15%, rating giảm theo", "thiếu thủ môn / thiếu người đá chính → cảnh báo, ô trống tính 0 vào rating"; `packages/shared/src/domain.test.ts` — "sai vị trí → −15% mọi chỉ số (sau khi cộng cấp), làm tròn". | **Đạt** |
+| AC-F6-4 | Đội hình lưu ở server, đăng nhập máy khác vẫn còn | `apps/server/src/routes/squad.test.ts` — "đổi chỗ thủ môn ↔ hậu vệ → cảnh báo sai vị trí, rating giảm; đăng nhập lại vẫn còn" (phiên mới đọc lại đúng đội đã lưu); `apps/server/src/routes/auth-hardening.test.ts` — "đăng xuất → cookie cũ không dùng được; đăng nhập lại → thẻ, xu, đội hình giữ nguyên"; E2E `e2e/main-flow.spec.ts` bước 3 (lưu → tải lại trang vẫn còn). | **Đạt** |
+| AC-F6-5 | Thẻ trong đội hình không thể bán hay dùng làm nguyên liệu ép | `apps/server/src/routes/player-cards.test.ts` — "có thẻ trong đội hình → 409 card_in_squad, không thẻ nào bị bán"; `apps/server/src/routes/upgrade.test.ts` — "nguyên liệu trong đội hình → 409 card_in_squad; thẻ được ép trong đội hình thì vẫn ép được"; DB: `apps/server/src/db/schema.test.ts` — "xoá player_cards đang trong squad_slots bị FK RESTRICT chặn"; web: `apps/web/src/features/upgrade/upgrade.test.ts` — "bỏ chính thẻ được ép, thẻ thấp độ hiếm hơn, thẻ trong đội hình". Kiểm tay KT-4: ở chế độ chọn bán, 11 thẻ trong đội hình bị khoá. | **Đạt** |
+
+### 4.5 F10 — Ép thẻ (PRD §6.5)
+
+| Mã | Tiêu chí | Cách kiểm | Kết quả |
+|---|---|---|---|
+| AC-F10-1 | Trước khi ép, UI hiển thị: tỉ lệ = cơ bản + may mắn, phí, chỉ số sau khi ép | `apps/web/src/features/upgrade/upgrade.test.ts` — "tỉ lệ = cơ bản + may mắn, phí = phí cơ bản × hệ số độ hiếm", "chỉ số sau ép = chỉ số gốc + điểm cộng của cấp đích (không cộng dồn), tối đa 99"; `apps/web/src/features/upgrade/UpgradeStats.test.tsx` — "+3 → +4: mỗi chỉ số cộng 5 thay vì 3 (tăng 2), kẹp 99". **Kiểm tay 2026-11-14 (KT-5):** màn Ép thẻ hiện "Tỉ lệ thành công 100% · Cơ bản +1: 100%", "Phí ép (50 × Đồng ×1) 50 xu", bảng chỉ số +0 → +1 từng dòng (OVR 56 → 57, PAC 55 → 56…), cảnh báo mất nguyên liệu. | **Đạt** |
+| AC-F10-2 | Ép chạy hoàn toàn ở server trong 1 DB transaction (trừ xu, xoá nguyên liệu, quay tỉ lệ, cập nhật cấp/may mắn, ghi giao dịch) | Code: `apps/server/src/services/upgrade.ts` (`db.transaction` → `upgradeInTx`). `apps/server/src/routes/upgrade.test.ts` — "thành công: lên cấp, may mắn về 0, xoá nguyên liệu, trừ phí, ghi sổ cái + lịch sử + analytics", "thất bại: giữ cấp, +10 may mắn, vẫn mất nguyên liệu và phí", "2 lần ép song song dùng cùng nguyên liệu → đúng 1 thành công; sổ cái khớp số dư"; `apps/server/src/routes/tamper.test.ts` — "gửi success / level / fee / rate → kết quả vẫn do server quay, phí vẫn trừ đủ". | **Đạt** |
+| AC-F10-3 | 10.000 lần ép mỗi cấp (may mắn 0) lệch ≤ ±1,5 điểm % so với bảng | `apps/server/src/domain/upgrade.test.ts` — "10.000 lần ép mỗi cấp (may mắn 0) lệch ≤ ±1,5 điểm % so với bảng"; bảng: "khớp bảng PRD §6.5". | **Đạt** |
+| AC-F10-4 | Sau 3 lần trượt liên tiếp ở +5, lần thứ 4 có tỉ lệ 55% | `apps/server/src/domain/upgrade.test.ts` — "3 lần trượt liên tiếp ở +5 → lần thứ 4 tỉ lệ 55%"; qua API: `apps/server/src/routes/upgrade.test.ts` — "3 lần trượt ở +5 → lần thứ 4 tỉ lệ 55%"; web: `apps/web/src/features/upgrade/upgrade.test.ts` — "tỉ lệ kẹp ở 100%; sau 3 lần trượt ở +5 thì lần 4 là 55%". | **Đạt** |
+| AC-F10-5 | Không ép được thẻ đã +5; không ép khi thiếu xu hoặc nguyên liệu không hợp lệ | `apps/server/src/routes/upgrade.test.ts` — "thẻ đã +5 → 422 max_level, không thay đổi gì", "thiếu xu → 409 insufficient_coins, không thay đổi gì", "nguyên liệu thấp độ hiếm hơn hoặc chính thẻ được ép → 422 invalid_material", "thẻ không tồn tại hoặc của người khác → 404"; DB: `apps/server/src/db/schema.test.ts` — "player_cards.level ngoài 0…5 bị CHECK chặn". | **Đạt** |
+
+### 4.6 F11 — Bán thẻ (PRD §6.6)
+
+| Mã | Tiêu chí | Cách kiểm | Kết quả |
+|---|---|---|---|
+| AC-F11-1 | Bán một hoặc nhiều thẻ cùng lúc, có hộp xác nhận nếu có thẻ Vàng+ hoặc thẻ đã + | `apps/server/src/routes/player-cards.test.ts` — "bán nhiều thẻ: cộng xu theo độ hiếm, xoá thẻ, mỗi thẻ một dòng sổ cái khớp số dư"; `apps/web/src/features/collection/collection.test.ts` — "cần bấm giữ khi có Vàng+ hoặc thẻ đã +", "tổng giá theo độ hiếm, không phụ thuộc cấp +". **Kiểm tay 2026-11-14 (KT-4):** chọn 4 thẻ (Huyền thoại, Vàng, Bạc, Đồng) → thanh "Đã chọn 4 thẻ · nhận 415 xu" → hộp "Bán 4 thẻ? … Có 2 thẻ Vàng/Huyền thoại." với nút "Giữ 1 giây để bán" → giữ chuột 1 giây → kho còn 12 thẻ, ví 0 → 415 xu (300 + 80 + 25 + 10). Lưu ý: mọi lần bán đều có hộp xác nhận; bán thẻ Vàng+/đã + phải bấm giữ. | **Đạt** |
+| AC-F11-2 | Không bán được thẻ trong đội hình; bán thẻ và cộng xu trong cùng 1 DB transaction | Code: `apps/server/src/services/player-cards.ts` (`sellPlayerCards`: một `db.transaction`, khoá `users` → `player_cards`). `apps/server/src/routes/player-cards.test.ts` — "có thẻ trong đội hình → 409 card_in_squad, không thẻ nào bị bán", "2 request bán cùng một thẻ song song → xu chỉ cộng một lần, request kia 404", "thẻ của người khác → 404, không thay đổi gì". | **Đạt** |
+
+### 4.7 F7, F9, F12 — Kinh tế · F8, F13 — Tài khoản & phân tích (PRD §7, §8)
+
+| Mã | Tiêu chí | Cách kiểm | Kết quả |
+|---|---|---|---|
+| AC-F7-1 | Số dư xu luôn bằng tổng các bản ghi giao dịch (test đối soát) | `apps/server/src/routes/ledger-integrity.test.ts` — "mọi người chơi: coins = SUM(ledger.amount), balance_after liên tục, không âm" (260 thao tác ngẫu nhiên, 5 người chơi), "sổ sạch → rỗng, exit 0; sửa tay số dư hoặc sổ cái → nêu đúng người lệch, exit ≠ 0" (script `ledger:check`); DB: `apps/server/src/db/schema.test.ts` — "coin_transactions append-only: UPDATE và DELETE bị trigger chặn". Đo tải §2.2: 0 lệch sau hơn 20.000 lượt mở gói. | **Đạt** |
+| AC-F7-2 | Số dư không bao giờ âm, kể cả 2 request mua gói gần như cùng lúc (test đồng thời) | `apps/server/src/routes/packs.test.ts` — "2 request song song khác key khi chỉ đủ xu cho 1 → đúng 1 thành công, số dư ≥ 0"; `apps/server/src/routes/ledger-integrity.test.ts` — "mở gói + bán + ép + lưu đội hình song song: không 500, không âm, không tiêu một thẻ hai lần"; DB: `apps/server/src/db/schema.test.ts` — "users.coins âm bị CHECK chặn". Thử tay curl §1.4 mục 4 (5 request song song). | **Đạt** |
+| AC-F7-3 | Thưởng trận chỉ cấp khi: có match token do server phát; token dùng 1 lần; ≥ 6 phút từ lúc phát; mỗi đội ≤ 20 bàn; chưa vượt 15 trận có thưởng/ngày | `apps/server/src/routes/matches.test.ts` — "thắng Dễ sau 6 phút: +60 xu, trận finished, ledger match_reward đúng", nhóm "từ chối (422 match_token_invalid, không đổi xu/trận)": "token sai", "chưa đủ 6 phút", "tỉ số 21"; "gửi lại cùng token → cùng kết quả, xu chỉ cộng một lần"; "trần 15 trận/ngày GMT+7: trận 16 thưởng 0; 23:59 và 00:01 là hai ngày khác nhau". `apps/server/src/routes/tamper.test.ts` — "nộp sớm hơn 6 phút / bịa token / dùng token của trận khác → 422, không thưởng", "thua xong nộp lại "thắng 20–0" cùng token → vẫn kết quả cũ, xu cộng đúng một lần". `apps/server/src/routes/security-review.test.ts` — "nộp sau quá 2 giờ → 422 match_token_invalid, xu giữ nguyên 0". | **Đạt** |
+| AC-F7-4 | Tài khoản mới nhận đúng 11 thẻ khởi đầu + 1 gói 5 miễn phí, đúng một lần | `apps/server/src/routes/register.test.ts` — "11 thẻ Đồng khác nhau: 1 TM, 3 HV, 4 TV, 3 TĐ; ô đá chính đúng vị trí trong 2-3-1", "201 + cookie; nhận đúng 11 thẻ, hộp 58/30/10/2, 1 gói 5 miễn phí, đội hình xếp sẵn"; `apps/server/src/routes/tamper.test.ts` — "lượt miễn phí chỉ có một: lần hai (kể cả kèm freePack5Credits: 99) → 409", "gửi thêm coins / isAdmin / freePack5Credits / id → bị bỏ qua, chỉ nhận đúng quà tân thủ"; `apps/server/src/routes/packs.test.ts` — "lượt miễn phí: giá 0, credit − 1, 5 thẻ (≥ 1 Bạc+)…". E2E `e2e/main-flow.spec.ts` (kho 16 thẻ sau gói miễn phí). | **Đạt** |
+| AC-F7-5 | Nhiệm vụ ngày cập nhật tiến độ theo sự kiện ở server, nhận thưởng một lần, reset 00:00 GMT+7 | `apps/server/src/routes/missions.test.ts` — "đá trận TRƯỚC KHI mở màn nhiệm vụ vẫn tạo & tăng tiến độ; trả về trong match result", "mở gói … vẫn tăng open_pack; gửi lại cùng Idempotency-Key không tăng lần 2", "claim: chưa xong → 422; sai mã → 404; đủ điều kiện → +xu + ledger; nhận 2 lần → 409", "2 request claim song song → đúng 1 thành công…", "reset lúc 00:00 GMT+7 (FakeClock): 23:59 và 00:01 là hai ngày riêng biệt"; `apps/server/src/domain/missions.test.ts`. E2E `e2e/main-flow.spec.ts` bước 5 (nhận thưởng trên giao diện). | **Đạt** |
+| AC-F8-1 | Đăng ký → đăng nhập → đăng xuất hoạt động; sai mật khẩu 5 lần trong 15 phút → khoá 15 phút | `apps/server/src/routes/register.test.ts` — "đăng nhập lại được bằng tài khoản vừa tạo"; `apps/server/src/routes/auth.test.ts` — "đúng mật khẩu → Me + cookie phiên an toàn; DB chỉ giữ hash token", "xoá phiên, cookie cũ hết dùng"; `apps/server/src/routes/auth-hardening.test.ts` — "5 lần sai → lần 6 bị khoá kể cả đúng mật khẩu; sau 15 phút đăng nhập được", "lần sai cách nhau hơn 15 phút không cộng dồn". E2E `e2e/main-flow.spec.ts` bước 1 và 6 (trên giao diện). | **Đạt** |
+| AC-F8-2 | Mọi API thay đổi dữ liệu yêu cầu đăng nhập và chỉ tác động lên tài khoản người gọi | `apps/server/src/routes/write-routes-auth.test.ts` — "không cookie → 401 unauthenticated với mọi route ghi (trừ ngoại lệ)" (danh sách route lấy từ Fastify nên route mới tự được kiểm), "cookie phiên bịa / rỗng → 401…", "ngoại lệ công khai chỉ gồm route /auth/* có thật"; IDOR: `apps/server/src/routes/tamper.test.ts` — "bán playerCardId của người khác … → 404, không ai đổi gì", "nguyên liệu hoặc thẻ đích là của người khác → 404…", "xếp thẻ của người khác vào đội mình → 404…", "nộp trận của người khác (kể cả có token thật của họ) → 404…". Rà tay: §1.1 (IDOR). | **Đạt** |
+| AC-F8-3 | Có truy vấn hoặc trang admin cho ra D7 retention theo nhóm ngày đăng ký | `apps/server/src/routes/admin.test.ts` — "tính D1/D7 đúng qua 3 nhóm ngày đăng ký; giữ cookie không cần login ngày 7 vẫn tính D7", "chưa đăng nhập → 401; không phải admin → 403; query sai → 400", "ghi đủ sự kiện analytics trong transaction và session_seen tối đa 1 lần/ngày GMT+7"; trang `/admin`: `apps/web/src/features/admin/AdminPage.test.tsx` — "render đầy đủ dữ liệu mẫu: tổng đăng ký, D1/D7 trung bình…". Hiệu năng truy vấn: §2.3. | **Đạt** |
+
+### 4.8 Mục tiêu §9 và chỉ số thành công §10 (không phải checkbox)
+
+Các chỉ số này đo trên người chơi thật nên chưa thể kết luận trước playtest/phát hành; bảng dưới ghi công cụ đo đã sẵn sàng hay chưa.
+
+| Chỉ số (PRD) | Mục tiêu | Công cụ đo | Trạng thái 2026-11-14 |
+|---|---|---|---|
+| Retention D7 (§10) | ≥ 15% | Trang `/admin` + `GET /api/v1/admin/retention` (test: AC-F8-3) | **Không áp dụng** trước phát hành — công cụ sẵn sàng |
+| Người chơi thật tháng đầu (§10) | ≥ 50 tài khoản có ≥ 1 trận | Bảng `analytics_events` (`match_start`) | **Không áp dụng** trước phát hành — chưa có truy vấn/trang riêng, đếm bằng SQL (§6, T4) |
+| Hiệu năng trận (§10) | ≥ 55 FPS TB, laptop tầm trung | `/play?perf=1` (§2.4) | **Chưa đạt** — chờ người dùng đo (trùng AC-F1-1) |
+| Thời gian tới trận đầu (§9, §10) | ≤ 2 phút (trung vị) | `GET /api/v1/admin/onboarding` + thẻ phễu ở `/admin` (`apps/server/src/routes/admin.test.ts` — "tính trung vị register -> match_start chính xác bằng FakeClock, bỏ qua user chưa đá") | **Không áp dụng** trước khi có người chơi thật — đo ở playtest (§5) |
+| Playtest trước phát hành (§10) | ≥ 7/10 người thấy "thẻ tốt khác biệt rõ trên sân" | Checklist §5 | **Chưa đạt** — chưa tổ chức playtest (§6, T3) |
+
+### 4.9 Nhật ký kiểm tay (2026-11-14)
+
+Môi trường: Playwright 1.65, Chromium headless, cửa sổ 1440 × 900, tiếng Việt; server Fastify `NODE_ENV=test` + web Vite `--mode test` do cấu hình `pnpm e2e` dựng, DB `pitch_test_a`. Mỗi lượt đăng ký một tài khoản mới và thao tác trên giao diện thật (chuột/bàn phím), không gọi API tắt. Kịch bản kiểm tay là file tạm, không nằm trong repo.
+
+| Mã | Thao tác | Quan sát | Kết luận |
+|---|---|---|---|
+| KT-1 | Đăng ký → Cửa hàng → mở gói 5 miễn phí → quay lại Cửa hàng → sang Đội hình bằng menu | Hộp "100/100 phiếu" → "95/100 phiếu"; 4 dòng: "Huyền thoại: còn 2 phiếu, lần bốc kế 2,1%", "Vàng: còn 10 phiếu, … 10,5%", "Bạc: còn 29 phiếu, … 30,5%", "Đồng: còn 54 phiếu, … 56,8%" (tổng 95); Kho ở màn Đội hình báo "5 thẻ"; 0 lần tải lại trang | AC-F5-8 đạt |
+| KT-2 | Màn Đội hình: kéo chuột thẻ đầu tiên trong Kho thả vào ô GK; rồi chọn sơ đồ 2-2-2 | Ô GK: "Sigar Lundvall" → "Cleraldo Rozeira, sai vị trí −15%"; thủ môn cũ về Kho (Kho vẫn 5 thẻ); OVR đội 55 → 56 ngay, cảnh báo đỏ "Cleraldo Rozeira (MF) đang đá GK: mọi chỉ số −15% (OVR 71 → 61). Kéo một thủ môn vào ô này để bỏ phạt."; đổi sơ đồ: "1 thẻ không còn chỗ trong sơ đồ 2-2-2 — Bjørar Vikqvist xuống dự bị.", OVR tính lại 48 | AC-F6-1, AC-F6-3 đạt |
+| KT-3 | Gỡ thẻ ở ô GK → Lưu → mở `/play?difficulty=easy` → Tiếp tục | Màn Đội hình: "Mới có 5/7 người đá chính · Chưa có thủ môn. Cần đủ 7 người, có 1 GK, để vào trận."; nút "Đá với máy – Dễ" bị khoá; lưu được ("Đã lưu đội hình"); màn trận: tiêu đề "Đội hình chưa đủ", "Đội hình thiếu thủ môn — cần đủ 7 người đá chính (ô trống: GK, P5)", nút "Sửa đội hình"; không vào được trận | AC-F6-2 đạt. Ghi chú: màn "Chọn độ khó" không báo trước đội thiếu người, lỗi chỉ hiện sau khi bấm Tiếp tục (đã có ý tương tự trong `docs/BACKLOG.md`) |
+| KT-4 | Kho thẻ → "Chọn để bán" → chọn 4 thẻ không trong đội hình → "Bán 4 thẻ" → giữ nút 1 giây | 11 thẻ trong đội hình bị khoá, 5 thẻ chọn được; thanh "Đã chọn 4 thẻ · nhận 415 xu"; hộp "Bán 4 thẻ? Bạn nhận 415 xu. Thẻ đã bán không lấy lại được. Có 2 thẻ Vàng/Huyền thoại." + nút "Giữ 1 giây để bán"; sau khi giữ: kho 16 → 12 thẻ, ví 0 → 415 xu. Lượt chạy thứ hai (Vàng + 2 Bạc + Đồng): 140 xu, cũng đòi bấm giữ. Lượt thứ ba (3 Bạc + Đồng, không có thẻ Vàng+/đã +): 85 xu, hộp xác nhận chỉ có nút "Bán" thường | AC-F11-1, AC-F6-5 (phần bán) đạt |
+| KT-5 | `/upgrade` → chọn một thẻ Đồng trong đội hình làm thẻ cần ép → chọn nguyên liệu → Ép | Trước khi ép: "+0 → +1", "+1 = cộng tổng +1 vào mọi chỉ số (tối đa 99)", "Tỉ lệ thành công 100% · Cơ bản +1: 100%", "Phí ép (50 × Đồng ×1) 50 xu", bảng "OVR 56 → 57, PAC 55 → 56, SHO 49 → 50, PAS 56 → 57, DRI 54 → 55, DEF 56 → 57, STA 64 → 65", "Nguyên liệu … sẽ mất dù ép thành công hay thất bại. Thất bại: giữ cấp +0, may mắn +10%."; sau khi ép: "Thành công … lên +1 (từ +0) · may mắn về 0% · Tỉ lệ đã áp 100% · phí 50 xu · còn 365 xu", ví 415 → 365 | AC-F10-1 đạt. **Phát hiện lỗi giao diện T3:** lưới nguyên liệu có 12 ô thay vì 11 — thẻ nguyên liệu hợp lệ hiện 2 lần ("Hợp lệ" và một bản bị khoá ghi "Thấp hơn Đồng"), console báo trùng key (xem §6) |
+| KT-6 | Trận tự đá đủ thời lượng (`/play?difficulty=easy&autopilot=1&perf=1`, hiệp 180 s, đồ hoạ Thấp, tắt phát lại), ghi thời điểm thật mỗi lần đồng hồ HUD đổi phút | GPU: ANGLE (Intel UHD Graphics, Direct3D11). Hiệp 1: 1' → 44' = 172,00 s; hiệp 2: 46' → 89' = 171,99 s (chuẩn 172,00 s vì 1 phút game = 4 s thật). Đồng hồ chạy đủ 0' → 45', bù giờ 45+1', 45+2', 45+3', sang hiệp 2 bắt đầu lại ở 45'. Không lấy số FPS từ lượt này (trình duyệt không cửa sổ, không phải điều kiện đo của §2.4) | Phần thời lượng của AC-F1-1 đạt |
+
+---
+
+## 5. Checklist playtest 5–10 người (PRD §10)
+
+**Trạng thái: chưa tổ chức** (2026-11-14). Phải làm trước khi phát hành (GĐ9). Mục tiêu PRD §10: **≥ 7/10 người thấy "thẻ tốt khác biệt rõ trên sân"**; kèm đo **thời gian tới trận đầu ≤ 2 phút (trung vị)** (PRD §9) và thu ý kiến cho các câu hỏi mở PRD §12 (phím điều khiển, độ khó máy) và rủi ro §11 (tên hư cấu có đủ "quen").
+
+### 5.1 Chuẩn bị
+
+- [ ] **Người chơi:** 5–10 người, là fan FC Online chơi casual (PRD §2), chưa từng thấy game. Ghi mã P01…P10, không ghi tên thật vào repo.
+- [ ] **Bản chơi:** bản build (`pnpm build` + server), không bật `ENABLE_DEV_ROUTES`; mỗi người một tài khoản mới tự đăng ký (để analytics ghi `register` → `match_start`).
+- [ ] **Máy:** laptop tầm trung, GPU tích hợp, Chrome bản mới, bàn phím thật (MVP không hỗ trợ cảm ứng). Ghi CPU/GPU/độ phân giải.
+- [ ] **Tài khoản so sánh (cho bước 5):** người tổ chức chuẩn bị sẵn 1 tài khoản "đội mạnh" có 7 thẻ đá chính Vàng/Huyền thoại (tạo trên máy tổ chức bằng server bật `ENABLE_DEV_ROUTES=1`, cấp xu qua `POST /api/v1/dev/grant-coins`, mở gói, xếp đội; hoặc cày thật). Không nói trước cho người chơi đội nào mạnh hơn.
+- [ ] **Ghi nhận:** người quan sát ngồi cạnh, bấm giờ, không hướng dẫn trừ khi người chơi kẹt quá 60 giây (ghi lại chỗ kẹt). Xin phép trước nếu quay màn hình.
+- [ ] Đọc cho người chơi: "Đây là bản thử, không có tiền thật; cứ nói to điều bạn đang nghĩ."
+
+### 5.2 Kịch bản (mỗi người khoảng 35–45 phút)
+
+| Bước | Việc người chơi làm | Người quan sát ghi |
+|---|---|---|
+| 1 | Mở trang, tự đăng ký tài khoản, làm theo luồng tân thủ tới khi bắt đầu trận đầu | Thời gian từ lúc bấm "Tạo tài khoản" tới lúc trận đầu bắt đầu (giây); chỗ ngập ngừng |
+| 2 | Đá trận đầu mức Dễ bằng đội khởi đầu (thẻ Đồng), có hướng dẫn phím trong trận | Tỉ số; có hoàn thành hướng dẫn không; phím nào bấm nhầm; có dùng thay người không |
+| 3 | Vào Cửa hàng mở gói (gói miễn phí + gói mua bằng xu vừa kiếm), đọc bảng hộp phiếu | Có hiểu "hộp 100 phiếu" và tỉ lệ lần bốc kế không (hỏi lại bằng lời) |
+| 4 | Xếp thẻ mới vào đội hình, thử ép 1 thẻ, bán 1 thẻ thừa | Có hiểu cảnh báo sai vị trí, tỉ lệ ép, mất nguyên liệu không; lỗi gặp phải |
+| 5 | **So sánh thẻ:** đá 1 trận Dễ bằng đội khởi đầu, rồi 1 trận Dễ bằng tài khoản "đội mạnh" (đổi thứ tự xen kẽ giữa các người chơi: P lẻ đá đội yếu trước, P chẵn đá đội mạnh trước) | Tỉ số 2 trận; nhận xét tự phát về tốc độ, sút, chuyền; hỏi câu Q1–Q3 ngay sau 2 trận |
+| 6 | Đá 1 trận mức Khó bằng đội tuỳ chọn | Tỉ số; cảm nhận độ khó (Q6) |
+| 7 | Trả lời bảng hỏi 5.3; mở `/play?perf=1` đá 1 trận ngắn nếu máy là máy riêng của người chơi | Dòng `[perf]` trong console (FPS TB, 1% thấp nhất) |
+| Sau 1 và 7 ngày | Không nhắc; kiểm xem người chơi có tự quay lại không | Trang `/admin`: D1, D7 của nhóm ngày playtest |
+
+### 5.3 Câu hỏi sau khi chơi
+
+Thang 1–5 (1 = hoàn toàn không, 5 = rất rõ/rất đồng ý), trừ câu ghi khác.
+
+| Mã | Câu hỏi | Dùng cho |
+|---|---|---|
+| Q1 | Trong 2 trận so sánh, bạn có thấy đội thẻ tốt **khác biệt rõ trên sân** không? (Có / Không) — **câu chính của PRD §10** | Mục tiêu ≥ 7/10 "Có" |
+| Q2 | Khác biệt đó rõ ở mức nào? (1–5) Rõ nhất ở đâu: tốc độ / sút / chuyền / giữ bóng / thủ môn / không rõ | PRD §6.2 — chỉ số nào "thấy được" |
+| Q3 | Không được nói trước: bạn đoán đội nào là đội thẻ tốt hơn? (trận 1 / trận 2 / không biết) | Kiểm chéo Q1 |
+| Q4 | Phím điều khiển có dễ làm quen không? (1–5) Phím nào khó nhất? | PRD §12 — phím điều khiển |
+| Q5 | Bạn có hiểu mình có bao nhiêu cơ hội ra thẻ hiếm khi mở gói không? (1–5) Có thấy "bị lừa" không? (Có / Không) | US-04, gacha minh bạch |
+| Q6 | Mức Dễ: quá dễ / vừa / quá khó. Mức Khó: quá dễ / vừa / quá khó | PRD §12 — OVR và độ trễ AI |
+| Q7 | Trận 6 phút: quá ngắn / vừa / quá dài | PRD §13 — thời lượng trận |
+| Q8 | Tên cầu thủ hư cấu có "quen tai", dễ nhớ không? (1–5) | Rủi ro PRD §11 |
+| Q9 | Bạn có muốn chơi lại vào ngày mai không? (1–5) Vì sao? | Giả thuyết giữ chân (D7) |
+| Q10 | Điều khó chịu nhất? Điều thích nhất? (trả lời tự do) | Việc còn tồn, BACKLOG |
+
+### 5.4 Chỉ số cần ghi và ngưỡng
+
+| Chỉ số | Cách lấy | Ngưỡng đạt |
+|---|---|---|
+| Tỉ lệ Q1 = "Có" | Đếm trên số người chơi | ≥ 70% (≥ 7/10; với 5 người: ≥ 4/5) |
+| Thời gian tới trận đầu (trung vị) | Bấm giờ ở bước 1; đối chiếu thẻ phễu `register → match_start` ở `/admin` | ≤ 120 giây |
+| Hoàn thành luồng chính không cần trợ giúp | Bước 1–4 không bị người quan sát gỡ kẹt | Ghi nhận (không có ngưỡng PRD) |
+| Kết quả trận Dễ / Khó | Tỉ số bước 2, 5, 6 | Tham khảo cân bằng: PRD §5 kỳ vọng thắng Dễ ≥ 60%, thắng Khó ≤ 30% |
+| FPS trung bình | Dòng `[perf]` (bước 7) | ≥ 55 FPS |
+| Lỗi gặp phải | Mô tả + bước tái hiện | Không có lỗi chặn luồng chính |
+| D1 / D7 của nhóm playtest | Trang `/admin` sau 1 và 7 ngày | Tham khảo (mục tiêu phát hành: D7 ≥ 15%) |
+
+### 5.5 Bảng ghi kết quả (để trống — điền khi playtest)
+
+Ngày playtest: ……………… · Bản build (commit): ……………… · Người tổ chức: ………………
+
+| Người chơi | Máy (CPU / GPU) | Tới trận đầu (s) | Trận Dễ đội yếu | Trận Dễ đội mạnh | Trận Khó | Q1 (Có/Không) | Q2 (1–5, rõ nhất ở) | Q3 đoán đúng? | Q4 | Q5 | Q6 (Dễ / Khó) | Q7 | Q8 | Q9 | FPS TB | Lỗi / ghi chú (Q10) |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| P01 | | | | | | | | | | | | | | | | |
+| P02 | | | | | | | | | | | | | | | | |
+| P03 | | | | | | | | | | | | | | | | |
+| P04 | | | | | | | | | | | | | | | | |
+| P05 | | | | | | | | | | | | | | | | |
+| P06 | | | | | | | | | | | | | | | | |
+| P07 | | | | | | | | | | | | | | | | |
+| P08 | | | | | | | | | | | | | | | | |
+| P09 | | | | | | | | | | | | | | | | |
+| P10 | | | | | | | | | | | | | | | | |
+
+| Tổng kết | Giá trị | Đạt? |
+|---|---|---|
+| Số người chơi | | (5–10) |
+| Q1 = "Có" | …/… = …% | (≥ 70%) |
+| Thời gian tới trận đầu — trung vị | … s | (≤ 120 s) |
+| FPS trung bình — thấp nhất trong nhóm | | (≥ 55) |
+| D1 / D7 của nhóm | | (tham khảo) |
+| 3 vấn đề được nhắc nhiều nhất | | → `docs/BACKLOG.md` |
+
+---
+
+## 6. Việc còn tồn
+
+Trạng thái 2026-11-14. Mức độ: **Chặn** = phải xong mới đóng được Giai đoạn 8 / phát hành; **Trung bình / Thấp** = lỗi hoặc thiếu sót không chặn; **Ghi nhận** = chấp nhận theo thiết kế MVP.
+
+| Mã | Mức | Việc | Nguồn | Cách tái hiện / việc cần làm |
+|---|---|---|---|---|
+| T1 | Chặn (đóng GĐ8) | Chưa có số đo FPS (≥ 55 FPS TB) và kiểm rò bộ nhớ 20 lần vào/ra trận trên laptop thật → tiêu chí **AC-F1-1** và chỉ số hiệu năng PRD §10 chưa xác nhận | §2.4, §4.2 | Người dùng đo theo hướng dẫn §2.4 (`/play?perf=1`), điền 2 bảng trống; đạt thì tick tiêu chí đầu tiên của PRD §5 và đóng task 8.3 |
+| T2 | Chặn (trước phát hành) | Chưa tổ chức playtest 5–10 người (PRD §10: ≥ 7/10 thấy "thẻ tốt khác biệt rõ trên sân"; thời gian tới trận đầu ≤ 2 phút) | §4.8, §5 | Làm theo checklist §5, điền bảng 5.5 |
+| T3 | Trung bình | **Lỗi giao diện màn Ép thẻ:** trong lưới "Chọn nguyên liệu", mỗi thẻ nguyên liệu hợp lệ hiện **hai lần** — một ô "Hợp lệ" (chọn được) và một ô bị khoá với nhãn sai "Thấp hơn … (tên độ hiếm)"; React báo lỗi console "Encountered two children with the same key". Không ảnh hưởng dữ liệu (ép vẫn đúng, server tự kiểm nguyên liệu) nhưng gây khó hiểu cho người chơi. Nguyên nhân: `apps/web/src/features/upgrade/UpgradePage.tsx` lọc danh sách thẻ khoá bằng `!materials.includes(it)`, trong khi `materialCandidates` (`upgrade.ts`) trả về object `{ pc, card }` mới nên so sánh theo tham chiếu không bao giờ khớp | §4.9 KT-5 | Đăng ký → mở gói 5 miễn phí → `/upgrade` → chọn một thẻ Đồng làm thẻ cần ép → nhìn lưới nguyên liệu: mỗi thẻ vừa mở xuất hiện 2 lần (lần kiểm 2026-11-14: 1 ô hợp lệ + 11 ô khoá = 12 ô, đúng ra 11), console có lỗi trùng key. Hướng sửa: lọc theo `pc.id` (tập id của `materials`) và thêm test cho lưới nguyên liệu |
+| T4 | Thấp | Chưa có truy vấn/trang cho chỉ số "≥ 50 tài khoản có ≥ 1 trận trong tháng đầu" (PRD §10); D7 và thời gian tới trận đầu đã có ở `/admin` | §4.8 | Thêm một số đếm vào trang `/admin` (số tài khoản có `match_start`), hoặc chạy SQL trên `analytics_events` khi cần; chỉ có ý nghĩa sau phát hành |
+| T5 | Thấp | Tên test trong `apps/server/src/routes/google-auth.test.ts` bị hỏng mã hoá (UTF-8 bị đọc thành Latin-1 rồi lưu lại: "cÃ³ GOOGLE_CLIENT_ID â†’ …") từ commit 7.7; test vẫn chạy và xanh, chỉ khó đọc báo cáo test | Rà 8.4 | Mở file thấy ngay ở các dòng `describe`/`it`; sửa bằng cách chuyển ngược mã hoá các chuỗi tiếng Việt trong file |
+| T6 | Thấp | Test cân bằng độ khó (AC-F1-7) không nằm trong `pnpm check` vì chậm (~3 phút) → đổi tham số sim/AI có thể làm lệch ngưỡng 60%/30% mà không ai biết | §4.2 | Chạy `pnpm --filter @pitch/sim test:slow` và `pnpm --filter @pitch/server balance` mỗi khi đổi `packages/sim` (AI, chỉ số, vật lý) và trước phát hành |
+| T7 | Thấp | E2E chỉ chạy Chromium, chạy tay (`pnpm e2e`), chưa gắn CI; các tiêu chí giao diện AC-F5-8, AC-F6-1…3, AC-F10-1, AC-F11-1 mới kiểm tay một lần (§4.9), chưa có test hồi quy tự động trên giao diện | §3, §4.9 | Khi có CI: thêm bước `pnpm e2e`; cân nhắc chuyển kịch bản KT-1…KT-5 thành test Playwright cố định |
+| T8 | Ghi nhận | SEC-07: kết quả trận vs máy do client gửi, chưa xác minh bằng log input (giới hạn bằng match token, ≥ 6 phút, ≤ 20 bàn, 15 trận/ngày); SEC-08: rate limit lưu trong bộ nhớ một tiến trình, đăng ký không có CAPTCHA | §1.2 | Theo thiết kế MVP (PRD §11, §12); xem lại khi làm PvP hoặc chạy nhiều instance |
+| T9 | Ghi nhận | `pnpm audit`: còn 6 moderate + 6 low (đa số ở công cụ dev/build; `fastify`/`fast-uri` ở runtime mức low/moderate) | §1.3 | Nâng phiên bản khi có bản vá; chạy lại `pnpm audit` trước phát hành |
+| T10 | Ghi nhận | Hiệu năng: `getRetentionCohorts` quét toàn bộ `analytics_events` (ước chạm 500 ms ở ~1 triệu sự kiện); `index-*.js` 511 kB chưa lazy-load màn menu | §2.1, §2.3 | Đã có trong `docs/BACKLOG.md`; làm khi dữ liệu/bundle tới ngưỡng |
+| T11 | Ghi nhận | Câu hỏi mở PRD §12 chưa chốt: phím điều khiển chi tiết, OVR/độ trễ AI (chờ playtest), xác minh trận bằng log input, hosting, chính sách quyền riêng tư khi thu analytics | PRD §12 | Phím/AI: lấy từ playtest §5 (Q4, Q6); hosting và quyền riêng tư: Giai đoạn 9 |
