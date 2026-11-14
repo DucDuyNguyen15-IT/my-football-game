@@ -1,6 +1,6 @@
 import type { SquadSlot } from '@pitch/shared';
 import { ZERO } from '../math/vec2';
-import type { MatchState, PlayerState, TeamSide } from '../types';
+import type { MatchState, PlayerState, TeamSide, Windup } from '../types';
 
 /*
  * Thay người (PRD §5, F3): chỉ khi bóng chết (cả nghỉ giữa hiệp), tối đa MAX_SUBS lượt mỗi đội.
@@ -42,6 +42,19 @@ function rejection(
   return null;
 }
 
+/** Đổi id người lấy đà và người nhận dự kiến của cú phát bóng đang lấy đà. */
+function swapWindup(windup: Windup, swap: (id: string) => string): Windup {
+  const { kick } = windup;
+  return {
+    ...windup,
+    playerId: swap(windup.playerId),
+    kick:
+      kick.type === 'pass' && kick.targetId !== null
+        ? { ...kick, targetId: swap(kick.targetId) }
+        : kick,
+  };
+}
+
 /** Thay `outId` (đang trên sân) bằng dự bị ô `benchSlot` của đội `team`. Hàm thuần. */
 export function substitute(
   state: MatchState,
@@ -76,6 +89,8 @@ export function substitute(
       substitutions: [...state.substitutions, { team, outId, inId, tick: state.tick }],
       controlledId: swap(state.controlledId),
       restart: state.restart && { ...state.restart, takerId: swap(state.restart.takerId) },
+      // Thủ môn đang lấy đà phát bóng (bóng vẫn chết) bị thay: người vào phát bóng tiếp.
+      windup: state.windup && swapWindup(state.windup, swap),
       // Kế hoạch AI giữ vai theo id người: lập lại cho đội vừa thay.
       ai: state.ai && { ...state.ai, [team]: null },
     },
