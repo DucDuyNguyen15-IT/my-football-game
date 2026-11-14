@@ -1,0 +1,128 @@
+/*
+ * Hướng C: "Lồng Sắt Đường Phố" (Street Cage Brutalist / Concrete 7v7)
+ * Bộ token v3 giữ nguyên toàn bộ tên biến của apps/web/src/styles/tokens.css.
+ */
+:root {
+  /* Nền & bề mặt — Nhựa đường & bê tông ấm */
+  --c-bg: #121110;
+  --c-surface-1: #1c1a18;
+  --c-surface-2: #262320;
+  --c-surface-3: #332f2a;
+  --c-line: #3a352f;
+  --c-line-strong: #544d44;
+  --c-line-control: #786e62;
+  --c-chalk: #f5eedc;
+
+  /* Chữ — Sơn kem phấn đường phố */
+  --c-text: #f7f3eb;
+  --c-text-muted: #b5aba0;
+  --c-text-faint: #877e74; /* chỉ dùng trên --c-bg (4.73:1) */
+
+  /* Hành động & trạng thái — Cam lửa sơn xịt & vàng tia lửa */
+  --c-accent: #ff5917;
+  --c-accent-hover: #ff743d;
+  --c-accent-ink: #121110;
+  --c-accent-soft: rgb(255 89 23 / 0.15);
+  --c-danger: #ff4242;
+  --c-warning: #ffd000;
+  --c-success: #2ee59d;
+  --c-info: #38c8ff;
+  --c-coin: #ffd000;
+  --c-focus: #ffd000;
+  --c-scrim: rgb(10 9 8 / 0.86);
+
+  /* Sân & đội — Sân bê tông & sơn phấn kem */
+  --c-pitch-a: #242220;
+  --c-pitch-b: #2c2926;
+  --c-pitch-line: #f5eedc;
+  --c-team-home: #38c8ff;
+  --c-team-away: #ff5917;
+  --c-power-pass: #38c8ff;
+  --c-power-through: #b05cff;
+  --c-power-shot: #ff5917;
+
+  /* Độ hiếm: Đồng < Bạc < Vàng < Huyền thoại */
+  --r-bronze-base: #c86d3b;
+  --r-bronze-hi: #f7b48d;
+  --r-bronze-lo: #2b170c;
+  --r-bronze-glow: rgb(200 109 59 / 0.45);
+
+  --r-silver-base: #a3b1bf;
+  --r-silver-hi: #edf3f8;
+  --r-silver-lo: #20252b;
+  --r-silver-glow: rgb(163 177 191 / 0.5);
+
+  --r-gold-base: #f5b81d;
+  --r-gold-hi: #fff094;
+  --r-gold-lo: #2e2104;
+  --r-gold-glow: rgb(245 184 29 / 0.65);
+
+  --r-legend-base: #b05cff;
+  --r-legend-hi: #ebd6ff;
+  --r-legend-lo: #190a29;
+  --r-legend-glow: rgb(176 92 255 / 0.78);
+  --r-legend-foil: conic-gradient(from 0deg, #b05cff, #ff5917, #ffd000, #2ee59d, #b05cff);
+
+  /* Chữ — OFL hỗ trợ tiếng Việt đầy đủ */
+  --font-display: 'Chakra Petch', sans-serif;
+  --font-body: 'Lexend', system-ui, sans-serif;
+  --fs-xs: 0.75rem; /* 12 */
+  --fs-sm: 0.875rem; /* 14 */
+  --fs-md: 1rem; /* 16 */
+  --fs-lg: 1.25rem; /* 20 */
+  --fs-xl: 1.75rem; /* 28 */
+  --fs-2xl: 2.5rem; /* 40 */
+  --fs-3xl: 4rem; /* 64 */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.04;
+  --lh-normal: 1.48;
+  --tracking-caps: 0.08em;
+
+  /* Khoảng cách (bước 4px) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* Hình khối Brutalist vuông sắc không bo tròn */
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --card-notch: 20px;
+  --panel-notch: 0px;
+
+  /* Bóng cứng không nhoè (Hard Offset Shadow) */
+  --shadow-1: 4px 4px 0 #080706;
+  --shadow-2: 6px 6px 0 #080706;
+  --z-hud: 10;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+
+  /* Chuyển động — nảy cơ khí dứt khoát */
+  --dur-instant: 60ms;
+  --dur-fast: 140ms;
+  --dur-base: 210ms;
+  --dur-slow: 360ms;
+  --ease-out: cubic-bezier(0.2, 1, 0.3, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.36, 1.65, 0.62, 1);
+  --stagger: 65ms;
+
+  /* Bố cục */
+  --layout-max: 1400px;
+  --card-w-lg: 200px;
+  --card-w-md: 146px;
+  --card-w-sm: 94px;
+
+  /* === Biến mới thêm cho Hướng C (chưa có trong tokens.css v2) === */
+  --shadow-hard: 4px 4px 0 #080706; /* Bóng cứng Brutalist cho panel và nút */
+  --border-brutal: 2px; /* Độ dày viền khung cơ khí mặc định */
+}

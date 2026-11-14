@@ -1,0 +1,642 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trang chủ — MFG · Sóng Cầu Trường (Hướng A)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+@property --foil-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+:root {
+  --c-bg: #070b16;
+  --c-surface-1: #0d1426;
+  --c-surface-2: #141f38;
+  --c-surface-3: #1d2c4f;
+  --c-line: #23345c;
+  --c-line-strong: #344d85;
+  --c-line-control: #4d6db5;
+  --c-chalk: #e6f0ff;
+  --c-text: #f0f5ff;
+  --c-text-muted: #9bb0d6;
+  --c-text-faint: #6d84ad;
+  --c-accent: #00e5ff;
+  --c-accent-hover: #4df0ff;
+  --c-accent-ink: #050912;
+  --c-accent-soft: rgb(0 229 255 / 0.14);
+  --c-accent-alt: #ff2a5f;
+  --c-accent-alt-ink: #050912;
+  --c-danger: #ff3b5c;
+  --c-warning: #ffb830;
+  --c-success: #00e676;
+  --c-info: #38b6ff;
+  --c-coin: #ffd13b;
+  --c-focus: #00e5ff;
+  --c-pitch-a: #0f3d3e;
+  --c-pitch-b: #134b4c;
+  --c-pitch-line: #b8dcff;
+  --c-team-home: #00e5ff;
+  --r-bronze-base: #c47442; --r-bronze-hi: #f5b58b; --r-bronze-lo: #2b160b;
+  --r-silver-base: #94a8c4; --r-silver-hi: #e6f0fa; --r-silver-lo: #172030;
+  --r-gold-base: #f0b429;   --r-gold-hi: #fff099;   --r-gold-lo: #2e2005;
+  --r-legend-base: #b84dff; --r-legend-hi: #f0d6ff; --r-legend-lo: #160829;
+  --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --panel-notch: 16px;
+  --card-notch: 12px;
+  --shadow-1: 0 1px 0 rgb(0 229 255 / 0.12) inset, 0 6px 18px rgb(2 5 12 / 0.55);
+  --shadow-2: 0 14px 36px rgb(2 5 12 / 0.72);
+  --dur-instant: 70ms; --dur-fast: 150ms; --dur-base: 220ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(85% 55% at 22% -10%, rgb(0 229 255 / 0.12), transparent 60%),
+    radial-gradient(60% 45% at 90% 10%, rgb(255 42 95 / 0.08), transparent 55%),
+    var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body);
+  font-size: 15px;
+  line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.display { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.02; }
+.muted { color: var(--c-text-muted); }
+
+/* ---------- Thanh trên (Broadcast Topbar) ---------- */
+.topbar {
+  height: 62px;
+  background: linear-gradient(180deg, #0c1324, #090f1d);
+  border-bottom: 2px solid var(--c-line);
+  padding: 0 28px;
+  display: flex;
+  align-items: center;
+  gap: 28px;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+.logo {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: 26px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+}
+.logo__badge {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 28px;
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%);
+  font-size: 15px;
+  font-weight: 700;
+}
+.logo__live {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  background: var(--c-accent-alt);
+  color: var(--c-accent-alt-ink);
+  font-family: var(--font-display);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  clip-path: polygon(4px 0, 100% 0, calc(100% - 4px) 100%, 0 100%);
+}
+.nav { display: flex; height: 100%; gap: 4px; }
+.nav__link {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 16px;
+  font-family: var(--font-display);
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.nav__link:hover { color: var(--c-text); }
+.nav__link.is-on { color: var(--c-accent); }
+.nav__link.is-on::after {
+  content: '';
+  position: absolute;
+  left: 10px; right: 10px; bottom: 0;
+  height: 3px;
+  background: var(--c-accent);
+  box-shadow: 0 0 12px var(--c-accent);
+}
+.topbar__right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.stat-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  height: 36px;
+  padding: 0 13px;
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line-strong);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+  font-family: var(--font-display);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+.stat-pill--coin { color: var(--c-coin); }
+.stat-pill--ticket { color: var(--c-accent); }
+.stat-pill small { font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-transform: uppercase; }
+.user {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 0 10px 0 4px; height: 36px;
+  background: var(--c-surface-1); border: 1px solid var(--c-line);
+  font-weight: 600; font-size: 13px;
+}
+.user__dot {
+  width: 26px; height: 26px; display: grid; place-items: center;
+  background: var(--c-accent); color: var(--c-accent-ink);
+  font-family: var(--font-display); font-weight: 700; font-size: 15px;
+}
+
+/* ---------- Nút bấm ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 20px; border: 1px solid transparent;
+  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out);
+  white-space: nowrap;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn--primary { background: var(--c-accent); color: var(--c-accent-ink); }
+.btn--primary:hover:not(:disabled) { background: var(--c-accent-hover); }
+.btn--secondary { background: var(--c-surface-2); border-color: var(--c-line-control); color: var(--c-text); }
+.btn--secondary:hover:not(:disabled) { background: var(--c-surface-3); border-color: var(--c-accent); }
+.btn--ghost { background: transparent; border-color: var(--c-line); color: var(--c-text-muted); }
+.btn--ghost:hover:not(:disabled) { color: var(--c-text); border-color: var(--c-line-control); background: var(--c-surface-2); }
+.btn--sm { height: 34px; padding: 0 14px; font-size: 14px; }
+.btn--xl { height: 56px; padding: 0 34px; font-size: 24px; letter-spacing: 0.1em; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- Bố cục trang ---------- */
+.page {
+  max-width: 1440px;
+  margin: 0 auto;
+  padding: 20px 28px 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 410px;
+  gap: 20px;
+}
+.col-main { display: flex; flex-direction: column; gap: 18px; min-width: 0; }
+.col-side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+
+/* ---------- Panel đặc trưng Broadcast (thanh trái phát sáng + góc cắt) ---------- */
+.b-panel {
+  position: relative;
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-line);
+  border-left: 4px solid var(--panel-stripe, var(--c-line-strong));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--panel-notch)), calc(100% - var(--panel-notch)) 100%, 0 100%);
+  padding: 18px 22px;
+  box-shadow: var(--shadow-1);
+}
+.b-panel--hero {
+  --panel-stripe: var(--c-accent);
+  background:
+    repeating-linear-gradient(0deg, rgb(255 255 255 / 0.015) 0 1px, transparent 1px 4px),
+    radial-gradient(80% 90% at 85% 50%, rgb(0 229 255 / 0.12), transparent 65%),
+    linear-gradient(135deg, #0e1830 0%, #091020 100%);
+  padding: 26px 28px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 268px;
+  gap: 24px;
+  align-items: center;
+}
+.panel-head {
+  display: flex; align-items: center; gap: 10px; margin: 0 0 14px;
+}
+.panel-head__slash {
+  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  color: var(--c-accent); letter-spacing: 0.06em;
+}
+.panel-head h2 { margin: 0; font-family: var(--font-display); font-size: 20px; text-transform: uppercase; letter-spacing: 0.06em; }
+.panel-head__meta { margin-left: auto; font-size: 13px; color: var(--c-text-muted); }
+.panel-head::after {
+  content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--c-line-strong), transparent); order: 1;
+}
+.panel-head__meta, .panel-head .btn { order: 2; }
+
+/* ---------- Hero Đá với máy ---------- */
+.hero-kicker {
+  display: inline-flex; align-items: center; gap: 10px;
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  letter-spacing: 0.14em; text-transform: uppercase; color: var(--c-accent);
+}
+.hero-kicker b {
+  padding: 2px 8px; background: rgb(255 42 95 / 0.16); color: #ff6e91; border: 1px solid rgb(255 42 95 / 0.45);
+}
+.hero-title {
+  margin: 8px 0 8px;
+  font-family: var(--font-display); font-weight: 700; font-size: 62px; line-height: 0.96;
+  text-transform: uppercase; letter-spacing: 0.02em;
+}
+.hero-desc { margin: 0 0 16px; color: var(--c-text-muted); max-width: 440px; font-size: 15px; }
+.hero-desc b { color: var(--c-text); }
+
+.reward-box { max-width: 420px; margin-bottom: 18px; }
+.reward-row { display: flex; justify-content: space-between; align-items: baseline; font-size: 13px; margin-bottom: 6px; }
+.reward-seg { display: grid; grid-template-columns: repeat(15, 1fr); gap: 4px; height: 9px; }
+.reward-seg i { display: block; background: var(--c-surface-3); transform: skewX(-18deg); }
+.reward-seg i.on { background: var(--c-accent); box-shadow: 0 0 8px rgb(0 229 255 / 0.4); }
+
+.hero-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 14px; }
+.diff-switch {
+  display: inline-flex; background: var(--c-surface-2); border: 1px solid var(--c-line-strong); padding: 3px; gap: 3px;
+}
+.diff-btn {
+  border: 0; background: transparent; padding: 6px 14px; cursor: pointer;
+  font-family: var(--font-display); font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em;
+  color: var(--c-text-muted);
+}
+.diff-btn.is-on { background: var(--c-surface-3); color: var(--c-accent); box-shadow: inset 0 -2px 0 var(--c-accent); }
+.reward-rates { display: flex; gap: 14px; font-size: 13px; color: var(--c-text-muted); }
+.reward-rates b { color: var(--c-coin); font-family: var(--font-display); font-size: 16px; }
+
+/* ---------- Radar Sân 7v7 ---------- */
+.pitch-radar {
+  position: relative; width: 268px; height: 348px;
+  background: #0a1b26; border: 1px solid var(--c-line-strong);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 14px), calc(100% - 14px) 100%, 0 100%);
+  overflow: hidden;
+}
+.pitch-node {
+  position: absolute; transform: translate(-50%, -50%);
+  display: flex; flex-direction: column; align-items: center; gap: 2px;
+}
+.pitch-node__ovr {
+  width: 34px; height: 34px; display: grid; place-items: center;
+  background: var(--c-team-home); color: var(--c-accent-ink);
+  font-family: var(--font-display); font-weight: 700; font-size: 16px;
+  clip-path: polygon(6px 0, 100% 0, 100% calc(100% - 6px), calc(100% - 6px) 100%, 0 100%, 0 6px);
+  box-shadow: 0 0 14px rgb(0 229 255 / 0.45);
+}
+.pitch-node__pos {
+  font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.08em;
+  background: rgb(7 11 22 / 0.88); padding: 0 5px; color: var(--c-text);
+}
+
+/* ---------- Thẻ cầu thủ dáng Lục giác bất đối xứng + Lower-Third ---------- */
+.xi-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 10px; }
+.b-card {
+  position: relative; aspect-ratio: 5 / 7; padding: 2px;
+  clip-path: polygon(11px 0, 100% 0, 100% calc(100% - 11px), calc(100% - 11px) 100%, 0 100%, 0 11px);
+  background: var(--base);
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.b-card:hover { transform: translateY(-4px); }
+.r-bronze { --base: var(--r-bronze-base); --hi: var(--r-bronze-hi); --lo: var(--r-bronze-lo); }
+.r-silver { --base: var(--r-silver-base); --hi: var(--r-silver-hi); --lo: var(--r-silver-lo); }
+.r-gold   { --base: var(--r-gold-base);   --hi: var(--r-gold-hi);   --lo: var(--r-gold-lo); }
+.r-legend { --base: var(--r-legend-base); --hi: var(--r-legend-hi); --lo: var(--r-legend-lo); }
+.r-gold.b-card { background: linear-gradient(155deg, var(--hi), var(--base) 50%, #8f630a); }
+.r-legend.b-card { background: conic-gradient(from var(--foil-angle), #b84dff, #00e5ff, #ff2a5f, #fff099, #b84dff); animation: foilSpin 5s linear infinite; }
+@keyframes foilSpin { to { --foil-angle: 360deg; } }
+
+.b-card__in {
+  position: relative; height: 100%; overflow: hidden;
+  clip-path: polygon(10px 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%, 0 10px);
+  background: radial-gradient(110% 70% at 50% 8%, color-mix(in srgb, var(--base) 30%, var(--lo)), var(--lo) 75%);
+  display: flex; flex-direction: column; padding: 8px 6px 6px;
+}
+.b-card__top { display: flex; justify-content: space-between; align-items: flex-start; line-height: 1; }
+.b-card__ovr { font-family: var(--font-display); font-size: 23px; font-weight: 700; color: var(--hi); }
+.b-card__pos { font-family: var(--font-display); font-size: 11px; font-weight: 700; color: var(--c-text); letter-spacing: 0.06em; }
+.b-card__pips { font-size: 8px; color: var(--hi); letter-spacing: 1px; }
+.b-card__ava { width: 66%; aspect-ratio: 1; margin: 2px auto 0; }
+.b-card__ava svg { width: 100%; height: 100%; display: block; }
+.b-card__ribbon {
+  margin: auto -6px 0;
+  background: rgb(5 9 18 / 0.9);
+  border-top: 2px solid var(--base);
+  padding: 4px 6px 3px;
+  text-align: center;
+}
+.b-card__name {
+  font-family: var(--font-display); font-size: 13px; font-weight: 700;
+  text-transform: uppercase; letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.b-card__sub { font-size: 10px; color: var(--c-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* ---------- Cột phải: Nhiệm vụ & Lối tắt ---------- */
+.mission-item {
+  display: grid; grid-template-columns: 1fr auto; gap: 6px 12px; align-items: center;
+  padding: 11px 0; border-bottom: 1px solid var(--c-line);
+}
+.mission-item:last-of-type { border-bottom: 0; padding-bottom: 4px; }
+.mission-title { font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+.mission-bar { display: flex; align-items: center; gap: 10px; }
+.bar-track { flex: 1; height: 5px; background: var(--c-surface-3); overflow: hidden; }
+.bar-fill { height: 100%; background: var(--c-accent); }
+.mission-reward { font-family: var(--font-display); font-size: 15px; font-weight: 700; color: var(--c-coin); }
+
+.tile {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 15px 18px;
+  background: var(--c-surface-1); border: 1px solid var(--c-line);
+  border-left: 4px solid var(--tile-accent, var(--c-line-strong));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 12px), calc(100% - 12px) 100%, 0 100%);
+  transition: border-color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+}
+.tile:hover { background: var(--c-surface-2); border-color: var(--c-line-control); }
+.tile--hot {
+  --tile-accent: var(--c-accent-alt);
+  background: linear-gradient(90deg, rgb(255 42 95 / 0.14), var(--c-surface-1) 65%);
+}
+.tile__tag { font-family: var(--font-display); font-size: 11px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--c-accent); }
+.tile--hot .tile__tag { color: #ff7096; }
+.tile__big { font-family: var(--font-display); font-size: 21px; font-weight: 700; text-transform: uppercase; margin: 2px 0; }
+.tile__sub { font-size: 13px; color: var(--c-text-muted); }
+.tile__arrow { font-family: var(--font-display); font-size: 20px; color: var(--c-accent); }
+
+.toast {
+  position: fixed; right: 24px; bottom: 24px; z-index: 100;
+  background: var(--c-surface-3); border: 1px solid var(--c-accent); border-left: 4px solid var(--c-accent);
+  padding: 12px 18px; font-size: 14px; font-weight: 600; box-shadow: var(--shadow-2);
+}
+
+@media (max-width: 1120px) {
+  .page { grid-template-columns: 1fr; }
+  .b-panel--hero { grid-template-columns: 1fr; }
+  .pitch-radar { display: none; }
+}
+@media (max-width: 820px) {
+  .topbar { padding: 0 14px; gap: 12px; }
+  .logo__live, .user span:last-child { display: none; }
+  .xi-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .r-legend.b-card { animation: none; }
+  .b-card, .btn, .tile { transition: none; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="logo" href="home.html"><span class="logo__badge" aria-hidden="true">MFG</span>SÓNG CẦU TRƯỜNG<span class="logo__live">TRỰC TIẾP</span></a>
+  <nav class="nav" aria-label="Điều hướng chính">
+    <a class="nav__link is-on" href="home.html" aria-current="page">Trang chủ</a>
+    <a class="nav__link" href="shop.html">Cửa hàng</a>
+    <a class="nav__link" href="shop.html#pack">Mở gói</a>
+    <a class="nav__link" href="squad.html">Đội hình</a>
+  </nav>
+  <div class="topbar__right">
+    <span class="stat-pill stat-pill--coin" title="Số xu hiện có">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="4" width="2" height="8" fill="currentColor"/></svg>
+      <span class="num" id="coinVal">1.240</span><small>xu</small>
+    </span>
+    <a class="stat-pill stat-pill--ticket" href="shop.html" title="Vé mở gói miễn phí">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12v3a1.5 1.5 0 0 0 0 3v3H2v-3a1.5 1.5 0 0 0 0-3V4z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      <span class="num" id="ticketVal">1</span><small>vé</small>
+    </a>
+    <span class="user"><span class="user__dot" aria-hidden="true">D</span><span>duyfc</span></span>
+    <button type="button" class="btn btn--ghost btn--sm" onclick="showToast('Đã thoát phiên đăng nhập mẫu.')">Đăng xuất</button>
+  </div>
+</header>
+
+<main class="page">
+  <div class="col-main">
+    <section class="b-panel b-panel--hero" aria-labelledby="hero-title">
+      <div>
+        <div class="hero-kicker"><b>SỰ KIỆN TRONG NGÀY</b> TRẬN TIẾP THEO · 7 ĐẤU 7</div>
+        <h1 id="hero-title" class="hero-title">Đá với máy</h1>
+        <p class="hero-desc">2 hiệp × 3 phút. Chọn <b>Dễ</b> hoặc <b>Khó</b> ở bước tiếp theo — thắng mức Khó nhận <b>gấp đôi xu</b>.</p>
+
+        <div class="reward-box">
+          <div class="reward-row">
+            <span>Trận có thưởng hôm nay</span>
+            <span class="display num" style="font-size: 20px;">3<span class="muted">/15</span></span>
+          </div>
+          <div class="reward-seg" role="img" aria-label="Đã đá 3 trên 15 trận có thưởng">
+            <i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+          </div>
+        </div>
+
+        <div class="hero-actions">
+          <button type="button" class="btn btn--primary btn--xl" onclick="showToast('Đang kết nối sân đấu 7v7 (' + currentDiff + ')…')">
+            <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M5 3l10 6-10 6z" fill="currentColor"/></svg>
+            Đá ngay
+          </button>
+          <div class="diff-switch" role="radiogroup" aria-label="Chọn nhanh độ khó">
+            <button type="button" class="diff-btn is-on" data-diff="Dễ" onclick="setDiff(this)">Dễ · 60 xu</button>
+            <button type="button" class="diff-btn" data-diff="Khó" onclick="setDiff(this)">Khó · 120 xu</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="pitch-radar" aria-hidden="true">
+        <svg width="268" height="348" viewBox="0 0 268 348" style="position:absolute;inset:0">
+          <defs>
+            <pattern id="aPitch" width="268" height="44" patternUnits="userSpaceOnUse">
+              <rect width="268" height="22" fill="#0e3a3b"/>
+              <rect y="22" width="268" height="22" fill="#124748"/>
+            </pattern>
+          </defs>
+          <rect width="268" height="348" fill="url(#aPitch)" opacity="0.65"/>
+          <g fill="none" stroke="rgb(184 220 255 / 0.45)" stroke-width="1.5">
+            <rect x="12" y="12" width="244" height="324"/>
+            <line x1="12" y1="174" x2="256" y2="174"/>
+            <circle cx="134" cy="174" r="32"/>
+            <rect x="66" y="12" width="136" height="48"/>
+            <rect x="98" y="12" width="72" height="18"/>
+            <rect x="66" y="288" width="136" height="48"/>
+            <rect x="98" y="318" width="72" height="18"/>
+          </g>
+          <circle cx="134" cy="174" r="3" fill="#00e5ff"/>
+        </svg>
+        <div class="pitch-node" style="left:50%;top:15%"><span class="pitch-node__ovr num">78</span><span class="pitch-node__pos">FW</span></div>
+        <div class="pitch-node" style="left:21%;top:42%"><span class="pitch-node__ovr num">66</span><span class="pitch-node__pos">MF</span></div>
+        <div class="pitch-node" style="left:50%;top:47%"><span class="pitch-node__ovr num">76</span><span class="pitch-node__pos">MF</span></div>
+        <div class="pitch-node" style="left:79%;top:42%"><span class="pitch-node__ovr num">64</span><span class="pitch-node__pos">MF</span></div>
+        <div class="pitch-node" style="left:32%;top:69%"><span class="pitch-node__ovr num">71</span><span class="pitch-node__pos">DF</span></div>
+        <div class="pitch-node" style="left:68%;top:69%"><span class="pitch-node__ovr num">56</span><span class="pitch-node__pos">DF</span></div>
+        <div class="pitch-node" style="left:50%;top:88%"><span class="pitch-node__ovr num">71</span><span class="pitch-node__pos">GK</span></div>
+      </div>
+    </section>
+
+    <section class="b-panel" aria-labelledby="team-heading">
+      <div class="panel-head">
+        <span class="panel-head__slash">///</span>
+        <h2 id="team-heading">Đội của bạn</h2>
+        <span class="panel-head__meta">Sơ đồ <b>2-3-1</b> · OVR TB <b class="num" style="color:var(--c-accent)">69</b></span>
+        <a class="btn btn--secondary btn--sm" href="squad.html">Xếp đội</a>
+      </div>
+      <div class="xi-grid" id="xiGrid"></div>
+    </section>
+  </div>
+
+  <aside class="col-side" aria-label="Nhiệm vụ và lối tắt">
+    <section class="b-panel" style="--panel-stripe: var(--c-coin);" aria-labelledby="mission-heading">
+      <div class="panel-head">
+        <span class="panel-head__slash" style="color:var(--c-coin)">///</span>
+        <h2 id="mission-heading">Nhiệm vụ ngày</h2>
+        <span class="panel-head__meta num">06:12:40</span>
+      </div>
+      <div class="mission-item">
+        <div>
+          <div class="mission-title">Thắng 1 trận</div>
+          <div class="mission-bar"><div class="bar-track"><div class="bar-fill" style="width:100%"></div></div><span class="num muted" style="font-size:12px">1/1</span></div>
+        </div>
+        <button type="button" class="btn btn--primary btn--sm" id="claimBtn" onclick="claimMission(this)">Nhận +50 xu</button>
+      </div>
+      <div class="mission-item">
+        <div>
+          <div class="mission-title">Ghi 3 bàn</div>
+          <div class="mission-bar"><div class="bar-track"><div class="bar-fill" style="width:66%"></div></div><span class="num muted" style="font-size:12px">2/3</span></div>
+        </div>
+        <span class="mission-reward num">+50 xu</span>
+      </div>
+      <div class="mission-item">
+        <div>
+          <div class="mission-title">Đá 1 trận mức Khó</div>
+          <div class="mission-bar"><div class="bar-track"><div class="bar-fill" style="width:0%"></div></div><span class="num muted" style="font-size:12px">0/1</span></div>
+        </div>
+        <span class="mission-reward num">+50 xu</span>
+      </div>
+      <p class="muted" style="margin:10px 0 0;font-size:12px">3 nhiệm vụ mỗi ngày · làm mới lúc 00:00</p>
+    </section>
+
+    <a href="shop.html" class="tile tile--hot">
+      <div>
+        <div class="tile__tag">Quà tân thủ · Đang có vé</div>
+        <div class="tile__big">1 gói 5 thẻ miễn phí</div>
+        <div class="tile__sub">Mở ngay ở Cửa hàng để nhận cầu thủ mới</div>
+      </div>
+      <span class="tile__arrow" aria-hidden="true">→</span>
+    </a>
+
+    <a href="shop.html" class="tile" style="--tile-accent: var(--c-info);">
+      <div>
+        <div class="tile__tag">Hộp thẻ của bạn</div>
+        <div class="tile__big num">95/100 phiếu</div>
+        <div class="tile__sub">Còn 2 Huyền thoại · 9 Vàng · 28 Bạc</div>
+      </div>
+      <span class="tile__arrow" aria-hidden="true">→</span>
+    </a>
+
+    <a href="squad.html" class="tile" style="--tile-accent: var(--c-success);">
+      <div>
+        <div class="tile__tag">Kho thẻ &amp; Đội hình</div>
+        <div class="tile__big num">23 thẻ · 2 mới</div>
+        <div class="tile__sub">Sửa đội hình và nâng OVR trước trận</div>
+      </div>
+      <span class="tile__arrow" aria-hidden="true">→</span>
+    </a>
+  </aside>
+</main>
+
+<script>
+const TIER_BASE = { bronze:'#c47442', silver:'#94a8c4', gold:'#f0b429', legend:'#b84dff' };
+const TIER_PIPS = { bronze:'◆', silver:'◆◆', gold:'◆◆◆', legend:'◆◆◆◆' };
+const PLAYERS = [
+  { last:'Barlverde', first:'Joamón', pos:'GK', ovr:71, tier:'silver', skin:'#e5b48f', hair:'#d9b26a', hairT:2, beard:0 },
+  { last:'Trassa', first:'Baydou', pos:'DF', ovr:71, tier:'silver', skin:'#f3d2b5', hair:'#d9b26a', hairT:3, beard:0 },
+  { last:'Castillo', first:'Serquín', pos:'DF', ovr:56, tier:'bronze', skin:'#a46a43', hair:'#6b4423', hairT:6, beard:2 },
+  { last:'Torlini', first:'Dassimo', pos:'MF', ovr:66, tier:'silver', skin:'#f3d2b5', hair:'#8c8c8c', hairT:5, beard:1 },
+  { last:'Almares', first:'Gevelino', pos:'MF', ovr:76, tier:'gold', skin:'#f3d2b5', hair:'#8c8c8c', hairT:0, beard:2 },
+  { last:'Teiarte', first:'Lufinho', pos:'MF', ovr:64, tier:'bronze', skin:'#f3d2b5', hair:'#6b4423', hairT:3, beard:2 },
+  { last:'Vuketić', first:'Vladimir', pos:'FW', ovr:78, tier:'gold', skin:'#a46a43', hair:'#d9b26a', hairT:5, beard:1 },
+];
+
+function svgAvatar(p) {
+  const shirt = TIER_BASE[p.tier];
+  const hairs = [
+    '',
+    `<path d="M29 40 Q50 14 71 40 Q71 30 50 25 Q29 30 29 40Z" fill="${p.hair}"/>`,
+    `<path d="M28 44 Q26 18 50 18 Q74 18 72 44 L68 34 Q50 28 32 34Z" fill="${p.hair}"/>`,
+    `<rect x="29" y="21" width="42" height="10" rx="4" fill="${p.hair}"/>`,
+    `<path d="M44 26 Q50 12 56 26 L54 31 Q50 27 46 31Z" fill="${p.hair}"/>`,
+    `<g fill="${p.hair}">${Array.from({length:8},(_,i)=>`<circle cx="${32+i*5.2}" cy="${26+(i%2)*2}" r="4.8"/>`).join('')}</g>`,
+    `<path d="M28 52 Q26 16 50 17 Q74 16 72 52 L68 50 L68 36 Q50 30 32 36 L32 50Z" fill="${p.hair}"/>`
+  ];
+  const beards = [
+    '',
+    `<path d="M31 50 Q50 70 69 50 Q67 62 50 63 Q33 62 31 50Z" fill="${p.hair}" opacity="0.85"/>`,
+    `<path d="M44 57 Q50 54 56 57 L55 59 Q50 57 45 59Z" fill="${p.hair}"/>`
+  ];
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M14 100 Q16 74 38 70 L62 70 Q84 74 86 100Z" fill="${shirt}"/>
+    <path d="M38 70 L50 82 L62 70" fill="none" stroke="rgb(0 0 0 /.35)" stroke-width="2.5"/>
+    <rect x="43" y="58" width="14" height="14" fill="${p.skin}"/>
+    <ellipse cx="50" cy="44" rx="20.5" ry="23.5" fill="${p.skin}"/>
+    <ellipse cx="29.5" cy="46" rx="2.5" ry="4" fill="${p.skin}"/><ellipse cx="70.5" cy="46" rx="2.5" ry="4" fill="${p.skin}"/>
+    ${hairs[p.hairT]}
+    <circle cx="42" cy="47" r="1.9" fill="#141414"/><circle cx="58" cy="47" r="1.9" fill="#141414"/>
+    <path d="M45.5 58 Q50 60.5 54.5 58" fill="none" stroke="rgb(0 0 0 /.45)" stroke-width="1.5" stroke-linecap="round"/>
+    ${beards[p.beard]}
+  </svg>`;
+}
+
+document.getElementById('xiGrid').innerHTML = PLAYERS.map(p => `
+  <div class="b-card r-${p.tier}" role="img" aria-label="${p.first} ${p.last}, ${p.pos}, OVR ${p.ovr}">
+    <div class="b-card__in">
+      <div class="b-card__top">
+        <div><div class="b-card__ovr num">${p.ovr}</div><div class="b-card__pos">${p.pos}</div></div>
+        <div class="b-card__pips" aria-hidden="true">${TIER_PIPS[p.tier]}</div>
+      </div>
+      <div class="b-card__ava">${svgAvatar(p)}</div>
+      <div class="b-card__ribbon">
+        <div class="b-card__name">${p.last}</div>
+        <div class="b-card__sub">${p.first}</div>
+      </div>
+    </div>
+  </div>
+`).join('');
+
+let coins = 1240;
+let currentDiff = 'Dễ';
+function setDiff(btn) {
+  document.querySelectorAll('.diff-btn').forEach(b => b.classList.remove('is-on'));
+  btn.classList.add('is-on');
+  currentDiff = btn.dataset.diff;
+}
+function claimMission(btn) {
+  btn.disabled = true;
+  btn.textContent = 'Đã nhận';
+  const from = coins, to = coins + 50;
+  coins = to;
+  const el = document.getElementById('coinVal');
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { el.textContent = to.toLocaleString('vi-VN'); return; }
+  const t0 = performance.now();
+  const step = (t) => {
+    const k = Math.min(1, (t - t0) / 380);
+    el.textContent = Math.round(from + (to - from) * (1 - (1 - k) ** 3)).toLocaleString('vi-VN');
+    if (k < 1) requestAnimationFrame(step);
+  };
+  requestAnimationFrame(step);
+  showToast('Đã nhận +50 xu từ nhiệm vụ ngày!');
+}
+function showToast(msg) {
+  document.querySelectorAll('.toast').forEach(t => t.remove());
+  const t = document.createElement('div');
+  t.className = 'toast'; t.setAttribute('role', 'status'); t.textContent = msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+</script>
+</body>
+</html>

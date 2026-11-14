@@ -1,0 +1,706 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cửa hàng &amp; Mở gói — MFG · Sóng Cầu Trường (Hướng A)</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Oswald:wght@600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap&subset=vietnamese" rel="stylesheet">
+<style>
+@property --foil-angle { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+:root {
+  --c-bg: #070b16;
+  --c-surface-1: #0d1426;
+  --c-surface-2: #141f38;
+  --c-surface-3: #1d2c4f;
+  --c-line: #23345c;
+  --c-line-strong: #344d85;
+  --c-line-control: #4d6db5;
+  --c-chalk: #e6f0ff;
+  --c-text: #f0f5ff;
+  --c-text-muted: #9bb0d6;
+  --c-text-faint: #6d84ad;
+  --c-accent: #00e5ff;
+  --c-accent-hover: #4df0ff;
+  --c-accent-ink: #050912;
+  --c-accent-soft: rgb(0 229 255 / 0.14);
+  --c-accent-alt: #ff2a5f;
+  --c-accent-alt-ink: #050912;
+  --c-danger: #ff3b5c;
+  --c-warning: #ffb830;
+  --c-success: #00e676;
+  --c-info: #38b6ff;
+  --c-coin: #ffd13b;
+  --c-focus: #00e5ff;
+  --c-scrim: rgb(3 6 14 / 0.84);
+  --r-bronze-base: #c47442; --r-bronze-hi: #f5b58b; --r-bronze-lo: #2b160b; --r-bronze-glow: rgb(245 181 139 / 0.45);
+  --r-silver-base: #94a8c4; --r-silver-hi: #e6f0fa; --r-silver-lo: #172030; --r-silver-glow: rgb(230 240 250 / 0.5);
+  --r-gold-base: #f0b429;   --r-gold-hi: #fff099;   --r-gold-lo: #2e2005;   --r-gold-glow: rgb(255 215 70 / 0.65);
+  --r-legend-base: #b84dff; --r-legend-hi: #f0d6ff; --r-legend-lo: #160829; --r-legend-glow: rgb(184 77 255 / 0.78);
+  --font-display: 'Oswald', 'Arial Narrow', sans-serif;
+  --font-body: 'Plus Jakarta Sans', system-ui, sans-serif;
+  --panel-notch: 16px;
+  --dur-instant: 70ms; --dur-fast: 150ms; --dur-base: 220ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+body {
+  min-height: 100vh;
+  background:
+    radial-gradient(85% 55% at 62% 20%, rgb(0 229 255 / 0.1), transparent 60%),
+    radial-gradient(50% 45% at 15% 80%, rgb(184 77 255 / 0.09), transparent 55%),
+    var(--c-bg);
+  color: var(--c-text);
+  font-family: var(--font-body); font-size: 15px; line-height: 1.45;
+  -webkit-font-smoothing: antialiased;
+}
+:focus-visible { outline: 2px solid var(--c-focus); outline-offset: 2px; }
+a { color: inherit; text-decoration: none; }
+button { font: inherit; color: inherit; }
+.num { font-variant-numeric: tabular-nums; }
+.display { font-family: var(--font-display); font-weight: 700; text-transform: uppercase; letter-spacing: 0.03em; line-height: 1.02; }
+.muted { color: var(--c-text-muted); }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- Topbar ---------- */
+.topbar {
+  height: 62px; background: linear-gradient(180deg, #0c1324, #090f1d);
+  border-bottom: 2px solid var(--c-line); padding: 0 28px;
+  display: flex; align-items: center; gap: 28px; position: sticky; top: 0; z-index: 40;
+}
+.logo { display: inline-flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 26px; font-weight: 700; letter-spacing: 0.14em; }
+.logo__badge {
+  display: grid; place-items: center; width: 34px; height: 28px; background: var(--c-accent); color: var(--c-accent-ink);
+  clip-path: polygon(6px 0, 100% 0, calc(100% - 6px) 100%, 0 100%); font-size: 15px; font-weight: 700;
+}
+.nav { display: flex; height: 100%; gap: 4px; }
+.nav__link {
+  position: relative; display: inline-flex; align-items: center; padding: 0 16px;
+  font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase; color: var(--c-text-muted);
+}
+.nav__link:hover { color: var(--c-text); }
+.nav__link.is-on { color: var(--c-accent); }
+.nav__link.is-on::after { content: ''; position: absolute; left: 10px; right: 10px; bottom: 0; height: 3px; background: var(--c-accent); box-shadow: 0 0 12px var(--c-accent); }
+.topbar__right { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.stat-pill {
+  display: inline-flex; align-items: center; gap: 7px; height: 36px; padding: 0 13px;
+  background: var(--c-surface-2); border: 1px solid var(--c-line-strong);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 7px), calc(100% - 7px) 100%, 0 100%);
+  font-family: var(--font-display); font-size: 17px; font-weight: 700;
+}
+.stat-pill--coin { color: var(--c-coin); }
+.stat-pill--ticket { color: var(--c-accent); }
+.stat-pill small { font-family: var(--font-body); font-size: 11px; font-weight: 600; color: var(--c-text-muted); text-transform: uppercase; }
+.user { display: inline-flex; align-items: center; gap: 8px; padding: 0 10px 0 4px; height: 36px; background: var(--c-surface-1); border: 1px solid var(--c-line); font-weight: 600; font-size: 13px; }
+.user__dot { width: 26px; height: 26px; display: grid; place-items: center; background: var(--c-accent); color: var(--c-accent-ink); font-family: var(--font-display); font-weight: 700; font-size: 15px; }
+
+/* ---------- Buttons ---------- */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+  height: 40px; padding: 0 18px; border: 1px solid transparent;
+  font-family: var(--font-display); font-weight: 700; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; cursor: pointer;
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 9px), calc(100% - 9px) 100%, 0 100%);
+  transition: background-color var(--dur-fast) var(--ease-out), transform var(--dur-instant) var(--ease-out); white-space: nowrap;
+}
+.btn:active:not(:disabled) { transform: scale(0.97); }
+.btn--primary { background: var(--c-accent); color: var(--c-accent-ink); }
+.btn--primary:hover:not(:disabled) { background: var(--c-accent-hover); }
+.btn--coin { background: var(--c-coin); color: var(--c-accent-ink); }
+.btn--coin:hover:not(:disabled) { background: #ffe066; }
+.btn--secondary { background: var(--c-surface-2); border-color: var(--c-line-control); color: var(--c-text); }
+.btn--secondary:hover:not(:disabled) { background: var(--c-surface-3); border-color: var(--c-accent); }
+.btn--ghost { background: transparent; border-color: var(--c-line); color: var(--c-text-muted); }
+.btn--ghost:hover:not(:disabled) { color: var(--c-text); border-color: var(--c-line-control); background: var(--c-surface-2); }
+.btn--sm { height: 32px; padding: 0 12px; font-size: 13px; }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+/* ---------- Layout ---------- */
+.page {
+  max-width: 1440px; margin: 0 auto; padding: 20px 28px 24px;
+  display: grid; grid-template-columns: 380px minmax(0, 1fr); gap: 20px; align-items: start;
+}
+.col-left { display: flex; flex-direction: column; gap: 14px; }
+.b-panel {
+  background: var(--c-surface-1); border: 1px solid var(--c-line);
+  border-left: 4px solid var(--panel-stripe, var(--c-line-strong));
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - var(--panel-notch)), calc(100% - var(--panel-notch)) 100%, 0 100%);
+  padding: 16px 18px;
+}
+.panel-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+.panel-head__slash { font-family: var(--font-display); font-weight: 700; color: var(--c-accent); }
+.panel-head h2, .panel-head h1 { margin: 0; font-family: var(--font-display); font-size: 19px; text-transform: uppercase; letter-spacing: 0.06em; }
+.panel-head::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, var(--c-line-strong), transparent); order: 1; }
+.panel-head__meta { order: 2; font-size: 12px; color: var(--c-text-muted); }
+
+/* ---------- Box Meter ---------- */
+.r-bronze { --base: var(--r-bronze-base); --hi: var(--r-bronze-hi); --lo: var(--r-bronze-lo); --glow: var(--r-bronze-glow); }
+.r-silver { --base: var(--r-silver-base); --hi: var(--r-silver-hi); --lo: var(--r-silver-lo); --glow: var(--r-silver-glow); }
+.r-gold   { --base: var(--r-gold-base);   --hi: var(--r-gold-hi);   --lo: var(--r-gold-lo);   --glow: var(--r-gold-glow); }
+.r-legend { --base: var(--r-legend-base); --hi: var(--r-legend-hi); --lo: var(--r-legend-lo); --glow: var(--r-legend-glow); }
+
+.meter { display: grid; grid-template-columns: 108px 1fr 28px 46px; align-items: center; gap: 8px; font-size: 13px; margin-top: 9px; }
+.meter__name { font-weight: 600; color: var(--hi); display: flex; align-items: center; gap: 6px; white-space: nowrap; }
+.meter__pips { font-size: 9px; letter-spacing: 0.5px; }
+.meter__track { height: 7px; background: var(--c-surface-3); overflow: hidden; }
+.meter__fill { height: 100%; background: var(--base); transition: width 400ms var(--ease-out); }
+.meter__cnt { text-align: right; font-family: var(--font-display); font-size: 16px; font-weight: 700; }
+.meter__pct { text-align: right; font-family: var(--font-display); font-size: 14px; color: var(--c-text-muted); }
+
+.recent-row { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.r-chip {
+  display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+  border: 1px solid var(--base); background: var(--lo); color: var(--hi);
+  font-family: var(--font-display); font-size: 12px; font-weight: 700; text-transform: uppercase;
+}
+
+/* ---------- Shop Offers ---------- */
+.offer {
+  display: grid; grid-template-columns: 62px 1fr auto; gap: 12px; align-items: center;
+  padding: 12px; background: var(--c-surface-2); border: 1px solid var(--c-line);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 10px), calc(100% - 10px) 100%, 0 100%);
+}
+.offer--free {
+  border-color: var(--c-accent);
+  background: linear-gradient(90deg, rgb(0 229 255 / 0.14), var(--c-surface-2) 65%);
+}
+.pack-thumb {
+  width: 62px; height: 80px; background: linear-gradient(155deg, #1b2f57, #0b1426);
+  border: 1px solid var(--c-line-control); position: relative; display: grid; place-items: center;
+  clip-path: polygon(8px 0, 100% 0, 100% calc(100% - 8px), calc(100% - 8px) 100%, 0 100%, 0 8px);
+}
+.pack-thumb__num { font-family: var(--font-display); font-size: 32px; font-weight: 700; line-height: 0.9; color: var(--c-chalk); text-align: center; }
+.pack-thumb__num small { display: block; font-size: 9px; letter-spacing: 0.14em; color: var(--c-accent); }
+.pack-thumb__stripes { position: absolute; left: 0; right: 0; bottom: 8px; height: 4px; display: flex; }
+.pack-thumb__stripes i { flex: 1; }
+.offer__title { font-family: var(--font-display); font-size: 18px; font-weight: 700; text-transform: uppercase; display: flex; align-items: center; gap: 7px; }
+.badge-hot { padding: 1px 6px; background: var(--c-accent-alt); color: var(--c-accent-alt-ink); font-size: 11px; letter-spacing: 0.06em; }
+.badge-save { padding: 1px 6px; background: var(--c-accent); color: var(--c-accent-ink); font-size: 11px; letter-spacing: 0.06em; }
+.offer__desc { font-size: 12px; color: var(--c-text-muted); margin-top: 2px; }
+
+/* ---------- Broadcast Reveal Stage ---------- */
+.stage-wrap {
+  position: relative;
+  min-height: 754px;
+  background:
+    radial-gradient(65% 50% at 50% 42%, rgb(0 229 255 / 0.12), transparent 70%),
+    linear-gradient(180deg, #0b1428 0%, #070b16 100%);
+  border: 1px solid var(--c-line-strong);
+  border-top: 3px solid var(--c-accent);
+  clip-path: polygon(0 0, 100% 0, 100% calc(100% - 20px), calc(100% - 20px) 100%, 0 100%);
+  padding: 20px 24px 22px;
+  display: flex; flex-direction: column;
+}
+.stage-head { display: flex; align-items: center; justify-content: space-between; gap: 16px; border-bottom: 1px solid var(--c-line); padding-bottom: 14px; }
+.stage-head__kicker { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.16em; color: var(--c-accent); text-transform: uppercase; }
+.stage-head__title { margin: 2px 0 0; font-family: var(--font-display); font-size: 30px; text-transform: uppercase; }
+.stage-status {
+  padding: 5px 12px; background: rgb(184 77 255 / 0.16); border: 1px solid var(--r-legend-base);
+  color: var(--r-legend-hi); font-family: var(--font-display); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+}
+
+.stage-arena {
+  position: relative; flex: 1; display: grid; place-items: center; padding: 24px 0 18px;
+}
+.stage-grid-svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.cards-row {
+  position: relative; z-index: 2;
+  display: grid; grid-template-columns: repeat(5, 168px); gap: 14px; justify-content: center;
+}
+
+/* ---------- 3D Card Reveal Slot ---------- */
+.slot { position: relative; width: 168px; aspect-ratio: 5 / 7; perspective: 1100px; }
+.slot.top { z-index: 50; }
+.mover, .shaker { position: absolute; inset: 0; }
+.flipper { position: absolute; inset: 0; transform-style: preserve-3d; }
+.flipper.is-flipped { transform: rotateY(180deg); }
+.face {
+  position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden;
+  clip-path: polygon(16px 0, 100% 0, 100% calc(100% - 16px), calc(100% - 16px) 100%, 0 100%, 0 16px);
+}
+.aura {
+  position: absolute; inset: -18%; border-radius: 50%; pointer-events: none;
+  background: radial-gradient(closest-side, var(--glow), transparent 72%); opacity: 0;
+}
+.slot.is-hint .aura { opacity: 0.72; animation: auraPulse 1.5s ease-in-out infinite; }
+.slot.is-hint.r-legend .shaker { animation: legendTremble 1.1s ease-in-out infinite; }
+@keyframes auraPulse { 50% { opacity: 1; transform: scale(1.08); } }
+@keyframes legendTremble { 0%,100%{transform:translateY(-4px) rotate(0)} 25%{transform:translateY(-6px) rotate(-0.8deg)} 75%{transform:translateY(-6px) rotate(0.8deg)} }
+
+.back-btn {
+  width: 100%; height: 100%; border: 0; padding: 3px; cursor: pointer;
+  background: var(--c-line-strong); display: block;
+}
+.slot.is-hint .back-btn {
+  background: linear-gradient(145deg, var(--hi), var(--base), var(--hi));
+  box-shadow: 0 0 24px var(--glow);
+}
+.back-btn__in {
+  width: 100%; height: 100%;
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+  background:
+    repeating-linear-gradient(-45deg, rgb(0 229 255 / 0.06) 0 6px, transparent 6px 14px),
+    linear-gradient(165deg, #121e3a, #090f1e);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+}
+.back-btn:hover .back-btn__in { filter: brightness(1.18); }
+.back-mark {
+  width: 62px; height: 62px; border: 2px solid rgb(0 229 255 / 0.5);
+  display: grid; place-items: center; transform: rotate(45deg);
+}
+.back-mark span { transform: rotate(-45deg); font-family: var(--font-display); font-size: 16px; font-weight: 700; letter-spacing: 0.14em; color: var(--c-chalk); }
+.back-hint { font-family: var(--font-display); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--hi, var(--c-text-muted)); }
+
+/* Front card */
+.front { transform: rotateY(180deg); padding: 3px; background: var(--base); }
+.r-gold .front { background: linear-gradient(150deg, var(--hi), var(--base) 45%, #8f630a); box-shadow: 0 0 22px rgb(240 180 41 / 0.35); }
+.r-legend .front { background: conic-gradient(from var(--foil-angle), #b84dff, #00e5ff, #ff2a5f, #fff099, #b84dff); animation: foilSpin 5s linear infinite; }
+@keyframes foilSpin { to { --foil-angle: 360deg; } }
+
+.f-card {
+  position: relative; height: 100%; overflow: hidden; padding: 10px 9px 7px;
+  clip-path: polygon(15px 0, 100% 0, 100% calc(100% - 15px), calc(100% - 15px) 100%, 0 100%, 0 15px);
+  background: radial-gradient(110% 75% at 50% 8%, color-mix(in srgb, var(--base) 32%, var(--lo)), var(--lo) 75%);
+  display: flex; flex-direction: column;
+}
+.f-card__top { display: flex; justify-content: space-between; align-items: flex-start; }
+.f-card__ovr { font-family: var(--font-display); font-size: 32px; font-weight: 700; line-height: 0.85; color: var(--hi); }
+.f-card__pos { font-family: var(--font-display); font-size: 13px; font-weight: 700; letter-spacing: 0.08em; }
+.f-card__right { text-align: right; }
+.f-card__pips { font-size: 9px; color: var(--hi); letter-spacing: 1px; }
+.f-card__new { display: inline-block; margin-top: 3px; padding: 1px 5px; background: var(--c-accent); color: var(--c-accent-ink); font-family: var(--font-display); font-size: 10px; font-weight: 700; letter-spacing: 0.08em; }
+.f-card__ava { width: 52%; aspect-ratio: 1; margin: -6px auto 0; }
+.f-card__ava svg { width: 100%; height: 100%; display: block; }
+.f-card__ribbon { margin: 2px -9px 4px; background: rgb(5 9 18 / 0.9); border-top: 2px solid var(--base); border-bottom: 1px solid rgb(255 255 255 / 0.12); padding: 4px 6px; text-align: center; }
+.f-card__name { font-family: var(--font-display); font-size: 16px; font-weight: 700; text-transform: uppercase; line-height: 1.05; }
+.f-card__sub { font-size: 10px; color: var(--c-text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.f-card__stats { margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 4px; font-family: var(--font-display); font-size: 11px; text-align: center; }
+.f-card__stats b { font-weight: 700; margin-right: 2px; }
+.f-card__stats span { color: var(--c-text-muted); }
+.f-card__tier { margin-top: 3px; text-align: center; font-family: var(--font-display); font-size: 10px; letter-spacing: 0.18em; text-transform: uppercase; color: var(--hi); }
+.f-card__sheen { position: absolute; inset: 0; pointer-events: none; background: linear-gradient(108deg, transparent 35%, rgb(255 255 255 / 0.5) 50%, transparent 65%); transform: translateX(-130%); }
+.r-gold .f-card:hover .f-card__sheen { transition: transform 600ms var(--ease-out); transform: translateX(130%); }
+
+.slot-label { text-align: center; margin-top: 8px; font-family: var(--font-display); font-size: 12px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--c-text-muted); }
+.slot-label--legend { color: var(--r-legend-hi); font-weight: 700; }
+
+/* Burst particles & scrim */
+.scrim { position: fixed; inset: 0; background: var(--c-scrim); opacity: 0; pointer-events: none; transition: opacity 380ms var(--ease-out); z-index: 45; }
+.scrim.on { opacity: 1; }
+.ring { position: absolute; left: 50%; top: 50%; width: 100%; aspect-ratio: 1; translate: -50% -50%; border-radius: 50%; border: 3px solid var(--hi); pointer-events: none; }
+.spark { position: absolute; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px; background: var(--hi); pointer-events: none; }
+.rays {
+  position: absolute; left: 50%; top: 50%; width: 320%; aspect-ratio: 1; translate: -50% -50%; pointer-events: none;
+  background: repeating-conic-gradient(from 0deg, rgb(184 77 255 / 0.45) 0deg 6deg, transparent 6deg 18deg);
+  -webkit-mask: radial-gradient(closest-side, #000 18%, transparent 74%); mask: radial-gradient(closest-side, #000 18%, transparent 74%);
+}
+
+/* Controls & Lower-third ticker */
+.stage-controls {
+  border-top: 1px solid var(--c-line); padding-top: 16px;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap;
+}
+.kbd { display: inline-grid; place-items: center; min-width: 24px; height: 22px; padding: 0 6px; border: 1px solid var(--c-line-control); border-bottom-width: 2px; font-family: var(--font-display); font-size: 12px; background: var(--c-surface-2); }
+.ticker {
+  margin-top: 14px; display: flex; align-items: center; gap: 12px;
+  padding: 9px 14px; background: var(--c-surface-2); border-left: 4px solid var(--c-accent); font-size: 13px;
+}
+.ticker__tag { font-family: var(--font-display); font-weight: 700; letter-spacing: 0.1em; color: var(--c-accent); text-transform: uppercase; }
+
+/* Pack cover button (for tear demo) */
+.pack-cover {
+  width: 196px; aspect-ratio: 5 / 7; border: 2px solid var(--c-accent); padding: 0; cursor: pointer;
+  background: linear-gradient(155deg, #162a54, #0a1224);
+  clip-path: polygon(18px 0, 100% 0, 100% calc(100% - 18px), calc(100% - 18px) 100%, 0 100%, 0 18px);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px;
+  box-shadow: 0 0 36px rgb(0 229 255 / 0.28);
+}
+
+@media (max-width: 1260px) {
+  .page { grid-template-columns: 1fr; }
+  .cards-row { grid-template-columns: repeat(3, 168px); }
+}
+@media (max-width: 820px) {
+  .topbar { padding: 0 14px; gap: 12px; }
+  .cards-row { grid-template-columns: repeat(2, 152px); }
+  .slot { width: 152px; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .slot.is-hint .aura, .slot.is-hint.r-legend .shaker, .r-legend .front { animation: none !important; }
+  .btn, .meter__fill, .f-card__sheen { transition: none !important; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <a class="logo" href="home.html"><span class="logo__badge" aria-hidden="true">MFG</span>SÓNG CẦU TRƯỜNG</a>
+  <nav class="nav" aria-label="Điều hướng chính">
+    <a class="nav__link" href="home.html">Trang chủ</a>
+    <a class="nav__link is-on" href="shop.html" aria-current="page">Cửa hàng</a>
+    <a class="nav__link" href="shop.html#stage">Mở gói</a>
+    <a class="nav__link" href="squad.html">Đội hình</a>
+  </nav>
+  <div class="topbar__right">
+    <span class="stat-pill stat-pill--coin">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="2"/><rect x="7" y="4" width="2" height="8" fill="currentColor"/></svg>
+      <span class="num" id="coinVal">1.240</span><small>xu</small>
+    </span>
+    <span class="stat-pill stat-pill--ticket">
+      <svg width="15" height="15" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 4h12v3a1.5 1.5 0 0 0 0 3v3H2v-3a1.5 1.5 0 0 0 0-3V4z" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>
+      <span class="num" id="ticketVal">1</span><small>vé</small>
+    </span>
+    <span class="user"><span class="user__dot" aria-hidden="true">D</span><span>duyfc</span></span>
+  </div>
+</header>
+
+<main class="page">
+  <aside class="col-left">
+    <section class="b-panel" style="--panel-stripe: var(--c-info);" aria-labelledby="box-title">
+      <div class="panel-head">
+        <span class="panel-head__slash">///</span>
+        <h1 id="box-title">Hộp thẻ của bạn</h1>
+        <span class="panel-head__meta num">còn <b id="boxTotal" style="color:var(--c-text)">90</b>/100</span>
+      </div>
+      <p class="muted" style="margin:0 0 10px;font-size:13px">Hộp riêng 100 phiếu (2 HT · 10 Vàng · 30 Bạc · 58 Đồng). Bốc phiếu nào, trừ trực tiếp phiếu đó.</p>
+      <div id="boxRows"></div>
+      <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--c-line)">
+        <span class="muted" style="font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em">5 lần bốc gần nhất</span>
+        <div class="recent-row">
+          <span class="r-chip r-bronze">◆ Đồng</span>
+          <span class="r-chip r-silver">◆◆ Bạc</span>
+          <span class="r-chip r-gold">◆◆◆ Vàng</span>
+          <span class="r-chip r-bronze">◆ Đồng</span>
+          <span class="r-chip r-silver">◆◆ Bạc</span>
+        </div>
+        <button type="button" class="btn btn--ghost btn--sm" disabled style="margin-top:10px">Làm mới hộp · khi hết phiếu</button>
+      </div>
+    </section>
+
+    <section class="b-panel" style="--panel-stripe: var(--c-accent);" aria-labelledby="packs-title">
+      <div class="panel-head">
+        <span class="panel-head__slash">///</span>
+        <h2 id="packs-title">Chọn gói thẻ</h2>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px">
+        <div class="offer offer--free">
+          <div class="pack-thumb" style="border-color:var(--c-accent)">
+            <div class="pack-thumb__num">5<small>MIỄN PHÍ</small></div>
+            <div class="pack-thumb__stripes"><i style="background:var(--r-bronze-base)"></i><i style="background:var(--r-silver-base)"></i><i style="background:var(--r-gold-base)"></i><i style="background:var(--r-legend-base)"></i></div>
+          </div>
+          <div>
+            <div class="offer__title">Gói 5 thẻ miễn phí <span class="badge-hot">TÂN THỦ</span></div>
+            <div class="offer__desc">Bảo đảm ≥ 1 thẻ Bạc trở lên</div>
+          </div>
+          <button type="button" class="btn btn--primary btn--sm" onclick="openPack(5, true)">Mở miễn phí</button>
+        </div>
+
+        <div class="offer">
+          <div class="pack-thumb">
+            <div class="pack-thumb__num">5<small>THẺ</small></div>
+            <div class="pack-thumb__stripes"><i style="background:var(--r-bronze-base)"></i><i style="background:var(--r-silver-base)"></i><i style="background:var(--r-gold-base)"></i><i style="background:var(--r-legend-base)"></i></div>
+          </div>
+          <div>
+            <div class="offer__title">Gói 5 thẻ <span class="badge-save">RẺ 10%</span></div>
+            <div class="offer__desc">Bốc 5 phiếu, bảo đảm ≥ 1 Bạc+</div>
+          </div>
+          <button type="button" class="btn btn--coin btn--sm" onclick="openPack(5, false, 450)">Mua · 450 xu</button>
+        </div>
+
+        <div class="offer">
+          <div class="pack-thumb">
+            <div class="pack-thumb__num">1<small>THẺ</small></div>
+            <div class="pack-thumb__stripes"><i style="background:var(--r-bronze-base)"></i><i style="background:var(--r-silver-base)"></i><i style="background:var(--r-gold-base)"></i><i style="background:var(--r-legend-base)"></i></div>
+          </div>
+          <div>
+            <div class="offer__title">Gói 1 thẻ</div>
+            <div class="offer__desc">Bốc 1 phiếu khi cần nguyên liệu ép</div>
+          </div>
+          <button type="button" class="btn btn--coin btn--sm" onclick="openPack(1, false, 100)">Mua · 100 xu</button>
+        </div>
+      </div>
+    </section>
+  </aside>
+
+  <section class="stage-wrap" id="stage" aria-label="Sân khấu mở gói thẻ">
+    <div class="stage-head">
+      <div>
+        <div class="stage-head__kicker">/// SÂN KHẤU PHÁT SÓNG TRỰC TIẾP</div>
+        <h2 class="stage-head__title" id="stageTitle">Gói 5 thẻ · Quà tân thủ</h2>
+      </div>
+      <div class="stage-status" id="stageStatus">Cảnh báo: Có tín hiệu Huyền thoại!</div>
+    </div>
+
+    <div class="stage-arena" id="stageArena">
+      <svg class="stage-grid-svg" viewBox="0 0 920 460" preserveAspectRatio="none" aria-hidden="true">
+        <line x1="0" y1="230" x2="920" y2="230" stroke="rgb(0 229 255 / 0.14)" stroke-width="1.5"/>
+        <ellipse cx="460" cy="230" rx="340" ry="155" fill="none" stroke="rgb(0 229 255 / 0.16)" stroke-width="1.5" stroke-dasharray="8 6"/>
+        <circle cx="460" cy="230" r="76" fill="none" stroke="rgb(255 42 95 / 0.18)" stroke-width="1.5"/>
+      </svg>
+      <div class="cards-row" id="cardsRow"></div>
+    </div>
+
+    <div class="stage-controls">
+      <span class="muted" style="font-size:13px">Bấm thẻ hoặc <span class="kbd">Space</span> để lật · <span class="kbd">Esc</span> bỏ qua hiệu ứng</span>
+      <div style="display:flex;gap:10px;align-items:center">
+        <button type="button" class="btn btn--secondary" onclick="openPack(5, true)">Mở lại gói mẫu</button>
+        <button type="button" class="btn btn--primary" id="flipAllBtn" onclick="revealAll()">Lật tất cả</button>
+        <a class="btn btn--ghost" href="squad.html">Xếp đội</a>
+      </div>
+    </div>
+
+    <div class="ticker" role="status" aria-live="polite" id="ticker">
+      <span class="ticker__tag">PHÁT SÓNG</span>
+      <span id="tickerText">Đã mở 3/5 thẻ: Jankulja (59), Sazquín (66), Vuketić (81 Vàng). Thẻ 4 đang phát tia tím Huyền thoại — bấm để lật!</span>
+    </div>
+  </section>
+</main>
+<div class="scrim" id="scrim"></div>
+
+<script>
+const TIERS = {
+  bronze: { label:'Đồng', pips:'◆', color:'bronze' },
+  silver: { label:'Bạc', pips:'◆◆', color:'silver' },
+  gold:   { label:'Vàng', pips:'◆◆◆', color:'gold' },
+  legend: { label:'Huyền thoại', pips:'◆◆◆◆', color:'legend' },
+};
+const TIER_BASE = { bronze:'#c47442', silver:'#94a8c4', gold:'#f0b429', legend:'#b84dff' };
+const POS_FULL = { GK:'Thủ môn', DF:'Hậu vệ', MF:'Tiền vệ', FW:'Tiền đạo' };
+const isReduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+let box = { legend:2, gold:8, silver:27, bronze:53 };
+const boxInit = { legend:2, gold:10, silver:30, bronze:58 };
+let coins = 1240;
+let tickets = 1;
+let busy = false;
+
+const DEMO_CARDS = [
+  { last:'Jankulja', first:'Vlagan', nick:'Chốt chặn thông minh', pos:'DF', ovr:59, tier:'bronze', isNew:true, flipped:true, skin:'#f3d2b5', hair:'#1b1410', hairT:6, beard:1, stats:[['PAC',57],['SHO',35],['PAS',68],['DRI',63],['DEF',56],['STA',59]] },
+  { last:'Sazquín', first:'Niriano', nick:'Bộ não', pos:'MF', ovr:66, tier:'silver', isNew:true, flipped:true, skin:'#a46a43', hair:'#3b2414', hairT:5, beard:2, stats:[['PAC',67],['SHO',66],['PAS',69],['DRI',71],['DEF',62],['STA',60]] },
+  { last:'Vuketić', first:'Vladimir', nick:'Ma tốc độ', pos:'FW', ovr:81, tier:'gold', isNew:true, flipped:true, skin:'#a46a43', hair:'#d9b26a', hairT:5, beard:1, stats:[['PAC',86],['SHO',84],['PAS',72],['DRI',83],['DEF',44],['STA',76]] },
+  { last:'Holmström', first:'Bjørvar', nick:'Họng pháo', pos:'FW', ovr:94, tier:'legend', isNew:true, flipped:false, skin:'#e5b48f', hair:'#3b2414', hairT:1, beard:2, stats:[['PAC',88],['SHO',99],['PAS',89],['DRI',95],['DEF',81],['STA',99]] },
+  { last:'Berggren', first:'Ingvar', nick:'Mũi tên', pos:'FW', ovr:68, tier:'silver', isNew:false, flipped:false, skin:'#e5b48f', hair:'#d9b26a', hairT:1, beard:2, stats:[['PAC',74],['SHO',69],['PAS',61],['DRI',70],['DEF',40],['STA',65]] },
+];
+let activeCards = structuredClone(DEMO_CARDS);
+
+function svgAvatar(p) {
+  const shirt = TIER_BASE[p.tier];
+  const hairs = [
+    '',
+    `<path d="M29 40 Q50 14 71 40 Q71 30 50 25 Q29 30 29 40Z" fill="${p.hair}"/>`,
+    `<path d="M28 44 Q26 18 50 18 Q74 18 72 44 L68 34 Q50 28 32 34Z" fill="${p.hair}"/>`,
+    `<rect x="29" y="21" width="42" height="10" rx="4" fill="${p.hair}"/>`,
+    `<path d="M44 26 Q50 12 56 26 L54 31 Q50 27 46 31Z" fill="${p.hair}"/>`,
+    `<g fill="${p.hair}">${Array.from({length:8},(_,i)=>`<circle cx="${32+i*5.2}" cy="${26+(i%2)*2}" r="4.8"/>`).join('')}</g>`,
+    `<path d="M28 52 Q26 16 50 17 Q74 16 72 52 L68 50 L68 36 Q50 30 32 36 L32 50Z" fill="${p.hair}"/>`
+  ];
+  const beards = [
+    '',
+    `<path d="M31 50 Q50 70 69 50 Q67 62 50 63 Q33 62 31 50Z" fill="${p.hair}" opacity="0.85"/>`,
+    `<path d="M44 57 Q50 54 56 57 L55 59 Q50 57 45 59Z" fill="${p.hair}"/>`
+  ];
+  return `<svg viewBox="0 0 100 100" aria-hidden="true">
+    <path d="M14 100 Q16 74 38 70 L62 70 Q84 74 86 100Z" fill="${shirt}"/>
+    <path d="M38 70 L50 82 L62 70" fill="none" stroke="rgb(0 0 0 /.35)" stroke-width="2.5"/>
+    <rect x="43" y="58" width="14" height="14" fill="${p.skin}"/>
+    <ellipse cx="50" cy="44" rx="20.5" ry="23.5" fill="${p.skin}"/>
+    <ellipse cx="29.5" cy="46" rx="2.5" ry="4" fill="${p.skin}"/><ellipse cx="70.5" cy="46" rx="2.5" ry="4" fill="${p.skin}"/>
+    ${hairs[p.hairT]}
+    <circle cx="42" cy="47" r="1.9" fill="#141414"/><circle cx="58" cy="47" r="1.9" fill="#141414"/>
+    <path d="M45.5 58 Q50 60.5 54.5 58" fill="none" stroke="rgb(0 0 0 /.45)" stroke-width="1.5" stroke-linecap="round"/>
+    ${beards[p.beard]}
+  </svg>`;
+}
+
+function renderBox() {
+  const total = box.legend + box.gold + box.silver + box.bronze;
+  document.getElementById('boxTotal').textContent = total;
+  const order = ['legend', 'gold', 'silver', 'bronze'];
+  document.getElementById('boxRows').innerHTML = order.map(t => {
+    const n = box[t], pct = total ? ((n / total) * 100).toLocaleString('vi-VN', { minimumFractionDigits:1, maximumFractionDigits:1 }) : '0,0';
+    return `<div class="meter r-${t}">
+      <span class="meter__name"><span class="meter__pips" aria-hidden="true">${TIERS[t].pips}</span>${TIERS[t].label}</span>
+      <div class="meter__track"><div class="meter__fill" style="width:${(n / boxInit[t]) * 100}%"></div></div>
+      <span class="meter__cnt num">${n}</span>
+      <span class="meter__pct num">${pct}%</span>
+    </div>`;
+  }).join('');
+}
+
+function renderCards() {
+  const row = document.getElementById('cardsRow');
+  row.style.gridTemplateColumns = `repeat(${activeCards.length}, 168px)`;
+  row.innerHTML = activeCards.map((c, i) => {
+    const isHint = !c.flipped && (c.tier === 'gold' || c.tier === 'legend');
+    const hintText = c.tier === 'legend' ? 'Sáng tím · Huyền thoại!' : c.tier === 'gold' ? 'Sáng vàng…' : `Thẻ ${i + 1}`;
+    return `<div>
+      <div class="slot r-${c.tier}${isHint ? ' is-hint' : ''}" data-i="${i}">
+        <div class="mover">
+          <div class="aura"></div>
+          <div class="shaker">
+            <div class="flipper${c.flipped ? ' is-flipped' : ''}">
+              <button class="face back-btn" type="button" aria-label="Lật thẻ ${i + 1}" onclick="revealCard(${i})">
+                <div class="back-btn__in">
+                  <div class="back-mark"><span>MFG</span></div>
+                  <div class="back-hint">${hintText}</div>
+                </div>
+              </button>
+              <div class="face front" role="img" aria-label="${TIERS[c.tier].label}, ${c.first} ${c.last}, ${POS_FULL[c.pos]}, OVR ${c.ovr}">
+                <div class="f-card">
+                  <div class="f-card__top">
+                    <div><div class="f-card__ovr num">${c.ovr}</div><div class="f-card__pos">${c.pos}</div></div>
+                    <div class="f-card__right">
+                      <div class="f-card__pips" aria-hidden="true">${TIERS[c.tier].pips}</div>
+                      ${c.isNew ? '<span class="f-card__new">MỚI</span>' : ''}
+                    </div>
+                  </div>
+                  <div class="f-card__ava">${svgAvatar(c)}</div>
+                  <div class="f-card__ribbon">
+                    <div class="f-card__name">${c.last}</div>
+                    <div class="f-card__sub">${c.first} · “${c.nick}”</div>
+                  </div>
+                  <div class="f-card__stats">${c.stats.map(([k, v]) => `<div><b class="num">${v}</b><span>${k}</span></div>`).join('')}</div>
+                  <div class="f-card__tier">${TIERS[c.tier].label}</div>
+                  <div class="f-card__sheen"></div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="slot-label${!c.flipped && c.tier === 'legend' ? ' slot-label--legend' : ''}" id="lbl-${i}">
+        ${c.flipped ? `${TIERS[c.tier].pips} ${TIERS[c.tier].label}` : hintText}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function anim(el, kf, opts) {
+  if (isReduced()) return Promise.resolve();
+  return el.animate(kf, opts).finished.catch(() => {});
+}
+
+function burst(slot, count) {
+  if (isReduced()) return;
+  const mover = slot.querySelector('.mover');
+  const ring = document.createElement('div');
+  ring.className = 'ring';
+  mover.appendChild(ring);
+  anim(ring, [{ transform:'scale(.6)', opacity:0.95 }, { transform:'scale(1.9)', opacity:0 }], { duration:560, easing:'cubic-bezier(.16,1,.3,1)' }).then(() => ring.remove());
+  for (let i = 0; i < count; i++) {
+    const s = document.createElement('span');
+    s.className = 'spark';
+    mover.appendChild(s);
+    const ang = (i / count) * Math.PI * 2 + Math.random() * 0.4;
+    const dist = 80 + Math.random() * 105;
+    anim(s, [
+      { transform:'translate(0,0) rotate(0deg) scale(1)', opacity:1 },
+      { transform:`translate(${Math.cos(ang)*dist}px,${Math.sin(ang)*dist}px) rotate(180deg) scale(0)`, opacity:0.1 }
+    ], { duration:650 + Math.random()*250, easing:'cubic-bezier(.16,1,.3,1)' }).then(() => s.remove());
+  }
+}
+
+async function revealCard(i, quick = false) {
+  const c = activeCards[i];
+  if (!c || c.flipped || (busy && !quick)) return;
+  c.flipped = true;
+  if (!quick) busy = true;
+  const slot = document.querySelector(`.slot[data-i="${i}"]`);
+  const mover = slot.querySelector('.mover'), shaker = slot.querySelector('.shaker'), flipper = slot.querySelector('.flipper');
+  const lbl = document.getElementById(`lbl-${i}`);
+
+  if (isReduced() || quick) {
+    slot.classList.remove('is-hint');
+    flipper.classList.add('is-flipped');
+    if (isReduced()) await flipper.animate([{ opacity:0.3 }, { opacity:1 }], { duration:180 }).finished.catch(()=>{});
+  } else {
+    const isLegend = c.tier === 'legend';
+    slot.classList.add('top');
+    if (isLegend) {
+      document.getElementById('scrim').classList.add('on');
+      const rays = document.createElement('div');
+      rays.className = 'rays';
+      mover.prepend(rays);
+      anim(rays, [{ opacity:0, transform:'rotate(0)' }, { opacity:1, offset:0.25 }, { opacity:0, transform:'rotate(140deg)' }], { duration:1800 }).then(() => rays.remove());
+      await anim(shaker, [
+        { transform:'translateY(0)' },
+        { transform:'translate(-5px,-12px) rotate(-1.5deg)' },
+        { transform:'translate(5px,-12px) rotate(1.5deg)' },
+        { transform:'translate(-6px,-14px) rotate(-2deg)' },
+        { transform:'translate(6px,-14px) rotate(2deg)' },
+        { transform:'translateY(-12px)' }
+      ], { duration:680 });
+    }
+    slot.classList.remove('is-hint');
+    await anim(flipper, [
+      { transform:'rotateY(0) scale(1)' },
+      { transform:'rotateY(90deg) scale(1.09)', offset:0.5 },
+      { transform:'rotateY(180deg) scale(1)' }
+    ], { duration: isLegend ? 620 : 420, easing:'cubic-bezier(.65,0,.35,1)' });
+    flipper.classList.add('is-flipped');
+    if (isLegend) burst(slot, 26);
+    else if (c.tier === 'gold') burst(slot, 12);
+    if (isLegend) {
+      await new Promise(r => setTimeout(r, 420));
+      document.getElementById('scrim').classList.remove('on');
+    }
+    slot.classList.remove('top');
+  }
+  lbl.className = 'slot-label';
+  lbl.textContent = `${TIERS[c.tier].pips} ${TIERS[c.tier].label}`;
+  document.getElementById('tickerText').textContent = `Đã mở Thẻ ${i + 1}: ${TIERS[c.tier].label} · ${c.first} ${c.last} (${c.pos}) · OVR ${c.ovr}!`;
+  if (!quick) busy = false;
+  if (activeCards.every(x => x.flipped)) {
+    document.getElementById('stageStatus').textContent = 'Hoàn tất gói thẻ';
+    document.getElementById('flipAllBtn').disabled = true;
+  }
+}
+
+async function revealAll() {
+  const rest = activeCards.map((c, i) => c.flipped ? -1 : i).filter(i => i >= 0);
+  await Promise.all(rest.map((i, k) => new Promise(r => setTimeout(r, k * 70)).then(() => revealCard(i, true))));
+}
+
+function openPack(size, isFree, price = 0) {
+  if (!isFree && coins < price) {
+    document.getElementById('tickerText').textContent = `Chưa đủ xu để mua gói ${size} thẻ (thiếu ${(price - coins).toLocaleString('vi-VN')} xu).`;
+    return;
+  }
+  if (!isFree) {
+    coins -= price;
+    document.getElementById('coinVal').textContent = coins.toLocaleString('vi-VN');
+  } else if (tickets > 0) {
+    tickets = Math.max(0, tickets - 1);
+    document.getElementById('ticketVal').textContent = tickets;
+  }
+  activeCards = structuredClone(DEMO_CARDS.slice(0, size)).map((c, idx) => ({
+    ...c,
+    flipped: false,
+    tier: size === 1 ? 'gold' : c.tier,
+    ovr: size === 1 ? 81 : c.ovr
+  }));
+  document.getElementById('stageTitle').textContent = size === 1 ? 'Gói 1 thẻ · Mở trực tiếp' : 'Gói 5 thẻ · Đã xé gói';
+  document.getElementById('stageStatus').textContent = 'Sẵn sàng lật thẻ';
+  document.getElementById('flipAllBtn').disabled = false;
+  renderCards();
+  document.querySelectorAll('.slot').forEach((s, idx) => {
+    anim(s, [{ transform:'translateY(28px) scale(0.88)', opacity:0 }, { transform:'none', opacity:1 }], { duration:340, delay:idx*70, easing:'cubic-bezier(.16,1,.3,1)', fill:'backwards' });
+  });
+  document.getElementById('tickerText').textContent = `Gói ${size} thẻ đã mở! Bấm từng thẻ hoặc nhấn Space để lật.`;
+}
+
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') { revealAll(); }
+  if (e.key === ' ' && e.target.tagName !== 'BUTTON') {
+    e.preventDefault();
+    const idx = activeCards.findIndex(c => !c.flipped);
+    if (idx >= 0) revealCard(idx);
+  }
+});
+
+renderBox();
+renderCards();
+</script>
+</body>
+</html>

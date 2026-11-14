@@ -1,0 +1,129 @@
+/*
+ * Hướng B: "Sa Bàn Hoàng Kim" (Editorial Luxury / Matchday Programme — Chế độ Sáng)
+ * Bộ token v3 giữ nguyên toàn bộ tên biến của apps/web/src/styles/tokens.css.
+ */
+:root {
+  /* Nền & bề mặt — Giấy ngà ấm & kem ấn phẩm */
+  --c-bg: #f3efe6;
+  --c-surface-1: #faf8f3;
+  --c-surface-2: #eae3d5;
+  --c-surface-3: #ddd4c3;
+  --c-line: #cfc5b2;
+  --c-line-strong: #9e927d;
+  --c-line-control: #736856;
+  --c-chalk: #faf8f3;
+
+  /* Chữ — Mực than chì độ tương phản cao trên nền sáng */
+  --c-text: #141816;
+  --c-text-muted: #4a524d;
+  --c-text-faint: #636b65; /* chỉ dùng trên --c-bg (4.79:1) */
+
+  /* Hành động & trạng thái — Xanh lục bảo hoàng gia & đồng khắc */
+  --c-accent: #0a6847;
+  --c-accent-hover: #075238;
+  --c-accent-ink: #faf8f3;
+  --c-accent-soft: rgb(10 104 71 / 0.12);
+  --c-danger: #b51f1f;
+  --c-warning: #9e4506;
+  --c-success: #0e7452;
+  --c-info: #1864ab;
+  --c-coin: #824f00;
+  --c-focus: #1864ab;
+  --c-scrim: rgb(20 24 22 / 0.76);
+
+  /* Sân & đội (HUD, vẽ trận 3D) */
+  --c-pitch-a: #1b5e43;
+  --c-pitch-b: #216b4d;
+  --c-pitch-line: #faf8f3;
+  --c-team-home: #1864ab;
+  --c-team-away: #d9480f;
+  --c-power-pass: #1864ab;
+  --c-power-through: #7e42f5;
+  --c-power-shot: #0a6847;
+
+  /* Độ hiếm: giữ mặt thẻ tối (lo) tạo mảng trưng bày sang trọng nổi bật trên nền giấy sáng */
+  --r-bronze-base: #ad6234;
+  --r-bronze-hi: #f0b289;
+  --r-bronze-lo: #29160a;
+  --r-bronze-glow: rgb(173 98 52 / 0.42);
+
+  --r-silver-base: #8b97a6;
+  --r-silver-hi: #ecf1f7;
+  --r-silver-lo: #1e242b;
+  --r-silver-glow: rgb(139 151 166 / 0.48);
+
+  --r-gold-base: #d49b1a;
+  --r-gold-hi: #ffe58f;
+  --r-gold-lo: #2b1e04;
+  --r-gold-glow: rgb(212 155 26 / 0.58);
+
+  --r-legend-base: #7e42f5;
+  --r-legend-hi: #e6d4ff;
+  --r-legend-lo: #15092b;
+  --r-legend-glow: rgb(126 66 245 / 0.68);
+  --r-legend-foil: conic-gradient(from 0deg, #7e42f5, #0a6847, #d49b1a, #b51f1f, #7e42f5);
+
+  /* Chữ — OFL hỗ trợ tiếng Việt đầy đủ */
+  --font-display: 'Space Grotesk', sans-serif;
+  --font-body: 'IBM Plex Sans', system-ui, sans-serif;
+  --fs-xs: 0.75rem; /* 12 */
+  --fs-sm: 0.875rem; /* 14 */
+  --fs-md: 1rem; /* 16 */
+  --fs-lg: 1.25rem; /* 20 */
+  --fs-xl: 1.75rem; /* 28 */
+  --fs-2xl: 2.5rem; /* 40 */
+  --fs-3xl: 4rem; /* 64 */
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+  --fw-bold: 700;
+  --lh-tight: 1.08;
+  --lh-normal: 1.5;
+  --tracking-caps: 0.08em;
+
+  /* Khoảng cách (bước 4px) */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 24px;
+  --sp-6: 32px;
+  --sp-7: 48px;
+  --sp-8: 64px;
+
+  /* Bo góc & vát bát giác cân xứng */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --card-notch: 12px;
+  --panel-notch: 0px;
+
+  /* Bóng & lớp */
+  --shadow-1: 0 2px 8px rgb(20 24 22 / 0.06);
+  --shadow-2: 0 12px 28px rgb(20 24 22 / 0.14);
+  --z-hud: 10;
+  --z-overlay: 100;
+  --z-modal: 200;
+  --z-toast: 300;
+
+  /* Chuyển động — điềm tĩnh, đằm chắc */
+  --dur-instant: 90ms;
+  --dur-fast: 180ms;
+  --dur-base: 280ms;
+  --dur-slow: 460ms;
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-snap: cubic-bezier(0.32, 1.32, 0.56, 1);
+  --stagger: 90ms;
+
+  /* Bố cục */
+  --layout-max: 1400px;
+  --card-w-lg: 200px;
+  --card-w-md: 146px;
+  --card-w-sm: 94px;
+
+  /* === Biến mới thêm cho Hướng B (chưa có trong tokens.css v2) === */
+  --c-gold-leaf: #b8860b; /* Viền khắc vàng đồng trang trí (chỉ dùng cho viền/chấm định vị) */
+  --c-card-ink: #faf8f3; /* Chữ trắng ngà cố định trên mặt thẻ tối dù nền app là chế độ sáng */
+  --c-card-muted: #c9c2b2; /* Chữ phụ trên mặt thẻ tối */
+}
