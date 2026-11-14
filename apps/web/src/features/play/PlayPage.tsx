@@ -91,13 +91,10 @@ export function PlayPage() {
       ? readDevOptions(params.toString(), import.meta.env)
       : {};
   const isOnboarding = params.get('onboarding') === '1';
-  const requestedDifficulty: Difficulty =
-    params.get('difficulty') === 'hard' ? 'hard' : 'easy';
+  const requestedDifficulty: Difficulty = params.get('difficulty') === 'hard' ? 'hard' : 'easy';
   const autoStart = Boolean(dev.autopilot) || isOnboarding;
   const [stage, setStage] = useState<Stage>(() =>
-    autoStart
-      ? { kind: 'starting', difficulty: requestedDifficulty }
-      : { kind: 'select' },
+    autoStart ? { kind: 'starting', difficulty: requestedDifficulty } : { kind: 'select' },
   );
   const { mutate } = useStartMatch();
   const autopilot = dev.autopilot ?? false;
@@ -314,7 +311,8 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
   const [hints, setHints] = useState(true);
   const [paused, setPausedState] = useState(false);
   const [showTutorial, setShowTutorial] = useState(
-    () => !autopilot && !readTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null),
+    () =>
+      !autopilot && !readTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null),
   );
   const [tutorialKey, setTutorialKey] = useState(0);
   const [graphics, setGraphics] = useState<GraphicsSettings>(loadGraphics);
@@ -352,7 +350,12 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
     if (started) later(HINTS_SHOW_MS, () => setHints(false));
   }, [started, later]);
 
-  const [subs, setSubs] = useState<SubOptions>({ onPitch: [], bench: [] });
+  const [subs, setSubs] = useState<SubOptions>({
+    onPitch: [],
+    bench: [],
+    hasKeeper: true,
+    keeperOnly: false,
+  });
   const setPaused = useCallback((value: boolean) => {
     pausedRef.current = value;
     setPausedState(value);
@@ -464,7 +467,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
             setPaused(false);
           }}
           subs={{
-            allowed: hud?.ballDead === true && hud.phase !== 'full_time' && hud.shootout === null,
+            allowed: hud !== null && hud.subWindow !== 'closed',
             left: hud?.subsLeft ?? 0,
             options: subs,
             onSubstitute: (outId, benchSlot) =>

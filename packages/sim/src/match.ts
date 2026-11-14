@@ -64,6 +64,13 @@ import { nextFloat, type RngState, seedRng } from './rng';
 import { TICK_DT } from './tick';
 import { advanceClock, regulationTicks, RESTART_GRACE_TICKS } from './rules/clock';
 import { isKeeperHandling, judgeFoul } from './rules/fouls';
+import {
+  HALF_TIME_MAX_TICKS,
+  KEEPER_HOLD_MAX_TICKS,
+  SET_PIECE_MAX_TICKS,
+  WHISTLE_PENALTY_WAIT_TICKS,
+  WHISTLE_SHOT_WAIT_TICKS,
+} from './rules/limits';
 import { autoSubstitute } from './rules/substitution';
 import { nextShooter, SHOOTOUT_KICK_TICKS, shooterFor, shootoutWinner } from './rules/shootout';
 import {
@@ -104,6 +111,7 @@ import {
 } from './stats/params';
 import {
   NO_INPUT,
+  type ActionDeadline,
   type BallState,
   type MatchSetup,
   type MatchState,
@@ -253,6 +261,9 @@ export function createMatch(setup: MatchSetup): MatchState {
     bench: { home: benchOf(home), away: benchOf(away) },
     subsUsed: { home: 0, away: 0 },
     substitutions: [],
+    actionDeadline: null,
+    halfTimeEndTick: null,
+    shotInFlight: null,
     shootout: null,
     ballOwnerId: null,
     ownerSinceTick: 0,
@@ -549,25 +560,87 @@ function runTeamAi(
 /**
  * Chạy một tick cố định (TICK_DT). Hàm thuần: không sửa `state`, không đọc đồng hồ thật.
  * Theo phase: `play` → chơi bóng; `kickoff`/`dead_ball` → chờ thực hiện lại bóng;
- * `half_time` → chờ bấm chuyền để đá hiệp 2; `full_time` → trả nguyên state.
+ * `half_time` → chờ bấm chuyền để đá hiệp 2 (tối đa HALF_TIME_MAX_TICKS); `full_time` → trả nguyên
+ * state.
  * Đồng hồ chạy ở mọi phase trừ `half_time`/`full_time`.
  */
 export function step(state: MatchState, rawInput: PlayerInput): MatchState {
   if (state.phase === 'full_time') return state;
+  const next = advance(state, rawInput);
+  const actionDeadline = nextDeadline(state.actionDeadline, next);
+  return actionDeadline === next.actionDeadline ? next : { ...next, actionDeadline };
+}
+
+/**
+ * Hạn chót người chơi phải tự thực hiện ở state `s` (`prev`: hạn chót tick trước, giữ nguyên object
+ * nếu không đổi): đá phạt / phạt đền của đội người chơi tính từ lúc đặt bóng; thủ môn do người chơi
+ * cầm đang ôm bóng bằng tay tính từ lúc bắt đầu ôm. Autopilot thì không có.
+ */
+function nextDeadline(prev: ActionDeadline | null, s: MatchState): ActionDeadline | null {
+  if (s.autopilot) return null;
+  const r = s.restart;
+  if (r) {
+    if (r.team !== HUMAN_TEAM || (r.type !== 'free_kick' && r.type !== 'penalty')) return null;
+    const deadlineTick = r.startTick + SET_PIECE_MAX_TICKS;
+    return prev?.kind === r.type &&
+      prev.playerId === r.takerId &&
+      prev.deadlineTick === deadlineTick
+      ? prev
+      : { kind: r.type, playerId: r.takerId, startTick: r.startTick, deadlineTick };
+  }
+  const holder = s.ballOwnerId === null ? undefined : s.players.find((p) => p.id === s.ballOwnerId);
+  if (
+    s.phase !== 'play' ||
+    !holder ||
+    holder.team !== HUMAN_TEAM ||
+    holder.id !== s.controlledId ||
+    !isKeeperHandling(holder, s.half, s.backPass)
+  ) {
+    return null;
+  }
+  return prev?.kind === 'keeper_hold' && prev.playerId === holder.id
+    ? prev
+    : {
+        kind: 'keeper_hold',
+        playerId: holder.id,
+        startTick: s.tick,
+        deadlineTick: s.tick + KEEPER_HOLD_MAX_TICKS,
+      };
+}
+
+/**
+ * Cú sút chưa phân định sau tick này: cú sút mới (`lastShot` vừa đặt ở tick này) hoặc cú đang theo
+ * dõi, còn tính tới khi bóng chết (vào lưới / ra ngoài), có người giữ bóng, đội kia chạm bóng (thủ
+ * môn cản) hoặc quá WHISTLE_SHOT_WAIT_TICKS.
+ */
+function trackShot(prev: MatchState['shotInFlight'], s: MatchState): MatchState {
+  const shot =
+    s.lastShot && s.lastShot.tick === s.tick ? { team: s.lastShot.team, tick: s.tick } : prev;
+  const pending =
+    shot !== null &&
+    s.restart === null &&
+    s.ballOwnerId === null &&
+    s.lastTouchTeam === shot.team &&
+    s.tick - shot.tick < WHISTLE_SHOT_WAIT_TICKS;
+  const shotInFlight = pending ? shot : null;
+  return shotInFlight === s.shotInFlight ? s : { ...s, shotInFlight };
+}
+
+function advance(state: MatchState, rawInput: PlayerInput): MatchState {
   const input = state.autopilot ? NO_INPUT : sanitizeInput(rawInput);
   const pressed = (b: Button) => input[b] && !state.input[b];
   const tick = state.tick + 1;
 
   if (state.phase === 'half_time') {
     const waiting = { ...state, tick, input };
-    return pressed('pass') || state.autopilot ? startSecondHalf(waiting, tick) : waiting;
+    const timeUp = state.halfTimeEndTick !== null && tick >= state.halfTimeEndTick;
+    return pressed('pass') || state.autopilot || timeUp ? startSecondHalf(waiting, tick) : waiting;
   }
   if (state.phase === 'shootout') return stepShootout(state, input, pressed, tick);
-  const next = runClock(
-    state.restart
-      ? stepDeadBall(state, input, pressed, tick)
-      : stepPlay(state, input, pressed, tick),
-  );
+  const played = state.restart
+    ? stepDeadBall(state, input, pressed, tick)
+    : stepPlay(state, input, pressed, tick);
+  const next = runClock(trackShot(state.shotInFlight, played));
   if (!next.ballDead || state.ballDead) return next;
   // Bóng vừa chết: đội máy (và đội người chơi khi tự đá) thay cầu thủ kiệt sức.
   const cpu = autoSubstitute(next, other(HUMAN_TEAM));
@@ -575,13 +648,22 @@ export function step(state: MatchState, rawInput: PlayerInput): MatchState {
 }
 
 /**
+ * Hết giờ mà chưa được thổi còi: đang chờ đá phạt đền, hoặc cú sút đang bay chưa phân định (PRD §5).
+ * Cả hai đều có trần thời gian nên hiệp luôn kết thúc.
+ */
+const whistleHeld = (s: MatchState): boolean =>
+  s.shotInFlight !== null ||
+  (s.restart?.type === 'penalty' && s.tick - s.restart.startTick < WHISTLE_PENALTY_WAIT_TICKS);
+
+/**
  * Đồng hồ chạy thêm một tick; hết hiệp thì sang nghỉ giữa hiệp, hết trận, hoặc luân lưu nếu hoà
- * sau hiệp 2.
+ * sau hiệp 2. Hết giờ lúc chờ phạt đền / cú sút đang bay: đồng hồ đứng ở tick cuối tới khi xong.
  */
 function runClock(state: MatchState): MatchState {
   const halfTick = state.halfTick + 1;
   const clock = advanceClock(halfTick, state.halfLengthSec, state.stoppage, state.addedMinutes);
   if (!clock.halfOver) return { ...state, halfTick, addedMinutes: clock.addedMinutes };
+  if (whistleHeld(state)) return { ...state, addedMinutes: clock.addedMinutes };
   const ended = { ...state, halfTick, addedMinutes: clock.addedMinutes };
   if (state.half === 1) return whistle(ended, 'half_time');
   return state.score.home === state.score.away ? enterShootout(ended) : whistle(ended, 'full_time');
@@ -601,6 +683,9 @@ function whistle(state: MatchState, phase: 'half_time' | 'full_time'): MatchStat
     windup: null,
     passReceiver: null,
     backPass: null,
+    lastShot: null,
+    shotInFlight: null,
+    halfTimeEndTick: phase === 'half_time' ? state.tick + HALF_TIME_MAX_TICKS : null,
     ball: restingBall(state.ball.pos),
   };
 }
@@ -693,13 +778,15 @@ function startSecondHalf(state: MatchState, tick: number): MatchState {
     halfTick: 0,
     stoppage: { overrunTicks: 0, goals: 0 },
     addedMinutes: null,
+    halfTimeEndTick: null,
   };
   return enterKickoff(second, other(state.kickoffTeam), tick);
 }
 
 /**
  * Bóng chết: đội người bấm J/L để chuyền (hướng bấm chọn hướng chuyền), đá phạt và phạt đền thì
- * giữ-thả K để sút (phạt đền chỉ được sút); đội máy tự thực hiện sau 3 s. Trong lúc chờ, người thực
+ * giữ-thả K để sút (phạt đền chỉ được sút); đội máy tự thực hiện sau 3 s. Đá phạt / phạt đền của
+ * người chơi chờ quá SET_PIECE_MAX_TICKS (15 s) thì máy đá hộ. Trong lúc chờ, người thực
  * hiện đứng yên sau bóng; cầu thủ người chơi đang cầm (nếu không phải người thực hiện) vẫn chạy được.
  * Chờ quá RESTART_GRACE_TICKS bị tính vào bù giờ.
  */
@@ -717,6 +804,16 @@ function stepDeadBall(
   const goalSign = attackSign(restart.team, state.half);
   const pass = (kind: PassKind, dir: Vec2) =>
     kickPass(state.players, taker, restart.spot, dir, kind, state.rng, tick);
+  const humanShot = (chargeTicks: number) => ({
+    ...shootBall(
+      taker,
+      restart.spot,
+      shotTarget(goalSign, input.move.y),
+      shotPower(chargeTicks),
+      state.rng,
+    ),
+    shot: true,
+  });
 
   // Ai đứng sai chỗ thì tự đi tới chỗ (không dịch chuyển tức thì); chưa xong thì chưa thực hiện được.
   // Phạt đền: hướng bấm chỉ dùng để nhắm lúc sút, người sút luôn quay mặt về khung thành.
@@ -726,6 +823,8 @@ function stepDeadBall(
   const aim =
     length(humanAim) > 0 ? humanAim : takerFar ? restartFacing(restart, state.half) : ZERO;
   const timedOut = tick - restart.startTick >= RESTART_SETUP_MAX_TICKS;
+  // Đá phạt / phạt đền của người chơi chờ quá hạn: máy đá hộ (đang nạp lực sút thì sút luôn).
+  const expired = humanRestart && canShoot && tick - restart.startTick >= SET_PIECE_MAX_TICKS;
   // Đã vào vị trí hay chưa xét theo hướng đang quay mặt: tới bóng rồi thì hướng bấm chỉ xoay người.
   // Đi quá lâu (bị chen) thì tick này đặt luôn mọi người vào vị trí, tick sau mới thực hiện.
   const targets = restartTargets(state.players, restart, state.half, takerFar ? aim : ZERO);
@@ -747,7 +846,9 @@ function stepDeadBall(
     }
   } else if (targets.size > 0) {
     // Còn người đang đi về vị trí.
-  } else if (humanRestart) {
+  } else if (expired && state.shotChargeTicks > 0) {
+    kicked = humanShot(state.shotChargeTicks);
+  } else if (humanRestart && !expired) {
     if (canPass && (pressed('pass') || pressed('lob'))) {
       const dir = length(input.move) > 0 ? input.move : taker.facing;
       const kind = pressed('pass') ? 'ground' : 'lob';
@@ -757,18 +858,20 @@ function stepDeadBall(
     } else if (canShoot && input.shoot && (state.shotChargeTicks > 0 || pressed('shoot'))) {
       shotChargeTicks = state.shotChargeTicks + 1;
     } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
-      const target = shotTarget(goalSign, input.move.y);
-      const power = shotPower(state.shotChargeTicks);
-      kicked = { ...shootBall(taker, restart.spot, target, power, state.rng), shot: true };
+      kicked = humanShot(state.shotChargeTicks);
     }
-  } else if (cpuRestartDue(restart, tick)) {
+  } else if (expired || cpuRestartDue(restart, tick)) {
     const decided = decideRestartKick(restart, state.players, state.half, state.rng);
     if (decided.action.type !== 'dribble' && goalKick) {
       windup = startWindup(taker.id, tick, 'kick', decided.action);
       rng = decided.rng;
     } else if (decided.action.type !== 'dribble') {
       const profile = aiProfile(state, restart.team);
-      kicked = performKick(taker, restart.spot, decided.action, decided.rng, profile);
+      kicked = {
+        ...performKick(taker, restart.spot, decided.action, decided.rng, profile),
+        // Máy đá hộ người chơi: người chơi cầm luôn người nhận như khi tự chuyền.
+        receiver: aiReceiver(decided.action, restart.spot, tick),
+      };
     }
   }
 
@@ -946,7 +1049,29 @@ function stepPlay(
       input[passCharge.through ? 'through' : passCharge.kind === 'ground' ? 'pass' : 'lob'];
     const moveDir = length(input.move) > 0 ? normalize(input.move) : null;
     const releasedShot = !input.shoot && shotChargeTicks > 0;
-    if (losesBallOnTurn(me, input.move)) {
+    const hold = state.actionDeadline;
+    const holdExpired =
+      keeperHolds &&
+      hold?.kind === 'keeper_hold' &&
+      hold.playerId === me.id &&
+      tick >= hold.deadlineTick;
+    // Ôm bóng quá hạn: tự phát bóng như thủ môn AI (chuyền cho người trống nhất, không có thì phát dài).
+    const forced = holdExpired
+      ? decideCarrier({
+          carrier: me,
+          players: state.players,
+          half: state.half,
+          heldTicks: KEEPER_HOLD_MAX_TICKS,
+          minHoldTicks: 0,
+        })
+      : null;
+    if (forced && forced.type !== 'dribble') {
+      const style = forced.type === 'pass' && forced.kind === 'ground' ? 'throw' : 'kick';
+      windup = startWindup(me.id, tick, style, forced);
+      shotChargeTicks = 0;
+      passCharge = null;
+    } else if (!keeperHolds && losesBallOnTurn(me, input.move)) {
+      // Thủ môn ôm bóng bằng tay thì xoay gắt cũng không tuột.
       // Bóng tuột chân, giữ vận tốc đang chạy.
       ballOwnerId = null;
       kickLock = lock(me.id);

@@ -9,6 +9,7 @@ export * from './stats/params';
 export * from './rules/possession';
 export * from './rules/restarts';
 export * from './rules/clock';
+export * from './rules/limits';
 export * from './actions/pass';
 export * from './actions/shoot';
 /** Phép toán vector (`V.add`, `V.length`, …) — gom vào namespace để không đè tên chung. */

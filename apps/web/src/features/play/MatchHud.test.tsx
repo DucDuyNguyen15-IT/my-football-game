@@ -23,6 +23,7 @@ const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
   shots: { home: 5, away: 3 },
   foulRestart: null,
   ballDead: false,
+  subWindow: 'closed',
   subsLeft: 3,
   substitutions: [],
   shootout: null,
@@ -63,6 +64,8 @@ describe('menu thay người', () => {
     options: {
       onPitch: [{ id: 'home-P2', number: 3, position: 'DF', stamina: 25 }],
       bench: [{ slot: 'B1', number: 8, position: 'DF' }],
+      hasKeeper: true,
+      keeperOnly: false,
     },
     onSubstitute: () => {},
   });
