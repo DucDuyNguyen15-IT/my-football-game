@@ -78,7 +78,7 @@ export const isSentOff = (bookings: readonly Booking[], playerId: string): boole
 
 /**
  * Thẻ cho người phạm lỗi. Thủ môn không bao giờ bị đỏ (người dùng chốt 15/11, giống FC Online):
- * mọi thẻ đỏ của thủ môn thành một thẻ vàng, kể cả vàng thứ hai.
+ * mọi thẻ đỏ của thủ môn thành một thẻ vàng; đã có vàng thì không rút thêm thẻ (chốt 15/11, T1).
  */
 export function decideCards(
   foul: { fromBehind: boolean; rough: boolean },
@@ -90,7 +90,7 @@ export function decideCards(
 ): { cards: CardColor[]; rng: RngState } {
   const out = decideOutfieldCards(foul, tackler, victim, half, bookings, rng);
   if (tackler.position !== 'GK' || out.cards.length === 0) return out;
-  return { cards: ['yellow'], rng: out.rng };
+  return { cards: yellowCount(bookings, tackler.id) >= 1 ? [] : ['yellow'], rng: out.rng };
 }
 
 /**

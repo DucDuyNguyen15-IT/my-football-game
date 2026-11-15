@@ -95,10 +95,10 @@ describe('decideCards', () => {
     expect(yellowCount(booked, home.id)).toBe(1);
     expect(isSentOff(booked, home.id)).toBe(false);
   });
-  it('thủ môn không bao giờ bị đỏ: đỏ trực tiếp hay vàng thứ hai đều chỉ thành 1 vàng', () => {
+  it('thủ môn không bao giờ bị đỏ: đỏ trực tiếp thành 1 vàng, đã có vàng thì không rút thêm', () => {
     const gk = base.players.find((p) => p.team === 'home' && p.position === 'GK')!;
     const booked = [{ playerId: gk.id, team: 'home' as const, card: 'yellow' as const, tick: 1 }];
-    expect(decideCards(behind, gk, victim, 1, booked, seedRng(9)).cards).toEqual(['yellow']);
+    expect(decideCards(behind, gk, victim, 1, booked, seedRng(9)).cards).toEqual([]);
     const roughRed = { fromBehind: false, rough: true };
     // Tìm seed mà cầu thủ ngoài sân ăn đỏ trực tiếp.
     let seed = 1;
