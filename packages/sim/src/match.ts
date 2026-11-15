@@ -937,7 +937,8 @@ function stepDeadBall(
     let lastShot = shotFrom(kicked.shot, restart.team, tick);
     const keeper = state.players.find((p) => p.position === 'GK' && p.team !== restart.team);
     if (restart.type === 'penalty' && lastShot && keeper) {
-      const g = penaltyGuess(keeper, kicked.ball, kicked.rng);
+      const guessMult = aiProfile(state, keeper.team).penaltyGuessMult;
+      const g = penaltyGuess(keeper, kicked.ball, kicked.rng, guessMult);
       kicked = { ...kicked, rng: g.rng };
       if (g.guess) lastShot = { ...lastShot, keeperGuess: g.guess };
     }

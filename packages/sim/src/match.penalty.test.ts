@@ -3,7 +3,10 @@ import { cpuEasyTeam, starterLikeTeam } from './fixtures/demoTeams';
 import { createMatch, step } from './match';
 import { vec2, ZERO } from './math/vec2';
 import { HALF_LENGTH, PENALTY_SPOT_DIST } from './pitch';
+import { AI_PROFILES } from './ai/difficulty';
+import { penaltyGuess } from './ai/goalkeeper';
 import { runPenalties } from './balance';
+import { seedRng } from './rng';
 import { TICK_RATE } from './tick';
 import { NO_INPUT, type BallState, type MatchState } from './types';
 
@@ -32,15 +35,68 @@ describe('phạt đền', () => {
     expect(cpuPenalty('easy')).toEqual(cpuPenalty('hard'));
   });
 
-  it('luân lưu AI 200 lượt gặp máy Dễ: 65–85% thành bàn (trước khi sửa ~56%)', () => {
+  it('luân lưu AI 200 lượt gặp máy Dễ: cú sút của máy vẫn 65–85% thành bàn (trước khi sửa ~56%)', () => {
     const r = runPenalties('easy', 200);
-    expect(r.rate).toBeGreaterThan(0.65);
-    expect(r.rate).toBeLessThan(0.85);
+    const rate = r.goals.away / r.kicks.away;
+    expect(rate).toBeGreaterThan(0.65);
+    expect(rate).toBeLessThan(0.85);
   }, 30_000);
 
-  it('người chơi nhắm sát góc, lực đầy (B1b-5): vẫn không vượt quá ~85% (đo 400 lượt: Dễ 72%, Khó 63%)', () => {
-    const r = runPenalties('easy', 100, undefined, true);
-    expect(r.kicks.home).toBeGreaterThan(40);
+  it('người chơi nhắm sát góc, lực đầy (B1b-5): vẫn không vượt quá ~85% (đo 4.000 lượt sau luật 4: Dễ 80%, Khó 67%)', () => {
+    // 1.000 lượt (trước 100): mẫu ~50 quả của đội nhà dao động ±6 điểm %, sát trần sau luật 4.
+    const r = runPenalties('easy', 1000, undefined, true);
+    expect(r.kicks.home).toBeGreaterThan(400);
     expect(r.goals.home / r.kicks.home).toBeLessThan(0.85);
   }, 30_000);
+});
+
+/*
+ * Luật 4 (2026-11-15): thủ môn máy Dễ cản phạt đền kém hơn — đoán đúng hướng chỉ bằng nửa bình thường
+ * (`AiProfile.penaltyGuessMult`). Cú sút phạt đền của máy và mức Khó không đổi.
+ */
+describe('máy Dễ: thủ môn bắt phạt đền kém hơn (luật 4)', () => {
+  it('chỉ hồ sơ máy Dễ giảm xác suất đoán đúng hướng', () => {
+    expect(AI_PROFILES.easy.penaltyGuessMult).toBeLessThan(1);
+    expect(AI_PROFILES.hard.penaltyGuessMult).toBe(1);
+    expect(AI_PROFILES.teammate.penaltyGuessMult).toBe(1);
+    expect(AI_PROFILES.proxy.penaltyGuessMult).toBe(1);
+  });
+
+  it('penaltyGuess: hệ số càng nhỏ thủ môn càng hay đoán sai, 0 thì luôn sai; PRNG tiến như nhau', () => {
+    const gk = createMatch({
+      home: starterLikeTeam,
+      away: cpuEasyTeam,
+      seed: 1,
+      difficulty: 'easy',
+    }).players.find((p) => p.id === 'away-GK')!;
+    const ball: BallState = { pos: ZERO, vel: vec2(20, 5), z: 0, vz: 0 };
+    const right = (mult: number): number => {
+      let n = 0;
+      for (let seed = 1; seed <= 400; seed++) {
+        const full = penaltyGuess(gk, ball, seedRng(seed));
+        const g = penaltyGuess(gk, ball, seedRng(seed), mult);
+        // Bóng lệch hẳn một phía: luôn đúng 1 lần gieo, không phụ thuộc hệ số.
+        expect(g.rng).toEqual(full.rng);
+        if (g.guess === null) n++;
+      }
+      return n;
+    };
+    expect(right(0)).toBe(0);
+    expect(right(0.5)).toBeGreaterThan(0);
+    expect(right(0.5)).toBeLessThan(right(1));
+  });
+
+  it('thống kê nhiều seed, cùng đội máy, chỉ đổi mức: người chơi ghi phạt đền trước máy Dễ nhiều hơn rõ rệt; cú sút của máy không đổi', () => {
+    // Cùng một đội khách (cùng thủ môn, cùng người sút) ở cả hai mức → chênh lệch chỉ do hồ sơ AI.
+    const teams = { home: starterLikeTeam, away: () => cpuEasyTeam };
+    const rate = (r: ReturnType<typeof runPenalties>, team: 'home' | 'away') =>
+      r.goals[team] / r.kicks[team];
+    // Người chơi nhắm sát góc, lực đầy. Đo 8.000 lượt: Dễ 79,5% — Khó 71,7% (máy sút 77,6% / 77,8%).
+    const easy = runPenalties('easy', 2000, teams, true);
+    const hard = runPenalties('hard', 2000, teams, true);
+    expect(easy.kicks.home).toBeGreaterThan(800);
+    expect(hard.kicks.home).toBeGreaterThan(800);
+    expect(rate(easy, 'home')).toBeGreaterThan(rate(hard, 'home') + 0.04);
+    expect(Math.abs(rate(easy, 'away') - rate(hard, 'away'))).toBeLessThan(0.04);
+  }, 60_000);
 });
