@@ -3,7 +3,11 @@
 import { sql } from 'drizzle-orm';
 import { loadEnv } from '../src/config/env';
 import { createDb } from '../src/db/client';
-import { findLedgerMismatches, findMissionRewardMismatches } from '../src/services/ledger';
+import {
+  findLedgerChainBreaks,
+  findLedgerMismatches,
+  findMissionRewardMismatches,
+} from '../src/services/ledger';
 
 const { db, pool } = createDb(loadEnv().databaseUrl);
 try {
@@ -25,6 +29,14 @@ try {
         lastBalanceAfter: m.lastBalanceAfter,
       })),
     );
+    process.exitCode = 1;
+  }
+  const chain = await findLedgerChainBreaks(db);
+  if (chain.length === 0) {
+    console.log('ledger:check OK — chuỗi balance_after liên tục.');
+  } else {
+    console.error(`ledger:check ĐỨT chuỗi balance_after — ${chain.length} người chơi:`);
+    console.table(chain);
     process.exitCode = 1;
   }
   const missions = await findMissionRewardMismatches(db);

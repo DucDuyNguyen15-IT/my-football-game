@@ -180,7 +180,7 @@ Mục tiêu PRD §10: **≥ 55 FPS trung bình** cả trận trên laptop tầm 
 
 Công cụ có sẵn trong game (8.3 thêm): mở trận với **`?perf=1`** (VD `/play?perf=1`). Góc trên trái hiện FPS tức thời; khi hết trận (hoặc khi thoát trận giữa chừng) console in một dòng dạng:
 `[perf] FPS TB 58.7 · 1% thấp nhất 41.2 · khung chậm nhất 35.1 ms · 20540 khung / 350.0 s` (số minh hoạ).
-"1% thấp nhất" = FPS trung bình của 1% khung hình chậm nhất. Không tính lúc tạm dừng và khung dài hơn 1 giây (tab bị ẩn); có tính đoạn phát lại bàn thắng. Không có `?perf=1` thì game không đo gì.
+"1% thấp nhất" = FPS trung bình của 1% khung hình chậm nhất. Không tính lúc tạm dừng và khung dài hơn 1 giây (tab bị ẩn); có tính đoạn phát lại bàn thắng. Không có `?perf=1` thì game không đo gì. `?perf=1` cố ý bật được cả ở bản production (R78-4) để người chơi thử đo trên máy mình (§5 bước 7); chỉ đọc thời gian khung hình, không gửi đi đâu.
 
 **Chuẩn bị**
 1. Cắm sạc, chế độ nguồn Windows "Hiệu suất tốt nhất", đóng ứng dụng nặng. Chrome bản mới, bật tăng tốc phần cứng (`chrome://settings/system`), kiểm `chrome://gpu` thấy "WebGL: Hardware accelerated". Dùng cửa sổ ẩn danh (không extension), phóng to toàn màn hình.

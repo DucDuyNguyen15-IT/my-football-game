@@ -50,6 +50,43 @@ export async function findLedgerMismatches(db: Db | Tx): Promise<LedgerMismatch[
   }));
 }
 
+export interface LedgerChainBreak {
+  userId: number;
+  /** Dòng sổ cái đầu tiên (theo id) có `balance_after` sai. */
+  txId: number;
+  /** Tổng `amount` từ đầu tới dòng này — giá trị `balance_after` đúng. */
+  expected: number;
+  balanceAfter: number;
+}
+
+/**
+ * Chuỗi `balance_after` phải liên tục: mỗi dòng bằng tổng cộng dồn `amount` tới nó (R78-1). Bắt lỗi
+ * ghi sai số dư giữa chuỗi mà dòng mới nhất vẫn khớp. Số dư âm không cần kiểm: CHECK của DB đã chặn.
+ */
+export async function findLedgerChainBreaks(db: Db | Tx): Promise<LedgerChainBreak[]> {
+  const res = await db.execute<{
+    user_id: string;
+    id: string;
+    expected: string;
+    balance_after: string;
+  }>(sql`
+    select distinct on (user_id) user_id, id, expected, balance_after
+    from (
+      select user_id, id, balance_after,
+             sum(amount) over (partition by user_id order by id) as expected
+      from coin_transactions
+    ) t
+    where expected <> balance_after
+    order by user_id, id
+  `);
+  return res.rows.map((r) => ({
+    userId: Number(r.user_id),
+    txId: Number(r.id),
+    expected: Number(r.expected),
+    balanceAfter: Number(r.balance_after),
+  }));
+}
+
 export interface MissionRewardMismatch {
   userId: number;
   /** Số dòng / tổng xu `mission_reward` trong sổ cái. */

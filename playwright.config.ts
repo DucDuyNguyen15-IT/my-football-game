@@ -15,8 +15,15 @@ const DATABASE_URL =
   process.env.DATABASE_URL_TEST ??
   'postgres://pitch:pitch@localhost:5432/pitch_test';
 
-if (new URL(DATABASE_URL).pathname === '/pitch') {
-  throw new Error('E2E không được chạy trên DB dev `pitch` — đặt E2E_DATABASE_URL sang DB test.');
+// E2E migrate + seed DB này: chỉ cho DB test trên máy (R78-2), không bao giờ DB dev `pitch` hay DB thật.
+const dbUrl = new URL(DATABASE_URL);
+if (
+  !['localhost', '127.0.0.1'].includes(dbUrl.hostname) ||
+  !dbUrl.pathname.startsWith('/pitch_test')
+) {
+  throw new Error(
+    'E2E chỉ chạy trên DB test cục bộ (host localhost/127.0.0.1, tên bắt đầu `pitch_test`) — đặt E2E_DATABASE_URL.',
+  );
 }
 
 const API_ORIGIN = `http://127.0.0.1:${SERVER_PORT}`;

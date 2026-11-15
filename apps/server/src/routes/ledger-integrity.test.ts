@@ -9,7 +9,11 @@ import { OpenPackResponse, SquadResponse, StartMatchResponse } from '@pitch/shar
 import { PACKS, STARTER_SQUAD } from '../config/economy';
 import { seedCards } from '../db/seed';
 import { cardUpgrades, coinTransactions, dailyMissions, packOpenings, users } from '../db/schema';
-import { findLedgerMismatches, findMissionRewardMismatches } from '../services/ledger';
+import {
+  findLedgerChainBreaks,
+  findLedgerMismatches,
+  findMissionRewardMismatches,
+} from '../services/ledger';
 import {
   createTestApp,
   FakeClock,
@@ -352,6 +356,27 @@ describe('findLedgerMismatches + script ledger:check', () => {
     expect(out).toContain('sua_so_du');
     expect(out).toContain('them_dong_so');
   }, 60_000);
+
+  it('chuỗi balance_after: dòng giữa ghi sai số dư → báo dòng đứt đầu tiên dù dòng cuối khớp (R78-1)', async () => {
+    const u = await api.signup('dut_chuoi');
+    expect(await findLedgerChainBreaks(testDb())).toEqual([]);
+    const ins = (amount: number, balanceAfter: number) =>
+      testDb()
+        .insert(coinTransactions)
+        .values({ userId: u.userId, type: 'admin_adjust', amount, balanceAfter })
+        .returning({ id: coinTransactions.id });
+    const base = (await dbState(u.userId)).coins;
+    const [broken] = await ins(10, base + 99); // đúng ra base + 10
+    await ins(20, base + 30); // dòng cuối vẫn khớp tổng
+    await testDb()
+      .update(users)
+      .set({ coins: base + 30 })
+      .where(eq(users.id, u.userId));
+    expect(await findLedgerMismatches(testDb())).toEqual([]);
+    expect(await findLedgerChainBreaks(testDb())).toEqual([
+      { userId: u.userId, txId: broken!.id, expected: base + 10, balanceAfter: base + 99 },
+    ]);
+  });
 
   it('thưởng nhiệm vụ: dòng mission_reward thừa (nhận 2 lần) hoặc nhiệm vụ đã nhận mà thiếu dòng → lệch (B3-05)', async () => {
     const u = await api.signup('nhan_hai_lan');
