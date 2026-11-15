@@ -37,6 +37,7 @@
 - Sau mỗi lần cập nhật lớn: rà lại checklist bảo mật + checklist này.
 
 ### 9.3 — README & bàn giao `[ ]`
+- **2026-11-16:** đã có `README.md` + `docs/screenshots/` (trang chủ, mở gói, đội hình, trận). Còn: thêm link chạy thật sau 9.2, kiểm theo README trên một bản clone mới.
 - **Phụ thuộc:** 9.2 · **Model:** default
 - **Bối cảnh:** `CLAUDE.md` (Lệnh thường dùng), `docs/ARCHITECTURE.md`; skill `ecc:update-docs`.
 - **Việc cần làm:** `README.md`: giới thiệu, ảnh chụp màn hình (menu, trận, mở thẻ, đội hình), yêu cầu, cài đặt & chạy dev, test, deploy, kiến trúc (link), tuyên bố dữ liệu hư cấu/không thanh toán thật. Rà CLAUDE.md, ROADMAP, PROGRESS.

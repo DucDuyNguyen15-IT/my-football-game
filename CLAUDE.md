@@ -4,7 +4,7 @@ Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu
 
 ## Trạng thái hiện tại
 - **Giai đoạn đang làm:** GĐ8 xong (2026-11-14), giao diện v3 xong. Đang Phần B — review toàn bộ đồ án theo tác giả (`.claude/collab/plan-review-B.md`): B1, B1b, B3, B4, B5, B6, luật 2–4, R78, phần Opus của B2 (8.2), audit bảo mật server đã xong (2026-11-16)
-- **Việc tiếp theo:** Fable review chéo các commit Opus 16/11 (dọn lỗi Thấp → B5/B6, `.claude/collab/report-review-b5-b6.md`) → GĐ9. Việc còn tồn: `docs/QA-REPORT.md` §6
+- **Việc tiếp theo:** GĐ9: 9.1 Docker xong, pháp lý + xoá tài khoản xong, README có bản đầu (2026-11-16). Còn 9.2 deploy (chờ người dùng chọn VPS/domain) và Fable review chéo các commit Opus 16/11. Việc còn tồn: `docs/QA-REPORT.md` §6
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
