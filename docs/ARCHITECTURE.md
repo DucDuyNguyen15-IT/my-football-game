@@ -336,6 +336,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | 16 | `POST /matches/:id/result` | ✔ | `{ token, homeGoals, awayGoals, shootout?: { home, away } }` | `{ outcome, reward, balance, missions: MissionProgress[] }` | Token dùng 1 lần; nộp lại đúng token cho trận đã `finished` → trả kết quả cũ (không cộng lần 2). `missions` là `[]` cho tới task 7.4. F7 |
 | 17 | `GET /missions/today` | ✔ | — | `MissionProgress[]` | Tự tạo 3 nhiệm vụ cho ngày GMT+7 nếu chưa có. F12 |
 | 18 | `POST /missions/:code/claim` | ✔ | — | `{ reward, balance }` | Một lần/ngày/nhiệm vụ |
+| 18b | `POST /missions/expired/claim` | ✔ | — | `{ items, balance }` | Tự nhận nhiệm vụ ngày cũ đã xong mà chưa nhận; `items` chỉ trả đúng một lần (client hiện bảng thông báo khi vào game). Quyết định 15/11/2026 |
 | 19 | `GET /admin/retention` | admin | `?from=&to=` | `[{ cohortDay, registered, d1, d7 }]` | F13 |
 
 `MatchTeam = { formation, players: [{ slot, cardId, level, position, stats (đã áp cấp + và phạt sai vị trí) }] }` — sim nhận thẳng cấu trúc này, client không tự tính chỉ số hiệu lực.

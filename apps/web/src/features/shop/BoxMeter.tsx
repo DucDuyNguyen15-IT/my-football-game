@@ -1,9 +1,6 @@
 import type { CSSProperties } from 'react';
-import type { PackBox, Rarity } from '@pitch/shared';
+import type { PackBox } from '@pitch/shared';
 import { RARITY_INFO, RARITY_ORDER } from '../../components/card/rarity';
-
-/** Số phiếu mỗi độ hiếm khi hộp mới (PRD §6.3) — mẫu số của thanh ngang. */
-export const BOX_INIT: Record<Rarity, number> = { legend: 2, gold: 10, silver: 30, bronze: 58 };
 
 export function formatOdds(p: number): string {
   return `${(p * 100).toLocaleString('vi-VN', { maximumFractionDigits: 1 })}%`;
@@ -14,7 +11,9 @@ export function onlyBronzeLeft(box: PackBox): boolean {
   return box.total > 0 && box.left.bronze === box.total;
 }
 
-const composition = RARITY_ORDER.map((r) => `${BOX_INIT[r]} ${RARITY_INFO[r].label}`).join(' · ');
+/** "2 Huyền thoại · 10 Vàng · …" — thành phần hộp mới do server trả (B4-11). */
+const composition = (box: PackBox) =>
+  RARITY_ORDER.map((r) => `${box.initial[r]} ${RARITY_INFO[r].label}`).join(' · ');
 
 export function WarnIcon() {
   return (
@@ -41,11 +40,11 @@ export function BoxMeter({ box }: { box: PackBox }) {
       <h2 id="box-title" className="panel__title box__title">
         Hộp thẻ của bạn{' '}
         <span className="meta num">
-          còn <b>{box.total}</b>/100 phiếu
+          còn <b>{box.total}</b>/{box.size} phiếu
         </span>
       </h2>
       <p className="muted box__lead">
-        Hộp riêng 100 phiếu: <b>{composition}</b>. Bốc phiếu nào, phiếu đó ra khỏi hộp — tỉ lệ đổi
+        Hộp riêng {box.size} phiếu: <b>{composition(box)}</b>. Bốc phiếu nào, phiếu đó ra khỏi hộp — tỉ lệ đổi
         sau mỗi lần mở.
       </p>
       {onlyBronzeLeft(box) && (
@@ -78,7 +77,7 @@ export function BoxMeter({ box }: { box: PackBox }) {
               className="bar bar--rarity"
               aria-hidden="true"
               style={
-                { '--v': `${Math.min(100, (box.left[r] / BOX_INIT[r]) * 100)}%` } as CSSProperties
+                { '--v': `${Math.min(100, (box.left[r] / Math.max(1, box.initial[r])) * 100)}%` } as CSSProperties
               }
             >
               <div className="bar__fill" />
@@ -90,12 +89,12 @@ export function BoxMeter({ box }: { box: PackBox }) {
       </div>
       {empty ? (
         <div className="box__empty">
-          <b className="h3">Đã bốc hết 100 phiếu</b>
-          <p className="muted">Lần mở tiếp theo tự làm mới hộp: {composition}.</p>
+          <b className="h3">Đã bốc hết {box.size} phiếu</b>
+          <p className="muted">Lần mở tiếp theo tự làm mới hộp: {composition(box)}.</p>
         </div>
       ) : (
         <p className="box__note muted">
-          Tỉ lệ = số phiếu còn / tổng còn. Hết 100 phiếu thì hộp tự làm mới (đang dùng hộp thứ{' '}
+          Tỉ lệ = số phiếu còn / tổng còn. Hết {box.size} phiếu thì hộp tự làm mới (đang dùng hộp thứ{' '}
           {box.cycle}).
         </p>
       )}

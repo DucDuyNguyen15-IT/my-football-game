@@ -10,6 +10,8 @@ const box = (left: PackBox['left'], cycle = 1): PackBox => {
   const total = left.bronze + left.silver + left.gold + left.legend;
   const odds = (n: number) => (total ? n / total : 0);
   return {
+    initial: { bronze: 58, silver: 30, gold: 10, legend: 2 },
+    size: 100,
     left,
     total,
     nextOdds: {

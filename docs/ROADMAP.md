@@ -176,6 +176,7 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 **Hoàn thành khi:**
 - [ ] Có link chạy thật
 - [ ] README đủ để người khác tự chạy được
+- [ ] Runbook deploy: `pg_dump` trước mỗi `db:migrate` — migration không có bản đảo ngược, `coin_transactions` chỉ ghi thêm (trigger) nên rollback chỉ bằng restore (review B3-09)
 
 ---
 

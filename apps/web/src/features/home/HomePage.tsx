@@ -6,7 +6,7 @@ import { useCardCatalog } from '../../api/cards';
 import { ApiClientError } from '../../api/client';
 import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { usePacks } from '../../api/packs';
-import { usePlayerCards } from '../../api/player-cards';
+import { useEconomy, usePlayerCards } from '../../api/player-cards';
 import { useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
 import { ChalkPitch } from '../../components/ChalkPitch';
@@ -31,6 +31,7 @@ export function HomePage() {
   const packs = usePacks();
   const missions = useTodayMissions();
   const claim = useClaimMission();
+  const maxLevel = useEconomy().data?.upgrade.maxLevel;
   if (!me) return null;
 
   const used = me.rewardedMatchesToday;
@@ -177,7 +178,7 @@ export function HomePage() {
         <Link to="/shop" className="panel home__tile">
           <span className="label">Hộp thẻ của bạn</span>
           <span className="display home__tile-big">
-            {box ? `${box.total}/100 phiếu` : 'Đang tải…'}
+            {box ? `${box.total}/${box.size} phiếu` : 'Đang tải…'}
           </span>
           <span className="muted">
             {box
@@ -194,7 +195,9 @@ export function HomePage() {
         </Link>
         <Link to="/upgrade" className="panel home__tile">
           <span className="label">Ép thẻ</span>
-          <span className="display home__tile-big">+1 → +5</span>
+          <span className="display home__tile-big">
+            {maxLevel ? `+1 → +${maxLevel}` : 'Đang tải…'}
+          </span>
           <span className="muted">Biết trước tỉ lệ thành công →</span>
         </Link>
       </aside>

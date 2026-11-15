@@ -347,6 +347,7 @@ export const analyticsEvents = pgTable(
   (t) => [
     index('analytics_events_created_brin').using('brin', t.createdAt),
     index('analytics_events_name_created_idx').on(t.name, t.createdAt),
-    index('analytics_events_user_idx').on(t.userId),
+    // Phục vụ `session_seen` mỗi request đã đăng nhập (B3-06); tiền tố user_id thay index cũ chỉ user_id.
+    index('analytics_events_user_name_created_idx').on(t.userId, t.name, t.createdAt),
   ],
 );

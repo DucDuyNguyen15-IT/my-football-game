@@ -1,5 +1,8 @@
+import { useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
+import { useExpiredMissionClaims } from '../api/missions';
+import { ExpiredMissionsNotice } from '../features/missions/ExpiredMissionsNotice';
 
 /** Chặn route khi chưa đăng nhập: chuyển về /login, nhớ trang định vào để quay lại sau. */
 export function RequireAuth() {
@@ -79,9 +82,16 @@ export function Topbar() {
 
 /** Khung các màn ngoài trận (docs/design/screens/home.html): thanh trên + nội dung. */
 export function AppLayout() {
+  const me = useMe().data;
+  const expired = useExpiredMissionClaims(Boolean(me));
+  const [noticeClosed, setNoticeClosed] = useState(false);
+  const items = expired.data?.items ?? [];
   return (
     <div className="shell">
       <Topbar />
+      {items.length > 0 && !noticeClosed && (
+        <ExpiredMissionsNotice items={items} onClose={() => setNoticeClosed(true)} />
+      )}
       <main className="page">
         <Outlet />
       </main>

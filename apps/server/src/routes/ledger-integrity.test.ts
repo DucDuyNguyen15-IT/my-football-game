@@ -8,8 +8,8 @@ import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { OpenPackResponse, SquadResponse, StartMatchResponse } from '@pitch/shared';
 import { PACKS, STARTER_SQUAD } from '../config/economy';
 import { seedCards } from '../db/seed';
-import { cardUpgrades, coinTransactions, packOpenings, users } from '../db/schema';
-import { findLedgerMismatches } from '../services/ledger';
+import { cardUpgrades, coinTransactions, dailyMissions, packOpenings, users } from '../db/schema';
+import { findLedgerMismatches, findMissionRewardMismatches } from '../services/ledger';
 import {
   createTestApp,
   FakeClock,
@@ -351,5 +351,36 @@ describe('findLedgerMismatches + script ledger:check', () => {
     expect(out).toContain('2/4');
     expect(out).toContain('sua_so_du');
     expect(out).toContain('them_dong_so');
+  }, 60_000);
+
+  it('thưởng nhiệm vụ: dòng mission_reward thừa (nhận 2 lần) hoặc nhiệm vụ đã nhận mà thiếu dòng → lệch (B3-05)', async () => {
+    const u = await api.signup('nhan_hai_lan');
+    expect(await findMissionRewardMismatches(testDb())).toEqual([]);
+    await testDb().insert(dailyMissions).values({
+      userId: u.userId,
+      day: '2026-03-10',
+      missionCode: 'play_match',
+      progress: 1,
+      target: 1,
+      reward: 50,
+      claimedAt: new Date(),
+    });
+    expect(await findMissionRewardMismatches(testDb())).toEqual([
+      { userId: u.userId, ledgerCount: 0, ledgerSum: 0, claimedCount: 1, claimedSum: 50 },
+    ]);
+    for (let i = 0; i < 2; i++) {
+      await testDb().insert(coinTransactions).values({
+        userId: u.userId,
+        type: 'mission_reward',
+        amount: 50,
+        balanceAfter: 50 * (i + 1),
+      });
+    }
+    expect(await findMissionRewardMismatches(testDb())).toMatchObject([
+      { userId: u.userId, ledgerCount: 2, claimedCount: 1 },
+    ]);
+    const r = runScript();
+    expect(r.status).toBe(1);
+    expect(r.stdout + r.stderr).toContain('thưởng nhiệm vụ');
   }, 60_000);
 });
