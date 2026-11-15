@@ -3,6 +3,8 @@ import {
   TICK_RATE,
   cpuEasyTeam,
   createMatch,
+  NO_INPUT,
+  step,
   starterLikeTeam,
   type MatchState,
   type Restart,
@@ -115,23 +117,41 @@ describe('detectTransition — khi nào chuyển cảnh', () => {
     });
   });
 
-  it('ném biên: không chuyển cảnh khi cầu thủ tự đi bộ; chuyển cảnh (NÉM BIÊN) khi có dịch chuyển cầu thủ', () => {
+  it('ném biên mới luôn chuyển cảnh (NÉM BIÊN): sim đặt thẳng cầu thủ vào vị trí ở tick bóng chết (luật 2)', () => {
     const play = { ...baseMatch(), tick: 80, phase: 'play' as const, ballDead: false, restart: null };
-    const throwInWalk = withRestart({ ...play, tick: 81 }, 'throw_in', 'home', 81);
-    expect(detectTransition(play, throwInWalk)).toBeNull();
-
-    const throwInSnap: MatchState = {
-      ...throwInWalk,
-      tick: 82,
-      players: throwInWalk.players.map((p, i) =>
-        i === 0 ? { ...p, pos: { x: p.pos.x + 6, y: p.pos.y - 4 } } : p,
-      ),
-    };
-    expect(detectTransition(throwInWalk, throwInSnap)).toMatchObject({
+    const throwIn = withRestart({ ...play, tick: 81 }, 'throw_in', 'home', 81);
+    expect(detectTransition(play, throwIn)).toMatchObject({
       kind: 'throw_in',
       label: 'NÉM BIÊN',
       team: 'home',
     });
+    // Đang chờ ném, không ai bị dời: không bật lại.
+    expect(detectTransition(throwIn, { ...throwIn, tick: 82 })).toBeNull();
+  });
+
+  it('sim thật (luật 2): tick bóng chết nào cũng có cầu thủ bị đặt thẳng và đều được che màn sau khi giữ hình', () => {
+    let seen = 0;
+    let prev = createMatch({
+      home: starterLikeTeam,
+      away: cpuEasyTeam,
+      difficulty: 'easy',
+      seed: 3,
+      autopilot: true,
+      halfLengthSec: 60,
+    });
+    while (prev.phase !== 'half_time') {
+      const curr = step(prev, NO_INPUT);
+      if (prev.phase === 'play' && curr.phase === 'dead_ball') {
+        seen++;
+        expect(hasPlayerTeleport(prev, curr)).toBe(true);
+        const spec = detectTransition(prev, curr);
+        expect(spec?.kind).toBe(curr.restart!.type);
+        // Giữ hình (CutHold vẽ khung `prev`) rồi mới khép stinger: vị trí mới chỉ hiện sau `onCovered`.
+        expect(spec!.delaySec).toBeGreaterThan(0);
+      }
+      prev = curr;
+    }
+    expect(seen).toBeGreaterThan(0);
   });
 
   it('phạm lỗi → đá phạt (ĐÁ PHẠT) và phạt đền (PHẠT ĐỀN)', () => {

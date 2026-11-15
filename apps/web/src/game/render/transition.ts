@@ -367,8 +367,10 @@ export function detectTransition(
     const fromLive = prev.phase === 'play';
 
     switch (r.type) {
+      // Sim đặt thẳng mọi cầu thủ vào vị trí ở tick bóng chết (luật 2): tình huống nào cũng che màn.
       case 'goal_kick':
       case 'corner':
+      case 'throw_in':
         if (isNewRestart || teleported) {
           return buildTransitionSpec(r.type, {
             team: r.team,
@@ -383,15 +385,6 @@ export function detectTransition(
             team: r.team,
             delaySec: fromLive ? FOUL_DELAY_SEC : 0,
             foul: fromLive ? summarizeFoul(prev, curr) : null,
-          });
-        }
-        return null;
-      case 'throw_in':
-        // Ném biên: chỉ chuyển cảnh khi có dịch chuyển cầu thủ tức thời (> SNAP_DISTANCE).
-        if (teleported) {
-          return buildTransitionSpec('throw_in', {
-            team: r.team,
-            delaySec: fromLive ? OUT_OF_BOUNDS_DELAY_SEC : 0,
           });
         }
         return null;

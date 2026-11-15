@@ -4,6 +4,7 @@ import { createMatch, step } from './match';
 import { length, sub, vec2, ZERO, type Vec2 } from './math/vec2';
 import { HALF_LENGTH, HALF_WIDTH } from './pitch';
 import {
+  RESTART_CLEARANCE,
   RESTART_DELAY_TICKS,
   RESTART_SETTLE_DIST,
   RESTART_SETUP_MAX_TICKS,
@@ -213,25 +214,42 @@ describe('thực hiện lại bóng', () => {
     expect(taken.kickLock?.playerId).toBe(dead.restart!.takerId);
   });
 
-  it('bóng chết: người thực hiện đi bộ tới bóng (không dịch chuyển tức thì), tới nơi mới thực hiện được', () => {
+  it('bóng chết: mọi người được đặt thẳng vào vị trí ngay tick đó (luật 2), bấm chuyền là đá được', () => {
     const dead = homeCorner();
-    const taker = playerOf(dead, dead.restart!.takerId);
-    const far = length(sub(taker.pos, dead.restart!.spot));
-    expect(far).toBeGreaterThan(2);
-    // Chưa tới bóng thì bấm chuyền cũng chưa đá.
-    expect(step(dead, J).phase).toBe('dead_ball');
-    let s = dead;
-    let maxStepM = 0;
-    for (let i = 0; i < RESTART_SETUP_MAX_TICKS - 1; i++) {
-      const next = step(s, NO_INPUT);
-      const d = length(sub(playerOf(next, taker.id).pos, playerOf(s, taker.id).pos));
-      maxStepM = Math.max(maxStepM, d);
-      s = next;
+    const { spot, takerId } = dead.restart!;
+    // Người thực hiện đã đứng sau bóng, đứng yên; đối phương đã ở ngoài khoảng cách tối thiểu.
+    expect(length(sub(playerOf(dead, takerId).pos, spot))).toBeLessThan(1);
+    for (const p of dead.players) {
+      expect(p.vel).toEqual(ZERO);
+      if (p.team === 'away') {
+        expect(length(sub(p.pos, spot))).toBeGreaterThanOrEqual(RESTART_CLEARANCE - 1e-9);
+      }
     }
-    // Chạy nhanh nhất ~0,15 m/tick, cộng bước đứng vào chỗ cuối cùng ≤ RESTART_SETTLE_DIST: không nhảy cóc.
-    expect(maxStepM).toBeLessThan(0.15 + RESTART_SETTLE_DIST);
-    expect(length(sub(playerOf(s, taker.id).pos, dead.restart!.spot))).toBeLessThan(1);
-    expect(step(s, J).phase).toBe('play');
+    // Không ai phải đi về chỗ nữa: chờ thêm cũng không ai bị dịch chuyển tức thì.
+    const next = step(dead, NO_INPUT);
+    for (const p of next.players) {
+      expect(length(sub(p.pos, playerOf(dead, p.id).pos))).toBeLessThan(0.15 + RESTART_SETTLE_DIST);
+    }
+    expect(step(dead, J).phase).toBe('play');
+  });
+
+  it('bóng chết khi AI đang chạy: cả hai đội đứng thẳng vào đội hình quanh bóng, quay mặt về bóng', () => {
+    let s = createMatch({ ...setup, autopilot: true });
+    while (s.phase !== 'dead_ball') {
+      const prev = s;
+      s = step(s, NO_INPUT);
+      if (s.phase !== 'dead_ball') continue;
+      const { spot, takerId } = s.restart!;
+      // Có người bị dời xa trong đúng một tick (đặt thẳng, không đi bộ).
+      const jump = (id: string) => length(sub(playerOf(s, id).pos, playerOf(prev, id).pos));
+      expect(Math.max(...s.players.map((p) => jump(p.id)))).toBeGreaterThan(2);
+      for (const p of s.players) {
+        expect(p.vel).toEqual(ZERO);
+        if (p.id === takerId || length(sub(spot, p.pos)) === 0) continue;
+        const toBall = sub(spot, p.pos);
+        expect(p.facing.x * toBall.x + p.facing.y * toBall.y).toBeGreaterThan(0);
+      }
+    }
   });
 
   it('khi chờ, người thực hiện đứng yên tại bóng; hướng bấm chỉ xoay hướng chuyền', () => {

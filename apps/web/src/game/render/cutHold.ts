@@ -1,12 +1,14 @@
 /**
  * "Diễn tiếp" pha bóng trước khi khép stinger (phạm lỗi, bóng ra biên), thuần (không Three.js/DOM).
  *
- * Ở tick trọng tài thổi phạt / bóng ra ngoài, sim đã đặt bóng về chấm đá phạt và cho cầu thủ tự đi về
- * vị trí. Renderer giữ khung bóng sống ngay trước đó (`prev`) rồi cho nó trôi tiếp như thật: mọi người
+ * Ở tick trọng tài thổi phạt / bóng ra ngoài, sim đã đặt bóng về chấm đá phạt và đặt thẳng mọi cầu thủ
+ * vào vị trí của tình huống (luật 2). Người xem không được thấy cú nhảy đó: renderer giữ khung bóng
+ * sống ngay trước đó (`prev`) rồi cho nó trôi tiếp như thật tới khi stinger che kín (`onCovered`) mới
+ * vẽ vị trí mới: mọi người
  * chạy chậm dần tới khi dừng hẳn (tiếng còi), người bị phạm lỗi té và trượt theo quán tính, bóng lăn
  * tiếp (bóng ra biên thì lăn qua vạch, bóng vào khung thành thì dừng ở lưới). Hết `delaySec` mới bắt
- * đầu khép stinger. Sim vẫn chạy phía sau (cầu thủ đi về vị trí), nhưng renderer không đưa phím vào
- * sim trong lúc giữ: người chơi không điều khiển được cảnh mình chưa nhìn thấy.
+ * đầu khép stinger. Sim vẫn chạy phía sau (cầu thủ đã đứng sẵn ở vị trí mới), nhưng renderer không đưa
+ * phím vào sim trong lúc giữ: người chơi không điều khiển được cảnh mình chưa nhìn thấy.
  *
  * Mọi đối tượng được cấp phát một lần lúc tạo; `advance` chỉ ghi đè số trong chỗ (không cấp phát mỗi
  * khung hình).

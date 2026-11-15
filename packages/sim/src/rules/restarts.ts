@@ -17,9 +17,9 @@ import { DRIBBLE_OFFSET } from './possession';
 
 /*
  * Bóng chết (PRD §5, đơn giản hoá): bóng ra ngoài → ném biên / phạt góc / phát bóng, bàn thắng →
- * giao bóng. Bóng tự đặt vào chỗ; người thực hiện tự đi ra sau bóng, đối phương lùi ra xa (giao bóng
- * thì đặt sẵn). Mọi người vào vị trí rồi đội người mới bấm chuyền được, đội máy tự thực hiện sau
- * RESTART_DELAY_TICKS.
+ * giao bóng. Bóng và mọi cầu thủ được đặt thẳng vào chỗ ngay lúc bóng chết (luật 2, 2026-11-15):
+ * người thực hiện sau bóng, đối phương ngoài khoảng cách tối thiểu. Ai rời chỗ sau đó thì tự đi về;
+ * mọi người vào vị trí rồi đội người mới bấm chuyền được, đội máy tự thực hiện sau RESTART_DELAY_TICKS.
  */
 
 /** Đội máy tự thực hiện bóng chết sau chừng này tick (3 s). */
@@ -181,14 +181,19 @@ export function createRestart(
   return { ...plan, takerId: chooseTaker(players, plan).id, startTick };
 }
 
-/** Chọn người thực hiện, đặt ngay người đó sau bóng, dẹp đối phương ra xa (giao bóng). */
+/**
+ * Chọn người thực hiện (hoặc dùng `takerId` — lượt luân lưu), đặt ngay người đó sau bóng, dẹp đối
+ * phương ra xa, phạt đền thì dẹp mọi người khỏi vòng cấm.
+ */
 export function setupRestart(
   players: readonly PlayerState[],
   plan: RestartPlan,
   half: 1 | 2,
   startTick: number,
+  takerId?: string,
 ): { players: PlayerState[]; restart: Restart } {
-  const restart = createRestart(players, plan, startTick);
+  const chosen = createRestart(players, plan, startTick);
+  const restart = takerId === undefined ? chosen : { ...chosen, takerId };
   return { players: holdRestart(players, restart, half, restartFacing(plan, half)), restart };
 }
 

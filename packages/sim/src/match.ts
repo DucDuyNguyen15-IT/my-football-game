@@ -20,7 +20,7 @@ import {
   penaltyGuess,
   resolveSave,
 } from './ai/goalkeeper';
-import { aiMove, arrive, goalSidePoint, thinkTeam } from './ai/team';
+import { aiMove, arrive, goalSidePoint, planTeam, thinkTeam } from './ai/team';
 import {
   choosePassTarget,
   passBall,
@@ -84,7 +84,6 @@ import {
 } from './rules/possession';
 import {
   cpuRestartDue,
-  createRestart,
   decideRestart,
   holdRestart,
   RESTART_SETTLE_DIST,
@@ -180,7 +179,40 @@ function nearestHuman(players: readonly PlayerState[], point: Vec2): string {
 }
 
 /**
- * Đặt bóng chết: cầu thủ (đã ở vị trí mới) + tình huống → state ở phase `kickoff`/`dead_ball`.
+ * Đội hình lúc bóng chết (luật 2): mọi cầu thủ đứng thẳng vào điểm neo AI của mình quanh điểm đặt
+ * bóng, quay mặt về bóng — không ai phải đi bộ về. Tắt AI (test cơ chế) thì ai ở đâu đứng yên đó.
+ */
+function restartShape(
+  state: MatchState,
+  players: readonly PlayerState[],
+  plan: RestartPlan,
+): PlayerState[] {
+  if (!state.ai) return [...players];
+  const anchorsOf = (team: TeamSide) =>
+    planTeam({
+      team,
+      half: state.half,
+      formation: state.formations[team],
+      players,
+      ball: restingBall(plan.spot),
+      ballOwnerId: null,
+      restartTeam: plan.team,
+      aggression: aiProfile(state, team).aggression,
+      controlledId: null,
+    }).anchors;
+  const anchors = { home: anchorsOf('home'), away: anchorsOf('away') };
+  return players.map((p) => {
+    const pos = anchors[p.team][p.id] ?? p.pos;
+    const toBall = sub(plan.spot, pos);
+    return { ...p, pos, vel: ZERO, facing: length(toBall) > 0 ? normalize(toBall) : p.facing };
+  });
+}
+
+/**
+ * Đặt bóng chết: tình huống → state ở phase `kickoff`/`dead_ball`. Mọi cầu thủ được đặt thẳng vào vị
+ * trí ngay ở tick này (luật 2, không đi bộ về): người thực hiện sau bóng, đối phương ngoài khoảng
+ * cách tối thiểu, phạt đền thì ra ngoài vòng cấm; phần hiển thị che màn rồi mới vẽ vị trí mới.
+ * Giao bóng: `players` đã ở vị trí giao bóng. Luân lưu: chỉ người sút (`takerId`) và thủ môn đổi chỗ.
  * Đội người được hưởng thì người chơi cầm luôn người thực hiện.
  */
 function enterDeadBall(
@@ -188,18 +220,20 @@ function enterDeadBall(
   players: readonly PlayerState[],
   plan: RestartPlan,
   tick: number,
+  takerId?: string,
 ): MatchState {
-  // Giao bóng: mọi người đã về sẵn vị trí. Tình huống khác: mọi người tự đi tới chỗ (stepDeadBall).
-  const placed =
-    plan.type === 'kickoff'
-      ? setupRestart(players, plan, state.half, tick)
-      : { players: [...players], restart: createRestart(players, plan, tick) };
+  const shaped =
+    plan.type === 'kickoff' || state.shootout ? players : restartShape(state, players, plan);
+  // Người thực hiện chọn sau khi xếp đội hình: người có chỗ đứng gần bóng nhất, đội hình không bị hổng.
+  const { players: placed, restart } = setupRestart(shaped, plan, state.half, tick, takerId);
   return {
     ...state,
     phase: plan.type === 'kickoff' ? 'kickoff' : 'dead_ball',
     ballDead: true,
-    restart: placed.restart,
-    players: placed.players,
+    restart,
+    players: placed,
+    // Vị trí đã đổi hẳn: AI đội lập lại kế hoạch ở tick sau.
+    ai: state.ai && { home: null, away: null },
     ball: restingBall(plan.spot),
     ballOwnerId: null,
     ownerSinceTick: tick,
@@ -212,8 +246,7 @@ function enterDeadBall(
     windup: null,
     passReceiver: null,
     backPass: null,
-    controlledId:
-      plan.team === HUMAN_TEAM ? placed.restart.takerId : nearestHuman(placed.players, plan.spot),
+    controlledId: plan.team === HUMAN_TEAM ? restart.takerId : nearestHuman(placed, plan.spot),
   };
 }
 
@@ -712,14 +745,8 @@ function setupShootoutKick(state: MatchState, tick: number): MatchState {
   const team = nextShooter(so, so.first);
   const taker = shooterFor(state.players, team, so[team].length);
   const spot = vec2(attackSign(team, state.half) * (HALF_LENGTH - PENALTY_SPOT_DIST), 0);
-  const dead = enterDeadBall(state, state.players, { type: 'penalty', team, spot }, tick);
-  return {
-    ...dead,
-    phase: 'shootout',
-    restart: { ...dead.restart!, takerId: taker.id },
-    controlledId: team === HUMAN_TEAM ? taker.id : dead.controlledId,
-    shootout: { ...so, kicking: team, kickTick: null },
-  };
+  const dead = enterDeadBall(state, state.players, { type: 'penalty', team, spot }, tick, taker.id);
+  return { ...dead, phase: 'shootout', shootout: { ...so, kicking: team, kickTick: null } };
 }
 
 /**
@@ -758,7 +785,7 @@ function stepShootout(
   if (!over) return { ...next, phase: 'shootout', shots: state.shots };
   const tally = { ...so, [team]: [...so[team], scored] };
   // Vào lưới: `stepPlay` đã xếp mọi người về vị trí giao bóng — luân lưu không giao bóng, ai ở đâu
-  // đứng yên đó (người sút lượt kế tự đi tới chấm phạt đền).
+  // đứng yên đó (người sút lượt kế được đặt thẳng vào chấm phạt đền).
   const players = scored ? state.players : next.players;
   const after: MatchState = {
     ...next,
@@ -819,7 +846,8 @@ function stepDeadBall(
     shot: true,
   });
 
-  // Ai đứng sai chỗ thì tự đi tới chỗ (không dịch chuyển tức thì); chưa xong thì chưa thực hiện được.
+  // Mọi người đã được đặt vào vị trí lúc bóng chết (luật 2). Ai rời chỗ sau đó (người chơi chạy vào
+  // khoảng cách cấm, bị chen) thì tự đi về; chưa xong thì chưa thực hiện được.
   // Phạt đền: hướng bấm chỉ dùng để nhắm lúc sút, người sút luôn quay mặt về khung thành.
   const humanAim = humanRestart && restart.type !== 'penalty' ? input.move : ZERO;
   const takerFar = length(sub(taker.pos, restart.spot)) > DRIBBLE_OFFSET + RESTART_SETTLE_DIST;

@@ -608,7 +608,7 @@ export class MatchRenderer {
     } else {
       // Stinger còn che sân: sim đứng (tình huống cố định không bị thực hiện sau màn che). Đang giữ
       // cảnh (phạm lỗi, bóng ra biên, bàn thắng) hoặc còn che: người chơi chưa thấy sân mới nên phím
-      // không vào sim — sim vẫn chạy cho cầu thủ đi về vị trí (review H1, foul-delay 1).
+      // không vào sim — sim vẫn chạy (cầu thủ đã được đặt sẵn vào vị trí, luật 2; review H1, foul-delay 1).
       const hiding = this.transition.isHidingPlay();
       const blind = hiding || this.cutHold !== null || this.goalHold !== null;
       if (hiding) this.accumulator = 0;
