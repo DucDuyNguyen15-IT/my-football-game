@@ -49,3 +49,6 @@ apps/web/public/models/goal.glb
 # Worktree của agent Claude Code
 .claude/worktrees/
 .claude/collab/
+
+# playwright-cli (snapshot, log, video khi kiểm tay)
+.playwright-cli/
