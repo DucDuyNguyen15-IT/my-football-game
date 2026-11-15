@@ -161,6 +161,19 @@ Kết luận: cả hai thấp hơn nhiều so với ngưỡng 500 ms nên **khô
 
 Kết luận: **không rò**. Heap tăng chậm dần rồi gần như đứng (vòng 10 → 20 chỉ +0,3 MB, ~3%, nằm trong ngưỡng ≤ 10%; phần tăng ban đầu là module/cache đã tải), DOM không đổi, canvas WebGL được gỡ hết, không có cảnh báo "Too many active WebGL contexts". Bộ nhớ GPU không đo được qua CDP (không thay bằng số đoán). Console có cảnh báo Three.js `PCFSoftShadowMap has been removed. Using PCFShadowMap instead.` (không ảnh hưởng, §6 T12).
 
+#### A/B chuyển cảnh (đo 2026-11-16, review M3)
+
+Cùng máy, Chromium có giao diện + GPU thật (Intel UHD, ANGLE D3D11), bản `vite build --mode test` + `vite preview`, tắt vsync (`--disable-gpu-vsync --disable-frame-rate-limit`) để FPS không bị trần; trận Dễ tự đá `/play?perf=1&autopilot=1&half=60`, A = có chuyển cảnh, B = `&stinger=0`, chạy xen kẽ A/B/A/B/A/B.
+
+| Lần | A: FPS TB | A: ngoài lúc chuyển cảnh | A: 1% thấp | B: FPS TB | B: 1% thấp |
+|---|---|---|---|---|---|
+| 1 | 158,8 | 132,3 | 7,7 | 136,6 | 9,6 |
+| 2 | 158,9 | 134,1 | 8,6 | 135,0 | 9,2 |
+| 3 | 163,1 | 133,3 | 7,9 | 136,7 | 9,8 |
+
+- FPS TB của A cao hơn ~17% **chỉ vì** khung lúc màn che kín rất rẻ (~500 FPS, chiếm 6–7% thời gian trận) kéo trung bình lên. Bỏ các khung đó ra thì A ≈ 133 so với B ≈ 136: **chuyển cảnh không làm tăng FPS lúc chơi**, lệch ~2% nằm trong sai số. Con số "FPS tăng 4–6" trong báo cáo chuyển cảnh không đúng.
+- "1% thấp nhất" của A thấp hơn B một chút (7,7–8,6 so với 9,2–9,8) và cả hai có khung đứng 0,6–0,8 s: giật ngắn §6 T12 vẫn còn, chuyển cảnh có thể góp thêm một ít.
+
 #### Hướng dẫn tự đo lại (cách cũ, thủ công)
 
 Mục tiêu PRD §10: **≥ 55 FPS trung bình** cả trận trên laptop tầm trung (GPU tích hợp), Chrome; không rò bộ nhớ sau 20 lần vào/ra trận.
