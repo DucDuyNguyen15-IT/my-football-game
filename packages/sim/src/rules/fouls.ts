@@ -77,11 +77,28 @@ export const isSentOff = (bookings: readonly Booking[], playerId: string): boole
   bookings.some((b) => b.playerId === playerId && b.card === 'red');
 
 /**
- * Thẻ cho người phạm lỗi: xoạc thô bạo → tung xác suất đỏ trực tiếp; không đỏ thì xoạc từ sau
+ * Thẻ cho người phạm lỗi. Thủ môn không bao giờ bị đỏ (người dùng chốt 15/11, giống FC Online):
+ * mọi thẻ đỏ của thủ môn thành một thẻ vàng, kể cả vàng thứ hai.
+ */
+export function decideCards(
+  foul: { fromBehind: boolean; rough: boolean },
+  tackler: PlayerState,
+  victim: PlayerState,
+  half: 1 | 2,
+  bookings: readonly Booking[],
+  rng: RngState,
+): { cards: CardColor[]; rng: RngState } {
+  const out = decideOutfieldCards(foul, tackler, victim, half, bookings, rng);
+  if (tackler.position !== 'GK' || out.cards.length === 0) return out;
+  return { cards: ['yellow'], rng: out.rng };
+}
+
+/**
+ * Thẻ cho cầu thủ ngoài sân: xoạc thô bạo → tung xác suất đỏ trực tiếp; không đỏ thì xoạc từ sau
  * khi đối phương đối mặt khung thành → vàng, vàng thứ hai kèm đỏ. PRNG chỉ tiến khi xoạc thô bạo.
  * @returns thẻ mới theo thứ tự: rỗng, `[red]`, `[yellow]` hoặc `[yellow, red]`.
  */
-export function decideCards(
+function decideOutfieldCards(
   foul: { fromBehind: boolean; rough: boolean },
   tackler: PlayerState,
   victim: PlayerState,

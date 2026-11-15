@@ -37,4 +37,10 @@ describe('phạt đền', () => {
     expect(r.rate).toBeGreaterThan(0.65);
     expect(r.rate).toBeLessThan(0.85);
   }, 30_000);
+
+  it('người chơi nhắm sát góc, lực đầy (B1b-5): vẫn không vượt quá ~85% (đo 400 lượt: Dễ 72%, Khó 63%)', () => {
+    const r = runPenalties('easy', 100, undefined, true);
+    expect(r.kicks.home).toBeGreaterThan(40);
+    expect(r.goals.home / r.kicks.home).toBeLessThan(0.85);
+  }, 30_000);
 });

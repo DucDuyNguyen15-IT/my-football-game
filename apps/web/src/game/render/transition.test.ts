@@ -297,7 +297,6 @@ describe('detectTransition — khi nào chuyển cảnh', () => {
       actionDeadline: {
         kind: 'free_kick',
         playerId: 'home-P1',
-        startTick: start,
         deadlineTick: deadline,
       },
       // Giả sử có cầu thủ nhảy vị trí ngay trong 5 giây cuối.

@@ -124,6 +124,8 @@ export function HalfTimeStrip() {
 export interface PauseSubs {
   /** Sim đang cho thay người (bóng chết, không phải lúc chờ phạt đền — PRD §5). */
   allowed: boolean;
+  /** Đang chờ phạt đền / luân lưu: bóng chết nhưng vẫn không được thay. */
+  penaltyPending?: boolean;
   left: number;
   options: SubOptions;
   onSubstitute: (outId: string, benchSlot: SquadSlot) => void;
@@ -385,7 +387,9 @@ export function PauseMenu({
         <span id="subs-hint" className="muted pause__hint">
           {subs.left === 0
             ? 'Đã dùng hết lượt thay người.'
-            : 'Chỉ thay người khi bóng chết (biên, góc, phạt, bàn thắng).'}
+            : subs.penaltyPending
+              ? 'Không thay người lúc chờ phạt đền / luân lưu.'
+              : 'Chỉ thay người khi bóng chết (biên, góc, phạt, bàn thắng).'}
         </span>
         <button
           type="button"

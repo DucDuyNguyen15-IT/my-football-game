@@ -587,7 +587,7 @@ function nextDeadline(prev: ActionDeadline | null, s: MatchState): ActionDeadlin
       prev.playerId === r.takerId &&
       prev.deadlineTick === deadlineTick
       ? prev
-      : { kind: r.type, playerId: r.takerId, startTick: r.startTick, deadlineTick };
+      : { kind: r.type, playerId: r.takerId, deadlineTick };
   }
   const holder = s.ballOwnerId === null ? undefined : s.players.find((p) => p.id === s.ballOwnerId);
   if (
@@ -599,20 +599,20 @@ function nextDeadline(prev: ActionDeadline | null, s: MatchState): ActionDeadlin
   ) {
     return null;
   }
-  return prev?.kind === 'keeper_hold' && prev.playerId === holder.id
+  // Tính từ lúc bắt đầu cầm bóng (không phải lúc vào vòng cấm): ra/vào vòng cấm không đặt lại hạn.
+  const deadlineTick = s.ownerSinceTick + KEEPER_HOLD_MAX_TICKS;
+  return prev?.kind === 'keeper_hold' &&
+    prev.playerId === holder.id &&
+    prev.deadlineTick === deadlineTick
     ? prev
-    : {
-        kind: 'keeper_hold',
-        playerId: holder.id,
-        startTick: s.tick,
-        deadlineTick: s.tick + KEEPER_HOLD_MAX_TICKS,
-      };
+    : { kind: 'keeper_hold', playerId: holder.id, deadlineTick };
 }
 
 /**
  * Cú sút chưa phân định sau tick này: cú sút mới (`lastShot` vừa đặt ở tick này) hoặc cú đang theo
- * dõi, còn tính tới khi bóng chết (vào lưới / ra ngoài), có người giữ bóng, đội kia chạm bóng (thủ
- * môn cản) hoặc quá WHISTLE_SHOT_WAIT_TICKS.
+ * dõi, còn tính tới khi bóng chết (vào lưới / ra ngoài), có người giữ bóng, đội kia chạm bóng làm
+ * bóng đổi hướng ra xa khung thành (thủ môn cản) hoặc quá WHISTLE_SHOT_WAIT_TICKS. Chạm nhẹ mà bóng
+ * vẫn đi về khung thành thì vẫn chờ.
  */
 function trackShot(prev: MatchState['shotInFlight'], s: MatchState): MatchState {
   const shot =
@@ -621,7 +621,7 @@ function trackShot(prev: MatchState['shotInFlight'], s: MatchState): MatchState 
     shot !== null &&
     s.restart === null &&
     s.ballOwnerId === null &&
-    s.lastTouchTeam === shot.team &&
+    (s.lastTouchTeam === shot.team || s.ball.vel.x * attackSign(shot.team, s.half) > 0) &&
     s.tick - shot.tick < WHISTLE_SHOT_WAIT_TICKS;
   const shotInFlight = pending ? shot : null;
   return shotInFlight === s.shotInFlight ? s : { ...s, shotInFlight };
@@ -875,7 +875,7 @@ function stepDeadBall(
       kicked = {
         ...performKick(taker, restart.spot, decided.action, decided.rng, profile),
         // Máy đá hộ người chơi: người chơi cầm luôn người nhận như khi tự chuyền.
-        receiver: aiReceiver(decided.action, restart.spot, tick),
+        receiver: humanRestart ? aiReceiver(decided.action, restart.spot, tick) : null,
       };
     }
   }

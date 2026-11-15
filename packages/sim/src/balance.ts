@@ -1,8 +1,9 @@
 import type { Difficulty, MatchTeamSetup } from '@pitch/shared';
 import { cpuEasyTeam, cpuHardTeam, starterLikeTeam } from './fixtures/demoTeams';
+import { MAX_CHARGE_TICKS } from './actions/shoot';
 import { createMatch, step } from './match';
 import { TICK_RATE } from './tick';
-import { NO_INPUT, type MatchSetup, type MatchState } from './types';
+import { NO_INPUT, type MatchSetup, type MatchState, type PlayerInput } from './types';
 
 /*
  * Cân bằng độ khó (task 5.13, PRD §5): đội của người chơi do hồ sơ AI `proxy` (người chơi trung
@@ -112,11 +113,14 @@ export interface PenaltyResult {
  * Đo tỉ lệ phạt đền thành bàn bằng luân lưu AI-vs-AI: mỗi seed một trận nhảy thẳng tới cuối hiệp 2
  * (hoà 0–0) rồi sút luân lưu tới khi phân định; lặp seed 1, 2, … tới khi đủ `minKicks` lượt.
  * Tham số liên quan: `PENALTY_ERROR_MULT`, `GK_PENALTY_GUESS_RANGE` (`stats/params.ts`).
+ * `humanAim`: đội nhà do "người chơi" sút — nhắm sát góc (xen kẽ trái/phải) với lực đầy, đội khách
+ * vẫn là máy. Dùng để biết người chơi giỏi vào bao nhiêu % (review B1b-5).
  */
 export function runPenalties(
   opponent: Difficulty,
   minKicks = 1000,
   teams: BalanceTeams = FIXTURE_BALANCE_TEAMS,
+  humanAim = false,
 ): PenaltyResult {
   const kicks = { home: 0, away: 0 };
   const goals = { home: 0, away: 0 };
@@ -127,10 +131,12 @@ export function runPenalties(
       seed,
       difficulty: opponent,
       halfLengthSec: 1,
-      autopilot: true,
+      autopilot: !humanAim,
     });
     let s: MatchState = { ...s0, half: 2, halfTick: TICK_RATE - 1, addedMinutes: 0 };
-    for (let i = 0; i < 60 * 60 * TICK_RATE && s.phase !== 'full_time'; i++) s = step(s, NO_INPUT);
+    for (let i = 0; i < 60 * 60 * TICK_RATE && s.phase !== 'full_time'; i++) {
+      s = step(s, humanAim ? aimedPenaltyInput(s) : NO_INPUT);
+    }
     for (const team of ['home', 'away'] as const) {
       kicks[team] += s.shootout?.[team].length ?? 0;
       goals[team] += s.shootout?.[team].filter(Boolean).length ?? 0;
@@ -138,4 +144,14 @@ export function runPenalties(
   }
   const all = kicks.home + kicks.away;
   return { opponent, kicks, goals, rate: all === 0 ? 0 : (goals.home + goals.away) / all };
+}
+
+/** Người chơi sút phạt đền "giỏi": giữ sút tới lực đầy rồi thả, nhắm sát góc trái/phải xen kẽ. */
+function aimedPenaltyInput(s: MatchState): PlayerInput {
+  if (s.phase !== 'shootout' || s.restart?.team !== 'home') return NO_INPUT;
+  const y = (s.shootout?.home.length ?? 0) % 2 === 0 ? 1 : -1;
+  const move = { x: 0, y };
+  // Chưa nạp thì nhấn/nhả luân phiên (sim cần một lần nhấn mới, sau khi người sút vào vị trí).
+  const shoot = s.shotChargeTicks > 0 ? s.shotChargeTicks < MAX_CHARGE_TICKS : !s.input.shoot;
+  return { ...NO_INPUT, move, shoot };
 }

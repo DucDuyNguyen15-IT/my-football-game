@@ -477,6 +477,8 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
           }}
           subs={{
             allowed: hud !== null && hud.subWindow !== 'closed',
+            penaltyPending:
+              hud !== null && (hud.foulRestart?.type === 'penalty' || hud.shootout !== null),
             left: hud?.subsLeft ?? 0,
             options: subs,
             onSubstitute: (outId, benchSlot) =>

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { cpuEasyTeam, starterLikeTeam } from './fixtures/demoTeams';
 import { createMatch, step } from './match';
 import { length, sub, vec2, ZERO, type Vec2 } from './math/vec2';
-import { HALF_LENGTH, PENALTY_SPOT_DIST } from './pitch';
+import { HALF_LENGTH, PENALTY_AREA_DEPTH, PENALTY_SPOT_DIST } from './pitch';
 import { matchClock, regulationTicks } from './rules/clock';
 import {
   HALF_TIME_MAX_TICKS,
@@ -87,8 +87,7 @@ describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', ()
     expect(s.actionDeadline).toEqual({
       kind: 'keeper_hold',
       playerId: GK,
-      startTick: s.tick,
-      deadlineTick: s.tick + KEEPER_HOLD_MAX_TICKS,
+      deadlineTick: s0.ownerSinceTick + KEEPER_HOLD_MAX_TICKS,
     });
     expect(KEEPER_HOLD_MAX_TICKS).toBe(10 * TICK_RATE);
     const deadline = s.actionDeadline!.deadlineTick;
@@ -112,6 +111,25 @@ describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', ()
     expect(s.ballOwnerId).not.toBe(GK);
     expect(s.actionDeadline).toBeNull();
     expect(s.tick).toBeLessThan(keeperHolding().tick + KEEPER_HOLD_MAX_TICKS);
+  });
+
+  it('bước ra/vào vòng cấm không đặt lại hạn: vào lại sau 10 s thì phát bóng ngay', () => {
+    const s0 = keeperHolding();
+    const edge = -HALF_LENGTH + PENALTY_AREA_DEPTH;
+    let s: MatchState = {
+      ...s0,
+      players: s0.players.map((p) => (p.id === GK ? { ...p, pos: vec2(edge - 0.3, 0) } : p)),
+    };
+    const deadline = s0.ownerSinceTick + KEEPER_HOLD_MAX_TICKS;
+    // Chạy qua lại vạch vòng cấm tới quá hạn.
+    for (let i = 0; s.tick < deadline + 30 && s.windup === null; i++) {
+      const gk = s.players.find((p) => p.id === GK)!;
+      const dir = gk.pos.x < edge ? 1 : -1;
+      s = step(s, { ...NO_INPUT, move: vec2(dir, 0) });
+      if (s.actionDeadline) expect(s.actionDeadline.deadlineTick).toBe(deadline);
+    }
+    expect(s.windup).toMatchObject({ playerId: GK });
+    expect(s.tick).toBeLessThanOrEqual(deadline + 30);
   });
 
   it('autopilot (AI cầm cả đội) không có hạn chót', () => {
@@ -140,7 +158,6 @@ describe('đá phạt của người chơi tối đa 15 s', () => {
     expect(s.actionDeadline).toEqual({
       kind: 'free_kick',
       playerId: s0.restart!.takerId,
-      startTick: s0.tick,
       deadlineTick: s0.tick + SET_PIECE_MAX_TICKS,
     });
     s = run(s, SET_PIECE_MAX_TICKS - 2);
@@ -261,6 +278,48 @@ describe('còi hết hiệp chờ phạt đền / cú sút xong (B1-07)', () => 
     expect(s.phase).toBe('half_time');
     expect(s.score.away).toBe(1);
     expect(s.shotInFlight).toBeNull();
+  });
+
+  it('thủ môn chạm nhẹ mà bóng vẫn đi vào lưới lúc hết giờ: bàn được tính rồi mới thổi còi', () => {
+    const s0 = createMatch(setup);
+    const players = s0.players.map((p) =>
+      p.id === GK ? { ...p, pos: vec2(-HALF_LENGTH + 1, 9.5), vel: ZERO } : p,
+    );
+    let s: MatchState = atHalfEnd({
+      ...s0,
+      phase: 'play',
+      ballDead: false,
+      restart: null,
+      players,
+      ball: { pos: vec2(-HALF_LENGTH + 5, 0), vel: vec2(-22, 0), z: 0.3, vz: 0 },
+      ballOwnerId: null,
+      // Đội nhà vừa chạm (đổi hướng) nhưng bóng vẫn bay về khung thành nhà.
+      lastTouchTeam: 'home',
+      lastShot: { team: 'away', tick: s0.tick },
+      shotInFlight: { team: 'away', tick: s0.tick },
+    });
+    s = step(s, NO_INPUT);
+    expect(s.phase).toBe('play');
+    for (let i = 0; i < 2 * TICK_RATE && s.phase !== 'half_time'; i++) s = step(s, NO_INPUT);
+    expect(s.score.away).toBe(1);
+  });
+
+  it('thủ môn cản bóng bật ra xa khung thành lúc hết giờ: thổi còi ngay', () => {
+    const s0 = createMatch(setup);
+    const s = step(
+      atHalfEnd({
+        ...s0,
+        phase: 'play',
+        ballDead: false,
+        restart: null,
+        ball: { pos: vec2(-HALF_LENGTH + 5, 0), vel: vec2(10, 3), z: 0.3, vz: 0 },
+        ballOwnerId: null,
+        lastTouchTeam: 'home',
+        shotInFlight: { team: 'away', tick: s0.tick },
+      }),
+      NO_INPUT,
+    );
+    expect(s.phase).toBe('half_time');
   });
 
   it('cú sút lăn mãi không tới đâu: quá 3 s thì thổi còi (giới hạn an toàn)', () => {
