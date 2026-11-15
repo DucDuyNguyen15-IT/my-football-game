@@ -51,6 +51,7 @@ const withRestart = (
     spot: { x: 20, y: 10 },
     takerId: `${team}-P1`,
     startTick,
+    readyTick: startTick,
   },
 });
 

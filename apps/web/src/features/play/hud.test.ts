@@ -90,7 +90,7 @@ describe('hudEvents', () => {
       toHudSnapshot({
         ...s,
         phase: 'dead_ball',
-        restart: { type, team: 'home', spot: { x: 0, y: 0 }, takerId: 'home-P5', startTick: 1 },
+        restart: { type, team: 'home', spot: { x: 0, y: 0 }, takerId: 'home-P5', startTick: 1, readyTick: 1 },
       });
     expect(hudEvents(before, restart('penalty'))).toEqual([
       { kind: 'foul', team: 'home', text: "0' Phạt đền · Nhà" },

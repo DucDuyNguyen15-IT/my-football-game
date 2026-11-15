@@ -3,7 +3,7 @@
  * chỉ cần giữ tham chiếu các `MatchState` gần nhất trong buffer vòng; phát lại là vẽ lại chúng
  * chậm hơn, sim đứng yên trong lúc đó.
  */
-import { TICK_DT, type MatchState, type Vec2 } from '@pitch/sim';
+import { GOAL_HOLD_TICKS, TICK_DT, type MatchState, type Vec2 } from '@pitch/sim';
 import type { CameraState } from './camera';
 
 /** Tốc độ phát lại so với thời gian thực. */
@@ -11,7 +11,7 @@ export const REPLAY_SPEED = 0.35;
 /** Phát lại chừng này tick trước khi bóng vào lưới… */
 export const REPLAY_BEFORE_TICKS = 210;
 /** …và chừng này tick sau đó (bóng rung lưới) — renderer chờ đủ số tick này mới bắt đầu. */
-export const REPLAY_AFTER_TICKS = 50;
+export const REPLAY_AFTER_TICKS = GOAL_HOLD_TICKS;
 export const REPLAY_TICKS = REPLAY_BEFORE_TICKS + REPLAY_AFTER_TICKS;
 
 /** Buffer vòng giữ `capacity` trạng thái mới nhất. */

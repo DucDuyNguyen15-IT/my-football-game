@@ -133,6 +133,12 @@ export interface Restart {
   takerId: string;
   /** Tick bắt đầu chờ (đội máy thực hiện sau RESTART_DELAY_TICKS, chờ lâu hơn bị tính bù giờ). */
   startTick: number;
+  /**
+   * Tick người thực hiện đã đứng trước bóng và chuyển cảnh đã xong (`startTick` + thời gian giữ hình
+   * + mở màn, `rules/restarts.ts`): hạn 15 s của người chơi tính từ đây (luật 3). Sim tự tính nên
+   * chạy không có phần hiển thị vẫn y hệt; phần hiển thị căn chuyển cảnh theo các hằng số đó.
+   */
+  readyTick: number;
 }
 
 /**
@@ -163,12 +169,13 @@ export interface PassReceiver {
 }
 
 /**
- * Hạn chót người chơi phải tự thực hiện (`rules/limits.ts`): thủ môn đang ôm bóng, đá phạt, phạt đền
- * (cả lượt luân lưu). Tới `deadlineTick` mà chưa làm thì máy làm hộ. HUD vẽ đếm ngược trên đầu
+ * Hạn chót người chơi phải tự thực hiện (`rules/limits.ts`): thủ môn đang ôm bóng, hoặc mọi tình huống
+ * cố định (giao bóng, ném biên, phạt góc, phát bóng, đá phạt, phạt đền, lượt luân lưu). Tới
+ * `deadlineTick` mà chưa làm thì máy làm hộ. HUD vẽ đếm ngược trên đầu
  * `playerId` từ `deadlineTick − tick`.
  */
 export interface ActionDeadline {
-  kind: 'keeper_hold' | 'free_kick' | 'penalty';
+  kind: 'keeper_hold' | RestartType;
   playerId: string;
   deadlineTick: number;
 }
@@ -246,7 +253,7 @@ export interface MatchState {
   subsUsed: Record<TeamSide, number>;
   /** Các lượt thay người theo thứ tự (cho HUD và màn kết quả). */
   substitutions: Substitution[];
-  /** Hạn chót người chơi phải thực hiện (ôm bóng / đá phạt / phạt đền); null khi không có. */
+  /** Hạn chót người chơi phải thực hiện (ôm bóng / tình huống cố định); null khi không có. */
   actionDeadline: ActionDeadline | null;
   /** Nghỉ giữa hiệp: tới tick này mà chưa bấm chuyền thì tự đá hiệp 2; null ngoài giờ nghỉ. */
   halfTimeEndTick: number | null;

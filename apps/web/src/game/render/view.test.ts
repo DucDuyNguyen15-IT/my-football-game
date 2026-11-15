@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS, TICK_RATE } from '@pitch/sim';
+import {
+  MAX_CHARGE_TICKS,
+  NO_INPUT,
+  PASS_FULL_CHARGE_TICKS,
+  TICK_RATE,
+  cpuEasyTeam,
+  createMatch,
+  starterLikeTeam,
+  step,
+} from '@pitch/sim';
 import {
   COUNTDOWN_ARC_STEPS,
   COUNTDOWN_VISIBLE_SEC,
@@ -88,6 +97,19 @@ describe('countdownRing', () => {
   };
   const at = (d: typeof freeKick | typeof keeper, left: number) =>
     countdownRing({ actionDeadline: d, tick: d.deadlineTick - left });
+
+  it('tình huống cố định nào của người chơi cũng có vòng 5 giây cuối trên đầu người thực hiện (luật 3)', () => {
+    // Trận thật: đội nhà giao bóng đầu trận, không bấm gì.
+    let s = step(createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 7 }), NO_INPUT);
+    const takerId = s.restart!.takerId;
+    const deadline = s.actionDeadline!.deadlineTick;
+    expect(s.actionDeadline!.kind).toBe('kickoff');
+    expect(countdownRing(s)).toBeNull();
+    while (s.tick < deadline - SHOWN) s = step(s, NO_INPUT);
+    expect(countdownRing(s)).toEqual({ playerId: takerId, seconds: 5, elapsed: 0 });
+    while (s.tick < deadline - 1) s = step(s, NO_INPUT);
+    expect(countdownRing(s)).toMatchObject({ playerId: takerId, seconds: 1 });
+  });
 
   it('không có hạn chót thì không có vòng', () => {
     expect(countdownRing({ actionDeadline: null, tick: 5 })).toBeNull();

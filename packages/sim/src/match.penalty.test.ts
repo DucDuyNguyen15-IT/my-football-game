@@ -20,7 +20,7 @@ function cpuPenalty(difficulty: 'easy' | 'hard'): BallState {
     ...s0,
     phase: 'dead_ball',
     ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
-    restart: { type: 'penalty', team: 'away', spot, takerId: 'away-P6', startTick: s0.tick },
+    restart: { type: 'penalty', team: 'away', spot, takerId: 'away-P6', startTick: s0.tick, readyTick: s0.tick },
   };
   for (let i = 0; i < 12 * TICK_RATE && s.restart; i++) s = step(s, NO_INPUT);
   expect(s.restart).toBeNull();

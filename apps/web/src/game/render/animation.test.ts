@@ -98,6 +98,7 @@ describe('heldBall', () => {
       spot: v(0, 34),
       takerId: 'home-P3',
       startTick: 0,
+      readyTick: 0,
     };
     const s = { ...base(), restart } as MatchState;
     expect(heldBall(withPlayer(s, 'home-P3', { pos: v(0, 33.4) }))).toEqual({
@@ -148,7 +149,7 @@ describe('animationEvents', () => {
     const restart = (type: 'throw_in' | 'penalty'): MatchState => ({
       ...s,
       phase: 'dead_ball',
-      restart: { type, team: 'home', spot: v(0, 0), takerId: ME, startTick: 0 },
+      restart: { type, team: 'home', spot: v(0, 0), takerId: ME, startTick: 0, readyTick: 0 },
     });
     const after = (prev: MatchState, over: Partial<MatchState> = {}) =>
       kicked(prev, { phase: 'play', restart: null, ...over });
@@ -230,7 +231,7 @@ describe('animationEvents', () => {
       ...tackled(prev, { outcome: 'foul', victimId: 'away-P4' }),
       phase: 'dead_ball',
       ballOwnerId: null,
-      restart: { type: 'free_kick', team: 'away', spot: v(0, 0), takerId: 'away-P4', startTick: 1 },
+      restart: { type: 'free_kick', team: 'away', spot: v(0, 0), takerId: 'away-P4', startTick: 1, readyTick: 1 },
     };
     expect(animationEvents(prev, curr)).toEqual([
       { playerId: ME, clip: 'tackle' },
@@ -245,7 +246,7 @@ describe('animationEvents', () => {
       tick: prev.tick + 1,
       phase: 'dead_ball',
       ballOwnerId: null,
-      restart: { type: 'free_kick', team: 'home', spot: v(0, 0), takerId: ME, startTick: 1 },
+      restart: { type: 'free_kick', team: 'home', spot: v(0, 0), takerId: ME, startTick: 1, readyTick: 1 },
     };
     expect(animationEvents(prev, curr)).toEqual([{ playerId: ME, clip: 'trip' }]);
   });

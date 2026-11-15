@@ -144,6 +144,7 @@ describe('decideRestartKick', () => {
     spot: vec2(0, -20),
     takerId: CARRIER,
     startTick: 0,
+    readyTick: 0,
     ...over,
   });
 
