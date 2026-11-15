@@ -1,0 +1,17 @@
+# Chỉ gửi mã nguồn vào Docker build context.
+**/node_modules
+**/dist
+.git
+.claude
+.vscode
+.idea
+.playwright-cli
+assets-src
+playwright-report
+test-results
+coverage
+e2e
+.env
+.env.*
+!.env.example
+*.log

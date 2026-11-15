@@ -46,6 +46,7 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | `pnpm e2e` | E2E luồng chính bằng Playwright (`e2e/`, task 8.1): tự migrate + seed DB test (`E2E_DATABASE_URL` → `DATABASE_URL_TEST` → `pitch_test`, không bao giờ DB dev `pitch`), bật server :3101 + web :5174 riêng. Lần đầu: `pnpm exec playwright install chromium`. Không nằm trong `pnpm check` |
 | `pnpm build` | Build web (`apps/web/dist`) + server (`apps/server/dist`) |
 | `pnpm format` | Prettier |
+| `docker compose up -d --build` | Bản production (GĐ9.1): Caddy HTTPS + server + Postgres; cần `SESSION_SECRET`, `POSTGRES_PASSWORD`, `APP_DB_PASSWORD` trong `.env` (xem `.env.example`). Mở `https://localhost` |
 | `pnpm assets` | Dựng `apps/web/public/models/player.glb` từ file Mixamo trong `assets-src/mixamo/` (cả hai **không commit** — giấy phép Mixamo, repo public; thiếu file thì trận dùng cầu thủ khối) |
 
 Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất biến chung).

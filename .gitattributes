@@ -1,0 +1,4 @@
+# File chạy trong container Linux: luôn LF kể cả khi clone trên Windows (core.autocrlf).
+*.sh text eol=lf
+Caddyfile text eol=lf
+Dockerfile text eol=lf

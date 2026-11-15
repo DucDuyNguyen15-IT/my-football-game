@@ -5,7 +5,8 @@
 
 ---
 
-### 9.1 — Đóng gói Docker `[ ]`
+### 9.1 — Đóng gói Docker `[x]`
+- **Xong 2026-11-16:** `Dockerfile` (target `server`, `web`), `deploy/Caddyfile`, `deploy/postgres-init/01-app-role.sh`, `docker-compose.yml`, `.env.example` phần Production. Đã kiểm trên máy local: `https://localhost` đăng ký → mở gói → vào trận 3D không lỗi CSP; restart giữ dữ liệu; `/api/v1/dev/grant-coins` → 404; role `pitch_app` tạo bảng bị từ chối. Thiếu `player.glb`/`ball.glb`/`goal.glb` lúc build thì game vẽ bằng code (file nằm trong `apps/web/public/models/` của máy build sẽ được đóng vào image).
 - **Phụ thuộc:** GĐ8 xong · **Model:** default
 - **Bối cảnh:** ADR-0007; ARCHITECTURE §8; `apps/server/tsup.config.ts`; skill `ecc:docker-patterns`.
 - **Việc cần làm:** `apps/server/Dockerfile` multi-stage (`pnpm deploy --prod`, chạy user không phải root, healthcheck `/api/v1/health`); image Caddy chứa build tĩnh của web; `Caddyfile` (HTTPS tự động, `/api/*` → server, còn lại → SPA fallback, header bảo mật, nén); `docker-compose.yml` (caddy + server + postgres, volume, restart policy, secrets qua `.env`); migration tự chạy khi server khởi động; `.env.example` đầy đủ.
