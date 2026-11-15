@@ -23,6 +23,8 @@ if (!root) throw new Error('Thiếu #root trong index.html');
 const onApiError = (err: unknown) => {
   if (err instanceof ApiClientError && err.code === 'unauthenticated') {
     queryClient.setQueryData(meKey, null);
+    // Giống useLogout: không giữ dữ liệu của phiên cũ cho người đăng nhập lại trong cùng tab.
+    queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== meKey[0] });
   }
 };
 

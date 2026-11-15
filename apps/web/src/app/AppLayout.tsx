@@ -86,14 +86,15 @@ export function Topbar() {
 /** Khung các màn ngoài trận (docs/design/screens/home.html): thanh trên + nội dung. */
 export function AppLayout() {
   const me = useMe().data;
-  const expired = useExpiredMissionClaims(Boolean(me));
-  const [noticeClosed, setNoticeClosed] = useState(false);
+  const expired = useExpiredMissionClaims(me?.id);
+  // Nhớ đã đóng thông báo nào, để lượt tự nhận của ngày/tài khoản khác vẫn hiện.
+  const [closedData, setClosedData] = useState<unknown>(null);
   const items = expired.data?.items ?? [];
   return (
     <div className="shell">
       <Topbar />
-      {items.length > 0 && !noticeClosed && (
-        <ExpiredMissionsNotice items={items} onClose={() => setNoticeClosed(true)} />
+      {items.length > 0 && closedData !== expired.data && (
+        <ExpiredMissionsNotice items={items} onClose={() => setClosedData(expired.data)} />
       )}
       <main className="page">
         <Outlet />
