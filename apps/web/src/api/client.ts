@@ -4,6 +4,9 @@ import { ApiError, type ErrorCode } from '@pitch/shared';
 /** Tiền tố chung của REST API (docs/ARCHITECTURE.md §4). */
 export const API_BASE = '/api/v1';
 
+/** Câu hiện cho người chơi khi máy chủ trả dữ liệu lạ; chi tiết kỹ thuật chỉ ghi console (B4-12). */
+export const BAD_RESPONSE_MSG = 'Máy chủ đang gặp sự cố, bạn thử lại sau ít phút nhé.';
+
 export function apiUrl(path: `/${string}`): string {
   return `${API_BASE}${path}`;
 }
@@ -72,7 +75,8 @@ export async function apiFetch(
     try {
       body = JSON.parse(text);
     } catch {
-      throw new ApiClientError('bad_response', res.status, `Response không phải JSON (${path})`);
+      console.error(`[api] ${path}: response không phải JSON (HTTP ${res.status})`);
+      throw new ApiClientError('bad_response', res.status, BAD_RESPONSE_MSG);
     }
   }
 
@@ -82,7 +86,8 @@ export async function apiFetch(
       const { code, message, details } = parsed.data.error;
       throw new ApiClientError(code, res.status, message, details);
     }
-    throw new ApiClientError('bad_response', res.status, `Lỗi máy chủ ${res.status} (${path})`);
+    console.error(`[api] ${path}: lỗi máy chủ HTTP ${res.status}`);
+    throw new ApiClientError('bad_response', res.status, BAD_RESPONSE_MSG);
   }
   if (schema === null) return undefined;
 
@@ -93,11 +98,8 @@ export async function apiFetch(
       .slice(0, 3)
       .map((i) => `${i.path.join('.') || '(gốc)'}: ${i.message}`)
       .join('; ');
-    throw new ApiClientError(
-      'bad_response',
-      res.status,
-      `Response sai hợp đồng ${path} — ${where}`,
-    );
+    console.error(`[api] ${path}: response sai hợp đồng — ${where}`);
+    throw new ApiClientError('bad_response', res.status, BAD_RESPONSE_MSG);
   }
   return parsed.data;
 }

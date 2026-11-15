@@ -14,11 +14,13 @@ import { RARITY_INFO } from '../../components/card/rarity';
 import { HoldButton } from '../../components/HoldButton';
 import {
   materialCandidates,
+  materialGrid,
   materialWarnings,
   needsHoldConfirm,
   upgradeErrorMessage,
   upgradePreview,
   type CardItem,
+  type PickItem,
 } from './upgrade';
 import { UpgradeStats } from './UpgradeStats';
 import './upgrade.css';
@@ -66,12 +68,6 @@ interface Outcome {
   res: UpgradeCardResult;
   card: Card;
   fromLevel: number;
-}
-
-/** Một ô trong lưới chọn: thẻ + nhãn trạng thái dưới thẻ. */
-interface PickItem extends CardItem {
-  tone: 'success' | 'warn' | 'lock' | 'plain';
-  note: string;
 }
 
 /**
@@ -159,24 +155,8 @@ export function UpgradePage() {
     target && material ? needsHoldConfirm(target.card, material.card, material.pc) : false;
   const rarityLabel = target ? RARITY_INFO[target.card.rarity].label : '';
 
-  // Lưới nguyên liệu: hợp lệ trước (rẻ trước), rồi thẻ khoá (trong đội hình / độ hiếm thấp hơn).
-  const materialGrid: PickItem[] = target
-    ? [
-        ...materials.map((it): PickItem => {
-          if (it.pc.level > 0) return { ...it, tone: 'warn', note: `Đã ép +${it.pc.level}` };
-          if (it.card.rarity !== target.card.rarity)
-            return { ...it, tone: 'warn', note: 'Hiếm hơn' };
-          return { ...it, tone: 'success', note: 'Hợp lệ' };
-        }),
-        ...items
-          .filter((it) => it.pc.id !== target.pc.id && !materials.includes(it))
-          .map((it): PickItem => ({
-            ...it,
-            tone: 'lock',
-            note: it.pc.inSquad ? 'Trong đội hình' : `Thấp hơn ${rarityLabel}`,
-          }))
-          .sort((a, b) => Number(b.pc.inSquad) - Number(a.pc.inSquad)),
-      ]
+  const materialPicks: PickItem[] = target
+    ? materialGrid(target, materials, items, rarityLabel)
     : [];
   const targetGrid: PickItem[] = items.map((it) =>
     it.pc.level >= cfg.maxLevel
@@ -276,7 +256,7 @@ export function UpgradePage() {
             <p className="muted">Thẻ đã đạt +{cfg.maxLevel} — không ép thêm được.</p>
           ) : (
             <PickGrid
-              items={materialGrid}
+              items={materialPicks}
               activeId={material?.pc.id}
               label="Nguyên liệu"
               empty={

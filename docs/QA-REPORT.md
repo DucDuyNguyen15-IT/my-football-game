@@ -11,7 +11,7 @@ _Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/pla
 | E2E luồng chính (8.1) | `pnpm e2e` xanh 3 lần liên tiếp | §3 |
 | Tiêu chí chấp nhận PRD (8.4) | 36 tiêu chí: **36 Đạt**, 0 Chưa đạt, 0 Không áp dụng | §4 |
 | Playtest 5–10 người (PRD §10) | Chưa tổ chức; đã có checklist và bảng ghi | §5 |
-| Việc còn tồn | 1 việc chặn phát hành (playtest); T1 (đo FPS/bộ nhớ) đã xong; 1 lỗi giao diện mức trung bình phát hiện ở 8.4 (lưới nguyên liệu màn Ép thẻ lặp thẻ — T3); còn lại mức thấp hoặc ghi nhận | §6 |
+| Việc còn tồn | 1 việc chặn phát hành (playtest); T1 (đo FPS/bộ nhớ) đã xong; 1 lỗi giao diện mức trung bình phát hiện ở 8.4 (lưới nguyên liệu màn Ép thẻ lặp thẻ — T3, **đã sửa 15/11**, review B4-01); còn lại mức thấp hoặc ghi nhận | §6 |
 
 **Mục lục**
 

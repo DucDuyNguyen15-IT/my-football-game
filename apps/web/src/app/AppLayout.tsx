@@ -19,7 +19,10 @@ export function RequireAuth() {
       </div>
     );
   }
-  if (!me.data) return <Navigate to="/login" replace state={{ from: location.pathname }} />;
+  // Giữ cả query (?card=12…) để quay lại đúng chỗ sau khi đăng nhập (B4-18).
+  if (!me.data) {
+    return <Navigate to="/login" replace state={{ from: location.pathname + location.search }} />;
+  }
   return <Outlet />;
 }
 

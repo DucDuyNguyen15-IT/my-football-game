@@ -117,6 +117,8 @@ export function CollectionPage() {
   const catalog = useCardCatalog();
   const economy = useEconomy();
   const seller = useSellCards();
+  // Bấm đôi "Bán": lần 2 gửi lại thẻ đã bán → not_found (B4-09).
+  const selling = useRef(false);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [detailId, setDetailId] = useState<string | null>(null);
@@ -172,8 +174,11 @@ export function CollectionPage() {
   };
 
   async function sell(batch: Item[]) {
+    if (selling.current) return;
+    selling.current = true;
     const ids = batch.map((it) => it.pc.id);
     const gained = await seller.mutateAsync(ids).catch(() => null);
+    selling.current = false;
     setConfirming(null);
     if (!gained) return;
     setNotice(`Đã bán ${ids.length} thẻ, nhận ${fmt(gained.coinsGained)} xu.`);

@@ -48,9 +48,12 @@ export function OnboardingFlowBanner({
                 <span className="label ob-flow__time">
                   <span className="num">{item.time}</span>
                   {isDone && (
-                    <span className="ob-flow__check" aria-label="Đã xong">
-                      ✓
-                    </span>
+                    <>
+                      <span className="ob-flow__check" aria-hidden="true">
+                        ✓
+                      </span>
+                      <span className="sr-only">Đã xong</span>
+                    </>
                   )}
                 </span>
                 <span className="display ob-flow__step-title">{item.title}</span>

@@ -40,7 +40,7 @@ interface Opened {
   newIds?: ReadonlySet<string>;
 }
 
-/** Hình gói trừu tượng (ui.css `.pack-art`), cỡ theo `--pw`. */
+/** Hình gói trừu tượng (ui.css `.pack-art` + shop.css `.shop-page .pack-art`), cỡ theo `--pw`. */
 export function PackArt({ size, note, width }: { size: number; note: string; width: number }) {
   return (
     <div className="pack-art" style={{ '--pw': `${width}px` } as CSSProperties} aria-hidden="true">
@@ -156,17 +156,19 @@ export function ShopPage() {
     setBuying(`${code}:${payment}`);
     // Chụp kho trước khi mở (cache sẽ bị làm mới ngay sau đó) để gắn nhãn "MỚI".
     const ownedBefore = owned.data && new Set(owned.data.map((pc) => pc.cardId));
+    let result;
     try {
-      const result = await opener.open(code, payment);
-      if (result) {
-        const newIds = ownedBefore && newCardIds(result.cards, ownedBefore);
-        setOpened((o) => ({ result, code, payment, n: (o?.n ?? 0) + 1, newIds }));
-      }
+      result = await opener.open(code, payment);
     } catch {
       /* lỗi hiện qua opener.error */
-    } finally {
       setBuying(null);
+      return;
     }
+    // null = bấm đôi, lần mở trước vẫn đang chạy: để lần đó tự tắt spinner (B4-08).
+    if (result === null) return;
+    setBuying(null);
+    const newIds = ownedBefore && newCardIds(result.cards, ownedBefore);
+    setOpened((o) => ({ result, code, payment, n: (o?.n ?? 0) + 1, newIds }));
   }
 
   /** Nút mua: khoá + spinner khi chờ server (không đổi kích thước), báo thiếu bao nhiêu xu. */
@@ -230,9 +232,7 @@ export function ShopPage() {
               type="button"
               className="btn btn--primary btn--lg"
               onClick={() =>
-                void navigate(
-                  opened.payment === 'free_credit' || isOnboarding ? '/squad?onboarding=1' : squadDest,
-                )
+                void navigate(opened.payment === 'free_credit' ? '/squad?onboarding=1' : squadDest)
               }
             >
               Xếp đội

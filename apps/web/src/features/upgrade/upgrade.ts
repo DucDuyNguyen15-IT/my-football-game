@@ -97,6 +97,41 @@ export function materialCandidates(
   return { valid, inSquad };
 }
 
+/** Một ô trong lưới chọn: thẻ + nhãn trạng thái dưới thẻ. */
+export interface PickItem extends CardItem {
+  tone: 'success' | 'warn' | 'lock' | 'plain';
+  note: string;
+}
+
+/**
+ * Lưới nguyên liệu: hợp lệ trước (giữ thứ tự `materials`), rồi thẻ khoá (trong đội hình trước, rồi độ
+ * hiếm thấp hơn). So theo `pc.id` — `materialCandidates` tạo object mới nên so tham chiếu sẽ hiện mỗi
+ * thẻ hợp lệ hai lần (T3 / B4-01).
+ */
+export function materialGrid(
+  target: CardItem,
+  materials: readonly CardItem[],
+  items: readonly CardItem[],
+  rarityLabel: string,
+): PickItem[] {
+  const validIds = new Set(materials.map((it) => it.pc.id));
+  return [
+    ...materials.map((it): PickItem => {
+      if (it.pc.level > 0) return { ...it, tone: 'warn', note: `Đã ép +${it.pc.level}` };
+      if (it.card.rarity !== target.card.rarity) return { ...it, tone: 'warn', note: 'Hiếm hơn' };
+      return { ...it, tone: 'success', note: 'Hợp lệ' };
+    }),
+    ...items
+      .filter((it) => it.pc.id !== target.pc.id && !validIds.has(it.pc.id))
+      .map((it): PickItem => ({
+        ...it,
+        tone: 'lock',
+        note: it.pc.inSquad ? 'Trong đội hình' : `Thấp hơn ${rarityLabel}`,
+      }))
+      .sort((a, b) => Number(b.pc.inSquad) - Number(a.pc.inSquad)),
+  ];
+}
+
 /** Cảnh báo trước khi ép: nguyên liệu luôn mất, kể cả khi đã có cấp + hoặc hiếm hơn thẻ được ép. */
 export function materialWarnings(
   target: Card,

@@ -127,8 +127,7 @@
   align-items: center;
   gap: var(--sp-4);
   background:
-    radial-gradient(60% 100% at 100% 0%, rgb(10 104 71 / 0.08), transparent 65%),
-    var(--c-surface-1);
+    radial-gradient(60% 100% at 100% 0%, rgb(10 104 71 / 0.08), transparent 65%), var(--c-surface-1);
 }
 .shop-free__label {
   color: var(--c-accent);
@@ -171,8 +170,8 @@
   margin: 0;
 }
 
-/* Minh hoạ gói lá bài thu nhỏ trên kệ */
-.pack-art {
+/* Minh hoạ gói lá bài thu nhỏ trên kệ — khoanh trong .shop-page để không đè hình gói ở màn Đăng nhập (B4-03). */
+.shop-page .pack-art {
   position: relative;
   width: var(--pw, 72px);
   aspect-ratio: 5 / 7;
@@ -189,26 +188,22 @@
   place-items: center;
   overflow: hidden;
 }
-.pack-art::before,
-.pack-art::after {
+.shop-page .pack-art::before,
+.shop-page .pack-art::after {
   content: '';
   position: absolute;
   left: 8%;
   right: 8%;
   height: 4px;
-  background: repeating-linear-gradient(
-    90deg,
-    rgb(255 229 143 / 0.45) 0 3px,
-    transparent 3px 6px
-  );
+  background: repeating-linear-gradient(90deg, rgb(255 229 143 / 0.45) 0 3px, transparent 3px 6px);
 }
-.pack-art::before {
+.shop-page .pack-art::before {
   top: 4px;
 }
-.pack-art::after {
+.shop-page .pack-art::after {
   bottom: 4px;
 }
-.pack-art__count {
+.shop-page .pack-art__count {
   position: relative;
   z-index: 1;
   font-family: var(--font-display);
@@ -218,7 +213,13 @@
   color: var(--r-gold-hi);
   text-shadow: 0 2px 6px rgb(0 0 0 / 0.55);
 }
-.pack-art__stripes {
+.shop-page .pack-art__count small {
+  /* Bản 180px của ui.css dùng 16px/0.3em → "MIỄN PHÍ" ngắt 2 dòng trên gói 96px (B4-02). */
+  font-size: 0.625rem;
+  letter-spacing: 0.12em;
+  white-space: nowrap;
+}
+.shop-page .pack-art__stripes {
   position: absolute;
   inset: 14px 6px;
   border: 1px solid rgb(255 229 143 / 0.22);
@@ -260,9 +261,15 @@
   border: 2px solid var(--c-gold-leaf);
   outline: 1px solid rgb(250 248 243 / 0.22);
   outline-offset: -7px;
-  background:
-    radial-gradient(85% 75% at 50% 45%, var(--c-pitch-felt) 0%, #0d2e20 62%, var(--c-pitch-felt-deep) 100%);
-  box-shadow: var(--shadow-2), inset 0 0 60px rgb(0 0 0 / 0.35);
+  background: radial-gradient(
+    85% 75% at 50% 45%,
+    var(--c-pitch-felt) 0%,
+    #0d2e20 62%,
+    var(--c-pitch-felt-deep) 100%
+  );
+  box-shadow:
+    var(--shadow-2),
+    inset 0 0 60px rgb(0 0 0 / 0.35);
   color: var(--c-card-ink);
   padding: var(--sp-6) var(--sp-5);
   display: grid;

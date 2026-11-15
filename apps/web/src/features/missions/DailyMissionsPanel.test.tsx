@@ -33,4 +33,13 @@ describe('<DailyMissionsPanel>', () => {
     expect(withErr).toContain('role="alert"');
     expect(withErr).toContain('Không nhận được thưởng');
   });
+
+  it('tải lỗi: báo lỗi + nút Thử lại, không phải khung xương (B4-07)', () => {
+    const html = renderToStaticMarkup(
+      <DailyMissionsPanel missions={undefined} onRetry={() => {}} />,
+    );
+    expect(html).toContain('Không tải được nhiệm vụ.');
+    expect(html).toContain('Thử lại');
+    expect(html).not.toContain('aria-busy="true"');
+  });
 });

@@ -117,7 +117,7 @@ export function PreMatch({
             </span>
           </div>
         )}
-        <div className="pm__options" role="radiogroup" aria-label="Độ khó">
+        <div className="pm__options" role="group" aria-label="Độ khó">
           {LEVELS.map((lv) => (
             <LevelOption
               key={lv.value}
@@ -183,8 +183,7 @@ function LevelOption({
   return (
     <button
       type="button"
-      role="radio"
-      aria-checked={on}
+      aria-pressed={on}
       className={`panel pm-opt${on ? ' is-on' : ''}`}
       onClick={onPick}
     >

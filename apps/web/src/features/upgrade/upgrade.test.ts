@@ -4,6 +4,7 @@ import type { Card, PlayerCard, Rarity, UpgradeConfig } from '@pitch/shared';
 import {
   isValidMaterial,
   materialCandidates,
+  materialGrid,
   materialWarnings,
   needsHoldConfirm,
   upgradeErrorMessage,
@@ -169,5 +170,27 @@ describe('upgradeErrorMessage', () => {
     expect(upgradeErrorMessage(err('max_level'))).toMatch(/tối đa/);
     expect(upgradeErrorMessage(err('network_error'))).toMatch(/kết nối/);
     expect(upgradeErrorMessage(new Error('?'))).toMatch(/thử lại/);
+  });
+});
+
+describe('materialGrid — lưới nguyên liệu (T3 / B4-01)', () => {
+  const catalog = new Map<string, Card>([
+    ['b', card('b', 'bronze')],
+    ['s', card('s', 'silver')],
+  ]);
+  const owned = [pc('1', 's'), pc('2', 's'), pc('3', 'b'), pc('4', 's', { inSquad: true })];
+  // Như UpgradePage: items và materials là object khác nhau cho cùng một thẻ.
+  const items = owned.map((p) => ({ pc: p, card: catalog.get(p.cardId)! }));
+  const target = items[0]!;
+
+  it('mỗi thẻ đúng một ô: hợp lệ trước, rồi khoá (trong đội hình trước), không trùng id', () => {
+    const { valid } = materialCandidates(target.pc, owned, catalog);
+    const grid = materialGrid(target, valid, items, 'Bạc');
+    expect(grid.map((g) => [g.pc.id, g.tone, g.note])).toEqual([
+      ['2', 'success', 'Hợp lệ'],
+      ['4', 'lock', 'Trong đội hình'],
+      ['3', 'lock', 'Thấp hơn Bạc'],
+    ]);
+    expect(new Set(grid.map((g) => g.pc.id)).size).toBe(grid.length);
   });
 });
