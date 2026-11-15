@@ -8,6 +8,7 @@ import {
   readDevOptions,
   resultBody,
   sameHud,
+  stoppageMinutes,
   shootoutOutcome,
   shootoutScore,
   staminaLevel,
@@ -152,6 +153,31 @@ describe('thay người trên HUD', () => {
     expect(canSwap('GK', 'GK')).toBe(true);
     expect(canSwap('GK', 'DF')).toBe(false);
     expect(canSwap('MF', 'FW')).toBe(true);
+    expect(canSwap('MF', 'GK')).toBe(false);
+  });
+
+  it('canSwap: đội mất thủ môn thì thủ môn dự bị vào thay cầu thủ ngoài sân', () => {
+    expect(canSwap('MF', 'GK', false)).toBe(true);
+    expect(canSwap('MF', 'FW', false)).toBe(true);
+  });
+
+  it('subWindow / subOptions: chờ phạt đền thì đóng; mất thủ môn mà còn thủ môn dự bị thì keeper_only', () => {
+    const s = match();
+    expect(toHudSnapshot(s).subWindow).toBe('open');
+    const pen: MatchState = { ...s, restart: { ...s.restart!, type: 'penalty' } };
+    expect(toHudSnapshot(pen).subWindow).toBe('closed');
+    expect(subOptions(pen)).toMatchObject({ hasKeeper: true, keeperOnly: false });
+    const gk = s.players.find((p) => p.id === 'home-GK')!;
+    const noKeeper: MatchState = {
+      ...pen,
+      players: pen.players.filter((p) => p.id !== 'home-GK'),
+      bench: {
+        ...pen.bench,
+        home: [...pen.bench.home, { slot: 'B5', position: 'GK', stats: gk.stats }],
+      },
+    };
+    expect(toHudSnapshot(noKeeper).subWindow).toBe('keeper_only');
+    expect(subOptions(noKeeper)).toMatchObject({ hasKeeper: false, keeperOnly: true });
   });
 });
 
@@ -197,5 +223,33 @@ describe('resultBody', () => {
   it('không có luân lưu → không gửi `shootout`', () => {
     const hud = { ...toHudSnapshot(match()), score: { home: 2, away: 1 } };
     expect(resultBody('abc', hud)).toEqual({ token: 'abc', homeGoals: 2, awayGoals: 1 });
+  });
+});
+
+describe('bù giờ trên HUD', () => {
+  it('chưa hết giờ chính thức, hoặc bù 0 phút: không hiện', () => {
+    expect(stoppageMinutes({ phase: 'play', addedMinutes: null })).toBeNull();
+    expect(stoppageMinutes({ phase: 'play', addedMinutes: 0 })).toBeNull();
+  });
+
+  it('đã công bố và hiệp còn đá (cả lúc bóng chết): hiện tổng số phút bù', () => {
+    expect(stoppageMinutes({ phase: 'play', addedMinutes: 2 })).toBe(2);
+    expect(stoppageMinutes({ phase: 'dead_ball', addedMinutes: 3 })).toBe(3);
+    expect(stoppageMinutes({ phase: 'kickoff', addedMinutes: 1 })).toBe(1);
+  });
+
+  it('hết hiệp / luân lưu / hết trận: thôi hiện', () => {
+    for (const phase of ['half_time', 'shootout', 'full_time'] as const) {
+      expect(stoppageMinutes({ phase, addedMinutes: 2 })).toBeNull();
+    }
+  });
+
+  it('snapshot đổi khi vừa công bố bù giờ (React vẽ lại, bảng bật lên)', () => {
+    const s = match();
+    const before = toHudSnapshot({ ...s, phase: 'play' });
+    const after = toHudSnapshot({ ...s, phase: 'play', addedMinutes: 2 });
+    expect(before.stoppage).toBeNull();
+    expect(after.stoppage).toBe(2);
+    expect(sameHud(before, after)).toBe(false);
   });
 });

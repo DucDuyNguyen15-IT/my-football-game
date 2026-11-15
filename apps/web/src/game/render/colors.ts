@@ -17,6 +17,8 @@ export const COLORS = {
   shirtInk: tokens.color.accent.ink,
   /** Áo thủ môn phải khác cả hai đội (luật bóng đá); chưa có token riêng. */
   keeper: { home: 0x3dd68c, away: 0xffc23d },
+  /** Viền vòng đếm ngược trên đầu cầu thủ: `--r-gold-base` của giao diện v3 (`styles/tokens.css`). */
+  countdownGold: '#d49b1a',
   shorts: 0x15201c,
   skin: 0xc68a63,
 } as const;

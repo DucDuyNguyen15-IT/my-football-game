@@ -87,7 +87,7 @@ export const NO_INPUT: PlayerInput = Object.freeze({
 
 /**
  * Giai đoạn của trận. `kickoff`/`dead_ball`: bóng đặt sẵn chờ thực hiện; `half_time`: chờ người chơi
- * bấm chuyền để đá hiệp 2; `full_time`: hết trận, `step` không làm gì nữa.
+ * bấm chuyền để đá hiệp 2 (quá `halfTimeEndTick` thì tự đá); `full_time`: hết trận, `step` không làm gì nữa.
  */
 export type MatchPhase = 'kickoff' | 'play' | 'dead_ball' | 'half_time' | 'shootout' | 'full_time';
 
@@ -160,6 +160,19 @@ export interface PassReceiver {
   playerId: string;
   point: Vec2;
   untilTick: number;
+}
+
+/**
+ * Hạn chót người chơi phải tự thực hiện (`rules/limits.ts`): thủ môn đang ôm bóng, đá phạt, phạt đền
+ * (cả lượt luân lưu). Tới `deadlineTick` mà chưa làm thì máy làm hộ. HUD vẽ đếm ngược trên đầu
+ * `playerId` từ `deadlineTick − tick`.
+ */
+export interface ActionDeadline {
+  kind: 'keeper_hold' | 'free_kick' | 'penalty';
+  playerId: string;
+  /** Tick bắt đầu tính giờ (để vẽ phần đã trôi). */
+  startTick: number;
+  deadlineTick: number;
 }
 
 /** Thời gian bị mất trong hiệp hiện tại, dùng để tính bù giờ. */
@@ -235,6 +248,16 @@ export interface MatchState {
   subsUsed: Record<TeamSide, number>;
   /** Các lượt thay người theo thứ tự (cho HUD và màn kết quả). */
   substitutions: Substitution[];
+  /** Hạn chót người chơi phải thực hiện (ôm bóng / đá phạt / phạt đền); null khi không có. */
+  actionDeadline: ActionDeadline | null;
+  /** Nghỉ giữa hiệp: tới tick này mà chưa bấm chuyền thì tự đá hiệp 2; null ngoài giờ nghỉ. */
+  halfTimeEndTick: number | null;
+  /**
+   * Cú sút chưa phân định (chưa vào lưới, ra ngoài, bị thủ môn chạm hay có người khống chế): còi hết
+   * hiệp chờ nó xong, tối đa WHISTLE_SHOT_WAIT_TICKS. Khác `lastShot` ở chỗ vẫn còn sau khi thủ môn
+   * bị đánh bại. null khi không có.
+   */
+  shotInFlight: { team: TeamSide; tick: number } | null;
   /** Luân lưu khi hoà sau 2 hiệp; null nếu không có. Giữ lại sau khi hết trận cho màn kết quả. */
   shootout: Shootout | null;
   /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */

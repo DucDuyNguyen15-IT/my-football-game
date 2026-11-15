@@ -4,6 +4,7 @@
  */
 import { useState } from 'react';
 import { Link } from 'react-router';
+import { HALF_TIME_MAX_TICKS, TICK_RATE } from '@pitch/sim';
 import type { Difficulty, MissionProgress, SquadSlot } from '@pitch/shared';
 import type { GraphicsSettings } from '../../game/bridge';
 import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
@@ -113,14 +114,15 @@ export function HalfTimeStrip() {
         ■
       </span>
       <span>
-        Hết hiệp 1 · nhấn <kbd className="kbd">S</kbd> để đá hiệp 2
+        Hết hiệp 1 · nhấn <kbd className="kbd">S</kbd> để đá hiệp 2 (tự đá sau{' '}
+        {HALF_TIME_MAX_TICKS / TICK_RATE} giây)
       </span>
     </div>
   );
 }
 
 export interface PauseSubs {
-  /** Bóng chết — chỉ khi đó mới được thay (PRD §5). */
+  /** Sim đang cho thay người (bóng chết, không phải lúc chờ phạt đền — PRD §5). */
   allowed: boolean;
   left: number;
   options: SubOptions;
@@ -135,9 +137,15 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
   const [inSlot, setInSlot] = useState<SquadSlot | null>(null);
   const out = subs.options.onPitch.find((p) => p.id === outId);
   const incoming = subs.options.bench.find((b) => b.slot === inSlot);
+  const { hasKeeper, keeperOnly } = subs.options;
   const mismatch =
-    out !== undefined && incoming !== undefined && !canSwap(out.position, incoming.position);
-  const valid = out !== undefined && incoming !== undefined && !mismatch && subs.left > 0;
+    out !== undefined &&
+    incoming !== undefined &&
+    !canSwap(out.position, incoming.position, hasKeeper);
+  // Chờ phạt đền: chỉ được đưa thủ môn dự bị vào khung thành đang trống.
+  const keeperNeeded = keeperOnly && incoming !== undefined && incoming.position !== 'GK';
+  const valid =
+    out !== undefined && incoming !== undefined && !mismatch && !keeperNeeded && subs.left > 0;
   return (
     <>
       <h3 className="panel__title" id="pause-panel-title">
@@ -183,9 +191,19 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
           ))}
         </fieldset>
       </div>
+      {!hasKeeper && !mismatch && !keeperNeeded && (
+        <p className="muted">
+          Đội đang không có thủ môn: chọn thủ môn dự bị để vào thay một cầu thủ ngoài sân.
+        </p>
+      )}
       {mismatch && (
         <p className="subs__warn" role="alert">
           Thủ môn chỉ thay được bằng thủ môn.
+        </p>
+      )}
+      {keeperNeeded && (
+        <p className="subs__warn" role="alert">
+          Đang chờ phạt đền: chỉ được đưa thủ môn dự bị vào sân.
         </p>
       )}
       <button

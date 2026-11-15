@@ -26,8 +26,12 @@
   gap: var(--sp-4);
   padding: var(--sp-6);
   text-align: center;
-  background:
-    radial-gradient(85% 75% at 50% 45%, var(--c-pitch-felt) 0%, #0d2e20 60%, var(--c-pitch-felt-deep) 100%);
+  background: radial-gradient(
+    85% 75% at 50% 45%,
+    var(--c-pitch-felt) 0%,
+    #0d2e20 60%,
+    var(--c-pitch-felt-deep) 100%
+  );
   color: var(--c-card-ink);
 }
 .play-screen .muted {
@@ -122,6 +126,62 @@
 }
 .hud-score__clock b {
   color: var(--c-card-ink);
+}
+/* "+N" nhỏ cạnh đồng hồ suốt thời gian bù giờ */
+.hud-score__added {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: var(--radius-sm);
+  background: var(--r-gold-base);
+  color: var(--r-gold-lo);
+  font-family: var(--font-display);
+  font-weight: 700;
+  line-height: 1.35;
+}
+
+/* Bảng bù giờ (bảng điện của trọng tài thứ tư): nổi bật vài giây lúc hiệp bước vào bù giờ */
+@keyframes stoppage-in {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.92);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.stoppage-board {
+  display: grid;
+  grid-template-columns: auto auto;
+  align-items: center;
+  gap: 0 var(--sp-3);
+  padding: 8px 18px 8px 14px;
+  background: #050807;
+  border: 2px solid var(--r-gold-base);
+  border-radius: var(--radius-md);
+  box-shadow:
+    var(--shadow-2),
+    0 0 24px var(--r-gold-glow);
+  animation: stoppage-in var(--dur-base) var(--ease-out);
+}
+.stoppage-board__label {
+  color: var(--c-card-muted);
+  align-self: end;
+}
+.stoppage-board__unit {
+  color: var(--c-card-muted);
+  grid-column: 1;
+  align-self: start;
+}
+.stoppage-board__num {
+  grid-column: 2;
+  grid-row: 1 / span 2;
+  font-size: var(--fs-3xl);
+  line-height: 1;
+  color: var(--r-gold-hi);
+  text-shadow: 0 0 14px var(--r-gold-glow);
+  font-variant-numeric: tabular-nums;
 }
 
 /* Thanh luân lưu */
@@ -803,7 +863,187 @@
 
 @media (prefers-reduced-motion: reduce) {
   .goal-banner,
+  .stoppage-board,
   .replay-tag__dot {
     animation: none;
   }
 }
+
+/* =========================================================
+ * STINGER CHUYỂN CẢNH GIỮA CÁC PHA BÓNG ("SA BÀN HOÀNG KIM")
+ * ========================================================= */
+.stinger-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  pointer-events: none;
+  overflow: hidden;
+  will-change: opacity;
+}
+
+.stinger-2d,
+.stinger-scrim {
+  display: none;
+}
+
+.stinger-overlay[data-mode='2d'] .stinger-2d {
+  display: block;
+  position: absolute;
+  inset: 0;
+}
+
+.stinger-overlay[data-mode='reduced'] .stinger-scrim {
+  display: block;
+  position: absolute;
+  inset: 0;
+  background: #07140f;
+  opacity: var(--stinger-cover, 0);
+}
+
+/* Hai dải chéo tối viền vàng --r-gold-base (#d49b1a) cho bản 2D (đồ hoạ Thấp / FPS thấp) */
+.stinger-2d__wing {
+  position: absolute;
+  top: -15%;
+  bottom: -15%;
+  width: 72%;
+  background: linear-gradient(135deg, #07140f 0%, var(--c-pitch-felt-deep) 55%, #113828 100%);
+  box-shadow: 0 0 36px rgb(0 0 0 / 0.75);
+  will-change: transform;
+}
+.stinger-2d__wing--left {
+  left: -18%;
+  border-right: 4px solid var(--r-gold-base);
+  box-shadow:
+    inset -2px 0 0 var(--r-gold-hi),
+    12px 0 32px rgb(0 0 0 / 0.65);
+  transform: skewX(-14deg) translateX(calc(var(--stinger-split, 1) * -122%));
+}
+.stinger-2d__wing--right {
+  right: -18%;
+  border-left: 4px solid var(--r-gold-base);
+  box-shadow:
+    inset 2px 0 0 var(--r-gold-hi),
+    -12px 0 32px rgb(0 0 0 / 0.65);
+  transform: skewX(-14deg) translateX(calc(var(--stinger-split, 1) * 122%));
+}
+
+.stinger-2d__crest {
+  position: absolute;
+  left: 50%;
+  top: 38%;
+  display: grid;
+  place-items: center;
+  width: 148px;
+  height: 148px;
+  background: radial-gradient(circle at 50% 35%, #143f2d 0%, #071610 78%);
+  border: 3px solid var(--r-gold-base);
+  outline: 1px solid var(--r-gold-hi);
+  outline-offset: -7px;
+  clip-path: polygon(
+    29% 0%,
+    71% 0%,
+    100% 29%,
+    100% 71%,
+    71% 100%,
+    29% 100%,
+    0% 71%,
+    0% 29%
+  );
+  box-shadow: 0 12px 32px rgb(0 0 0 / 0.65);
+  opacity: var(--stinger-label-opacity, 0);
+  transform: translate(-50%, -50%) scale(var(--stinger-label-scale, 1));
+}
+.stinger-2d__monogram {
+  font-family: 'Anton', var(--font-display);
+  font-size: 3.4rem;
+  line-height: 1;
+  letter-spacing: 0.03em;
+  transform: skewX(-8deg);
+  background: linear-gradient(
+    180deg,
+    #fff6c8 0%,
+    #ffd95a 30%,
+    var(--r-gold-base) 55%,
+    #ffe58f 100%
+  );
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 3px 8px rgb(0 0 0 / 0.6));
+}
+
+/* Bảng nhãn tình huống v3 "Sa Bàn Hoàng Kim" (HTML/SVG sắc nét) */
+.stinger-plaque {
+  position: absolute;
+  left: 50%;
+  top: 78%;
+  width: 380px;
+  height: 86px;
+  padding: 10px 24px 12px;
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 4px;
+  contain: strict;
+  backface-visibility: hidden;
+  background: linear-gradient(
+    180deg,
+    rgb(11 33 24 / 0.96) 0%,
+    rgb(6 17 13 / 0.98) 100%
+  );
+  border: 1.5px solid var(--r-gold-base);
+  outline: 1px solid rgb(255 229 143 / 0.42);
+  outline-offset: -5px;
+  clip-path: polygon(
+    10px 0,
+    calc(100% - 10px) 0,
+    100% 10px,
+    100% calc(100% - 10px),
+    calc(100% - 10px) 100%,
+    10px 100%,
+    0 calc(100% - 10px),
+    0 10px
+  );
+  opacity: var(--stinger-label-opacity, 0);
+  transform: translate3d(-50%, -50%, 0) scale(var(--stinger-label-scale, 1));
+  will-change: transform, opacity;
+}
+
+.stinger-overlay[data-mode='reduced'] .stinger-plaque {
+  top: 52%;
+  transform: translate3d(-50%, -50%, 0);
+}
+
+.stinger-plaque__sub {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--r-gold-hi);
+}
+.stinger-plaque__sub::before,
+.stinger-plaque__sub::after {
+  content: '';
+  width: 22px;
+  height: 1px;
+  background: var(--r-gold-base);
+}
+
+.stinger-plaque__label {
+  font-family: var(--font-display);
+  font-size: 2.35rem;
+  font-weight: var(--fw-bold);
+  line-height: 1.05;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  white-space: nowrap;
+  color: var(--c-card-ink);
+  font-variant-numeric: tabular-nums;
+  text-shadow: 0 2px 4px rgb(0 0 0 / 0.75);
+}
+

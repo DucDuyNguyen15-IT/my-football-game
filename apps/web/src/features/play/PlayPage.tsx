@@ -28,6 +28,7 @@ import {
   PlayerPanel,
   PowerLegend,
   Scoreboard,
+  StoppageBoard,
   ShootoutPanel,
   type ShownEvent,
 } from './MatchHud';
@@ -45,6 +46,8 @@ import './play.css';
 
 const EVENT_SHOW_MS = 3000;
 const GOAL_BANNER_MS = 1200;
+/** Bảng bù giờ hiện nổi bật chừng này ms lúc hiệp bước vào bù giờ. */
+const STOPPAGE_BOARD_MS = 4000;
 const HINTS_SHOW_MS = 10_000;
 /** Dừng lại một chút sau tiếng còi hết trận rồi mới sang màn kết quả. */
 const FULL_TIME_HOLD_MS = 1500;
@@ -91,13 +94,10 @@ export function PlayPage() {
       ? readDevOptions(params.toString(), import.meta.env)
       : {};
   const isOnboarding = params.get('onboarding') === '1';
-  const requestedDifficulty: Difficulty =
-    params.get('difficulty') === 'hard' ? 'hard' : 'easy';
+  const requestedDifficulty: Difficulty = params.get('difficulty') === 'hard' ? 'hard' : 'easy';
   const autoStart = Boolean(dev.autopilot) || isOnboarding;
   const [stage, setStage] = useState<Stage>(() =>
-    autoStart
-      ? { kind: 'starting', difficulty: requestedDifficulty }
-      : { kind: 'select' },
+    autoStart ? { kind: 'starting', difficulty: requestedDifficulty } : { kind: 'select' },
   );
   const { mutate } = useStartMatch();
   const autopilot = dev.autopilot ?? false;
@@ -311,10 +311,12 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
   const [hud, setHud] = useState<HudSnapshot | null>(null);
   const [events, setEvents] = useState<ShownEvent[]>([]);
   const [goalBanner, setGoalBanner] = useState(0);
+  const [stoppageBoard, setStoppageBoard] = useState(false);
   const [hints, setHints] = useState(true);
   const [paused, setPausedState] = useState(false);
   const [showTutorial, setShowTutorial] = useState(
-    () => !autopilot && !readTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null),
+    () =>
+      !autopilot && !readTutorialSeen(typeof window !== 'undefined' ? window.localStorage : null),
   );
   const [tutorialKey, setTutorialKey] = useState(0);
   const [graphics, setGraphics] = useState<GraphicsSettings>(loadGraphics);
@@ -352,7 +354,12 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
     if (started) later(HINTS_SHOW_MS, () => setHints(false));
   }, [started, later]);
 
-  const [subs, setSubs] = useState<SubOptions>({ onPitch: [], bench: [] });
+  const [subs, setSubs] = useState<SubOptions>({
+    onPitch: [],
+    bench: [],
+    hasKeeper: true,
+    keeperOnly: false,
+  });
   const setPaused = useCallback((value: boolean) => {
     pausedRef.current = value;
     setPausedState(value);
@@ -384,6 +391,10 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
         // Vừa thay người trong menu: cập nhật danh sách.
         if (pausedRef.current) setSubs(subOptions(state));
         setHud(snap);
+        if (snap.stoppage !== null && last && last.stoppage === null) {
+          setStoppageBoard(true);
+          later(STOPPAGE_BOARD_MS, () => setStoppageBoard(false));
+        }
         for (const e of last ? hudEvents(last, snap) : []) {
           const shown = { ...e, id: nextId++ };
           setEvents((list) => [...list, shown]);
@@ -406,6 +417,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
           <div className="hud-top">
             <Scoreboard hud={hud} />
             {hud.phase === 'half_time' && !autopilot && !paused && <HalfTimeStrip />}
+            <StoppageBoard minutes={hud.stoppage} show={stoppageBoard} />
             <EventStrip events={events} />
             {hud.shootout && <ShootoutPanel shootout={hud.shootout} />}
           </div>
@@ -464,7 +476,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
             setPaused(false);
           }}
           subs={{
-            allowed: hud?.ballDead === true && hud.phase !== 'full_time' && hud.shootout === null,
+            allowed: hud !== null && hud.subWindow !== 'closed',
             left: hud?.subsLeft ?? 0,
             options: subs,
             onSubstitute: (outId, benchSlot) =>

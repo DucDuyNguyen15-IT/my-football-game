@@ -179,3 +179,94 @@ describe('autoSubstitute — đội máy tự thay', () => {
     expect(s.players.some((p) => p.id === 'home-P3')).toBe(true);
   });
 });
+
+describe('thay người lúc chờ phạt đền / thủ môn bị thẻ đỏ (B1-11, B1-12)', () => {
+  /** Đội có thêm thủ môn dự bị ở ô B5. */
+  const withBenchKeeper = (t: typeof starterLikeTeam) => ({
+    ...t,
+    players: [...t.players, { ...t.players.find((p) => p.slot === 'GK')!, slot: 'B5' as const }],
+  });
+  const keeperBase = () =>
+    createMatch({
+      home: withBenchKeeper(starterLikeTeam),
+      away: withBenchKeeper(cpuEasyTeam),
+      seed: 5,
+      difficulty: 'easy',
+    });
+  const pending = (s: MatchState, type: 'free_kick' | 'penalty'): MatchState => ({
+    ...s,
+    phase: 'dead_ball',
+    restart: { type, team: 'away', spot: { x: -22, y: 0 }, takerId: 'away-P6', startTick: s.tick },
+  });
+  const sentOff = (s: MatchState, id: string): MatchState => ({
+    ...s,
+    players: s.players.filter((p) => p.id !== id),
+    bookings: [
+      ...s.bookings,
+      { playerId: id, team: id.startsWith('home') ? 'home' : 'away', card: 'red', tick: s.tick },
+    ],
+  });
+
+  it('đang chờ phạt đền → từ chối; đang chờ đá phạt → được thay', () => {
+    expect(substitute(pending(base(), 'penalty'), 'home', 'home-P2', 'B1')).toEqual({
+      ok: false,
+      reason: 'penalty_pending',
+    });
+    expect(substitute(pending(base(), 'free_kick'), 'home', 'home-P2', 'B1').ok).toBe(true);
+  });
+
+  it('còn thủ môn trên sân: thủ môn dự bị không vào thay cầu thủ ngoài sân', () => {
+    expect(substitute(keeperBase(), 'home', 'home-P2', 'B5')).toEqual({
+      ok: false,
+      reason: 'keeper_mismatch',
+    });
+  });
+
+  it('thủ môn bị thẻ đỏ: thủ môn dự bị vào thay một cầu thủ ngoài sân, nhận ô và vai GK', () => {
+    const s = sentOff(keeperBase(), 'home-GK');
+    const r = substitute(s, 'home', 'home-P6', 'B5');
+    expect(r.ok).toBe(true);
+    if (!r.ok) return;
+    const gk = r.state.players.find((p) => p.id === 'home-B5')!;
+    expect(gk).toMatchObject({ position: 'GK', slot: 'GK' });
+    expect(r.state.players.filter((p) => p.team === 'home')).toHaveLength(6);
+    expect(r.state.players.filter((p) => p.team === 'home' && p.position === 'GK')).toHaveLength(1);
+    // Trận chạy tiếp được (AI lập kế hoạch với đội 6 người có thủ môn mới).
+    let after = r.state;
+    for (let i = 0; i < 600; i++) after = step(after, NO_INPUT);
+    expect(after.players.some((p) => p.id === 'home-B5')).toBe(true);
+  });
+
+  it('thủ môn bị thẻ đỏ trong vòng cấm: vẫn được đưa thủ môn dự bị vào trước quả phạt đền', () => {
+    const s = pending(sentOff(keeperBase(), 'home-GK'), 'penalty');
+    expect(substitute(s, 'home', 'home-P6', 'B5').ok).toBe(true);
+    // Thay cầu thủ ngoài sân thường thì vẫn bị chặn.
+    expect(substitute(s, 'home', 'home-P2', 'B1')).toEqual({
+      ok: false,
+      reason: 'penalty_pending',
+    });
+  });
+
+  it('thủ môn bị thẻ đỏ: cầu thủ dự bị ngoài sân không vào làm thủ môn', () => {
+    const s = sentOff(keeperBase(), 'home-GK');
+    const r = substitute(s, 'home', 'home-P2', 'B1');
+    expect(r.ok).toBe(true);
+    if (r.ok) expect(r.state.players.find((p) => p.id === 'home-B1')!.position).not.toBe('GK');
+  });
+
+  it('đội máy mất thủ môn vì thẻ đỏ: tự đưa thủ môn dự bị vào thay cầu thủ ngoài sân mệt nhất', () => {
+    const s0 = sentOff(keeperBase(), 'away-GK');
+    const s = {
+      ...s0,
+      players: s0.players.map((p) => (p.id === 'away-P5' ? { ...p, stamina: 60 } : p)),
+    };
+    const next = autoSubstitute(pending(s, 'penalty'), 'away');
+    expect(next.substitutions).toEqual([
+      { team: 'away', outId: 'away-P5', inId: 'away-B5', tick: s.tick },
+    ]);
+    expect(next.players.find((p) => p.id === 'away-B5')).toMatchObject({
+      position: 'GK',
+      slot: 'GK',
+    });
+  });
+});

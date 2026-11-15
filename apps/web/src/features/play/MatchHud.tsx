@@ -7,7 +7,7 @@ import { HALF_LENGTH, HALF_WIDTH, PENALTY_AREA_DEPTH, PENALTY_AREA_WIDTH } from 
 import type { MatchState } from '@pitch/sim';
 import { COLORS } from '../../game/render/colors';
 import type { HudEvent, HudSnapshot } from './hud';
-import { TEAM_LABEL, shootoutScore, staminaLevel } from './hud';
+import { TEAM_LABEL, shootoutScore, staminaLevel, stoppageLabel } from './hud';
 import {
   MINIMAP_H,
   MINIMAP_HZ,
@@ -26,7 +26,10 @@ export function Scoreboard({ hud }: { hud: HudSnapshot }) {
     <div
       className="hud-score"
       role="group"
-      aria-label={`Nhà ${hud.score.home}, Khách ${hud.score.away}, hiệp ${hud.half}, phút ${hud.clock}`}
+      aria-label={
+        `Nhà ${hud.score.home}, Khách ${hud.score.away}, hiệp ${hud.half}, phút ${hud.clock}` +
+        (hud.stoppage !== null ? `, ${stoppageLabel(hud.stoppage).toLowerCase()}` : '')
+      }
     >
       <span className="hud-score__sw hud-score__sw--home" aria-hidden="true" />
       <span className="hud-score__team">NHÀ</span>
@@ -45,10 +48,37 @@ export function Scoreboard({ hud }: { hud: HudSnapshot }) {
         ) : (
           <>
             H{hud.half} · <b className="num">{hud.clock}</b>
+            {hud.stoppage !== null && (
+              <span className="num hud-score__added" title={stoppageLabel(hud.stoppage)}>
+                +{hud.stoppage}
+              </span>
+            )}
           </>
         )}
       </span>
     </div>
+  );
+}
+
+/**
+ * Bảng bù giờ kiểu bảng điện của trọng tài thứ tư: hiện vài giây lúc hiệp bước vào bù giờ (`show`),
+ * sau đó chỉ còn "+N" nhỏ cạnh đồng hồ. Vùng `aria-live` luôn có mặt và giữ câu "Bù giờ N phút" suốt
+ * thời gian bù giờ, nên trình đọc màn hình đọc đúng một lần lúc bắt đầu.
+ */
+export function StoppageBoard({ minutes, show }: { minutes: number | null; show: boolean }) {
+  return (
+    <>
+      <span className="sr-only" role="status" aria-live="polite">
+        {minutes !== null ? stoppageLabel(minutes) : ''}
+      </span>
+      {show && minutes !== null && (
+        <div className="stoppage-board" aria-hidden="true">
+          <span className="label stoppage-board__label">Bù giờ</span>
+          <span className="display num stoppage-board__num">+{minutes}</span>
+          <span className="label stoppage-board__unit">phút</span>
+        </div>
+      )}
+    </>
   );
 }
 

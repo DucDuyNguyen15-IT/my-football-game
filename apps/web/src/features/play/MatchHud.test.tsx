@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { PlayerPanel, Scoreboard, ShootoutPanel } from './MatchHud';
+import { PlayerPanel, Scoreboard, ShootoutPanel, StoppageBoard } from './MatchHud';
 import type { HudSnapshot } from './hud';
 import { MemoryRouter } from 'react-router';
 import { DEFAULT_GRAPHICS } from '../../game/render/quality';
@@ -17,12 +17,14 @@ const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
   score: { home: 2, away: 1 },
   half: 2,
   clock: "67'",
+  stoppage: null,
   phase: 'play',
   controlled: { id: 'home-P5', number: 6, position: 'FW', stamina: 42 },
   bookings: [],
   shots: { home: 5, away: 3 },
   foulRestart: null,
   ballDead: false,
+  subWindow: 'closed',
   subsLeft: 3,
   substitutions: [],
   shootout: null,
@@ -40,6 +42,33 @@ describe('Scoreboard', () => {
   it('bù giờ hiện dạng 90+2', () => {
     const html = renderToStaticMarkup(<Scoreboard hud={hud({ clock: "90+2'" })} />);
     expect(html).toContain('90+2&#x27;');
+  });
+
+  it('đang bù giờ: giữ "+N" nhỏ cạnh đồng hồ và đọc trong nhãn', () => {
+    const html = renderToStaticMarkup(<Scoreboard hud={hud({ clock: "90+1'", stoppage: 3 })} />);
+    expect(html).toMatch(/hud-score__added[^>]*>\+3</);
+    expect(html).toContain('bù giờ 3 phút');
+    expect(renderToStaticMarkup(<Scoreboard hud={hud()} />)).not.toContain('hud-score__added');
+  });
+});
+
+describe('StoppageBoard', () => {
+  it('lúc bắt đầu bù giờ: bảng "+N" nổi bật và vùng aria-live đọc "Bù giờ N phút"', () => {
+    const html = renderToStaticMarkup(<StoppageBoard minutes={2} show />);
+    expect(html).toMatch(/aria-live="polite"[^>]*>Bù giờ 2 phút</);
+    expect(html).toMatch(/stoppage-board__num[^>]*>\+2</);
+  });
+
+  it('sau vài giây: bảng ẩn, vùng aria-live giữ nguyên câu (không đọc lại)', () => {
+    const html = renderToStaticMarkup(<StoppageBoard minutes={2} show={false} />);
+    expect(html).toContain('Bù giờ 2 phút');
+    expect(html).not.toContain('stoppage-board');
+  });
+
+  it('chưa bù giờ: vùng aria-live rỗng, không có bảng', () => {
+    const html = renderToStaticMarkup(<StoppageBoard minutes={null} show />);
+    expect(html).toMatch(/aria-live="polite"[^>]*><\/span>/);
+    expect(html).not.toContain('stoppage-board');
   });
 });
 
@@ -63,6 +92,8 @@ describe('menu thay người', () => {
     options: {
       onPitch: [{ id: 'home-P2', number: 3, position: 'DF', stamina: 25 }],
       bench: [{ slot: 'B1', number: 8, position: 'DF' }],
+      hasKeeper: true,
+      keeperOnly: false,
     },
     onSubstitute: () => {},
   });

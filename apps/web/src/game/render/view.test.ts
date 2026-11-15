@@ -1,6 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS } from '@pitch/sim';
-import { SNAP_DISTANCE, chargeMeter, lerpPos, shirtNumber } from './view';
+import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS, TICK_RATE } from '@pitch/sim';
+import {
+  COUNTDOWN_ARC_STEPS,
+  COUNTDOWN_VISIBLE_SEC,
+  SNAP_DISTANCE,
+  chargeMeter,
+  countdownArcStep,
+  countdownRing,
+  lerpPos,
+  shirtNumber,
+} from './view';
 
 describe('lerpPos', () => {
   it('nội suy tuyến tính giữa tick trước và tick hiện tại', () => {
@@ -62,5 +71,79 @@ describe('chargeMeter', () => {
       through: true,
     };
     expect(chargeMeter({ ...none, passCharge })).toEqual({ kind: 'through', fill: 0.5 });
+  });
+});
+
+describe('countdownRing', () => {
+  const SHOWN = COUNTDOWN_VISIBLE_SEC * TICK_RATE;
+  const freeKick = {
+    kind: 'free_kick' as const,
+    playerId: 'home-P4',
+    startTick: 100,
+    deadlineTick: 100 + 15 * TICK_RATE,
+  };
+  const keeper = {
+    kind: 'keeper_hold' as const,
+    playerId: 'home-GK',
+    startTick: 40,
+    deadlineTick: 40 + 10 * TICK_RATE,
+  };
+  const at = (d: typeof freeKick | typeof keeper, left: number) =>
+    countdownRing({ actionDeadline: d, tick: d.deadlineTick - left });
+
+  it('mốc hiển thị là 5 giây cuối', () => {
+    expect(COUNTDOWN_VISIBLE_SEC).toBe(5);
+  });
+
+  it('không có hạn chót thì không có vòng', () => {
+    expect(countdownRing({ actionDeadline: null, tick: 5 })).toBeNull();
+  });
+
+  it.each([
+    ['đá phạt / luân lưu 15 s', freeKick],
+    ['thủ môn ôm bóng 10 s', keeper],
+  ] as const)('%s: còn hơn 5 giây thì chưa hiện', (_name, d) => {
+    expect(countdownRing({ actionDeadline: d, tick: d.startTick })).toBeNull();
+    expect(at(d, SHOWN + 1)).toBeNull();
+  });
+
+  it.each([
+    ['đá phạt / luân lưu 15 s', freeKick],
+    ['thủ môn ôm bóng 10 s', keeper],
+  ] as const)('%s: vừa hiện ở 5 giây — số 5, vòng đầy vàng', (_name, d) => {
+    expect(at(d, SHOWN)).toEqual({ playerId: d.playerId, seconds: 5, elapsed: 0 });
+    expect(countdownArcStep(at(d, SHOWN)!.elapsed)).toBe(0);
+  });
+
+  it('số chạy 5 → 1 (làm tròn lên), cung đen tăng đều trong 5 giây cuối', () => {
+    expect(at(freeKick, 4 * TICK_RATE + 1)!.seconds).toBe(5);
+    expect(at(freeKick, 4 * TICK_RATE)!.seconds).toBe(4);
+    expect(at(freeKick, 4 * TICK_RATE)!.elapsed).toBeCloseTo(0.2);
+    const half = at(keeper, 2.5 * TICK_RATE)!;
+    expect(half.seconds).toBe(3);
+    expect(half.elapsed).toBeCloseTo(0.5);
+    expect(at(keeper, 1)!.seconds).toBe(1);
+    expect(at(keeper, 1)!.elapsed).toBeCloseTo(1 - 1 / SHOWN);
+  });
+
+  it('hết hạn (thủ môn đang lấy đà phát bóng hộ): 0 giây, cả vòng đen', () => {
+    const ring = countdownRing({ actionDeadline: keeper, tick: keeper.deadlineTick + 20 })!;
+    expect(ring).toMatchObject({ seconds: 0, elapsed: 1 });
+    expect(countdownArcStep(ring.elapsed)).toBe(COUNTDOWN_ARC_STEPS);
+  });
+
+  it('hạn ngắn hơn 5 giây: hiện ngay, cung tính trên cả hạn', () => {
+    const short = { ...keeper, deadlineTick: keeper.startTick + 2 * TICK_RATE };
+    expect(countdownRing({ actionDeadline: short, tick: short.startTick })).toEqual({
+      playerId: 'home-GK',
+      seconds: 2,
+      elapsed: 0,
+    });
+  });
+
+  it('nấc viền: chưa hết giờ thì chưa đủ vòng', () => {
+    expect(countdownArcStep(0)).toBe(0);
+    expect(countdownArcStep(0.5)).toBe(COUNTDOWN_ARC_STEPS / 2);
+    expect(countdownArcStep(0.9999)).toBe(COUNTDOWN_ARC_STEPS - 1);
   });
 });

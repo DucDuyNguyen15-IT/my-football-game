@@ -2,7 +2,7 @@
  * Tính toán phía hiển thị, thuần (không Three.js): nội suy giữa 2 tick, số áo. Không chứa luật/vật lý.
  */
 import type { SquadSlot } from '@pitch/shared';
-import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS } from '@pitch/sim';
+import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS, TICK_RATE } from '@pitch/sim';
 import type { MatchState, Vec2 } from '@pitch/sim';
 
 /**
@@ -58,3 +58,49 @@ export function chargeMeter(
   }
   return null;
 }
+
+/** Vòng đếm ngược chỉ hiện trong chừng này giây cuối trước hạn chót; trước đó không hiện gì. */
+export const COUNTDOWN_VISIBLE_SEC = 5;
+
+export interface CountdownRing {
+  /** Cầu thủ mang vòng đếm ngược trên đầu. */
+  playerId: string;
+  /** Số giây còn lại, làm tròn lên: COUNTDOWN_VISIBLE_SEC → 1 (0 khi đã hết hạn). */
+  seconds: number;
+  /**
+   * Phần đã trôi của quãng hiển thị 0…1 = phần viền đã chuyển đen (theo chiều kim đồng hồ từ 12
+   * giờ): 0 lúc vòng vừa hiện (đầy vàng), 1 lúc hết hạn (cả vòng đen).
+   */
+  elapsed: number;
+}
+
+/**
+ * Vòng đếm ngược trên đầu thủ môn đang ôm bóng / người đá phạt, phạt đền của đội người chơi — đọc
+ * hạn chót sim đã đặt (`MatchState.actionDeadline`). null khi không có hạn chót hoặc còn hơn
+ * COUNTDOWN_VISIBLE_SEC giây.
+ */
+export function countdownRing(
+  state: Pick<MatchState, 'actionDeadline' | 'tick'>,
+): CountdownRing | null {
+  const d = state.actionDeadline;
+  if (!d) return null;
+  const left = Math.max(0, d.deadlineTick - state.tick);
+  // Hạn ngắn hơn quãng hiển thị thì vòng hiện ngay từ đầu, cung tính trên cả hạn đó.
+  const shown = Math.max(
+    1,
+    Math.min(COUNTDOWN_VISIBLE_SEC * TICK_RATE, d.deadlineTick - d.startTick),
+  );
+  if (left > shown) return null;
+  return {
+    playerId: d.playerId,
+    seconds: Math.ceil(left / TICK_RATE),
+    elapsed: Math.min(1, Math.max(0, 1 - left / shown)),
+  };
+}
+
+/** Số nấc vẽ lại viền vòng đếm ngược trên cả vòng (đủ mịn, không vẽ lại canvas mỗi khung hình). */
+export const COUNTDOWN_ARC_STEPS = 180;
+
+/** Nấc viền đen hiện tại (0…COUNTDOWN_ARC_STEPS); hết giờ mới đủ vòng. */
+export const countdownArcStep = (elapsed: number): number =>
+  elapsed >= 1 ? COUNTDOWN_ARC_STEPS : Math.floor(Math.max(0, elapsed) * COUNTDOWN_ARC_STEPS);

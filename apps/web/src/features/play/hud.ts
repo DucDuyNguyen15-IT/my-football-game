@@ -7,6 +7,7 @@ import {
   MAX_SUBS,
   matchClock,
   shootoutWinner,
+  substitutionWindow,
   type MatchClock,
   type MatchPhase,
   type MatchState,
@@ -37,14 +38,18 @@ export interface HudSnapshot {
   score: Score;
   half: 1 | 2;
   clock: string;
+  /** Số phút bù giờ đã công bố của hiệp đang đá (> 0); null khi chưa vào bù giờ hoặc hiệp đã hết. */
+  stoppage: number | null;
   phase: MatchPhase;
   controlled: { id: string; number: number; position: Position; stamina: number } | null;
   bookings: HudBooking[];
   shots: Score;
   /** Đá phạt / phạt đền đang chờ thực hiện (sau phạm lỗi), null nếu không có. */
   foulRestart: { type: 'free_kick' | 'penalty'; team: TeamSide; startTick: number } | null;
-  /** Bóng chết (được thay người). */
+  /** Bóng chết. */
   ballDead: boolean;
+  /** Đội nhà lúc này được thay người không (`keeper_only`: chỉ đưa thủ môn dự bị vào — sim quyết định). */
+  subWindow: ReturnType<typeof substitutionWindow>;
   /** Số lượt thay người đội nhà còn lại. */
   subsLeft: number;
   substitutions: HudSub[];
@@ -62,6 +67,18 @@ export interface HudEvent {
 export function formatClock(c: MatchClock): string {
   return c.addedMinute > 0 ? `${c.minute}+${c.addedMinute}'` : `${c.minute}'`;
 }
+
+/**
+ * Số phút bù giờ trọng tài đã công bố (sim đặt `addedMinutes` lúc hết giờ chính thức của hiệp), chỉ
+ * tính khi hiệp còn đang đá và có bù ít nhất 1 phút.
+ */
+export function stoppageMinutes(state: Pick<MatchState, 'phase' | 'addedMinutes'>): number | null {
+  const live = state.phase === 'play' || state.phase === 'kickoff' || state.phase === 'dead_ball';
+  return live && state.addedMinutes !== null && state.addedMinutes > 0 ? state.addedMinutes : null;
+}
+
+/** Câu đọc cho trình đọc màn hình khi bắt đầu bù giờ. */
+export const stoppageLabel = (minutes: number): string => `Bù giờ ${minutes} phút`;
 
 /** Mốc màu thanh thể lực: vàng < 50%, đỏ < 30% (mốc PRD làm giảm tốc). */
 export function staminaLevel(stamina: number): StaminaLevel {
@@ -88,6 +105,7 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
     score: state.score,
     half: state.half,
     clock,
+    stoppage: stoppageMinutes(state),
     phase: state.phase,
     controlled: c
       ? {
@@ -111,6 +129,7 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
       clock: prev?.substitutions[i]?.clock ?? clock,
     })),
     ballDead: state.ballDead,
+    subWindow: substitutionWindow(state, 'home'),
     subsLeft: MAX_SUBS - state.subsUsed.home,
     shootout: state.shootout && {
       home: state.shootout.home,
@@ -131,12 +150,14 @@ export function sameHud(a: HudSnapshot, b: HudSnapshot): boolean {
     a.score.away === b.score.away &&
     a.half === b.half &&
     a.clock === b.clock &&
+    a.stoppage === b.stoppage &&
     a.phase === b.phase &&
     a.bookings.length === b.bookings.length &&
     a.controlled?.id === b.controlled?.id &&
     a.controlled?.stamina === b.controlled?.stamina &&
     a.foulRestart?.startTick === b.foulRestart?.startTick &&
     a.ballDead === b.ballDead &&
+    a.subWindow === b.subWindow &&
     a.substitutions.length === b.substitutions.length &&
     kicksTaken(a) === kicksTaken(b) &&
     a.shootout?.turn === b.shootout?.turn
@@ -244,6 +265,10 @@ export function readDevOptions(search: string, env: { DEV: boolean; MODE: string
 export interface SubOptions {
   onPitch: { id: string; number: number; position: Position; stamina: number }[];
   bench: { slot: SquadSlot; number: number; position: Position }[];
+  /** Đội còn thủ môn trên sân (false = thủ môn đã bị thẻ đỏ). */
+  hasKeeper: boolean;
+  /** Đang chờ phạt đền mà đội không còn thủ môn: chỉ được đưa thủ môn dự bị vào. */
+  keeperOnly: boolean;
 }
 
 /** Người trên sân và dự bị của đội nhà cho menu thay người. */
@@ -262,9 +287,14 @@ export function subOptions(state: MatchState): SubOptions {
       number: shirtNumber(b.slot),
       position: b.position,
     })),
+    hasKeeper: state.players.some((p) => p.team === 'home' && p.position === 'GK'),
+    keeperOnly: substitutionWindow(state, 'home') === 'keeper_only',
   };
 }
 
-/** Thủ môn chỉ đổi thủ môn, cầu thủ ngoài sân chỉ đổi cầu thủ ngoài sân (luật trong sim). */
-export const canSwap = (out: Position, incoming: Position): boolean =>
-  (out === 'GK') === (incoming === 'GK');
+/**
+ * Thủ môn chỉ đổi thủ môn, cầu thủ ngoài sân chỉ đổi cầu thủ ngoài sân; đội mất thủ môn (thẻ đỏ,
+ * `hasKeeper` = false) thì thủ môn dự bị được vào thay một cầu thủ ngoài sân (luật trong sim).
+ */
+export const canSwap = (out: Position, incoming: Position, hasKeeper = true): boolean =>
+  (incoming === 'GK' && !hasKeeper) || (out === 'GK') === (incoming === 'GK');

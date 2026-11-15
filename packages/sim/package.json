@@ -9,6 +9,7 @@
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",
     "balance": "tsx scripts/balance.ts",
+    "penalties": "tsx scripts/penalties.ts",
     "test:slow": "vitest run --config vitest.slow.config.ts"
   },
   "dependencies": {
