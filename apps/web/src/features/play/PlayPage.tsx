@@ -4,6 +4,7 @@ import type { Difficulty, StartedMatch } from '@pitch/shared';
 import type { MatchSetup, MatchState } from '@pitch/sim';
 import { ApiClientError } from '../../api/client';
 import { useMe } from '../../api/auth';
+import { useCardCatalog } from '../../api/cards';
 import { isTransientError, useStartMatch, useSubmitMatchResult } from '../../api/matches';
 import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { MatchCanvas } from '../../game/MatchCanvas';
@@ -354,15 +355,27 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
     if (started) later(HINTS_SHOW_MS, () => setHints(false));
   }, [started, later]);
 
+  const catalog = useCardCatalog().data;
+  const catalogRef = useRef(catalog);
+  const homePlayersRef = useRef(match.home.players);
   const [subs, setSubs] = useState<SubOptions>({
     onPitch: [],
     bench: [],
   });
+  useEffect(() => {
+    catalogRef.current = catalog;
+    homePlayersRef.current = match.home.players;
+    if (pausedRef.current && latestState.current) {
+      setSubs(subOptions(latestState.current, match.home.players, catalog));
+    }
+  }, [catalog, match.home.players]);
   const setPaused = useCallback((value: boolean) => {
     pausedRef.current = value;
     setPausedState(value);
     // Menu thay người đọc đội hình lúc mở (trận đứng yên khi tạm dừng).
-    if (value && latestState.current) setSubs(subOptions(latestState.current));
+    if (value && latestState.current) {
+      setSubs(subOptions(latestState.current, homePlayersRef.current, catalogRef.current));
+    }
   }, []);
 
   useEffect(() => {
@@ -395,7 +408,9 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
         if (last && sameHud(last, snap)) return;
         lastHud.current = snap;
         // Vừa thay người trong menu: cập nhật danh sách.
-        if (pausedRef.current) setSubs(subOptions(state));
+        if (pausedRef.current) {
+          setSubs(subOptions(state, homePlayersRef.current, catalogRef.current));
+        }
         setHud(snap);
         if (snap.stoppage !== null && last && last.stoppage === null) {
           setStoppageBoard(true);

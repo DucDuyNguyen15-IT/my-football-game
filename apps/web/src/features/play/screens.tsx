@@ -2,11 +2,12 @@
  * Các màn của luồng trận (docs/design/screens/match*.html, pause.html, result*.html): HUD phụ (gợi ý
  * phím, nghỉ giữa hiệp), menu tạm dừng, kết quả.
  */
-import { useState } from 'react';
+import { useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { HALF_TIME_MAX_TICKS, TICK_RATE } from '@pitch/sim';
-import type { Difficulty, MissionProgress, SquadSlot } from '@pitch/shared';
+import type { Difficulty, MissionProgress, Position, SquadSlot } from '@pitch/shared';
 import type { GraphicsSettings } from '../../game/bridge';
+import { Avatar } from '../../components/card/Avatar';
 import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
 import {
   GRAPHICS_TOGGLES,
@@ -21,7 +22,9 @@ import {
   matchOutcome,
   shootoutOutcome,
   shootoutScore,
+  staminaLevel,
   type HudSnapshot,
+  type SubCardMeta,
   type SubOptions,
 } from './hud';
 
@@ -133,6 +136,79 @@ export interface PauseSubs {
 
 const staminaTone = (v: number) => (v < 30 ? ' is-critical' : v < 50 ? ' is-low' : '');
 
+type SubOptionRow = SubCardMeta & {
+  number: number;
+  position: Position;
+  stamina: number;
+};
+
+/** Một dòng chọn cầu thủ (trên sân hoặc dự bị) kèm miniface, tên, OVR và thanh thể lực. */
+function SubPlayerOption({
+  name,
+  checked,
+  onChange,
+  player,
+}: {
+  name: 'sub-out' | 'sub-in';
+  checked: boolean;
+  onChange: () => void;
+  player: SubOptionRow;
+}) {
+  const level = staminaLevel(player.stamina);
+  const fullName = player.name ?? POSITION_NAME[player.position];
+  const displayName = player.shortName ?? fullName;
+  return (
+    <label className="subs__item">
+      <input
+        type="radio"
+        name={name}
+        className="sr-only"
+        checked={checked}
+        onChange={onChange}
+      />
+      <span className={`subs__face${player.rarity ? ` r-${player.rarity}` : ''}`} aria-hidden="true">
+        {player.avatarSeed ? (
+          <Avatar seed={player.avatarSeed} />
+        ) : (
+          <span className="display num subs__face-num">{player.number}</span>
+        )}
+      </span>
+      <span className="subs__info">
+        <span className="subs__top">
+          <span className="display num subs__num">#{player.number}</span>
+          <abbr className={`pos pos--${player.position}`} title={POSITION_NAME[player.position]}>
+            {player.position}
+          </abbr>
+          <span className="subs__name" title={fullName}>
+            {displayName}
+          </span>
+          {player.ovr !== undefined && (
+            <span className="subs__ovr" title={`OVR ${player.ovr}`}>
+              <span className="subs__ovr-k">OVR</span>
+              <b className="display num">{player.ovr}</b>
+            </span>
+          )}
+        </span>
+        <span className="subs__stamina-row">
+          <span
+            className={`bar subs__bar hud-stamina hud-stamina--${level}`}
+            role="meter"
+            aria-label="Thể lực"
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-valuenow={player.stamina}
+          >
+            <span className="bar__fill" style={{ '--v': `${player.stamina}%` } as CSSProperties} />
+          </span>
+          <span className={`num subs__stamina${staminaTone(player.stamina)}`}>
+            {player.stamina}%
+          </span>
+        </span>
+      </span>
+    </label>
+  );
+}
+
 /** Chọn người ra (trên sân) và người vào (dự bị) rồi xác nhận. */
 export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
   const [outId, setOutId] = useState<string | null>(null);
@@ -151,39 +227,26 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
         <fieldset className="subs__col">
           <legend className="label">Ra sân</legend>
           {subs.options.onPitch.map((p) => (
-            <label key={p.id} className="subs__item">
-              <input
-                type="radio"
-                name="sub-out"
-                className="sr-only"
-                checked={outId === p.id}
-                onChange={() => setOutId(p.id)}
-              />
-              <span className="display num subs__num">{p.number}</span>
-              <abbr className={`pos pos--${p.position}`} title={POSITION_NAME[p.position]}>
-                {p.position}
-              </abbr>
-              <span className={`num subs__stamina${staminaTone(p.stamina)}`}>{p.stamina}%</span>
-            </label>
+            <SubPlayerOption
+              key={p.id}
+              name="sub-out"
+              checked={outId === p.id}
+              onChange={() => setOutId(p.id)}
+              player={p}
+            />
           ))}
         </fieldset>
         <fieldset className="subs__col">
           <legend className="label">Vào sân</legend>
           {subs.options.bench.length === 0 && <p className="muted">Hết dự bị</p>}
           {subs.options.bench.map((b) => (
-            <label key={b.slot} className="subs__item">
-              <input
-                type="radio"
-                name="sub-in"
-                className="sr-only"
-                checked={inSlot === b.slot}
-                onChange={() => setInSlot(b.slot)}
-              />
-              <span className="display num subs__num">{b.number}</span>
-              <abbr className={`pos pos--${b.position}`} title={POSITION_NAME[b.position]}>
-                {b.position}
-              </abbr>
-            </label>
+            <SubPlayerOption
+              key={b.slot}
+              name="sub-in"
+              checked={inSlot === b.slot}
+              onChange={() => setInSlot(b.slot)}
+              player={{ ...b, stamina: b.stamina ?? 100 }}
+            />
           ))}
         </fieldset>
       </div>
@@ -340,7 +403,12 @@ export function PauseMenu({
     onClick: () => setView(v),
   });
   return (
-    <div className="scrim pause" role="dialog" aria-modal="true" aria-labelledby="pause-title">
+    <div
+      className={`scrim pause${shown === 'subs' ? ' pause--subs' : ''}`}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="pause-title"
+    >
       <div className="pause__menu">
         {hud && (
           <span className="label">

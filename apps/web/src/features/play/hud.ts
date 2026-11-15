@@ -2,7 +2,16 @@
  * Dữ liệu HUD rút từ `MatchState`, thuần (không React/Three.js). Chỉ đọc state, không quyết định luật.
  * Snapshot làm tròn (phút, % thể lực) để React chỉ vẽ lại vài lần mỗi giây dù sim chạy 60 tick/s.
  */
-import type { Position, SquadSlot, SubmitMatchResultRequest } from '@pitch/shared';
+import {
+  computeOvr,
+  type Card,
+  type MatchPlayerSetup,
+  type PlayerStats,
+  type Position,
+  type Rarity,
+  type SquadSlot,
+  type SubmitMatchResultRequest,
+} from '@pitch/shared';
 import {
   MAX_SUBS,
   matchClock,
@@ -13,7 +22,8 @@ import {
   type MatchState,
   type TeamSide,
 } from '@pitch/sim';
-import { playerNumber, shirtNumber } from '../../game/render/view';
+import { shortCardName } from '../../components/card/rarity';
+import { originSlot, playerNumber, shirtNumber } from '../../game/render/view';
 
 export type Score = Record<TeamSide, number>;
 export type StaminaLevel = 'ok' | 'low' | 'critical';
@@ -262,13 +272,68 @@ export function readDevOptions(search: string, env: { DEV: boolean; MODE: string
   return opts;
 }
 
-export interface SubOptions {
-  onPitch: { id: string; number: number; position: Position; stamina: number }[];
-  bench: { slot: SquadSlot; number: number; position: Position }[];
+export interface SubCardMeta {
+  cardId?: string;
+  name?: string;
+  shortName?: string;
+  avatarSeed?: string;
+  rarity?: Rarity;
+  ovr?: number;
+  level?: number;
 }
 
-/** Người trên sân và dự bị của đội nhà cho menu thay người. */
-export function subOptions(state: MatchState): SubOptions {
+export interface SubOnPitchOption extends SubCardMeta {
+  id: string;
+  number: number;
+  position: Position;
+  stamina: number;
+}
+
+export interface SubBenchOption extends SubCardMeta {
+  slot: SquadSlot;
+  number: number;
+  position: Position;
+  stamina?: number;
+}
+
+export interface SubOptions {
+  onPitch: SubOnPitchOption[];
+  bench: SubBenchOption[];
+}
+
+function resolveSubCardMeta(
+  setup: MatchPlayerSetup | undefined,
+  fallbackPosition: Position,
+  fallbackStats: PlayerStats,
+  catalog?: ReadonlyMap<string, Card>,
+): SubCardMeta {
+  const cardId = setup?.cardId;
+  const card = cardId ? catalog?.get(cardId) : undefined;
+  const stats = setup?.stats ?? fallbackStats;
+  const ovr = computeOvr(card?.position ?? setup?.position ?? fallbackPosition, stats);
+  return {
+    ...(cardId !== undefined && { cardId }),
+    ...(setup?.level !== undefined && { level: setup.level }),
+    ...(card && {
+      name: card.name,
+      shortName: shortCardName(card.name),
+      avatarSeed: card.avatarSeed,
+      rarity: card.rarity,
+    }),
+    ovr,
+  };
+}
+
+/** Người trên sân và dự bị của đội nhà cho menu thay người, kèm thông tin thẻ nếu có. */
+export function subOptions(
+  state: MatchState,
+  homePlayers?: readonly MatchPlayerSetup[],
+  catalog?: ReadonlyMap<string, Card>,
+): SubOptions {
+  const bySlot = new Map<SquadSlot, MatchPlayerSetup>();
+  if (homePlayers) {
+    for (const p of homePlayers) bySlot.set(p.slot, p);
+  }
   return {
     onPitch: state.players
       .filter((p) => p.team === 'home')
@@ -277,11 +342,14 @@ export function subOptions(state: MatchState): SubOptions {
         number: playerNumber(p.id),
         position: p.position,
         stamina: Math.round(p.stamina),
+        ...resolveSubCardMeta(bySlot.get(originSlot(p.id)), p.position, p.stats, catalog),
       })),
     bench: state.bench.home.map((b) => ({
       slot: b.slot,
       number: shirtNumber(b.slot),
       position: b.position,
+      stamina: 100,
+      ...resolveSubCardMeta(bySlot.get(b.slot) ?? b, b.position, b.stats, catalog),
     })),
   };
 }

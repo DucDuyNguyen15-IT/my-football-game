@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { computeOvr, type Card, type MatchTeamSetup } from '@pitch/shared';
 import { createMatch, starterLikeTeam, cpuEasyTeam, substitute, type MatchState } from '@pitch/sim';
 import {
   canSwap,
@@ -147,6 +148,63 @@ describe('thay người trên HUD', () => {
     expect(o.onPitch).toHaveLength(7);
     expect(o.onPitch.find((p) => p.id === 'home-B1')!.number).toBe(8);
     expect(o.bench.some((b) => b.slot === 'B1')).toBe(false);
+  });
+
+  it('subOptions: ánh xạ slot -> cardId và thông tin thẻ cả trước lẫn sau khi thay người', () => {
+    const base = starterLikeTeam;
+    const cards = new Map<string, Card>();
+    const homeTeam: MatchTeamSetup = {
+      formation: base.formation,
+      players: base.players.map((p, idx) => {
+        const cardId = `c-${p.slot}`;
+        const card: Card = {
+          id: cardId,
+          code: `${p.position}-000${idx + 1}`,
+          name: `Test Player${p.slot}`,
+          nickname: `Biệt danh ${p.slot}`,
+          position: p.position,
+          rarity: idx % 2 === 0 ? 'gold' : 'silver',
+          stats: p.stats,
+          ovr: computeOvr(p.position, p.stats),
+          avatarSeed: `seed-${p.slot}`,
+        };
+        cards.set(cardId, card);
+        return { ...p, cardId, level: idx === 1 ? 2 : 0 };
+      }),
+    };
+    const state = createMatch({ home: homeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 1 });
+    const before = subOptions(state, homeTeam.players, cards);
+    const p2Before = before.onPitch.find((p) => p.id === 'home-P2')!;
+    const b1Before = before.bench.find((b) => b.slot === 'B1')!;
+    expect(p2Before).toMatchObject({
+      cardId: 'c-P2',
+      name: 'Test PlayerP2',
+      shortName: 'PlayerP2',
+      avatarSeed: 'seed-P2',
+      rarity: 'gold',
+      ovr: computeOvr(homeTeam.players[2]!.position, homeTeam.players[2]!.stats),
+    });
+    expect(b1Before).toMatchObject({
+      cardId: 'c-B1',
+      name: 'Test PlayerB1',
+      shortName: 'PlayerB1',
+      avatarSeed: 'seed-B1',
+      stamina: 100,
+    });
+
+    const subbed = substitute(state, 'home', 'home-P2', 'B1');
+    if (!subbed.ok) throw new Error('phải hợp lệ');
+    const after = subOptions(subbed.state, homeTeam.players, cards);
+    const b1OnPitch = after.onPitch.find((p) => p.id === 'home-B1')!;
+    expect(b1OnPitch).toMatchObject({
+      id: 'home-B1',
+      number: 8,
+      cardId: 'c-B1',
+      name: 'Test PlayerB1',
+      shortName: 'PlayerB1',
+      avatarSeed: 'seed-B1',
+    });
+    expect(after.bench.some((b) => b.slot === 'B1')).toBe(false);
   });
 
   it('canSwap: thủ môn chỉ đổi thủ môn', () => {

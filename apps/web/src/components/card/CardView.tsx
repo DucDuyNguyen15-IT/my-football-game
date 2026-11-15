@@ -1,6 +1,6 @@
 import { computeOvr, type Card, type PlayerStats } from '@pitch/shared';
 import { Avatar } from './Avatar';
-import { POSITION_NAME, RARITY_INFO, statsFor } from './rarity';
+import { POSITION_NAME, RARITY_INFO, shortCardName, splitName, statsFor } from './rarity';
 import './card.css';
 
 export type CardSize = 'lg' | 'md' | 'sm' | 'xs';
@@ -27,11 +27,7 @@ export function cardLabel(card: Card, ovr = card.ovr, level = 0): string {
   return `${RARITY_INFO[card.rarity].label}, ${card.name}, ${POSITION_NAME[card.position]}, OVR ${ovr}${plus}`;
 }
 
-/** Họ (từ cuối) in to; phần còn lại cùng biệt danh ở dòng phụ. */
-function splitName(name: string): [string, string] {
-  const i = name.lastIndexOf(' ');
-  return i < 0 ? [name, ''] : [name.slice(i + 1), name.slice(0, i)];
-}
+export { shortCardName, splitName };
 
 /**
  * Thẻ cầu thủ dùng chung (DESIGN.md §4): mặt tối, khung màu độ hiếm, góc vát. Cỡ lg (mở thẻ),

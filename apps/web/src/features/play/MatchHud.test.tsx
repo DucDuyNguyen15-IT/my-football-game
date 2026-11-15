@@ -145,8 +145,94 @@ describe('menu thay người', () => {
   it('panel liệt kê người ra (kèm thể lực) và người vào, chưa chọn thì không xác nhận được', () => {
     const html = renderToStaticMarkup(<SubstitutionPanel subs={subs(true)} />);
     expect(html).toContain('25%');
+    expect(html).toContain('100%');
     expect(html).toContain('Còn 2 lượt');
+    expect(html).toContain('hud-stamina--critical');
+    expect(html).toContain('hud-stamina--ok');
     expect(html).toMatch(/<button[^>]*disabled=""[^>]*>Thay người<\/button>/);
+  });
+
+  it('panel hiển thị miniface SVG, tên ngắn, OVR và đủ 3 mốc màu thanh thể lực', () => {
+    const html = renderToStaticMarkup(
+      <SubstitutionPanel
+        subs={{
+          allowed: true,
+          left: 3,
+          onSubstitute: () => {},
+          options: {
+            onPitch: [
+              {
+                id: 'home-GK',
+                number: 1,
+                position: 'GK',
+                stamina: 85,
+                cardId: '1',
+                name: 'Sigar Lundvall',
+                shortName: 'Lundvall',
+                avatarSeed: 'cd681195',
+                rarity: 'gold',
+                ovr: 78,
+              },
+              {
+                id: 'home-P1',
+                number: 2,
+                position: 'DF',
+                stamina: 40,
+                cardId: '2',
+                name: 'Mamassa Okeyaté',
+                shortName: 'Okeyaté',
+                avatarSeed: '10d062c0',
+                rarity: 'silver',
+                ovr: 71,
+              },
+              {
+                id: 'home-P2',
+                number: 3,
+                position: 'FW',
+                stamina: 20,
+                cardId: '3',
+                name: 'Rafinho Duarte',
+                shortName: 'Duarte',
+                avatarSeed: 'a1b2c3d4',
+                rarity: 'legend',
+                ovr: 86,
+              },
+            ],
+            bench: [
+              {
+                slot: 'B1',
+                number: 8,
+                position: 'MF',
+                stamina: 100,
+                cardId: '4',
+                name: 'Halar Vikby',
+                shortName: 'Vikby',
+                avatarSeed: 'a28ce7b2',
+                rarity: 'bronze',
+                ovr: 62,
+              },
+            ],
+          },
+        }}
+      />,
+    );
+    expect(html).toContain('class="avatar"');
+    expect(html).toContain('r-gold');
+    expect(html).toContain('r-legend');
+    expect(html).toContain('Lundvall');
+    expect(html).toContain('Okeyaté');
+    expect(html).toContain('Duarte');
+    expect(html).toContain('Vikby');
+    expect(html).toContain('title="Sigar Lundvall"');
+    expect(html).toContain('>78<');
+    expect(html).toContain('>62<');
+    expect(html).toContain('hud-stamina--ok');
+    expect(html).toContain('hud-stamina--low');
+    expect(html).toContain('hud-stamina--critical');
+    expect(html).toContain('aria-valuenow="85"');
+    expect(html).toContain('aria-valuenow="40"');
+    expect(html).toContain('aria-valuenow="20"');
+    expect(html).toContain('aria-valuenow="100"');
   });
 });
 

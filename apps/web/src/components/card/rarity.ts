@@ -43,3 +43,12 @@ export const GK_STATS: readonly StatLabel[] = [
 ];
 
 export const statsFor = (position: Position) => (position === 'GK' ? GK_STATS : OUTFIELD_STATS);
+
+/** Họ (từ cuối) in to; phần còn lại cùng biệt danh ở dòng phụ. */
+export function splitName(name: string): [string, string] {
+  const i = name.lastIndexOf(' ');
+  return i < 0 ? [name, ''] : [name.slice(i + 1), name.slice(0, i)];
+}
+
+/** Tên ngắn hiển thị trên thẻ (từ cuối trong `card.name`). */
+export const shortCardName = (name: string): string => splitName(name)[0];
