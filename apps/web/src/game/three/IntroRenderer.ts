@@ -237,6 +237,8 @@ export class IntroRenderer {
     disposeMeshes(this.scene);
     this.postFx.dispose();
     this.renderer.dispose();
+    // Nhả context WebGL ngay, không chờ GC (Chrome giới hạn ~16 context).
+    this.renderer.forceContextLoss();
     this.renderer.domElement.remove();
   }
 }

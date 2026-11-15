@@ -69,6 +69,8 @@ import { MatchStinger } from './stinger';
 
 /** Khung hình bị treo lâu (tab ẩn, debugger) thì bỏ bớt thời gian, không chạy dồn hàng trăm tick. */
 const MAX_FRAME_SEC = 0.25;
+/** Phím giữ qua được replay (không phải nút hành động). */
+const MOVE_KEYS: ReadonlySet<string> = new Set(['up', 'down', 'left', 'right', 'sprint']);
 /** Độ phơi sáng khi tone mapping ACES (mức Cao) — giữ màu đội gần token thiết kế. */
 const TONE_EXPOSURE = 1.15;
 const MARKER_Y = 2.2;
@@ -542,7 +544,12 @@ export class MatchRenderer {
     if (this.replay || this.pendingReplay) {
       // Đang phát lại (hoặc đang vào phát lại): S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
       if (e.code === CONTROL_KEYS.pass) this.skipReplay = true;
-      if (name) e.preventDefault();
+      if (name) {
+        e.preventDefault();
+        // Phím di chuyển/chạy nhanh vẫn ghi (không vào sim) để hết replay không phải bấm lại (B5a V3);
+        // nút hành động thì không (S vừa bỏ qua replay vừa là chuyền).
+        if (MOVE_KEYS.has(name)) this.held = { ...this.held, [name]: true };
+      }
       return;
     }
     if (!name) return;
@@ -706,7 +713,9 @@ export class MatchRenderer {
     this.replayCam = null;
     this.skipReplay = false;
     this.accumulator = 0;
-    this.held = { ...NO_KEYS };
+    // Giữ phím di chuyển (keyup trong replay vẫn nhả); nút hành động thì xoá.
+    const h = this.held;
+    this.held = { ...NO_KEYS, up: h.up, down: h.down, left: h.left, right: h.right, sprint: h.sprint };
     this.taps.consume();
 
     if (!this.stingerEnabled) {
@@ -994,6 +1003,8 @@ export class MatchRenderer {
     const w = this.parent.clientWidth;
     const h = this.parent.clientHeight;
     if (w === 0 || h === 0) return;
+    // Zoom trình duyệt / kéo sang màn hình khác đổi devicePixelRatio (review B5a V2).
+    this.renderer.setPixelRatio(pixelRatioFor(this.q, window.devicePixelRatio));
     this.renderer.setSize(w, h);
     this.postFx.setSize(w, h, this.renderer.getPixelRatio());
     this.camera.aspect = w / h;
