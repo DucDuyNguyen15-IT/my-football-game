@@ -3,9 +3,9 @@
  * Phát hiện thời điểm sim đặt lại vị trí cầu thủ/bóng từ cặp trạng thái `(prev, curr)`, tính đường
  * cong đóng/mở che kín khung hình và tự hạ cấp 3D → 2D khi đồ hoạ Thấp hoặc FPS thấp.
  */
-import type { MatchState, TeamSide } from '@pitch/sim';
+import type { MatchState, PlayerState, TeamSide } from '@pitch/sim';
 import type { GraphicsQuality } from '../bridge';
-import { SNAP_DISTANCE, countdownRing } from './view';
+import { SNAP_DISTANCE, countdownRing, playerNumber } from './view';
 
 export type TransitionKind =
   | 'goal_kick'
@@ -22,6 +22,20 @@ export type TransitionKind =
 
 export type TransitionMode = '3d' | '2d' | 'reduced';
 
+/** Thông tin pha phạm lỗi rút từ cặp trạng thái `(prev, curr)` lúc trọng tài vừa thổi phạt. */
+export interface FoulSummary {
+  /** Cầu thủ bị phạm lỗi (người ngã xuống cỏ trước khi cắt cảnh). */
+  readonly victimId: string | null;
+  /** Cầu thủ phạm lỗi (xoạc trượt hoặc tắc bóng đứng). */
+  readonly tacklerId: string | null;
+  /** Cú phạm lỗi là xoạc trượt (`true`) hay tắc bóng đứng (`false`). */
+  readonly slide: boolean;
+  /** Thẻ phạt rút ngay ở tick phạm lỗi (`yellow`, `red`, hoặc `null` nếu không rút thẻ). */
+  readonly card: 'yellow' | 'red' | null;
+  /** Số áo của cầu thủ bị rút thẻ (nếu có) để hiển thị trên thông báo trọng tài. */
+  readonly bookedNumber: number | null;
+}
+
 export interface TransitionSpec {
   readonly kind: TransitionKind;
   /** Nhãn chính hiện khi che kín: "PHÁT BÓNG", "PHẠT GÓC", "NÉM BIÊN", "ĐÁ PHẠT", "PHẠT ĐỀN", ... */
@@ -36,14 +50,36 @@ export interface TransitionSpec {
   readonly duration3dSec: number;
   /** Thời lượng chuẩn ở bản 2D (giây). */
   readonly duration2dSec: number;
+  /**
+   * Thời gian giữ/diễn tiếp cảnh trên sân trước khi bắt đầu khép stinger (giây):
+   * - Phạm lỗi (`free_kick`, `penalty` phát sinh từ bóng sống): `FOUL_DELAY_SEC` (~1,25 s) để thấy
+   *   cầu thủ bị phạm lỗi té ngã và nhãn trọng tài trước khi cắt cảnh.
+   * - Bóng ra biên (`goal_kick`, `corner`, `throw_in` phát sinh từ bóng sống): `OUT_OF_BOUNDS_DELAY_SEC`
+   *   (~0,6 s) để thấy bóng lăn hẳn qua vạch biên trước khi cắt cảnh.
+   * - Tình huống khác: `0`.
+   */
+  readonly delaySec: number;
+  /** Chi tiết pha phạm lỗi khi chuyển cảnh phát sinh từ phạm lỗi; `null` ở tình huống khác. */
+  readonly foul: FoulSummary | null;
 }
 
 /** Ngưỡng FPS trung bình vài giây gần nhất: thấp hơn mức này thì tự hạ từ 3D xuống 2D CSS. */
 export const LOW_FPS_THRESHOLD = 50;
-/** Thời lượng mờ đen nhanh khi bật `prefers-reduced-motion: reduce` (200–300 ms). */
-export const REDUCED_DURATION_SEC = 0.25;
+/**
+ * Thời lượng chuyển cảnh khi bật `prefers-reduced-motion: reduce`: chỉ mờ, không chuyển động. Mờ vào
+ * / ra mỗi bên ~125 ms, giữ nhãn ~450 ms ở giữa để kịp đọc (review L5).
+ */
+export const REDUCED_DURATION_SEC = 0.7;
+/** Phần đầu / cuối (theo tiến độ 0…1) dành cho mờ vào / mờ ra ở chế độ reduced. */
+export const REDUCED_FADE = 0.18;
 /** Thời gian camera hơi dolly vào khung tình huống cố định sau khi mở cảnh mới (giây). */
 export const DOLLY_DURATION_SEC = 0.65;
+/** Độ trễ trước khi khép stinger sau pha phạm lỗi (1–1,5 s: thấy cầu thủ té ngã + còi/thẻ). */
+export const FOUL_DELAY_SEC = 1.25;
+/** Độ trễ trước khi khép stinger khi bóng lăn ra ngoài biên (0,5–0,8 s: thấy bóng qua vạch). */
+export const OUT_OF_BOUNDS_DELAY_SEC = 0.6;
+/** Luân lưu: xem bóng rung lưới / pha cản phá của lượt vừa sút trước khi sang lượt kế (giây). */
+export const SHOOTOUT_RESULT_DELAY_SEC = 1;
 
 const TEAM_SUBLABEL: Record<TeamSide, string> = {
   home: 'ĐỘI NHÀ',
@@ -61,7 +97,7 @@ export const TRANSITION_LABELS: Record<TransitionKind, string> = {
   kickoff: 'GIAO BÓNG',
   second_half: 'GIAO BÓNG',
   shootout: 'LUÂN LƯU',
-  shootout_turn: 'LƯỢT 1',
+  shootout_turn: 'LƯỢT',
 };
 
 const DURATION_3D: Record<TransitionKind, number> = {
@@ -96,7 +132,7 @@ const DURATION_2D: Record<TransitionKind, number> = {
 export function transitionLabel(kind: TransitionKind, turn?: number | null): string {
   if (kind === 'shootout_turn') {
     const n = turn !== undefined && turn !== null && turn > 0 ? Math.floor(turn) : 1;
-    return `LƯỢT ${n}`;
+    return `${TRANSITION_LABELS.shootout_turn} ${n}`;
   }
   return TRANSITION_LABELS[kind];
 }
@@ -134,6 +170,9 @@ export interface BuildTransitionOptions {
   sublabel?: string;
   team?: TeamSide | null;
   turn?: number | null;
+  /** Thời gian diễn tiếp cảnh trên sân trước khi khép stinger (giây), mặc định `0`. */
+  delaySec?: number;
+  foul?: FoulSummary | null;
 }
 
 export function buildTransitionSpec(
@@ -157,6 +196,69 @@ export function buildTransitionSpec(
     turn,
     duration3dSec: DURATION_3D[kind],
     duration2dSec: DURATION_2D[kind],
+    delaySec: Math.max(0, options.delaySec ?? 0),
+    foul: options.foul ?? null,
+  };
+}
+
+/** Khoảng cách bình phương giữa hai cầu thủ (không cấp phát). */
+const distSq = (a: PlayerState, b: PlayerState): number =>
+  (a.pos.x - b.pos.x) ** 2 + (a.pos.y - b.pos.y) ** 2;
+
+/**
+ * Rút thông tin pha phạm lỗi ở tick trọng tài thổi phạt (`curr` vừa sang `dead_ball` với
+ * `free_kick`/`penalty`, `prev` còn bóng sống):
+ * - Xoạc (A) phạm lỗi: sim ghi `lastTackle` (`outcome: 'foul'`) đúng tick này → người xoạc + người bị xoạc.
+ * - Tắc bóng đứng / AI áp sát phạm lỗi: sim không ghi `lastTackle` → người bị phạm lỗi là người đang dẫn
+ *   bóng ở `prev` (thuộc đội được hưởng), người phạm lỗi là người bị rút thẻ hoặc cầu thủ đối phương
+ *   đứng gần người bị phạm lỗi nhất.
+ */
+export function summarizeFoul(prev: MatchState, curr: MatchState): FoulSummary {
+  const r = curr.restart;
+  const tackle = curr.lastTackle;
+  const slideFoul =
+    tackle !== null && tackle.tick === curr.tick && tackle.outcome === 'foul' ? tackle : null;
+
+  let victimId = slideFoul?.victimId ?? null;
+  if (victimId === null && prev.ballOwnerId !== null) {
+    const owner = prev.players.find((p) => p.id === prev.ballOwnerId);
+    if (owner && (!r || owner.team === r.team)) victimId = owner.id;
+  }
+
+  // Thẻ mới rút ở tick này (đỏ trực tiếp, hoặc vàng thứ hai kèm đỏ → hiện đỏ).
+  let card: 'yellow' | 'red' | null = null;
+  let bookedId: string | null = null;
+  for (let i = prev.bookings.length; i < curr.bookings.length; i++) {
+    const b = curr.bookings[i]!;
+    if (b.tick !== curr.tick) continue;
+    if (card !== 'red') {
+      card = b.card;
+      bookedId = b.playerId;
+    }
+  }
+
+  let tacklerId = slideFoul?.tacklerId ?? bookedId;
+  if (tacklerId === null && victimId !== null) {
+    const victim = prev.players.find((p) => p.id === victimId);
+    if (victim) {
+      let best = Infinity;
+      for (const p of prev.players) {
+        if (p.team === victim.team) continue;
+        const d = distSq(p, victim);
+        if (d < best) {
+          best = d;
+          tacklerId = p.id;
+        }
+      }
+    }
+  }
+
+  return {
+    victimId,
+    tacklerId,
+    slide: slideFoul !== null,
+    card,
+    bookedNumber: bookedId !== null ? playerNumber(bookedId) : null,
   };
 }
 
@@ -169,15 +271,18 @@ export function transitionDurationSec(spec: TransitionSpec, mode: TransitionMode
 /**
  * Có cầu thủ nào (cùng `id` ở cả hai tick) nhảy vị trí tức thời quá `SNAP_DISTANCE` (2 m) không.
  * Người mới vào sân qua thay người không có trong `prev` nên không tính là dịch chuyển.
+ * Chạy mỗi tick lúc bóng chết nên không cấp phát: thứ tự cầu thủ thường giữ nguyên giữa hai tick, chỉ
+ * tìm theo id khi lệch (thẻ đỏ / thay người).
  */
 export function hasPlayerTeleport(
   prev: Pick<MatchState, 'players'>,
   curr: Pick<MatchState, 'players'>,
 ): boolean {
-  const prevById = new Map(prev.players.map((p) => [p.id, p]));
   const thresholdSq = SNAP_DISTANCE * SNAP_DISTANCE;
-  for (const p of curr.players) {
-    const before = prevById.get(p.id);
+  for (let i = 0; i < curr.players.length; i++) {
+    const p = curr.players[i]!;
+    const same = prev.players[i];
+    const before = same?.id === p.id ? same : prev.players.find((q) => q.id === p.id);
     if (!before) continue;
     const dx = p.pos.x - before.pos.x;
     const dy = p.pos.y - before.pos.y;
@@ -242,6 +347,8 @@ export function detectTransition(
       return buildTransitionSpec('shootout_turn', {
         team: kicking,
         turn: currKicks + 1,
+        // Lượt vừa phân định: cho xem bóng vào lưới / bị cản rồi mới cắt.
+        delaySec: currKicks > prevKicks ? SHOOTOUT_RESULT_DELAY_SEC : 0,
       });
     }
     return null;
@@ -256,25 +363,36 @@ export function detectTransition(
       prev.restart.startTick !== r.startTick ||
       prev.restart.type !== r.type;
     const teleported = hasPlayerTeleport(prev, curr);
+    // Bóng vừa chết ngay tick này (từ bóng sống): cho xem hết pha bóng rồi mới cắt cảnh.
+    const fromLive = prev.phase === 'play';
 
     switch (r.type) {
       case 'goal_kick':
       case 'corner':
+        if (isNewRestart || teleported) {
+          return buildTransitionSpec(r.type, {
+            team: r.team,
+            delaySec: fromLive ? OUT_OF_BOUNDS_DELAY_SEC : 0,
+          });
+        }
+        return null;
       case 'free_kick':
       case 'penalty':
         if (isNewRestart || teleported) {
-          return buildTransitionSpec(r.type, { team: r.team });
+          return buildTransitionSpec(r.type, {
+            team: r.team,
+            delaySec: fromLive ? FOUL_DELAY_SEC : 0,
+            foul: fromLive ? summarizeFoul(prev, curr) : null,
+          });
         }
         return null;
       case 'throw_in':
         // Ném biên: chỉ chuyển cảnh khi có dịch chuyển cầu thủ tức thời (> SNAP_DISTANCE).
         if (teleported) {
-          return buildTransitionSpec('throw_in', { team: r.team });
-        }
-        return null;
-      case 'kickoff':
-        if (isNewRestart || teleported) {
-          return buildTransitionSpec('kickoff', { team: r.team });
+          return buildTransitionSpec('throw_in', {
+            team: r.team,
+            delaySec: fromLive ? OUT_OF_BOUNDS_DELAY_SEC : 0,
+          });
         }
         return null;
     }
@@ -390,12 +508,12 @@ export function sampleTransitionCurve(
   if (mode === 'reduced') {
     // Mờ đen nhanh: tăng lên 1 ở giữa rồi hạ về 0, không xoay/quét.
     const cover =
-      p < COVER_HOLD_START
-        ? easeOutCubic(p / COVER_HOLD_START)
-        : p <= COVER_HOLD_END
+      p < REDUCED_FADE
+        ? easeOutCubic(p / REDUCED_FADE)
+        : p <= 1 - REDUCED_FADE
           ? 1
-          : 1 - easeInCubic((p - COVER_HOLD_END) / (1 - COVER_HOLD_END));
-    const fullyCovered = p >= COVER_HOLD_START && p <= COVER_HOLD_END;
+          : 1 - easeInCubic((p - (1 - REDUCED_FADE)) / REDUCED_FADE);
+    const fullyCovered = p >= REDUCED_FADE && p <= 1 - REDUCED_FADE;
     return {
       cover,
       fullyCovered,
@@ -507,4 +625,25 @@ export function dollyOffset(
     y: -1.35 * k,
     z: -2.8 * k,
   };
+}
+
+/**
+ * Stinger mới phát khi stinger cũ còn chạy: bắt đầu từ đúng độ che hiện tại thay vì mở bung rồi khép
+ * lại (review M1). Cũ chưa che kín → tiếp tục khép từ tiến độ đó và dồn `onCovered` cũ sang mốc che
+ * kín của lượt mới (không gọi sớm lúc màn còn hở). Cũ đã che, đang mở → bắt đầu ở điểm đối xứng trên
+ * nửa khép (cùng độ che).
+ */
+export function chainedStart(prev: { progress: number; covered: boolean } | null): {
+  progress: number;
+  carryCovered: boolean;
+} {
+  if (!prev) return { progress: 0, carryCovered: false };
+  const p = clamp01(prev.progress);
+  if (!prev.covered) return { progress: Math.min(p, 0.5), carryCovered: true };
+  return { progress: Math.min(0.5, 1 - p), carryCovered: false };
+}
+
+/** Stinger ở tiến độ `progress` còn che (chưa mở ra) cảnh sân: sim đứng, không nhận phím (review H1). */
+export function hidesPlay(progress: number, mode: TransitionMode): boolean {
+  return progress < 0.5 || sampleTransitionCurve(progress, mode).fullyCovered;
 }

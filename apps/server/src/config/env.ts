@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { MATCH_MIN_DURATION_SEC } from './economy';
+import { MATCH_MAX_AGE_SEC, MATCH_MIN_DURATION_SEC } from './economy';
 
 /** Giá trị dev khớp `docker-compose.dev.yml`; production bắt buộc đặt biến thật. */
 const DEV_DATABASE_URL = 'postgres://pitch:pitch@localhost:5432/pitch';
@@ -17,7 +17,13 @@ const EnvSchema = z
     SESSION_SECRET: z.string().min(32).optional(),
     PORT: z.coerce.number().int().min(1).max(65535).default(3000),
     HOST: z.string().min(1).default('127.0.0.1'),
-    MATCH_MIN_DURATION_SEC: z.coerce.number().int().min(0).default(MATCH_MIN_DURATION_SEC),
+    // Trên MATCH_MAX_AGE_SEC thì không trận nào nộp kịp (R78-3 / B3-01).
+    MATCH_MIN_DURATION_SEC: z.coerce
+      .number()
+      .int()
+      .min(0)
+      .max(MATCH_MAX_AGE_SEC - 1)
+      .default(MATCH_MIN_DURATION_SEC),
     ENABLE_DEV_ROUTES: flag,
     TRUST_PROXY: flag,
     /** OAuth Client ID (Web) của Google (ADR-0010); để trống = tắt đăng nhập Google. */
@@ -38,6 +44,14 @@ const EnvSchema = z
     for (const key of ['DATABASE_URL', 'SESSION_SECRET'] as const) {
       if (!env[key])
         ctx.addIssue({ code: 'custom', path: [key], message: 'bắt buộc ở production' });
+    }
+    // Chốt thời lượng là lớp chống nộp trận giả duy nhất (SEC-07): production không được hạ dưới mặc định.
+    if (env.MATCH_MIN_DURATION_SEC < MATCH_MIN_DURATION_SEC) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['MATCH_MIN_DURATION_SEC'],
+        message: `production tối thiểu ${MATCH_MIN_DURATION_SEC}`,
+      });
     }
     if (env.ENABLE_DEV_ROUTES) {
       ctx.addIssue({

@@ -77,7 +77,10 @@ export async function requireAuth(
     await renewSession(this.db, token, session.renewedUntil);
     setSessionCookie(reply, token, session.renewedUntil);
   }
-  await recordSessionSeen(this.db, session.user.id, now);
+  // Analytics hỏng không được làm hỏng request nghiệp vụ (B3-06).
+  await recordSessionSeen(this.db, session.user.id, now).catch((err: unknown) =>
+    req.log.error({ err }, 'recordSessionSeen thất bại'),
+  );
 }
 
 /** preHandler: bắt buộc đăng nhập và có quyền admin (`users.is_admin = true`). */

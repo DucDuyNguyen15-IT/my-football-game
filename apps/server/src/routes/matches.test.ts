@@ -166,6 +166,7 @@ describe('GET /api/v1/config/economy — thưởng trận', () => {
     const data = EconomyConfigResponse.parse(res.json()).data;
     expect(data.matchReward).toEqual(MATCH_REWARD);
     expect(data.matchRewardDailyCap).toBe(MATCH_REWARD_DAILY_CAP);
+    expect(data.starterGift).toEqual({ bronzeCards: 11, freePack5: 1 });
   });
 });
 
@@ -254,7 +255,6 @@ describe('POST /api/v1/matches/:id/result', () => {
   it('thưởng theo độ khó + luân lưu (Khó: thắng luân lưu 90, thua luân lưu 60)', async () => {
     const sid = await signup();
     const a = await startOk(sid, 'hard');
-    const b = await startOk(sid, 'hard');
     clock.advance(7 * MIN);
     const resA = await submit(sid, a.matchId, {
       token: a.token,
@@ -264,6 +264,8 @@ describe('POST /api/v1/matches/:id/result', () => {
     });
     const ra = MatchResultResponse.parse(resA.json()).data;
     expect(ra).toMatchObject({ outcome: 'shootout_win', reward: 90 });
+    const b = await startOk(sid, 'hard');
+    clock.advance(7 * MIN);
     const resB = await submit(sid, b.matchId, {
       token: b.token,
       homeGoals: 0,
@@ -272,6 +274,30 @@ describe('POST /api/v1/matches/:id/result', () => {
     });
     const rb = MatchResultResponse.parse(resB.json()).data;
     expect(rb).toMatchObject({ outcome: 'shootout_loss', reward: 40, balance: ra.balance + 40 });
+  });
+
+  it('bắt đầu trận mới thì trận đang đá trước đó bị huỷ, không nộp được nữa (B3-02)', async () => {
+    const sid = await signup();
+    const a = await startOk(sid);
+    const b = await startOk(sid);
+    clock.advance(7 * MIN);
+    const resA = await submit(sid, a.matchId, { token: a.token, homeGoals: 1, awayGoals: 0 });
+    expect(resA.statusCode).not.toBe(200);
+    const resB = await submit(sid, b.matchId, { token: b.token, homeGoals: 1, awayGoals: 0 });
+    expect(resB.statusCode).toBe(200);
+  });
+
+  it('nộp song song cùng trận → cùng kết quả, đúng 1 dòng match_reward (B3-04)', async () => {
+    const sid = await signup();
+    const user = await me(sid);
+    const m = await startOk(sid);
+    clock.advance(6 * MIN);
+    const body = { token: m.token, homeGoals: 1, awayGoals: 0 };
+    const [r1, r2] = await Promise.all([submit(sid, m.matchId, body), submit(sid, m.matchId, body)]);
+    expect([r1.statusCode, r2.statusCode]).toEqual([200, 200]);
+    expect(r1.json()).toEqual(r2.json());
+    expect((await ledger(user.id)).filter((t) => t.type === 'match_reward')).toHaveLength(1);
+    expect((await me(sid)).coins).toBe(user.coins + 60);
   });
 
   it('gửi lại cùng token → cùng kết quả, xu chỉ cộng một lần', async () => {
@@ -348,26 +374,27 @@ describe('POST /api/v1/matches/:id/result', () => {
   });
 
   it('trần 15 trận/ngày GMT+7: trận 16 thưởng 0; 23:59 và 00:01 là hai ngày khác nhau', async () => {
-    clock.set('2026-03-10T16:50:00Z'); // 23:50 GMT+7
+    clock.set('2026-03-10T03:00:00Z'); // 10:00 GMT+7
     const sid = await signup();
     const user = await me(sid);
-    const started: StartedMatch[] = [];
-    for (let i = 0; i < 17; i++) started.push(await startOk(sid));
-    expect(started.every((m) => m.rewardEligible)).toBe(true);
-
-    clock.set('2026-03-10T16:59:00Z'); // 23:59 GMT+7
     const body = (m: StartedMatch) => ({ token: m.token, homeGoals: 1, awayGoals: 0 });
-    for (const m of started.slice(0, 15)) {
+    // Mỗi lần chỉ một trận đang đá (B3-02): đá tuần tự 15 trận có thưởng.
+    for (let i = 0; i < 15; i++) {
+      const m = await startOk(sid);
+      expect(m.rewardEligible).toBe(true);
+      clock.advance(6 * MIN);
       const r = MatchResultResponse.parse((await submit(sid, m.matchId, body(m))).json()).data;
       expect(r.reward).toBe(60);
     }
-    const m16 = started[15]!;
+    clock.set('2026-03-10T16:52:00Z'); // 23:52 GMT+7
+    const m16 = await startOk(sid);
+    clock.set('2026-03-10T16:59:00Z'); // 23:59 GMT+7
     const r16 = MatchResultResponse.parse((await submit(sid, m16.matchId, body(m16))).json()).data;
     expect(r16).toMatchObject({ outcome: 'win', reward: 0, balance: user.coins + 15 * 60 });
-    expect((await startOk(sid)).rewardEligible).toBe(false);
+    const m17 = await startOk(sid);
+    expect(m17.rewardEligible).toBe(false);
 
-    clock.set('2026-03-10T17:01:00Z'); // 00:01 GMT+7 ngày hôm sau
-    const m17 = started[16]!;
+    clock.set('2026-03-10T17:05:00Z'); // 00:05 GMT+7 ngày hôm sau
     const r17 = MatchResultResponse.parse((await submit(sid, m17.matchId, body(m17))).json()).data;
     expect(r17.reward).toBe(60);
     expect((await startOk(sid)).rewardEligible).toBe(true);

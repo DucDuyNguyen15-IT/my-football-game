@@ -7,7 +7,7 @@ import {
   type PackInfo,
   type PackPayment,
 } from '@pitch/shared';
-import { PACKS, type PackCode } from '../config/economy';
+import { BOX_COMPOSITION, PACKS, type PackCode } from '../config/economy';
 import type { Db, Tx } from '../db/client';
 import { packBoxes, packOpenings, playerCards, users } from '../db/schema';
 import {
@@ -41,6 +41,8 @@ const toBox = (row: BoxRow): Box => ({
 
 export function toPackBox(box: Box): PackBox {
   return {
+    initial: { ...BOX_COMPOSITION },
+    size: boxTotal(BOX_COMPOSITION),
     left: { ...box.left },
     total: boxTotal(box.left),
     nextOdds: nextOdds(box),

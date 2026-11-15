@@ -328,7 +328,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
 
   function playEasyNow() {
     if (missing.length > 0 || saver.isPending) return;
-    const dest = '/play?difficulty=easy&onboarding=1';
+    // Chỉ luồng tân thủ mới gắn onboarding=1 (B4-14).
+    const dest = isOnboarding ? '/play?difficulty=easy&onboarding=1' : '/play?difficulty=easy';
     if (!dirty) {
       void navigate(dest);
       return;
@@ -390,14 +391,13 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
         )}
         <header className="sq__head">
           <h1 className="h1">Đội hình</h1>
-          <div className="seg" role="radiogroup" aria-label="Sơ đồ">
+          <div className="seg" role="group" aria-label="Sơ đồ">
             {Formation.options.map((f) => (
               <button
                 key={f}
                 type="button"
-                role="radio"
                 className={`seg__opt${draft.formation === f ? ' is-on' : ''}`}
-                aria-checked={draft.formation === f}
+                aria-pressed={draft.formation === f}
                 onClick={() => pickFormation(f)}
               >
                 {f}

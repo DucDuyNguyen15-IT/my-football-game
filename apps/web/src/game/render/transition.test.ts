@@ -11,19 +11,25 @@ import {
   COVER_HOLD_END,
   COVER_HOLD_START,
   DOLLY_DURATION_SEC,
+  FOUL_DELAY_SEC,
   LOW_FPS_THRESHOLD,
+  OUT_OF_BOUNDS_DELAY_SEC,
   REDUCED_DURATION_SEC,
   RollingFps,
+  SHOOTOUT_RESULT_DELAY_SEC,
   buildTransitionSpec,
+  chainedStart,
+  hidesPlay,
   detectTransition,
   dollyOffset,
   hasPlayerTeleport,
   resolveTransitionMode,
   sampleTransitionCurve,
+  summarizeFoul,
   transitionDurationSec,
   transitionLabel,
 } from './transition';
-import { COUNTDOWN_VISIBLE_SEC, SNAP_DISTANCE } from './view';
+import { COUNTDOWN_VISIBLE_SEC, SNAP_DISTANCE, playerNumber } from './view';
 
 const baseMatch = (): MatchState =>
   createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 7 });
@@ -226,6 +232,8 @@ describe('detectTransition — khi nào chuyển cảnh', () => {
       label: 'LƯỢT 2',
       team: 'away',
       turn: 2,
+      // Lượt vừa phân định: xem bóng vào lưới / bị cản rồi mới cắt (review M2).
+      delaySec: SHOOTOUT_RESULT_DELAY_SEC,
     });
 
     // Sang lượt sút thứ 3 (đội nhà).
@@ -294,7 +302,6 @@ describe('detectTransition — khi nào chuyển cảnh', () => {
       actionDeadline: {
         kind: 'free_kick',
         playerId: 'home-P1',
-        startTick: start,
         deadlineTick: deadline,
       },
       // Giả sử có cầu thủ nhảy vị trí ngay trong 5 giây cuối.
@@ -303,6 +310,119 @@ describe('detectTransition — khi nào chuyển cảnh', () => {
       ),
     };
     expect(detectTransition(prev, curr)).toBeNull();
+  });
+});
+
+describe('độ trễ chuyển cảnh sau phạm lỗi / bóng ra biên (delaySec)', () => {
+  const live = (tick: number): MatchState => ({
+    ...baseMatch(),
+    tick,
+    phase: 'play',
+    ballDead: false,
+    restart: null,
+  });
+
+  it('phạm lỗi từ bóng sống: đá phạt và phạt đền chờ FOUL_DELAY_SEC (1–1,5 s) rồi mới khép stinger', () => {
+    expect(FOUL_DELAY_SEC).toBeGreaterThanOrEqual(1);
+    expect(FOUL_DELAY_SEC).toBeLessThanOrEqual(1.5);
+    const play = live(120);
+    const fk = detectTransition(play, withRestart({ ...play, tick: 121 }, 'free_kick', 'home', 121));
+    const pk = detectTransition(play, withRestart({ ...play, tick: 121 }, 'penalty', 'away', 121));
+    expect(fk).toMatchObject({ kind: 'free_kick', delaySec: FOUL_DELAY_SEC });
+    expect(pk).toMatchObject({ kind: 'penalty', delaySec: FOUL_DELAY_SEC });
+    expect(fk?.foul).not.toBeNull();
+  });
+
+  it('bóng ra biên từ bóng sống: phát bóng / phạt góc / ném biên chờ OUT_OF_BOUNDS_DELAY_SEC (0,5–0,8 s)', () => {
+    expect(OUT_OF_BOUNDS_DELAY_SEC).toBeGreaterThanOrEqual(0.5);
+    expect(OUT_OF_BOUNDS_DELAY_SEC).toBeLessThanOrEqual(0.8);
+    const play = live(50);
+    for (const type of ['goal_kick', 'corner'] as const) {
+      const tr = detectTransition(play, withRestart({ ...play, tick: 51 }, type, 'away', 51));
+      expect(tr).toMatchObject({ kind: type, delaySec: OUT_OF_BOUNDS_DELAY_SEC, foul: null });
+    }
+    const throwSnap = withRestart({ ...play, tick: 51 }, 'throw_in', 'home', 51);
+    const snapped: MatchState = {
+      ...throwSnap,
+      players: throwSnap.players.map((p, i) =>
+        i === 0 ? { ...p, pos: { x: p.pos.x + 6, y: p.pos.y } } : p,
+      ),
+    };
+    expect(detectTransition(play, snapped)).toMatchObject({
+      kind: 'throw_in',
+      delaySec: OUT_OF_BOUNDS_DELAY_SEC,
+    });
+  });
+
+  it('không trễ khi tình huống không phát sinh từ bóng sống (dịch chuyển lúc chờ, giao bóng, bàn thắng, hiệp 2)', () => {
+    const waiting = withRestart(live(200), 'free_kick', 'home', 150);
+    const snapped: MatchState = {
+      ...waiting,
+      tick: 201,
+      players: waiting.players.map((p, i) =>
+        i === 0 ? { ...p, pos: { x: p.pos.x + 8, y: p.pos.y } } : p,
+      ),
+    };
+    expect(detectTransition(waiting, snapped)).toMatchObject({ kind: 'free_kick', delaySec: 0, foul: null });
+    expect(buildTransitionSpec('kickoff').delaySec).toBe(0);
+    expect(buildTransitionSpec('replay_in').delaySec).toBe(0);
+    expect(buildTransitionSpec('second_half').delaySec).toBe(0);
+  });
+
+  it('summarizeFoul: xoạc phạm lỗi lấy người xoạc / người bị xoạc từ lastTackle, kèm thẻ rút ở tick đó', () => {
+    const play = live(300);
+    const [tackler] = play.players.filter((p) => p.team === 'away');
+    const [victim] = play.players.filter((p) => p.team === 'home' && p.position !== 'GK');
+    const foul: MatchState = {
+      ...withRestart({ ...play, tick: 301 }, 'free_kick', 'home', 301),
+      lastTackle: {
+        tick: 301,
+        tacklerId: tackler!.id,
+        victimId: victim!.id,
+        outcome: 'foul',
+        victimReaction: null,
+      },
+      bookings: [{ playerId: tackler!.id, team: 'away', card: 'yellow', tick: 301 }],
+    };
+    const s = summarizeFoul(play, foul);
+    expect(s).toMatchObject({
+      victimId: victim!.id,
+      tacklerId: tackler!.id,
+      slide: true,
+      card: 'yellow',
+      bookedNumber: playerNumber(tackler!.id),
+    });
+    expect(detectTransition(play, foul)?.foul).toEqual(s);
+  });
+
+  it('summarizeFoul: tắc bóng đứng (không có lastTackle) → người dẫn bóng bị phạm lỗi, đối thủ gần nhất phạm lỗi; đỏ ưu tiên hơn vàng', () => {
+    const base = live(400);
+    const victim = base.players.find((p) => p.team === 'home' && p.position !== 'GK')!;
+    const near = base.players.find((p) => p.team === 'away' && p.position !== 'GK')!;
+    const play: MatchState = {
+      ...base,
+      ballOwnerId: victim.id,
+      players: base.players.map((p) =>
+        p.id === near.id ? { ...p, pos: { x: victim.pos.x + 0.8, y: victim.pos.y } } : p,
+      ),
+    };
+    const noCard = withRestart({ ...play, tick: 401 }, 'free_kick', 'home', 401);
+    expect(summarizeFoul(play, noCard)).toEqual({
+      victimId: victim.id,
+      tacklerId: near.id,
+      slide: false,
+      card: null,
+      bookedNumber: null,
+    });
+
+    const secondYellow: MatchState = {
+      ...noCard,
+      bookings: [
+        { playerId: near.id, team: 'away', card: 'yellow', tick: 401 },
+        { playerId: near.id, team: 'away', card: 'red', tick: 401 },
+      ],
+    };
+    expect(summarizeFoul(play, secondYellow)).toMatchObject({ tacklerId: near.id, card: 'red' });
   });
 });
 
@@ -389,5 +509,39 @@ describe('đường cong chuyển cảnh & camera dolly', () => {
     expect(Math.abs(mid.z)).toBeGreaterThan(0);
     expect(done).toEqual({ y: 0, z: 0 });
     expect(dollyOffset(0.1, true)).toEqual({ y: 0, z: 0 });
+  });
+});
+
+describe('nối stinger và che cảnh (review M1, H1, L4, L5)', () => {
+  it('chainedStart: cũ chưa che kín → khép tiếp từ đó, dồn onCovered; cũ đang mở → điểm đối xứng', () => {
+    expect(chainedStart(null)).toEqual({ progress: 0, carryCovered: false });
+    expect(chainedStart({ progress: 0.3, covered: false })).toEqual({ progress: 0.3, carryCovered: true });
+    expect(chainedStart({ progress: 0.8, covered: true }).progress).toBeCloseTo(0.2);
+    expect(chainedStart({ progress: 0.8, covered: true }).carryCovered).toBe(false);
+  });
+
+  it('hidesPlay: còn che tới hết quãng che kín, mở ra thì thôi', () => {
+    expect(hidesPlay(0.1, '3d')).toBe(true);
+    expect(hidesPlay(COVER_HOLD_END - 0.01, '3d')).toBe(true);
+    expect(hidesPlay(COVER_HOLD_END + 0.05, '3d')).toBe(false);
+    expect(hidesPlay(0.95, 'reduced')).toBe(false);
+  });
+
+  it('reduced-motion: nhãn rõ (che kín) ít nhất ~400 ms', () => {
+    let covered = 0;
+    for (let i = 0; i < 1000; i++) {
+      if (sampleTransitionCurve(i / 1000, 'reduced').labelOpacity >= 0.99) covered++;
+    }
+    expect((covered / 1000) * REDUCED_DURATION_SEC).toBeGreaterThan(0.4);
+  });
+
+  it('hasPlayerTeleport: thứ tự cầu thủ đổi (thay người / thẻ đỏ) vẫn so đúng theo id', () => {
+    const a = baseMatch();
+    const reversed = { players: [...a.players].reverse() };
+    expect(hasPlayerTeleport(a, reversed)).toBe(false);
+    const moved = {
+      players: reversed.players.map((p, i) => (i === 0 ? { ...p, pos: { x: p.pos.x + 5, y: p.pos.y } } : p)),
+    };
+    expect(hasPlayerTeleport(a, moved)).toBe(true);
   });
 });

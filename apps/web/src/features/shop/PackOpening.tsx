@@ -257,7 +257,7 @@ export function PackOpening({
 function BoxStrip({ box, onDetails }: { box: PackBox; onDetails: () => void }) {
   return (
     <div className="box-strip">
-      <span className="label num">Hộp còn {box.total}/100</span>
+      <span className="label num">Hộp còn {box.total}/{box.size}</span>
       {RARITY_ORDER.map((r) => (
         <span key={r} className={`box-strip__item r-${r}`}>
           <b>

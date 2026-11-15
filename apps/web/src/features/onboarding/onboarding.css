@@ -40,7 +40,6 @@
   color: var(--c-text);
   background: var(--c-bg);
   border-color: var(--c-line-strong);
-  outline: none;
   box-shadow: none;
   transition:
     border-color var(--dur-fast) var(--ease-out),

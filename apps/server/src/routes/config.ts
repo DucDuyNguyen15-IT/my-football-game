@@ -1,6 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import type { EconomyConfigResponse } from '@pitch/shared';
-import { CARD_SALE_PRICE, MATCH_REWARD, MATCH_REWARD_DAILY_CAP, UPGRADE } from '../config/economy';
+import {
+  CARD_SALE_PRICE,
+  MATCH_REWARD,
+  MATCH_REWARD_DAILY_CAP,
+  STARTER_FREE_PACK5,
+  STARTER_SQUAD,
+  UPGRADE,
+} from '../config/economy';
 
 /** Số liệu kinh tế công khai cho UI (ARCHITECTURE §4.3 #10). */
 export function registerConfigRoutes(app: FastifyInstance): void {
@@ -17,6 +24,7 @@ export function registerConfigRoutes(app: FastifyInstance): void {
           steps: UPGRADE.steps.map((s) => ({ ...s })),
           rarityFeeMultiplier: { ...UPGRADE.rarityFeeMultiplier },
         },
+        starterGift: { bronzeCards: STARTER_SQUAD.slots.length, freePack5: STARTER_FREE_PACK5 },
       },
     };
   });

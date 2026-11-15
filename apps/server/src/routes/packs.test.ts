@@ -110,6 +110,8 @@ describe('GET /packs', () => {
       { code: 'pack5', size: 5, price: 450, guaranteeAvailable: true },
     ]);
     expect(box).toEqual({
+      initial: { bronze: 58, silver: 30, gold: 10, legend: 2 },
+      size: 100,
       left: { bronze: 58, silver: 30, gold: 10, legend: 2 },
       total: 100,
       nextOdds: { bronze: 0.58, silver: 0.3, gold: 0.1, legend: 0.02 },

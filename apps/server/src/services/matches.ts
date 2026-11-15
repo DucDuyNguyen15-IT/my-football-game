@@ -1,6 +1,6 @@
 // Trận vs máy (ARCHITECTURE §4.3 #15–16, §5.2): bắt đầu trận (match token) + nộp kết quả & thưởng.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { and, count, eq, gt, lt } from 'drizzle-orm';
+import { and, count, eq, gt } from 'drizzle-orm';
 import {
   SquadSlot,
   type Difficulty,
@@ -64,17 +64,12 @@ export async function startMatch(
 ): Promise<StartedMatch> {
   return db.transaction(async (tx) => {
     await lockUser(tx, userId);
-    const expireBefore = new Date(now.getTime() - MATCH_MAX_AGE_SEC * 1000);
+    // Mỗi người chỉ một trận đang đá: bắt đầu trận mới thì huỷ mọi trận `started` trước đó (kể cả chưa
+    // quá hạn) — không mở sẵn 15 trận rồi nộp cùng lúc sau 6 phút (B3-02).
     await tx
       .update(matches)
       .set({ status: 'expired' })
-      .where(
-        and(
-          eq(matches.userId, userId),
-          eq(matches.status, 'started'),
-          lt(matches.startedAt, expireBefore),
-        ),
-      );
+      .where(and(eq(matches.userId, userId), eq(matches.status, 'started')));
     const [squad] = await tx
       .select({ formation: squads.formation })
       .from(squads)
@@ -161,7 +156,8 @@ export async function submitMatchResult(db: Db, input: SubmitResultInput): Promi
     if (!tokenMatches(token, match.tokenHash)) throw rejected('Match token không hợp lệ');
 
     if (match.status === 'finished' && match.outcome) {
-      const missions = await ensureTodayMissions(tx, userId, match.rewardDay ?? gameDay(now));
+      // Nộp lại sau nửa đêm: trả nhiệm vụ của hôm nay, không phải ngày đá trận (B3-07).
+      const missions = await ensureTodayMissions(tx, userId, gameDay(now));
       return { outcome: match.outcome, reward: match.reward, balance: user.coins, missions };
     }
     if (match.status !== 'started') throw rejected('Trận đã hết hạn');

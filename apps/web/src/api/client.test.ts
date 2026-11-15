@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Me } from '@pitch/shared';
-import { apiFetch, ApiClientError, apiUrl } from './client';
+import { apiFetch, ApiClientError, BAD_RESPONSE_MSG, apiUrl } from './client';
 
 describe('apiUrl', () => {
   it('gắn tiền tố /api/v1', () => {
@@ -44,12 +44,14 @@ describe('apiFetch', () => {
     expect(init.headers).toMatchObject({ 'content-type': 'application/json' });
   });
 
-  it('response sai schema → ApiClientError bad_response nêu rõ trường sai', async () => {
+  it('response sai schema → bad_response với câu tiếng Việt cho người chơi; trường sai chỉ ghi console', async () => {
     mockFetch(200, { data: { ...me, coins: 'nhiều' } });
+    const log = vi.spyOn(console, 'error').mockImplementation(() => {});
     const err = await apiFetch('/me', Me).catch((e: unknown) => e);
     expect(err).toBeInstanceOf(ApiClientError);
-    expect(err).toMatchObject({ code: 'bad_response' });
-    expect((err as Error).message).toContain('coins');
+    expect(err).toMatchObject({ code: 'bad_response', message: BAD_RESPONSE_MSG });
+    expect(String(log.mock.calls[0]?.[0])).toContain('coins');
+    log.mockRestore();
   });
 
   it('lỗi server → ApiClientError mang code/status/message của ApiError', async () => {

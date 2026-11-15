@@ -188,7 +188,6 @@
   flex-direction: column;
   gap: var(--sp-1);
   padding: var(--sp-4) var(--sp-5);
-  outline: none;
   text-decoration: none;
   transition:
     background-color var(--dur-fast) var(--ease-out),

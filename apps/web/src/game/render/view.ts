@@ -85,11 +85,7 @@ export function countdownRing(
   const d = state.actionDeadline;
   if (!d) return null;
   const left = Math.max(0, d.deadlineTick - state.tick);
-  // Hạn ngắn hơn quãng hiển thị thì vòng hiện ngay từ đầu, cung tính trên cả hạn đó.
-  const shown = Math.max(
-    1,
-    Math.min(COUNTDOWN_VISIBLE_SEC * TICK_RATE, d.deadlineTick - d.startTick),
-  );
+  const shown = COUNTDOWN_VISIBLE_SEC * TICK_RATE;
   if (left > shown) return null;
   return {
     playerId: d.playerId,

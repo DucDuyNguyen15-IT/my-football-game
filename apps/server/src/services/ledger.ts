@@ -49,3 +49,49 @@ export async function findLedgerMismatches(db: Db | Tx): Promise<LedgerMismatch[
     lastBalanceAfter: r.last_balance_after === null ? null : Number(r.last_balance_after),
   }));
 }
+
+export interface MissionRewardMismatch {
+  userId: number;
+  /** Số dòng / tổng xu `mission_reward` trong sổ cái. */
+  ledgerCount: number;
+  ledgerSum: number;
+  /** Số nhiệm vụ đã nhận / tổng thưởng theo `daily_missions`. */
+  claimedCount: number;
+  claimedSum: number;
+}
+
+/**
+ * Thưởng nhiệm vụ trong sổ cái phải khớp đúng các nhiệm vụ đã nhận (B3-05): dòng `mission_reward`
+ * không có ref (khoá `daily_missions` là khoá ghép) nên so số dòng và tổng xu theo từng người chơi —
+ * nhận thưởng hai lần sẽ lệch dù `coins` vẫn khớp sổ cái.
+ */
+export async function findMissionRewardMismatches(db: Db | Tx): Promise<MissionRewardMismatch[]> {
+  const res = await db.execute<{
+    user_id: string;
+    ledger_count: string;
+    ledger_sum: string;
+    claimed_count: string;
+    claimed_sum: string;
+  }>(sql`
+    select coalesce(l.user_id, d.user_id) as user_id,
+           coalesce(l.n, 0) as ledger_count, coalesce(l.total, 0) as ledger_sum,
+           coalesce(d.n, 0) as claimed_count, coalesce(d.total, 0) as claimed_sum
+    from (
+      select user_id, count(*) as n, sum(amount) as total from coin_transactions
+      where type = 'mission_reward' group by user_id
+    ) l
+    full join (
+      select user_id, count(*) as n, sum(reward) as total from daily_missions
+      where claimed_at is not null group by user_id
+    ) d on d.user_id = l.user_id
+    where coalesce(l.n, 0) <> coalesce(d.n, 0) or coalesce(l.total, 0) <> coalesce(d.total, 0)
+    order by 1
+  `);
+  return res.rows.map((r) => ({
+    userId: Number(r.user_id),
+    ledgerCount: Number(r.ledger_count),
+    ledgerSum: Number(r.ledger_sum),
+    claimedCount: Number(r.claimed_count),
+    claimedSum: Number(r.claimed_sum),
+  }));
+}

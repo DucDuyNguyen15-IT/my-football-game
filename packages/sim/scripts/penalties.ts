@@ -16,4 +16,10 @@ for (const difficulty of ['easy', 'hard'] as const) {
       `(đội khởi đầu ${pct(goals.home, kicks.home)}, máy ${pct(goals.away, kicks.away)})`,
   );
 }
+for (const difficulty of ['easy', 'hard'] as const) {
+  const { kicks, goals } = runPenalties(difficulty, minKicks, undefined, true);
+  console.log(
+    `${difficulty.padEnd(4)}  người chơi nhắm góc, lực đầy: ${goals.home}/${kicks.home} = ${pct(goals.home, kicks.home)}`,
+  );
+}
 console.log(`Mục tiêu: ~${PENALTY_TARGET.rate * 100}%`);

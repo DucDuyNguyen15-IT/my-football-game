@@ -3,7 +3,7 @@
 import { sql } from 'drizzle-orm';
 import { loadEnv } from '../src/config/env';
 import { createDb } from '../src/db/client';
-import { findLedgerMismatches } from '../src/services/ledger';
+import { findLedgerMismatches, findMissionRewardMismatches } from '../src/services/ledger';
 
 const { db, pool } = createDb(loadEnv().databaseUrl);
 try {
@@ -25,6 +25,14 @@ try {
         lastBalanceAfter: m.lastBalanceAfter,
       })),
     );
+    process.exitCode = 1;
+  }
+  const missions = await findMissionRewardMismatches(db);
+  if (missions.length === 0) {
+    console.log('ledger:check OK — thưởng nhiệm vụ khớp daily_missions.');
+  } else {
+    console.error(`ledger:check LỆCH thưởng nhiệm vụ — ${missions.length} người chơi:`);
+    console.table(missions);
     process.exitCode = 1;
   }
 } finally {

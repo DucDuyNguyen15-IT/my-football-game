@@ -224,19 +224,23 @@
   border-radius: var(--radius-sm);
   opacity: 0.8;
 }
-/* Nút giữ để xác nhận */
-.btn--hold .hold__fill {
+/* Nút giữ để xác nhận — `.hold` do <HoldButton> luôn gắn (B4-04: trước chỉ có khi thêm btn--hold) */
+.hold .hold__fill {
   position: absolute;
   inset: 0;
   background: rgb(181 31 31 / 0.22);
   transform-origin: left;
   transform: scaleX(var(--hold, 0));
 }
-.btn--hold .btn__label,
+.hold .btn__label,
 .hold__label {
   position: relative;
 }
-.btn--hold.is-holding .hold__fill {
+.btn--danger.hold .hold__fill {
+  /* Nền nút đã đỏ: thanh tiến độ màu sáng mới nhìn thấy. */
+  background: rgb(255 255 255 / 0.3);
+}
+.hold.is-holding .hold__fill {
   transition: transform var(--hold-ms, 1000ms) linear;
   transform: scaleX(1);
 }
@@ -499,12 +503,18 @@
   padding: var(--sp-5);
   box-shadow: var(--shadow-1);
 }
-.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(.prematch-pick__card),
+.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(
+    .prematch-pick__card
+  ),
 .panel--notch {
   counter-increment: ed-panel;
 }
-.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(.prematch-pick__card)::before,
-.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(.prematch-pick__card)::after,
+.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(
+    .prematch-pick__card
+  )::before,
+.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(
+    .prematch-pick__card
+  )::after,
 .panel--notch::before,
 .panel--notch::after {
   content: '+' / '';
@@ -517,12 +527,16 @@
   pointer-events: none;
   z-index: 1;
 }
-.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(.prematch-pick__card)::before,
+.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(
+    .prematch-pick__card
+  )::before,
 .panel--notch::before {
   top: 4px;
   left: 6px;
 }
-.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(.prematch-pick__card)::after,
+.panel:not(.ob-flow__step):not(.home__tile):not(.coll-card):not(.up-group):not(
+    .prematch-pick__card
+  )::after,
 .panel--notch::after {
   bottom: 4px;
   right: 6px;
@@ -1360,6 +1374,29 @@
   .topbar {
     gap: var(--sp-3);
     padding: 0 var(--sp-3);
+  }
+}
+
+/* Màn hẹp (375–720px): menu xuống hàng 2, cuộn ngang được; ẩn tên người chơi (B4-06). */
+@media (max-width: 720px) {
+  .topbar {
+    flex-wrap: wrap;
+    height: auto;
+    row-gap: 0;
+    padding-top: var(--sp-2);
+  }
+  .nav {
+    order: 3;
+    width: 100%;
+    height: 44px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .user__name {
+    display: none;
+  }
+  .user {
+    padding-right: 4px;
   }
 }
 

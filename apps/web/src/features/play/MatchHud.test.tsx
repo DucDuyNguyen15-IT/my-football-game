@@ -115,6 +115,21 @@ describe('menu thay người', () => {
     expect(html).toContain('Tạm dừng · H2 67');
   });
 
+  it('chờ phạt đền: gợi ý đúng lý do thay vì "chỉ thay khi bóng chết"', () => {
+    const html = renderToStaticMarkup(
+      <PauseMenu
+        hud={hud()}
+        graphics={DEFAULT_GRAPHICS}
+        onGraphics={noop}
+        onResume={noop}
+        onQuit={noop}
+        subs={{ ...subs(false), penaltyPending: true }}
+      />,
+    );
+    expect(html).toContain('Không thay người lúc chờ phạt đền / luân lưu.');
+    expect(html).not.toContain('Chỉ thay người khi bóng chết');
+  });
+
   it('bóng chết: nút thay người bật', () => {
     const html = renderToStaticMarkup(
       <PauseMenu

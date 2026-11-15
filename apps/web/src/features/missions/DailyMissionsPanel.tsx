@@ -6,6 +6,8 @@ export interface DailyMissionsPanelProps {
   title?: string;
   missions: readonly MissionProgress[] | undefined;
   isLoading?: boolean;
+  /** Tải nhiệm vụ thất bại: hiện báo lỗi + nút Thử lại thay vì khung xương mãi (B4-07). */
+  onRetry?: () => void;
   claimingCode?: string | null;
   errorMessage?: string | null;
   onClaim?: (code: string) => void;
@@ -20,6 +22,7 @@ export function DailyMissionsPanel({
   title = 'Nhiệm vụ ngày',
   missions,
   isLoading = false,
+  onRetry,
   claimingCode = null,
   errorMessage = null,
   onClaim,
@@ -32,7 +35,14 @@ export function DailyMissionsPanel({
         <span className="meta">Reset 00:00 GMT+7</span>
       </h2>
 
-      {isLoading || !missions ? (
+      {!isLoading && !missions && onRetry ? (
+        <div className="banner banner--danger" role="alert">
+          <span>Không tải được nhiệm vụ.</span>
+          <button type="button" className="btn btn--secondary btn--sm" onClick={onRetry}>
+            Thử lại
+          </button>
+        </div>
+      ) : isLoading || !missions ? (
         <div className="missions__skel" aria-busy="true" aria-label="Đang tải nhiệm vụ">
           <div className="skel skel--line" />
           <div className="skel skel--line" />
@@ -99,7 +109,9 @@ export function DailyMissionsPanel({
         </div>
       )}
 
-      {showResetNote && <p className="muted missions__foot">3 nhiệm vụ mỗi ngày · reset lúc 00:00</p>}
+      {showResetNote && (
+        <p className="muted missions__foot">3 nhiệm vụ mỗi ngày · reset lúc 00:00</p>
+      )}
     </section>
   );
 }

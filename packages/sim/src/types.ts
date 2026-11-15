@@ -170,8 +170,6 @@ export interface PassReceiver {
 export interface ActionDeadline {
   kind: 'keeper_hold' | 'free_kick' | 'penalty';
   playerId: string;
-  /** Tick bắt đầu tính giờ (để vẽ phần đã trôi). */
-  startTick: number;
   deadlineTick: number;
 }
 

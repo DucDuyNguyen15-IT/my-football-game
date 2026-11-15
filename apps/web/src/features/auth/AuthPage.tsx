@@ -6,6 +6,7 @@ import { useCallback, useId, useState, type FormEvent, type ReactNode } from 're
 import { Navigate, useLocation, useSearchParams } from 'react-router';
 import { LoginRequest, RegisterRequest, Username } from '@pitch/shared';
 import { useAuthConfig, useGoogleSignIn, useLogin, useMe, useRegister } from '../../api/auth';
+import { useEconomy } from '../../api/player-cards';
 import { describeAuthError, fieldErrorOf, type AuthField, type AuthNotice } from './authErrors';
 import { GoogleButton } from './GoogleButton';
 import './auth.css';
@@ -13,8 +14,13 @@ import './auth.css';
 type Mode = 'login' | 'register';
 type FieldErrors = Partial<Record<AuthField, string>>;
 
-/** Quà tân thủ (server `config/economy.ts`: STARTER_SQUAD, STARTER_FREE_PACK5). */
-const GIFT_TEXT = '11 thẻ Đồng + 1 gói 5 thẻ miễn phí';
+/** Quà tân thủ đọc từ server (`/config/economy`, B4-11); đang tải thì chỉ ghi chung. */
+function useGiftText(): string {
+  const gift = useEconomy().data?.starterGift;
+  return gift
+    ? `${gift.bronzeCards} thẻ Đồng + ${gift.freePack5} gói 5 thẻ miễn phí`
+    : 'Quà tân thủ';
+}
 export const ONBOARDING_SHOP_HREF = '/shop?onboarding=1';
 
 export interface AuthRedirectParams {
@@ -379,6 +385,7 @@ function GoogleUsernameStep({
   onSubmit: (username: string) => void;
   onCancel: () => void;
 }) {
+  const giftText = useGiftText();
   const [name, setName] = useState(suggested);
   const [localError, setLocalError] = useState<string | null>(null);
   const serverField = fieldErrorOf(error);
@@ -434,7 +441,7 @@ function GoogleUsernameStep({
         >
           <span className="btn__label">Vào sân &amp; nhận quà</span>
         </button>
-        <span className="muted auth__foot">{GIFT_TEXT} đang chờ</span>
+        <span className="muted auth__foot">{giftText} đang chờ</span>
         <button
           type="button"
           className="btn btn--ghost btn--block"
@@ -503,6 +510,7 @@ function TvPitch() {
  * thủ (3 thẻ Đồng úp + gói 5 thẻ). Ẩn ở màn hẹp.
  */
 function AuthStage() {
+  const giftText = useGiftText();
   return (
     <section className="auth__stage" aria-label="Giới thiệu">
       <TvPitch />
@@ -535,7 +543,7 @@ function AuthStage() {
           </div>
           <div className="auth-gift__text">
             <span className="label auth-gift__kicker">Quà tân thủ</span>
-            <span className="auth-gift__title">{GIFT_TEXT}</span>
+            <span className="auth-gift__title">{giftText}</span>
             <span className="muted">Nhận ngay khi tạo tài khoản. Đội hình được xếp sẵn.</span>
           </div>
         </div>

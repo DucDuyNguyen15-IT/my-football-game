@@ -1,9 +1,10 @@
 import { randomUUID } from 'node:crypto';
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   ApiError,
   ClaimMissionResponse,
+  ExpiredClaimResponse,
   MatchResultResponse,
   MeResponse,
   OpenPackResponse,
@@ -355,5 +356,62 @@ describe('Nhiệm vụ ngày (F12)', () => {
       pickDailyMissions(userId, '2026-03-11').map((m) => m.code),
     );
     expect(day2.every((m) => m.progress === 0 && !m.claimed)).toBe(true);
+  });
+
+  it('nhiệm vụ ngày cũ xong mà chưa nhận → tự nhận khi hết hạn, trả về đúng 1 lần để hiện thông báo', async () => {
+    const { userId } = await signup();
+    const sid = await moveToDayWithMissions(userId, ['open_pack']);
+    const day = clock.now().toISOString().slice(0, 10);
+    await openFreePack(sid);
+    const expiredClaim = () =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/missions/expired/claim',
+        payload: {},
+        headers: json,
+        cookies: { sid },
+      });
+
+    // Cùng ngày: chưa hết hạn → không tự nhận.
+    const same = ExpiredClaimResponse.parse((await expiredClaim()).json()).data;
+    expect(same).toEqual({ items: [], balance: 0 });
+
+    clock.advance(24 * 60 * MIN); // sang ngày hôm sau
+    const res = await expiredClaim();
+    expect(res.statusCode).toBe(200);
+    const data = ExpiredClaimResponse.parse(res.json()).data;
+    const def = MISSIONS.find((m) => m.code === 'open_pack')!;
+    expect(data).toEqual({
+      items: [{ code: 'open_pack', title: def.title, day, reward: def.reward }],
+      balance: def.reward,
+    });
+    expect((await me(sid)).coins).toBe(def.reward);
+    // Nhiệm vụ chưa xong của ngày cũ không được tự nhận; gọi lại thì rỗng, không cộng 2 lần.
+    expect(ExpiredClaimResponse.parse((await expiredClaim()).json()).data.items).toEqual([]);
+    const ledger = await testDb()
+      .select()
+      .from(coinTransactions)
+      .where(eq(coinTransactions.userId, userId));
+    expect(ledger.filter((t) => t.type === 'mission_reward')).toHaveLength(1);
+  });
+
+  it('chưa đăng nhập → 401 cho POST /missions/expired/claim', async () => {
+    const res = await app.inject({ method: 'POST', url: '/api/v1/missions/expired/claim', payload: {}, headers: json });
+    expect(res.statusCode).toBe(401);
+  });
+
+  it('đổi danh sách nhiệm vụ giữa ngày: người đã có nhiệm vụ hôm nay vẫn giữ đúng 3 cái (B3-10)', async () => {
+    const { sid, userId } = await signup();
+    const first = (await getMissions(sid))[0]!.code;
+    const day = clock.now().toISOString().slice(0, 10);
+    // Giả lập nhiệm vụ cũ đã bị bỏ khỏi MISSIONS: pickDailyMissions hôm nay không còn chứa nó.
+    await testDb()
+      .update(dailyMissions)
+      .set({ missionCode: 'legacy_code' })
+      .where(and(eq(dailyMissions.userId, userId), eq(dailyMissions.missionCode, first)));
+    const again = await getMissions(sid);
+    expect(again).toHaveLength(DAILY_MISSION_COUNT);
+    const rows = await testDb().select().from(dailyMissions).where(eq(dailyMissions.userId, userId));
+    expect(rows.filter((r) => r.day === day)).toHaveLength(DAILY_MISSION_COUNT);
   });
 });

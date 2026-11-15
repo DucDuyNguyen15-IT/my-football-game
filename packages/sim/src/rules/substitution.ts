@@ -6,8 +6,9 @@ import type { MatchState, PlayerState, TeamSide, Windup } from '../types';
  * Thay người (PRD §5, F3): chỉ khi bóng chết (cả nghỉ giữa hiệp), tối đa MAX_SUBS lượt mỗi đội.
  * Người vào đứng đúng chỗ người ra, nhận ô sơ đồ của người ra (AI dùng ô để chọn vị trí), thể lực
  * đầy. Người ra không quay lại sân; người bị thẻ đỏ đã rời sân nên không thay được.
- * Không thay lúc đang chờ đá phạt đền. Ngoại lệ duy nhất: đội mất thủ môn vì thẻ đỏ được đưa thủ môn
- * dự bị vào thay một cầu thủ ngoài sân (kể cả trước quả phạt đền) — người vào nhận ô và vai GK.
+ * Không thay lúc đang chờ đá phạt đền. Ngoại lệ: đội không còn thủ môn được đưa thủ môn dự bị vào
+ * thay một cầu thủ ngoài sân (kể cả trước quả phạt đền). Từ 15/11 thủ môn không bị thẻ đỏ nữa
+ * (`rules/fouls.ts`), nhánh này chỉ còn là phòng hờ cho state dựng tay.
  */
 
 export const MAX_SUBS = 3;

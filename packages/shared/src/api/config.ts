@@ -59,6 +59,11 @@ export const EconomyConfig = z.object({
     legend: price,
   } satisfies Record<Rarity, typeof price>),
   upgrade: UpgradeConfig,
+  /** Quà tân thủ khi đăng ký (PRD §7.1, F9): số thẻ Đồng xếp sẵn + số gói 5 miễn phí. */
+  starterGift: z.object({
+    bronzeCards: z.number().int().min(0),
+    freePack5: z.number().int().min(0),
+  }),
 });
 export type EconomyConfig = z.infer<typeof EconomyConfig>;
 

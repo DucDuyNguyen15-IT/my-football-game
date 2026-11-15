@@ -8,8 +8,12 @@ const perRarity = <T extends z.ZodType>(v: T) =>
 
 /** Hộp 100 phiếu của người chơi (PRD §6.3): số còn lại, tỉ lệ lần bốc kế (0–1), lần làm mới. */
 export const PackBox = z.object({
+  /** Thành phần hộp mới (số phiếu mỗi độ hiếm) — UI không ghi cứng (B4-11). */
+  initial: perRarity(z.number().int().min(0)),
+  /** Tổng phiếu của hộp mới. */
+  size: z.number().int().min(1),
   left: perRarity(z.number().int().min(0)),
-  total: z.number().int().min(0).max(100),
+  total: z.number().int().min(0),
   nextOdds: perRarity(z.number().min(0).max(1)),
   cycle: z.number().int().min(1),
 });
