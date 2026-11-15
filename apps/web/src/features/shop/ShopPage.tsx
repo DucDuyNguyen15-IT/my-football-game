@@ -12,7 +12,7 @@ import { BoxMeter, onlyBronzeLeft, WarnIcon } from './BoxMeter';
 import { PackOpening } from './PackOpening';
 import './shop.css';
 
-const fmt = (n: number) => n.toLocaleString('vi-VN');
+import { fmt } from '../../components/format';
 
 export function openErrorMessage(err: unknown): string {
   if (err instanceof ApiClientError) {

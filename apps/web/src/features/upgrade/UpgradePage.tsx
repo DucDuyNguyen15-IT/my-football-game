@@ -25,7 +25,7 @@ import {
 import { UpgradeStats } from './UpgradeStats';
 import './upgrade.css';
 
-const fmt = (n: number) => n.toLocaleString('vi-VN');
+import { fmt } from '../../components/format';
 const Coin = () => (
   <>
     <span className="coin__icon" aria-hidden />

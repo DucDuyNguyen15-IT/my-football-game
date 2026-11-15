@@ -395,6 +395,29 @@ describe('Nhiệm vụ ngày (F12)', () => {
     expect(ledger.filter((t) => t.type === 'mission_reward')).toHaveLength(1);
   });
 
+  it('gọi tự nhận song song 2 lần: chỉ cộng thưởng 1 lần (khoá users)', async () => {
+    const { userId } = await signup();
+    const sid = await moveToDayWithMissions(userId, ['open_pack']);
+    await openFreePack(sid);
+    clock.advance(24 * 60 * MIN);
+    const claim = () =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/missions/expired/claim',
+        payload: {},
+        headers: json,
+        cookies: { sid },
+      });
+    const [a, b] = await Promise.all([claim(), claim()]);
+    const items = [a, b].map((r) => ExpiredClaimResponse.parse(r.json()).data.items.length);
+    expect(items.sort()).toEqual([0, 1]);
+    const ledger = await testDb()
+      .select()
+      .from(coinTransactions)
+      .where(eq(coinTransactions.userId, userId));
+    expect(ledger.filter((t) => t.type === 'mission_reward')).toHaveLength(1);
+  });
+
   it('chưa đăng nhập → 401 cho POST /missions/expired/claim', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/v1/missions/expired/claim', payload: {}, headers: json });
     expect(res.statusCode).toBe(401);

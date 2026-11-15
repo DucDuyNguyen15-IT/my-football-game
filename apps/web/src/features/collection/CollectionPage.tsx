@@ -18,7 +18,7 @@ import {
 } from './collection';
 import './collection.css';
 
-const fmt = (n: number) => n.toLocaleString('vi-VN');
+import { fmt } from '../../components/format';
 
 const SORTS: { value: PlayerCardSort; label: string }[] = [
   { value: '-ovr', label: 'OVR cao → thấp' },

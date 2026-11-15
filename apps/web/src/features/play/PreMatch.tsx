@@ -20,7 +20,7 @@ import { Topbar } from '../../app/AppLayout';
 import { CardView } from '../../components/card/CardView';
 import './prematch.css';
 
-const fmt = (n: number) => n.toLocaleString('vi-VN');
+import { fmt } from '../../components/format';
 
 const BackIcon = () => (
   <svg

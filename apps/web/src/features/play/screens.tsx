@@ -25,7 +25,7 @@ import {
   type SubOptions,
 } from './hud';
 
-const fmt = (n: number) => n.toLocaleString('vi-VN');
+import { fmt } from '../../components/format';
 const POSITION_NAME = { GK: 'Thủ môn', DF: 'Hậu vệ', MF: 'Tiền vệ', FW: 'Tiền đạo' } as const;
 
 const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
