@@ -125,7 +125,7 @@ describe('luân lưu trong trận', () => {
     }
   });
 
-  it('sút vào lưới: cầu thủ ở nguyên chỗ, không bị đưa về vị trí giao bóng giữa hai lượt', () => {
+  it('sút vào lưới: không ai bị đưa về vị trí giao bóng giữa hai lượt; người sút lượt kế được đặt thẳng vào chấm', () => {
     let scoredKicks = 0;
     for (const seed of [1, 2, 3]) {
       let s = step(endOfSecondHalf(seed, { home: 1, away: 1 }), NO_INPUT);
@@ -136,9 +136,16 @@ describe('luân lưu trong trận', () => {
         if (kicks(s) === kicks(prev)) continue;
         const kicked = prev.shootout!.kicking;
         if (s.shootout![kicked].at(-1)) scoredKicks++;
-        // Một tick không ai đi được quá 1 m (nước rút ~9 m/s = 0,15 m/tick).
+        // Người sút lượt kế đứng ngay sau bóng (luật 2), không đi bộ tới.
+        const taker = s.players.find((p) => p.id === s.restart?.takerId);
+        if (taker) {
+          const { spot } = s.restart!;
+          expect(Math.hypot(taker.pos.x - spot.x, taker.pos.y - spot.y)).toBeLessThan(1);
+        }
+        // Người đứng chờ ngoài vòng cấm (không phải người sút, thủ môn) ở nguyên chỗ.
         for (const p of s.players) {
           const before = prev.players.find((q) => q.id === p.id)!;
+          if (p.id === taker?.id || p.position === 'GK' || Math.abs(before.pos.x) > 18) continue;
           expect(Math.abs(p.pos.x - before.pos.x) + Math.abs(p.pos.y - before.pos.y)).toBeLessThan(
             1,
           );

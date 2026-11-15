@@ -63,7 +63,7 @@ describe('ModelActor — bóng trong tay', () => {
 
   it('chờ ném biên: đứng yên ở tư thế giơ bóng, hết cảnh thì nhả về clip lặp', () => {
     const p = match.players[2]!;
-    const restart = { type: 'throw_in', team: p.team, spot: p.pos, takerId: p.id, startTick: 0 };
+    const restart = { type: 'throw_in', team: p.team, spot: p.pos, takerId: p.id, startTick: 0, readyTick: 0 };
     const waiting = { ...match, phase: 'dead_ball', restart } as MatchState;
     const actor = new ModelActor(handsModel(0.3), p, new ModelMaterials());
     const hips = actor.root.getObjectByName('mixamorigHips')!;

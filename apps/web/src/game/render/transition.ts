@@ -3,7 +3,15 @@
  * Phát hiện thời điểm sim đặt lại vị trí cầu thủ/bóng từ cặp trạng thái `(prev, curr)`, tính đường
  * cong đóng/mở che kín khung hình và tự hạ cấp 3D → 2D khi đồ hoạ Thấp hoặc FPS thấp.
  */
-import type { MatchState, PlayerState, TeamSide } from '@pitch/sim';
+import {
+  FOUL_HOLD_TICKS,
+  OUT_HOLD_TICKS,
+  SHOOTOUT_HOLD_TICKS,
+  TICK_RATE,
+  type MatchState,
+  type PlayerState,
+  type TeamSide,
+} from '@pitch/sim';
 import type { GraphicsQuality } from '../bridge';
 import { SNAP_DISTANCE, countdownRing, playerNumber } from './view';
 
@@ -74,12 +82,16 @@ export const REDUCED_DURATION_SEC = 0.7;
 export const REDUCED_FADE = 0.18;
 /** Thời gian camera hơi dolly vào khung tình huống cố định sau khi mở cảnh mới (giây). */
 export const DOLLY_DURATION_SEC = 0.65;
-/** Độ trễ trước khi khép stinger sau pha phạm lỗi (1–1,5 s: thấy cầu thủ té ngã + còi/thẻ). */
-export const FOUL_DELAY_SEC = 1.25;
-/** Độ trễ trước khi khép stinger khi bóng lăn ra ngoài biên (0,5–0,8 s: thấy bóng qua vạch). */
-export const OUT_OF_BOUNDS_DELAY_SEC = 0.6;
+/*
+ * Thời gian giữ hình lấy từ hằng số của sim: sim tính sẵn mốc "chuyển cảnh xong" (`Restart.readyTick`
+ * = tick bóng chết + giữ hình + mở màn) để bắt đầu hạn 15 s (luật 3), nên hai bên phải khớp nhau.
+ */
+/** Độ trễ trước khi khép stinger sau pha phạm lỗi (1,25 s: thấy cầu thủ té ngã + còi/thẻ). */
+export const FOUL_DELAY_SEC = FOUL_HOLD_TICKS / TICK_RATE;
+/** Độ trễ trước khi khép stinger khi bóng lăn ra ngoài biên (0,6 s: thấy bóng qua vạch). */
+export const OUT_OF_BOUNDS_DELAY_SEC = OUT_HOLD_TICKS / TICK_RATE;
 /** Luân lưu: xem bóng rung lưới / pha cản phá của lượt vừa sút trước khi sang lượt kế (giây). */
-export const SHOOTOUT_RESULT_DELAY_SEC = 1;
+export const SHOOTOUT_RESULT_DELAY_SEC = SHOOTOUT_HOLD_TICKS / TICK_RATE;
 
 const TEAM_SUBLABEL: Record<TeamSide, string> = {
   home: 'ĐỘI NHÀ',
@@ -367,8 +379,10 @@ export function detectTransition(
     const fromLive = prev.phase === 'play';
 
     switch (r.type) {
+      // Sim đặt thẳng mọi cầu thủ vào vị trí ở tick bóng chết (luật 2): tình huống nào cũng che màn.
       case 'goal_kick':
       case 'corner':
+      case 'throw_in':
         if (isNewRestart || teleported) {
           return buildTransitionSpec(r.type, {
             team: r.team,
@@ -383,15 +397,6 @@ export function detectTransition(
             team: r.team,
             delaySec: fromLive ? FOUL_DELAY_SEC : 0,
             foul: fromLive ? summarizeFoul(prev, curr) : null,
-          });
-        }
-        return null;
-      case 'throw_in':
-        // Ném biên: chỉ chuyển cảnh khi có dịch chuyển cầu thủ tức thời (> SNAP_DISTANCE).
-        if (teleported) {
-          return buildTransitionSpec('throw_in', {
-            team: r.team,
-            delaySec: fromLive ? OUT_OF_BOUNDS_DELAY_SEC : 0,
           });
         }
         return null;

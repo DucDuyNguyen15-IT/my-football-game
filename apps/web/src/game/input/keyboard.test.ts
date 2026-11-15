@@ -3,6 +3,7 @@ import { NO_INPUT } from '@pitch/sim';
 import {
   CONTROL_KEYS,
   NO_KEYS,
+  createBlindGuard,
   createTapLatch,
   keyForCode,
   keysToInput,
@@ -99,5 +100,39 @@ describe('createTapLatch', () => {
     latch.consume();
     expect(latch.sample(NO_KEYS).lob).toBe(false);
     expect(latch.sample(keys({ lob: true })).lob).toBe(true);
+  });
+});
+
+describe('createBlindGuard (phím bấm lúc màn che không vào sim)', () => {
+  it('không có gì bị chặn thì trả nguyên trạng thái phím', () => {
+    const guard = createBlindGuard();
+    const held = keys({ pass: true });
+    expect(guard.filter(held)).toBe(held);
+  });
+
+  it('nút hành động còn giữ lúc màn che: màn mở vẫn bị bỏ qua tới khi nhả ra rồi bấm lại', () => {
+    const guard = createBlindGuard();
+    const held = keys({ pass: true, shoot: true, right: true, sprint: true });
+    guard.cover(held);
+    // Màn mở, vẫn giữ phím: S/D không vào sim (không tự chuyền/sút); di chuyển, nước rút vẫn tính.
+    expect(keysToInput(guard.filter(held))).toMatchObject({
+      pass: false,
+      shoot: false,
+      sprint: true,
+      move: { x: 1, y: 0 },
+    });
+    guard.release('pass');
+    expect(guard.filter(held).pass).toBe(true);
+    expect(guard.filter(held).shoot).toBe(false);
+  });
+
+  it('mất focus: bỏ hết phím đang chặn', () => {
+    const guard = createBlindGuard();
+    guard.cover(keys({ lob: true, through: true }));
+    guard.clear();
+    expect(guard.filter(keys({ lob: true, through: true }))).toMatchObject({
+      lob: true,
+      through: true,
+    });
   });
 });

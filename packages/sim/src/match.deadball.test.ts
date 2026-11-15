@@ -26,7 +26,7 @@ function freeKick(seed: number, team: TeamSide): MatchState {
     ballOwnerId: null,
     lastShot: null,
     ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
-    restart: { type: 'free_kick', team, spot, takerId: taker.id, startTick: s.tick },
+    restart: { type: 'free_kick', team, spot, takerId: taker.id, startTick: s.tick, readyTick: s.tick },
     controlledId: team === 'home' ? taker.id : s.controlledId,
   };
 }

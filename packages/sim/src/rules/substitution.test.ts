@@ -196,7 +196,7 @@ describe('thay người lúc chờ phạt đền / thủ môn bị thẻ đỏ (
   const pending = (s: MatchState, type: 'free_kick' | 'penalty'): MatchState => ({
     ...s,
     phase: 'dead_ball',
-    restart: { type, team: 'away', spot: { x: -22, y: 0 }, takerId: 'away-P6', startTick: s.tick },
+    restart: { type, team: 'away', spot: { x: -22, y: 0 }, takerId: 'away-P6', startTick: s.tick, readyTick: s.tick },
   });
   const sentOff = (s: MatchState, id: string): MatchState => ({
     ...s,

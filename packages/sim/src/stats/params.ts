@@ -154,6 +154,7 @@ export const keeperReactionTicks = (reflexes: number): number =>
 /**
  * Phạt đền: xác suất thủ môn đoán đúng hướng (theo Phản xạ). Đoán đúng thì phản xạ như bóng sống,
  * đoán sai thì lao nhầm phía. Cùng với PENALTY_ERROR_MULT cho tỉ lệ thành bàn ~75% (xem dưới).
+ * Thủ môn đội máy còn nhân thêm `AiProfile.penaltyGuessMult` (máy Dễ: 0,5).
  */
 export const GK_PENALTY_GUESS_RANGE = [0.15, 0.35] as const;
 export const keeperPenaltyGuessChance = (reflexes: number): number =>
@@ -166,6 +167,9 @@ export const keeperPenaltyGuessChance = (reflexes: number): number =>
  * Đo bằng `pnpm --filter @pitch/sim penalties 4000` (luân lưu AI, 2026-11-15): gặp máy Dễ 76,9%
  * (đội khởi đầu 76,5%, máy 77,2%), gặp máy Khó 75,0% (đội khởi đầu 71,8%, máy 78,4%). Trước khi
  * có hệ số này (AI nhân sai số theo mức độ khó): 55,9% / 70,1%.
+ * Từ luật 4 (2026-11-15) thủ môn máy Dễ đoán đúng hướng ít hơn (`AiProfile.penaltyGuessMult` 0,5):
+ * đo lại 4.000 lượt, gặp máy Dễ đội khởi đầu 87,8% (người chơi nhắm góc lực đầy 80,0%), máy 78,1%;
+ * gặp máy Khó không đổi (đội khởi đầu 71,8%, người chơi nhắm góc 67,0%, máy 78,4%).
  */
 export const PENALTY_ERROR_MULT = 0.7;
 

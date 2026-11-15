@@ -17,6 +17,7 @@ import type { GraphicsSettings, MatchBridge } from '../bridge';
 import {
   CONTROL_KEYS,
   NO_KEYS,
+  createBlindGuard,
   createTapLatch,
   keyForCode,
   keysToInput,
@@ -167,6 +168,7 @@ export class MatchRenderer {
 
   private held: KeyState = { ...NO_KEYS };
   private readonly taps = createTapLatch();
+  private readonly blindGuard = createBlindGuard();
   private readonly resizeObserver: ResizeObserver;
   private debug: { el: HTMLElement; frames: number; at: number } | null = null;
   /** Đo FPS cả trận khi mở `/play?perf=1` (task 8.3); null khi chơi thường. */
@@ -549,12 +551,15 @@ export class MatchRenderer {
 
   private readonly onKeyUp = (e: KeyboardEvent): void => {
     const name = keyForCode(e.code);
-    if (name) this.held = { ...this.held, [name]: false };
+    if (!name) return;
+    this.held = { ...this.held, [name]: false };
+    this.blindGuard.release(name);
   };
 
   /** Mất focus (Alt+Tab) thì trình duyệt không gửi keyup — coi như nhả hết phím. */
   private readonly onBlur = (): void => {
     this.held = { ...NO_KEYS };
+    this.blindGuard.clear();
   };
 
   private readonly frame = (now: number): void => {
@@ -608,12 +613,16 @@ export class MatchRenderer {
     } else {
       // Stinger còn che sân: sim đứng (tình huống cố định không bị thực hiện sau màn che). Đang giữ
       // cảnh (phạm lỗi, bóng ra biên, bàn thắng) hoặc còn che: người chơi chưa thấy sân mới nên phím
-      // không vào sim — sim vẫn chạy cho cầu thủ đi về vị trí (review H1, foul-delay 1).
+      // không vào sim — sim vẫn chạy (cầu thủ đã được đặt sẵn vào vị trí, luật 2; review H1, foul-delay 1).
       const hiding = this.transition.isHidingPlay();
       const blind = hiding || this.cutHold !== null || this.goalHold !== null;
       if (hiding) this.accumulator = 0;
       else this.accumulator += dt;
-      const input = blind ? BLIND_INPUT : keysToInput(this.taps.sample(this.held));
+      // Nút hành động bấm/giữ lúc chưa thấy sân phải nhả rồi bấm lại mới tính (không tự đá lúc màn mở).
+      if (blind) this.blindGuard.cover(this.held);
+      const input = blind
+        ? BLIND_INPUT
+        : keysToInput(this.blindGuard.filter(this.taps.sample(this.held)));
       if (blind) this.taps.consume();
       let ticked = false;
       while (this.accumulator >= TICK_DT) {

@@ -17,9 +17,9 @@ import { DRIBBLE_OFFSET } from './possession';
 
 /*
  * Bóng chết (PRD §5, đơn giản hoá): bóng ra ngoài → ném biên / phạt góc / phát bóng, bàn thắng →
- * giao bóng. Bóng tự đặt vào chỗ; người thực hiện tự đi ra sau bóng, đối phương lùi ra xa (giao bóng
- * thì đặt sẵn). Mọi người vào vị trí rồi đội người mới bấm chuyền được, đội máy tự thực hiện sau
- * RESTART_DELAY_TICKS.
+ * giao bóng. Bóng và mọi cầu thủ được đặt thẳng vào chỗ ngay lúc bóng chết (luật 2, 2026-11-15):
+ * người thực hiện sau bóng, đối phương ngoài khoảng cách tối thiểu. Ai rời chỗ sau đó thì tự đi về;
+ * mọi người vào vị trí rồi đội người mới bấm chuyền được, đội máy tự thực hiện sau RESTART_DELAY_TICKS.
  */
 
 /** Đội máy tự thực hiện bóng chết sau chừng này tick (3 s). */
@@ -34,6 +34,22 @@ const THROW_IN_END_GAP = 1;
 export const RESTART_SETTLE_DIST = 0.3;
 /** Đi mãi chưa tới (bị chen) sau chừng này tick thì đặt luôn vào vị trí. */
 export const RESTART_SETUP_MAX_TICKS = 8 * TICK_RATE;
+/*
+ * Từ tick bóng chết tới lúc người chơi nhìn thấy tình huống đã đặt xong (`Restart.readyTick`): phần
+ * hiển thị giữ hình pha bóng chừng này tick rồi che màn chuyển cảnh, màn mở ra hết sau
+ * RESTART_REVEAL_TICKS nữa. Sim tính sẵn mốc này (tất định, không chờ phần hiển thị báo lại); phần
+ * hiển thị lấy thời gian giữ hình từ chính các hằng số này.
+ */
+/** Sau phạm lỗi: giữ hình 1,25 s (thấy cầu thủ ngã, còi, thẻ). */
+export const FOUL_HOLD_TICKS = Math.round(1.25 * TICK_RATE);
+/** Bóng ra biên: giữ hình 0,6 s (thấy bóng lăn qua vạch). */
+export const OUT_HOLD_TICKS = Math.round(0.6 * TICK_RATE);
+/** Bàn thắng: giữ hình chừng này tick (bóng rung lưới) rồi mới phát lại / về giao bóng. */
+export const GOAL_HOLD_TICKS = 50;
+/** Luân lưu: xem kết quả lượt vừa sút 1 s rồi mới sang lượt kế. */
+export const SHOOTOUT_HOLD_TICKS = TICK_RATE;
+/** Màn che mở ra hết sau chừng này tick (~0,33 s) kể từ lúc che kín. */
+export const RESTART_REVEAL_TICKS = 20;
 /** Ném biên: bóng rời tay ở trên đầu, cao chừng này mét. */
 export const THROW_IN_RELEASE_Z = 2;
 /** Phạt góc nhắm vào điểm giữa vòng cấm, cách vạch cuối chừng này mét. */
@@ -172,23 +188,31 @@ function holdPenalty(p: PlayerState, restart: Restart, goalSide: 1 | -1): Player
   };
 }
 
-/** Chọn người thực hiện (chưa ai di chuyển). */
+/** Chọn người thực hiện (chưa ai di chuyển). `holdTicks`: thời gian giữ hình trước khi che màn. */
 export function createRestart(
   players: readonly PlayerState[],
   plan: RestartPlan,
   startTick: number,
+  holdTicks = 0,
 ): Restart {
-  return { ...plan, takerId: chooseTaker(players, plan).id, startTick };
+  const readyTick = startTick + holdTicks + RESTART_REVEAL_TICKS;
+  return { ...plan, takerId: chooseTaker(players, plan).id, startTick, readyTick };
 }
 
-/** Chọn người thực hiện, đặt ngay người đó sau bóng, dẹp đối phương ra xa (giao bóng). */
+/**
+ * Chọn người thực hiện (hoặc dùng `takerId` — lượt luân lưu), đặt ngay người đó sau bóng, dẹp đối
+ * phương ra xa, phạt đền thì dẹp mọi người khỏi vòng cấm.
+ */
 export function setupRestart(
   players: readonly PlayerState[],
   plan: RestartPlan,
   half: 1 | 2,
   startTick: number,
+  holdTicks = 0,
+  takerId?: string,
 ): { players: PlayerState[]; restart: Restart } {
-  const restart = createRestart(players, plan, startTick);
+  const chosen = createRestart(players, plan, startTick, holdTicks);
+  const restart = takerId === undefined ? chosen : { ...chosen, takerId };
   return { players: holdRestart(players, restart, half, restartFacing(plan, half)), restart };
 }
 

@@ -19,10 +19,20 @@ describe('cân bằng độ khó', () => {
 });
 
 describe('phạt đền ~75% thành bàn (B1-09)', () => {
-  it.each(['easy', 'hard'] as const)('luân lưu AI gặp máy %s, 1.000 lượt', (opponent) => {
-    const r = runPenalties(opponent, 1000);
+  it('luân lưu AI gặp máy Khó, 1.000 lượt', () => {
+    const r = runPenalties('hard', 1000);
     expect(r.kicks.home + r.kicks.away).toBeGreaterThanOrEqual(1000);
     expect(r.rate).toBeGreaterThanOrEqual(PENALTY_TARGET.min);
     expect(r.rate).toBeLessThanOrEqual(PENALTY_TARGET.max);
+  });
+
+  it('luân lưu AI gặp máy Dễ, 2.000 lượt: máy sút vẫn ~75%, đội người chơi dễ ghi bàn hơn (luật 4)', () => {
+    const r = runPenalties('easy', 2000);
+    const cpu = r.goals.away / r.kicks.away;
+    // 2.000 lượt (~1.000 mỗi đội) cho sai số như phép đo 1.000 lượt cả hai đội trước đây.
+    expect(cpu).toBeGreaterThanOrEqual(PENALTY_TARGET.min);
+    expect(cpu).toBeLessThanOrEqual(PENALTY_TARGET.max);
+    // Thủ môn máy Dễ đoán sai nhiều hơn: đo 4.000 lượt đội khởi đầu 87,8%.
+    expect(r.goals.home / r.kicks.home).toBeGreaterThanOrEqual(0.82);
   });
 });

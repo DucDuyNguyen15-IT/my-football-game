@@ -78,6 +78,39 @@ export function keysToInput(keys: KeyState): PlayerInput {
   };
 }
 
+/** Nút hành động — sim phản ứng với lúc bấm/thả (khác phím di chuyển, chạy nước rút, phím phụ). */
+const ACTION_KEYS = ['pass', 'lob', 'shoot', 'through'] as const;
+
+/**
+ * Chặn nút hành động bấm (hoặc còn giữ) lúc người chơi chưa nhìn thấy sân — đang giữ hình / màn
+ * chuyển cảnh còn che: phím đó không vào sim cho tới khi nhả ra rồi bấm lại. Không có lớp chặn này
+ * thì giữ S xuyên qua màn che sẽ thành một lần bấm mới ngay lúc màn mở (sim thấy "vừa bấm").
+ */
+export function createBlindGuard() {
+  const stale = new Set<keyof KeyState>();
+  return {
+    /** Gọi mỗi khung hình màn còn che, với phím đang giữ. */
+    cover(held: KeyState): void {
+      for (const key of ACTION_KEYS) if (held[key]) stale.add(key);
+    },
+    /** Phím đã nhả (keyup). */
+    release(key: keyof KeyState): void {
+      stale.delete(key);
+    },
+    /** Nhả hết phím (mất focus). */
+    clear(): void {
+      stale.clear();
+    },
+    /** Bỏ các phím bị chặn khỏi trạng thái phím đưa vào sim. */
+    filter(keys: KeyState): KeyState {
+      if (stale.size === 0) return keys;
+      const out = { ...keys };
+      for (const key of stale) out[key] = false;
+      return out;
+    },
+  };
+}
+
 /**
  * Nhớ phím đã nhấn cho tới khi sim chạy được ít nhất một tick: nhấn-thả nhanh trong cùng một khung
  * hình (lúc đọc `isDown` đã nhả) vẫn thành một lần bấm, sim thấy "giữ" đúng một tick rồi "thả".

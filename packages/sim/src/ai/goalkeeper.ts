@@ -156,9 +156,13 @@ export function penaltyGuess(
   gk: PlayerState,
   ball: BallState,
   rng: RngState,
+  /** Nhân vào xác suất đoán đúng (`AiProfile.penaltyGuessMult`: thủ môn máy Dễ đoán sai nhiều hơn). */
+  chanceMult = 1,
 ): { guess: Vec2 | null; rng: RngState } {
   const [roll, r1] = nextFloat(rng);
-  if (roll < keeperPenaltyGuessChance(gk.stats.reflexes)) return { guess: null, rng: r1 };
+  if (roll < keeperPenaltyGuessChance(gk.stats.reflexes) * chanceMult) {
+    return { guess: null, rng: r1 };
+  }
   let side = -Math.sign(ball.vel.y);
   let r = r1;
   if (Math.abs(ball.vel.y) < CENTRAL_VY) {

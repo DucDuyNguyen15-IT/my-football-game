@@ -13,7 +13,13 @@ import { HALF_LENGTH, isInPenaltyArea, PENALTY_SPOT_DIST } from './pitch';
 import { nextFloat, seedRng, type RngState } from './rng';
 import { isKeeperHandling, ROUGH_RED_CHANCE } from './rules/fouls';
 import { dribbleBall } from './rules/possession';
-import { holdRestart, RESTART_DELAY_TICKS, RESTART_SETUP_MAX_TICKS } from './rules/restarts';
+import {
+  FOUL_HOLD_TICKS,
+  holdRestart,
+  RESTART_DELAY_TICKS,
+  RESTART_REVEAL_TICKS,
+  RESTART_SETUP_MAX_TICKS,
+} from './rules/restarts';
 import { tackleWinChance } from './stats/params';
 import { NO_INPUT, type Booking, type MatchState, type PlayerInput } from './types';
 
@@ -310,7 +316,7 @@ describe('thực hiện đá phạt / phạt đền', () => {
   /** Đội nhà được hưởng, mọi người đã đứng sẵn vào vị trí (người chơi sau bóng). */
   function homeRestart(type: 'free_kick' | 'penalty', spot: Vec2): MatchState {
     const s = createMatch(setup);
-    const restart = { type, team: 'home' as const, spot, takerId: ME, startTick: 0 };
+    const restart = { type, team: 'home' as const, spot, takerId: ME, startTick: 0, readyTick: 0 };
     const facing = s.players.map((p) => (p.id === ME ? { ...p, facing: vec2(1, 0) } : p));
     return {
       ...s,
@@ -352,7 +358,11 @@ describe('thực hiện đá phạt / phạt đền', () => {
     const goalSide = attackSign('away', 1);
     const pk = step(frontal(vec2(goalSide * (HALF_LENGTH - 6), 2), missRoll), A);
     expect(pk.restart?.type).toBe('penalty');
-    // Mọi người tự đi về vị trí; xong và đủ 3 s thì máy mới sút.
+    // Sau phạm lỗi: giữ hình 1,25 s + mở màn rồi mới tính là chuyển cảnh xong (luật 3).
+    expect(pk.restart!.readyTick).toBe(
+      pk.restart!.startTick + FOUL_HOLD_TICKS + RESTART_REVEAL_TICKS,
+    );
+    // Mọi người đã được đặt vào vị trí; đủ 3 s thì máy mới sút.
     let waited = pk;
     while (step(waited, NO_INPUT).phase === 'dead_ball') waited = step(waited, NO_INPUT);
     expect(waited.tick - pk.restart!.startTick).toBeGreaterThanOrEqual(RESTART_DELAY_TICKS - 1);
@@ -473,7 +483,7 @@ describe('đá phạt trong vòng cấm nhà', () => {
       ballDead: true,
       ballOwnerId: null,
       ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
-      restart: { type: 'free_kick', team: 'home', spot, takerId: ME, startTick: s0.tick },
+      restart: { type: 'free_kick', team: 'home', spot, takerId: ME, startTick: s0.tick, readyTick: s0.tick },
     };
     for (let i = 0; i < 3 * 60; i++) {
       s = step(s, NO_INPUT);

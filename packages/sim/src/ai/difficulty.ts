@@ -15,6 +15,11 @@ export interface AiProfile {
   shotErrorMult: number;
   /** 0–1: dâng khối đội hình cao hơn, người áp sát chạy nước rút. */
   aggression: number;
+  /**
+   * Nhân vào xác suất thủ môn đoán đúng hướng quả phạt đền (`keeperPenaltyGuessChance`, 0–1). Dưới 1
+   * = đoán sai nhiều hơn, người sút dễ ghi bàn hơn. Không ảnh hưởng cú sút phạt đền của chính đội đó.
+   */
+  penaltyGuessMult: number;
 }
 
 /**
@@ -23,8 +28,34 @@ export interface AiProfile {
  * (task 5.13) — mô phỏng người chơi trung bình, nằm giữa Dễ và Khó.
  */
 export const AI_PROFILES: Record<Difficulty | 'teammate' | 'proxy', AiProfile> = {
-  easy: { reactionDelayTicks: 30, passErrorMult: 2.5, shotErrorMult: 2.5, aggression: 0.2 },
-  hard: { reactionDelayTicks: 12, passErrorMult: 1.3, shotErrorMult: 1.3, aggression: 0.4 },
-  teammate: { reactionDelayTicks: 10, passErrorMult: 1.2, shotErrorMult: 1.2, aggression: 0.5 },
-  proxy: { reactionDelayTicks: 16, passErrorMult: 1.35, shotErrorMult: 1.3, aggression: 0.55 },
+  // Thủ môn máy Dễ đoán đúng hướng phạt đền chỉ bằng nửa bình thường (luật 4, 2026-11-15) — số đo ở
+  // `PENALTY_ERROR_MULT` (stats/params.ts).
+  easy: {
+    reactionDelayTicks: 30,
+    passErrorMult: 2.5,
+    shotErrorMult: 2.5,
+    aggression: 0.2,
+    penaltyGuessMult: 0.5,
+  },
+  hard: {
+    reactionDelayTicks: 12,
+    passErrorMult: 1.3,
+    shotErrorMult: 1.3,
+    aggression: 0.4,
+    penaltyGuessMult: 1,
+  },
+  teammate: {
+    reactionDelayTicks: 10,
+    passErrorMult: 1.2,
+    shotErrorMult: 1.2,
+    aggression: 0.5,
+    penaltyGuessMult: 1,
+  },
+  proxy: {
+    reactionDelayTicks: 16,
+    passErrorMult: 1.35,
+    shotErrorMult: 1.3,
+    aggression: 0.55,
+    penaltyGuessMult: 1,
+  },
 };
