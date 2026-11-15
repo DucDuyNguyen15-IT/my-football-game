@@ -21,9 +21,14 @@ export function useStartMatch() {
   });
 }
 
-/** Lỗi đáng thử lại: mạng hoặc 5xx. Lỗi nghiệp vụ 4xx (token sai, quá sớm…) gửi lại cũng vậy. */
+/**
+ * Lỗi đáng thử lại: mạng, 5xx, 408, 429 (server chưa ghi gì, token vẫn dùng được). Lỗi nghiệp vụ
+ * 4xx khác (token sai, quá sớm…) gửi lại cũng vậy.
+ */
 export function isTransientError(err: unknown): boolean {
-  return !(err instanceof ApiClientError && err.status >= 400 && err.status < 500);
+  if (!(err instanceof ApiClientError)) return true;
+  if (err.status === 408 || err.status === 429) return true;
+  return !(err.status >= 400 && err.status < 500);
 }
 
 export interface SubmitResultVars {

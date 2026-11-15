@@ -697,7 +697,14 @@ export function ResultScreen({
           />
         )}
         <div className="result__actions">
-          <button type="button" className="btn btn--primary btn--lg" autoFocus onClick={onRematch}>
+          {/* Trận mới làm server huỷ trận cũ → chưa nộp xong (hoặc còn gửi lại được) thì chưa cho đá tiếp. */}
+          <button
+            type="button"
+            className="btn btn--primary btn--lg"
+            autoFocus
+            disabled={reward.kind === 'pending' || (reward.kind === 'error' && reward.retryable)}
+            onClick={onRematch}
+          >
             Đá tiếp
           </button>
           <Link to="/" className="btn btn--secondary btn--lg">

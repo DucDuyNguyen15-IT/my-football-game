@@ -199,6 +199,15 @@ describe('ResultScreen', () => {
     );
   });
 
+  it('chưa nộp xong thì khoá "Đá tiếp" (trận mới huỷ trận cũ → mất thưởng)', () => {
+    const rematchDisabled = (r: RewardStatus) =>
+      /<button[^>]*disabled=""[^>]*>Đá tiếp/.test(result(r));
+    expect(rematchDisabled({ kind: 'pending' })).toBe(true);
+    expect(rematchDisabled({ kind: 'error', message: 'x', retryable: true })).toBe(true);
+    expect(rematchDisabled({ kind: 'error', message: 'x', retryable: false })).toBe(false);
+    expect(rematchDisabled({ kind: 'done', reward: 0, balance: 0 })).toBe(false);
+  });
+
   it('hoà có luân lưu: hiện Hoà kèm Thắng luân lưu', () => {
     const html = renderToStaticMarkup(
       <MemoryRouter>

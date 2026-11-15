@@ -369,12 +369,20 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key !== 'Escape' || lastHud.current?.phase === 'full_time') return;
+      if (e.key !== 'Escape' || e.repeat || lastHud.current?.phase === 'full_time') return;
       e.preventDefault();
       setPaused(!pausedRef.current);
     };
+    // Alt+Tab sang cửa sổ khác: trận tự tạm dừng thay vì chạy tiếp khi người chơi không nhìn.
+    const onBlur = () => {
+      if (lastHud.current?.phase !== 'full_time') setPaused(true);
+    };
     window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('blur', onBlur);
+    };
   }, [setPaused]);
 
   const bridge = useMemo<MatchBridge>(() => {

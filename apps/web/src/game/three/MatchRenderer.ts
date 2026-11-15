@@ -536,6 +536,8 @@ export class MatchRenderer {
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
+    // Tạm dừng: để mũi tên điều khiển menu (nhóm radio thay người), không chặn.
+    if (this.bridge?.isPaused()) return;
     const name = keyForCode(e.code);
     if (this.replay || this.pendingReplay) {
       // Đang phát lại (hoặc đang vào phát lại): S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
@@ -560,6 +562,7 @@ export class MatchRenderer {
   /** Mất focus (Alt+Tab) thì trình duyệt không gửi keyup — coi như nhả hết phím. */
   private readonly onBlur = (): void => {
     this.held = { ...NO_KEYS };
+    this.taps.consume();
     this.blindGuard.clear();
   };
 
