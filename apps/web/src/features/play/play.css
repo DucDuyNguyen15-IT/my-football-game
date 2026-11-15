@@ -546,6 +546,11 @@
   background: #ff6b6b;
   animation: replay-pulse 0.5s ease-in-out infinite;
 }
+/* Menu tạm dừng đang mở: chấm còi / chấm phát lại đứng yên như trận. */
+body:has(.scrim.pause) .foul-call__whistle,
+body:has(.scrim.pause) .replay-tag__dot {
+  animation-play-state: paused;
+}
 .foul-call__text {
   color: #ffd6d6;
   letter-spacing: 0.1em;
@@ -968,7 +973,8 @@
   position: absolute;
   top: -15%;
   bottom: -15%;
-  width: 72%;
+  /* Rộng hơn nửa màn + phần nghiêng: màn dọc (390×844) vẫn kín góc trên (review L7). */
+  width: max(72%, 60% + 25vh);
   background: linear-gradient(135deg, #07140f 0%, var(--c-pitch-felt-deep) 55%, #113828 100%);
   box-shadow: 0 0 36px rgb(0 0 0 / 0.75);
   will-change: transform;
@@ -1040,7 +1046,7 @@
   position: absolute;
   left: 50%;
   top: 78%;
-  width: 380px;
+  width: min(380px, calc(100vw - 32px));
   height: 86px;
   padding: 10px 24px 12px;
   display: grid;

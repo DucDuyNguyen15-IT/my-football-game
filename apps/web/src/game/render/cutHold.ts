@@ -4,13 +4,21 @@
  * Ở tick trọng tài thổi phạt / bóng ra ngoài, sim đã đặt bóng về chấm đá phạt và cho cầu thủ tự đi về
  * vị trí. Renderer giữ khung bóng sống ngay trước đó (`prev`) rồi cho nó trôi tiếp như thật: mọi người
  * chạy chậm dần tới khi dừng hẳn (tiếng còi), người bị phạm lỗi té và trượt theo quán tính, bóng lăn
- * tiếp (bóng ra biên thì lăn qua vạch). Hết `delaySec` mới bắt đầu khép stinger; sim vẫn chạy bình
- * thường ở phía sau (đồng hồ, HUD, input không bị ảnh hưởng).
+ * tiếp (bóng ra biên thì lăn qua vạch, bóng vào khung thành thì dừng ở lưới). Hết `delaySec` mới bắt
+ * đầu khép stinger. Sim vẫn chạy phía sau (cầu thủ đi về vị trí), nhưng renderer không đưa phím vào
+ * sim trong lúc giữ: người chơi không điều khiển được cảnh mình chưa nhìn thấy.
  *
  * Mọi đối tượng được cấp phát một lần lúc tạo; `advance` chỉ ghi đè số trong chỗ (không cấp phát mỗi
  * khung hình).
  */
-import { HALF_LENGTH, HALF_WIDTH, type MatchState, type PlayerState } from '@pitch/sim';
+import {
+  GOAL_HEIGHT,
+  GOAL_WIDTH,
+  HALF_LENGTH,
+  HALF_WIDTH,
+  type MatchState,
+  type PlayerState,
+} from '@pitch/sim';
 import type { FoulSummary, TransitionSpec } from './transition';
 
 /** Giảm tốc của cầu thủ khi nghe còi (m/s²): chạy 6 m/s dừng hẳn sau ~1 s. */
@@ -25,6 +33,8 @@ export const VICTIM_MAX_SLIDE_SPEED = 6;
 export const BALL_ROLL_DECEL = 3;
 /** Bóng ra ngoài lăn tối đa tới chừng này (m) ngoài vạch, không xuyên qua biển quảng cáo. */
 export const BALL_OUT_LIMIT = 4;
+/** Bóng vào khung thành dừng ở lưới, cách vạch vôi chừng này (m) — khớp chỗ rung lưới của renderer. */
+export const NET_DEPTH = 0.45;
 /** Thời gian ngã từ đứng thẳng tới nằm sân (giây) — chỉ dùng cho cầu thủ khối (chưa nạp model). */
 export const FALL_TILT_SEC = 0.4;
 /** Góc nghiêng tối đa khi nằm sân (rad, ~80°). */
@@ -112,7 +122,6 @@ export class CutHold {
   private readonly ballVel: MutableVec2;
   private readonly ball: { pos: MutableVec2; vel: MutableVec2; z: number; vz: number };
   private readonly ball0: { x: number; y: number; z: number; vz: number; dx: number; dy: number; v0: number };
-  private readonly outOfPlay: boolean;
 
   constructor(prev: MatchState, curr: MatchState, spec: TransitionSpec) {
     this.spec = spec;
@@ -167,11 +176,12 @@ export class CutHold {
       dy: bSpeed > 1e-6 ? prev.ball.vel.y / bSpeed : 0,
       v0: bSpeed,
     };
-    this.outOfPlay = spec.kind === 'goal_kick' || spec.kind === 'corner' || spec.kind === 'throw_in';
 
     this.state = {
       ...prev,
       tick: curr.tick,
+      // Bàn thắng: bảng tỉ số trong cảnh giữ/replay hiện tỉ số mới.
+      score: curr.score,
       players,
       ball: this.ball,
       ballOwnerId: null,
@@ -212,19 +222,28 @@ export class CutHold {
     }
     const b = this.ball0;
     const d = glideDistance(b.v0, BALL_ROLL_DECEL, t);
-    let x = b.x + b.dx * d;
-    let y = b.y + b.dy * d;
-    if (this.outOfPlay) {
-      x = clamp(x, HALF_LENGTH + BALL_OUT_LIMIT);
-      y = clamp(y, HALF_WIDTH + BALL_OUT_LIMIT);
-    }
+    const z = Math.max(0, b.z + b.vz * t - 0.5 * GRAVITY * t * t);
+    const y = clamp(b.y + b.dy * d, HALF_WIDTH + BALL_OUT_LIMIT);
+    // Qua vạch cuối giữa hai cột dọc, dưới xà → dừng ở lưới; còn lại dừng trước biển quảng cáo.
+    const inMouth = Math.abs(y) <= GOAL_WIDTH / 2 && z <= GOAL_HEIGHT;
+    const x = clamp(b.x + b.dx * d, HALF_LENGTH + (inMouth ? NET_DEPTH : BALL_OUT_LIMIT));
+    const stopped = x !== b.x + b.dx * d;
     this.ballPos.x = x;
     this.ballPos.y = y;
-    const v = glideSpeed(b.v0, BALL_ROLL_DECEL, t);
+    const v = stopped ? 0 : glideSpeed(b.v0, BALL_ROLL_DECEL, t);
     this.ballVel.x = b.dx * v;
     this.ballVel.y = b.dy * v;
     // Bóng bổng rơi xuống cỏ (không nảy lại — chỉ vài trăm ms trước khi cắt cảnh).
-    this.ball.z = Math.max(0, b.z + b.vz * t - 0.5 * GRAVITY * t * t);
+    this.ball.z = z;
     this.ball.vz = this.ball.z > 0 ? b.vz - GRAVITY * t : 0;
   }
+}
+
+/** Bản sao đứng yên của trạng thái đang giữ (CutHold ghi đè tại chỗ) — để lưu vào buffer phát lại. */
+export function snapshotHold(s: MatchState): MatchState {
+  return {
+    ...s,
+    players: s.players.map((p) => ({ ...p, pos: { ...p.pos }, vel: { ...p.vel } })),
+    ball: { ...s.ball, pos: { ...s.ball.pos }, vel: { ...s.ball.vel } },
+  };
 }

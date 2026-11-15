@@ -65,14 +65,21 @@ export interface TransitionSpec {
 
 /** Ngưỡng FPS trung bình vài giây gần nhất: thấp hơn mức này thì tự hạ từ 3D xuống 2D CSS. */
 export const LOW_FPS_THRESHOLD = 50;
-/** Thời lượng mờ đen nhanh khi bật `prefers-reduced-motion: reduce` (200–300 ms). */
-export const REDUCED_DURATION_SEC = 0.25;
+/**
+ * Thời lượng chuyển cảnh khi bật `prefers-reduced-motion: reduce`: chỉ mờ, không chuyển động. Mờ vào
+ * / ra mỗi bên ~125 ms, giữ nhãn ~450 ms ở giữa để kịp đọc (review L5).
+ */
+export const REDUCED_DURATION_SEC = 0.7;
+/** Phần đầu / cuối (theo tiến độ 0…1) dành cho mờ vào / mờ ra ở chế độ reduced. */
+export const REDUCED_FADE = 0.18;
 /** Thời gian camera hơi dolly vào khung tình huống cố định sau khi mở cảnh mới (giây). */
 export const DOLLY_DURATION_SEC = 0.65;
 /** Độ trễ trước khi khép stinger sau pha phạm lỗi (1–1,5 s: thấy cầu thủ té ngã + còi/thẻ). */
 export const FOUL_DELAY_SEC = 1.25;
 /** Độ trễ trước khi khép stinger khi bóng lăn ra ngoài biên (0,5–0,8 s: thấy bóng qua vạch). */
 export const OUT_OF_BOUNDS_DELAY_SEC = 0.6;
+/** Luân lưu: xem bóng rung lưới / pha cản phá của lượt vừa sút trước khi sang lượt kế (giây). */
+export const SHOOTOUT_RESULT_DELAY_SEC = 1;
 
 const TEAM_SUBLABEL: Record<TeamSide, string> = {
   home: 'ĐỘI NHÀ',
@@ -90,7 +97,7 @@ export const TRANSITION_LABELS: Record<TransitionKind, string> = {
   kickoff: 'GIAO BÓNG',
   second_half: 'GIAO BÓNG',
   shootout: 'LUÂN LƯU',
-  shootout_turn: 'LƯỢT 1',
+  shootout_turn: 'LƯỢT',
 };
 
 const DURATION_3D: Record<TransitionKind, number> = {
@@ -125,7 +132,7 @@ const DURATION_2D: Record<TransitionKind, number> = {
 export function transitionLabel(kind: TransitionKind, turn?: number | null): string {
   if (kind === 'shootout_turn') {
     const n = turn !== undefined && turn !== null && turn > 0 ? Math.floor(turn) : 1;
-    return `LƯỢT ${n}`;
+    return `${TRANSITION_LABELS.shootout_turn} ${n}`;
   }
   return TRANSITION_LABELS[kind];
 }
@@ -264,15 +271,18 @@ export function transitionDurationSec(spec: TransitionSpec, mode: TransitionMode
 /**
  * Có cầu thủ nào (cùng `id` ở cả hai tick) nhảy vị trí tức thời quá `SNAP_DISTANCE` (2 m) không.
  * Người mới vào sân qua thay người không có trong `prev` nên không tính là dịch chuyển.
+ * Chạy mỗi tick lúc bóng chết nên không cấp phát: thứ tự cầu thủ thường giữ nguyên giữa hai tick, chỉ
+ * tìm theo id khi lệch (thẻ đỏ / thay người).
  */
 export function hasPlayerTeleport(
   prev: Pick<MatchState, 'players'>,
   curr: Pick<MatchState, 'players'>,
 ): boolean {
-  const prevById = new Map(prev.players.map((p) => [p.id, p]));
   const thresholdSq = SNAP_DISTANCE * SNAP_DISTANCE;
-  for (const p of curr.players) {
-    const before = prevById.get(p.id);
+  for (let i = 0; i < curr.players.length; i++) {
+    const p = curr.players[i]!;
+    const same = prev.players[i];
+    const before = same?.id === p.id ? same : prev.players.find((q) => q.id === p.id);
     if (!before) continue;
     const dx = p.pos.x - before.pos.x;
     const dy = p.pos.y - before.pos.y;
@@ -337,6 +347,8 @@ export function detectTransition(
       return buildTransitionSpec('shootout_turn', {
         team: kicking,
         turn: currKicks + 1,
+        // Lượt vừa phân định: cho xem bóng vào lưới / bị cản rồi mới cắt.
+        delaySec: currKicks > prevKicks ? SHOOTOUT_RESULT_DELAY_SEC : 0,
       });
     }
     return null;
@@ -381,11 +393,6 @@ export function detectTransition(
             team: r.team,
             delaySec: fromLive ? OUT_OF_BOUNDS_DELAY_SEC : 0,
           });
-        }
-        return null;
-      case 'kickoff':
-        if (isNewRestart || teleported) {
-          return buildTransitionSpec('kickoff', { team: r.team });
         }
         return null;
     }
@@ -501,12 +508,12 @@ export function sampleTransitionCurve(
   if (mode === 'reduced') {
     // Mờ đen nhanh: tăng lên 1 ở giữa rồi hạ về 0, không xoay/quét.
     const cover =
-      p < COVER_HOLD_START
-        ? easeOutCubic(p / COVER_HOLD_START)
-        : p <= COVER_HOLD_END
+      p < REDUCED_FADE
+        ? easeOutCubic(p / REDUCED_FADE)
+        : p <= 1 - REDUCED_FADE
           ? 1
-          : 1 - easeInCubic((p - COVER_HOLD_END) / (1 - COVER_HOLD_END));
-    const fullyCovered = p >= COVER_HOLD_START && p <= COVER_HOLD_END;
+          : 1 - easeInCubic((p - (1 - REDUCED_FADE)) / REDUCED_FADE);
+    const fullyCovered = p >= REDUCED_FADE && p <= 1 - REDUCED_FADE;
     return {
       cover,
       fullyCovered,
@@ -618,4 +625,25 @@ export function dollyOffset(
     y: -1.35 * k,
     z: -2.8 * k,
   };
+}
+
+/**
+ * Stinger mới phát khi stinger cũ còn chạy: bắt đầu từ đúng độ che hiện tại thay vì mở bung rồi khép
+ * lại (review M1). Cũ chưa che kín → tiếp tục khép từ tiến độ đó và dồn `onCovered` cũ sang mốc che
+ * kín của lượt mới (không gọi sớm lúc màn còn hở). Cũ đã che, đang mở → bắt đầu ở điểm đối xứng trên
+ * nửa khép (cùng độ che).
+ */
+export function chainedStart(prev: { progress: number; covered: boolean } | null): {
+  progress: number;
+  carryCovered: boolean;
+} {
+  if (!prev) return { progress: 0, carryCovered: false };
+  const p = clamp01(prev.progress);
+  if (!prev.covered) return { progress: Math.min(p, 0.5), carryCovered: true };
+  return { progress: Math.min(0.5, 1 - p), carryCovered: false };
+}
+
+/** Stinger ở tiến độ `progress` còn che (chưa mở ra) cảnh sân: sim đứng, không nhận phím (review H1). */
+export function hidesPlay(progress: number, mode: TransitionMode): boolean {
+  return progress < 0.5 || sampleTransitionCurve(progress, mode).fullyCovered;
 }

@@ -19,6 +19,8 @@ import {
   resolveTransitionMode,
   sampleTransitionCurve,
   transitionDurationSec,
+  chainedStart,
+  hidesPlay,
   type BuildTransitionOptions,
   type TransitionKind,
   type TransitionMode,
@@ -539,9 +541,6 @@ export class MatchStinger {
 
     this.scene.add(this.leftShutter, this.rightShutter, this.crestMesh, this.sparkPoints);
 
-    // Biên dịch sẵn toàn bộ shader của stinger lúc vào trận để lần chuyển cảnh đầu tiên không khựng.
-    this.renderer.compile(this.scene, this.camera);
-
     const dom = this.createOverlayDom();
     this.overlayEl = dom.root;
     this.plaqueEl = dom.plaque;
@@ -565,7 +564,10 @@ export class MatchStinger {
     (this.shutterMat.uniforms.uOpacity as { value: number }).value = 0;
     (this.crestMat.uniforms.uOpacity as { value: number }).value = 0;
     (this.sparkMat.uniforms.uOpacity as { value: number }).value = 0;
-    scene.background = null;
+    // Vật liệu cửa chớp đục (uOpacity không làm trong suốt): đẩy hai cánh ra ngoài khung trước khi vẽ,
+    // nếu không khung đầu tiên của trận là hai cánh khép kín (review L1).
+    this.leftShutter.position.set(-50, 0, 0);
+    this.rightShutter.position.set(50, 0, 0);
     renderer.autoClear = false;
     renderer.clearDepth();
     renderer.render(scene, camera);
@@ -607,11 +609,24 @@ export class MatchStinger {
             })
           : kindOrSpec;
 
-    // Nếu đang có chuyển cảnh trước đó chưa kịp gọi onCovered thì gọi luôn để không kẹt state.
-    if (this.active && !this.active.coveredCalled) {
-      this.active.coveredCalled = true;
-      this.active.onCovered?.();
-    }
+    // Stinger cũ còn chạy: bắt đầu từ đúng độ che hiện tại; onCovered cũ chưa gọi thì gọi cùng lúc
+    // với lượt mới khi màn che kín (không gọi sớm lúc màn còn hở — review M1).
+    const old = this.active;
+    const chained = chainedStart(
+      old && {
+        progress: old.durationSec > 0 ? old.elapsedSec / old.durationSec : 1,
+        covered: old.coveredCalled,
+      },
+    );
+    const oldCovered = chained.carryCovered ? old?.onCovered : undefined;
+    const newCovered = options.onCovered;
+    const onCovered =
+      oldCovered && newCovered
+        ? () => {
+            oldCovered();
+            newCovered();
+          }
+        : (oldCovered ?? newCovered);
 
     const reducedMotion =
       typeof window !== 'undefined' &&
@@ -633,10 +648,10 @@ export class MatchStinger {
       spec,
       mode,
       durationSec,
-      elapsedSec: 0,
+      elapsedSec: chained.progress * durationSec,
       coveredCalled: false,
       coveredAtSec: null,
-      onCovered: options.onCovered,
+      onCovered,
       spinSign,
       spinMult,
     };
@@ -653,7 +668,7 @@ export class MatchStinger {
     if (this.overlayEl.dataset.team !== teamTag) this.overlayEl.dataset.team = teamTag;
     this.overlayEl.style.opacity = '1';
 
-    this.applyProgress(0);
+    this.applyProgress(chained.progress);
   }
 
   /** Tiến hiệu ứng thêm `dt` giây; kích hoạt `onCovered` ngay khi vượt mốc che kín `0.5`. */
@@ -686,9 +701,11 @@ export class MatchStinger {
     return this.active !== null;
   }
 
-  /** Đang ở nửa đầu chuyển cảnh (trước khi gọi `onCovered`) — renderer giữ khung cũ. */
-  isBeforeCovered(): boolean {
-    return this.active !== null && !this.active.coveredCalled;
+  /** Stinger còn che cảnh sân (chưa bắt đầu mở): renderer dừng sim và không nhận phím (review H1). */
+  isHidingPlay(): boolean {
+    const a = this.active;
+    if (!a) return false;
+    return hidesPlay(a.durationSec > 0 ? a.elapsedSec / a.durationSec : 1, a.mode);
   }
 
   /** Stinger đang che kín 100% khung hình — renderer có thể bỏ vẽ cảnh sân phía sau để tiết kiệm GPU. */

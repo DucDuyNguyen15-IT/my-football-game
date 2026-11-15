@@ -9,6 +9,8 @@ import {
 import {
   BALL_OUT_LIMIT,
   CutHold,
+  NET_DEPTH,
+  snapshotHold,
   FALL_TILT_MAX,
   FALL_TILT_SEC,
   PLAYER_STOP_DECEL,
@@ -129,6 +131,25 @@ describe('CutHold — diễn tiếp pha bóng trước khi khép stinger', () =>
     expect(hold.ready).toBe(true);
     expect(hold.state.ball.pos.x).toBeLessThanOrEqual(HALF_LENGTH + BALL_OUT_LIMIT);
     expect(hold.state.ball.z).toBe(0);
+  });
+
+  it('bàn thắng / phạm lỗi gần khung thành: bóng dừng ở lưới, không xuyên ra sau; tỉ số lấy từ tick mới', () => {
+    const prev: MatchState = {
+      ...live(),
+      ballOwnerId: null,
+      ball: { pos: { x: HALF_LENGTH - 0.5, y: 1 }, vel: { x: 25, y: 0 }, z: 0.4, vz: 0 },
+    };
+    const curr = { ...prev, tick: 501, score: { home: 1, away: 0 } };
+    const hold = new CutHold(prev, curr, buildTransitionSpec('free_kick', { delaySec: 1 }));
+    expect(hold.state.score).toEqual({ home: 1, away: 0 });
+    hold.advance(1);
+    expect(hold.state.ball.pos.x).toBe(HALF_LENGTH + NET_DEPTH);
+    expect(hold.state.ball.vel.x).toBe(0);
+    // Bản sao đứng yên không bị advance sau đó ghi đè.
+    const snap = snapshotHold(hold.state);
+    hold.advance(1);
+    expect(snap.ball.pos).not.toBe(hold.state.ball.pos);
+    expect(snap.players[0]!.pos).not.toBe(hold.state.players[0]!.pos);
   });
 
   it('tạm dừng (dt = 0) không tiến cảnh giữ', () => {

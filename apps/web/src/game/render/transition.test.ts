@@ -16,7 +16,10 @@ import {
   OUT_OF_BOUNDS_DELAY_SEC,
   REDUCED_DURATION_SEC,
   RollingFps,
+  SHOOTOUT_RESULT_DELAY_SEC,
   buildTransitionSpec,
+  chainedStart,
+  hidesPlay,
   detectTransition,
   dollyOffset,
   hasPlayerTeleport,
@@ -229,6 +232,8 @@ describe('detectTransition — khi nào chuyển cảnh', () => {
       label: 'LƯỢT 2',
       team: 'away',
       turn: 2,
+      // Lượt vừa phân định: xem bóng vào lưới / bị cản rồi mới cắt (review M2).
+      delaySec: SHOOTOUT_RESULT_DELAY_SEC,
     });
 
     // Sang lượt sút thứ 3 (đội nhà).
@@ -504,5 +509,39 @@ describe('đường cong chuyển cảnh & camera dolly', () => {
     expect(Math.abs(mid.z)).toBeGreaterThan(0);
     expect(done).toEqual({ y: 0, z: 0 });
     expect(dollyOffset(0.1, true)).toEqual({ y: 0, z: 0 });
+  });
+});
+
+describe('nối stinger và che cảnh (review M1, H1, L4, L5)', () => {
+  it('chainedStart: cũ chưa che kín → khép tiếp từ đó, dồn onCovered; cũ đang mở → điểm đối xứng', () => {
+    expect(chainedStart(null)).toEqual({ progress: 0, carryCovered: false });
+    expect(chainedStart({ progress: 0.3, covered: false })).toEqual({ progress: 0.3, carryCovered: true });
+    expect(chainedStart({ progress: 0.8, covered: true }).progress).toBeCloseTo(0.2);
+    expect(chainedStart({ progress: 0.8, covered: true }).carryCovered).toBe(false);
+  });
+
+  it('hidesPlay: còn che tới hết quãng che kín, mở ra thì thôi', () => {
+    expect(hidesPlay(0.1, '3d')).toBe(true);
+    expect(hidesPlay(COVER_HOLD_END - 0.01, '3d')).toBe(true);
+    expect(hidesPlay(COVER_HOLD_END + 0.05, '3d')).toBe(false);
+    expect(hidesPlay(0.95, 'reduced')).toBe(false);
+  });
+
+  it('reduced-motion: nhãn rõ (che kín) ít nhất ~400 ms', () => {
+    let covered = 0;
+    for (let i = 0; i < 1000; i++) {
+      if (sampleTransitionCurve(i / 1000, 'reduced').labelOpacity >= 0.99) covered++;
+    }
+    expect((covered / 1000) * REDUCED_DURATION_SEC).toBeGreaterThan(0.4);
+  });
+
+  it('hasPlayerTeleport: thứ tự cầu thủ đổi (thay người / thẻ đỏ) vẫn so đúng theo id', () => {
+    const a = baseMatch();
+    const reversed = { players: [...a.players].reverse() };
+    expect(hasPlayerTeleport(a, reversed)).toBe(false);
+    const moved = {
+      players: reversed.players.map((p, i) => (i === 0 ? { ...p, pos: { x: p.pos.x + 5, y: p.pos.y } } : p)),
+    };
+    expect(hasPlayerTeleport(a, moved)).toBe(true);
   });
 });
