@@ -84,6 +84,14 @@ describe('khoá đăng nhập (PRD §8, F8)', () => {
     for (let i = 0; i < 5; i++) await login(BAD);
     expect((await login({ username: 'tester_2', password: 'mat-khau-hai' })).statusCode).toBe(200);
   });
+
+  it('30 lần sai gửi song song chỉ kiểm mật khẩu 5 lần, còn lại 429; sau đó đúng mật khẩu vẫn bị khoá (A-1)', async () => {
+    const results = await Promise.all(Array.from({ length: 30 }, () => login(BAD)));
+    const codes = results.map((r) => r.statusCode);
+    expect(codes.filter((c) => c === 401)).toHaveLength(5);
+    expect(codes.filter((c) => c === 429)).toHaveLength(25);
+    expect((await login(GOOD)).statusCode).toBe(429);
+  });
 });
 
 describe('phiên', () => {

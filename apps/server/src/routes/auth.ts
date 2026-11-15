@@ -20,10 +20,9 @@ import {
   findUserByGoogleSub,
   findUserByUsername,
   isUniqueViolation,
-  loginLockRemainingMs,
   purgeExpiredSessions,
-  recordLoginFailure,
   registerUser,
+  reserveLoginAttempt,
   toMe,
   verifyPassword,
   type UserRow,
@@ -86,23 +85,23 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
       await burnPasswordCheck(password);
       throw new AppError('invalid_credentials', 401, 'Sai tên đăng nhập hoặc mật khẩu');
     }
-    // Đang khoá thì từ chối trước khi kiểm mật khẩu — kể cả mật khẩu đúng (PRD §8).
-    const lockedMs = loginLockRemainingMs(user, now);
-    if (lockedMs > 0) {
-      reply.header('retry-after', String(Math.ceil(lockedMs / 1000)));
-      throw new AppError('login_locked', 429, 'Đăng nhập sai quá nhiều lần, thử lại sau 15 phút');
-    }
     // Tài khoản chỉ có Google (không mật khẩu): từ chối như sai mật khẩu, không đếm vào khoá.
     if (user.passwordHash === null) {
       await burnPasswordCheck(password);
       throw new AppError('invalid_credentials', 401, 'Sai tên đăng nhập hoặc mật khẩu');
     }
+    // Giữ lượt (kiểm khoá + đếm) dưới khoá dòng trước khi kiểm mật khẩu — đang khoá thì từ chối kể cả
+    // mật khẩu đúng (PRD §8), và request song song không vượt được 5 lần (A-1).
+    const lockedMs = await reserveLoginAttempt(app.db, user.id, now);
+    if (lockedMs > 0) {
+      reply.header('retry-after', String(Math.ceil(lockedMs / 1000)));
+      throw new AppError('login_locked', 429, 'Đăng nhập sai quá nhiều lần, thử lại sau 15 phút');
+    }
     if (!(await verifyPassword(user.passwordHash, password))) {
-      await recordLoginFailure(app.db, user.id, now);
       throw new AppError('invalid_credentials', 401, 'Sai tên đăng nhập hoặc mật khẩu');
     }
     const session = await app.db.transaction(async (tx) => {
-      await clearLoginFailures(tx, user);
+      await clearLoginFailures(tx, user.id);
       await track(tx, user.id, 'login', { method: 'password' }, now);
       return rotateSession(tx, req, user, now);
     });

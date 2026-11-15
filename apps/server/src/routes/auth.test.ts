@@ -145,6 +145,15 @@ describe('POST /auth/logout', () => {
 describe('chặn CSRF cho request đổi dữ liệu', () => {
   const body = 'username=tester_1&password=dung-mat-khau';
 
+  it('đường dẫn mã hoá %xx (/%61pi/...) vẫn bị chặn như /api (I-1)', async () => {
+    const res = await app.inject({
+      method: 'POST',
+      url: '/%61pi/v1/auth/logout',
+      headers: { origin: 'https://evil.example', host: 'mfg.local' },
+    });
+    expect(res.statusCode).toBe(415);
+  });
+
   it('thiếu Content-Type JSON (form, text) → 415', async () => {
     for (const type of ['application/x-www-form-urlencoded', 'text/plain']) {
       const res = await app.inject({

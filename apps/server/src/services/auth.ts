@@ -110,20 +110,21 @@ export function loginLockRemainingMs(user: UserRow, now: Date): number {
 }
 
 /**
- * Ghi một lần sai mật khẩu (khoá dòng `users` để các lần thử song song không đếm sót). Lần sai đầu
- * tiên ngoài cửa sổ 15' mở cửa sổ mới; đủ 5 lần trong cửa sổ → đặt `locked_until` và xoá bộ đếm.
+ * Giữ một lượt thử mật khẩu TRƯỚC khi kiểm (A-1): khoá dòng `users`, nếu đang khoá trả số ms còn
+ * khoá; không thì đếm lượt này như một lần sai (đăng nhập đúng sẽ xoá bộ đếm). Vì đếm trước khi chạy
+ * argon2 nên request song song cũng chỉ được kiểm tối đa 5 lần/15', và không lọt request nào sau khi
+ * đã khoá. Lần đầu ngoài cửa sổ 15' mở cửa sổ mới; đủ 5 lần → đặt `locked_until`, xoá bộ đếm.
  */
-export async function recordLoginFailure(db: Db, userId: number, now: Date): Promise<void> {
-  await db.transaction(async (tx) => {
-    const [u] = await tx
-      .select({ count: users.failedLoginCount, windowStart: users.failedLoginWindowStart })
-      .from(users)
-      .where(eq(users.id, userId))
-      .for('update');
-    if (!u) return;
+export async function reserveLoginAttempt(db: Db, userId: number, now: Date): Promise<number> {
+  return db.transaction(async (tx) => {
+    const [u] = await tx.select().from(users).where(eq(users.id, userId)).for('update');
+    if (!u) return 0;
+    const lockedMs = loginLockRemainingMs(u, now);
+    if (lockedMs > 0) return lockedMs;
     const inWindow =
-      u.windowStart !== null && now.getTime() - u.windowStart.getTime() < LOGIN_FAILURE_WINDOW_MS;
-    const count = inWindow ? u.count + 1 : 1;
+      u.failedLoginWindowStart !== null &&
+      now.getTime() - u.failedLoginWindowStart.getTime() < LOGIN_FAILURE_WINDOW_MS;
+    const count = inWindow ? u.failedLoginCount + 1 : 1;
     const patch =
       count >= LOGIN_MAX_FAILURES
         ? {
@@ -131,18 +132,21 @@ export async function recordLoginFailure(db: Db, userId: number, now: Date): Pro
             failedLoginWindowStart: null,
             lockedUntil: new Date(now.getTime() + LOGIN_LOCK_MS),
           }
-        : { failedLoginCount: count, failedLoginWindowStart: inWindow ? u.windowStart : now };
+        : {
+            failedLoginCount: count,
+            failedLoginWindowStart: inWindow ? u.failedLoginWindowStart : now,
+          };
     await tx.update(users).set(patch).where(eq(users.id, userId));
+    return 0;
   });
 }
 
-/** Đăng nhập đúng → xoá bộ đếm/khoá cũ (chỉ ghi DB khi có gì để xoá). */
-export async function clearLoginFailures(db: Db | Tx, user: UserRow): Promise<void> {
-  if (user.failedLoginCount === 0 && !user.failedLoginWindowStart && !user.lockedUntil) return;
+/** Đăng nhập đúng → xoá bộ đếm/khoá (lượt vừa giữ ở {@link reserveLoginAttempt} cũng được xoá). */
+export async function clearLoginFailures(db: Db | Tx, userId: number): Promise<void> {
   await db
     .update(users)
     .set({ failedLoginCount: 0, failedLoginWindowStart: null, lockedUntil: null })
-    .where(eq(users.id, user.id));
+    .where(eq(users.id, userId));
 }
 
 /** `rewardedMatchesToday`: số trận đã nhận thưởng hôm nay (GMT+7), route tính qua `countRewardedMatches`. */

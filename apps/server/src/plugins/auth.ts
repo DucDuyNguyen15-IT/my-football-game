@@ -46,7 +46,8 @@ export function registerAuth(app: FastifyInstance): void {
   app.decorateRequest('user', null);
 
   app.addHook('onRequest', async (req) => {
-    if (!MUTATING.has(req.method) || !req.url.startsWith('/api/')) return;
+    // Theo mẫu route đã khớp, không theo `req.url` thô: `/%61pi/...` vẫn vào route /api (I-1, như B2-01).
+    if (!MUTATING.has(req.method) || !req.routeOptions.url?.startsWith('/api/')) return;
     if (!/^application\/json\b/i.test(req.headers['content-type'] ?? '')) {
       throw new AppError('validation_error', 415, 'Cần Content-Type: application/json');
     }
