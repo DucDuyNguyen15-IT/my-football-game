@@ -11,8 +11,6 @@ export interface QualitySettings {
   shadows: boolean;
   /** Cạnh shadow map của đèn chính (px). */
   shadowMapSize: number;
-  /** PCF mềm (đắt hơn) thay cho PCF thường. */
-  softShadows: boolean;
   /** Hậu kỳ: bloom + tone mapping ACES + SMAA. Tắt thì vẽ thẳng ra màn hình (MSAA của canvas). */
   postFx: boolean;
   /** Cường độ bloom (0 = tắt). */
@@ -36,7 +34,6 @@ export const QUALITY: Record<GraphicsQuality, QualitySettings> = {
     maxPixelRatio: 1,
     shadows: false,
     shadowMapSize: 1024,
-    softShadows: false,
     postFx: false,
     bloomStrength: 0,
     floodSpots: false,
@@ -50,7 +47,6 @@ export const QUALITY: Record<GraphicsQuality, QualitySettings> = {
     maxPixelRatio: 2,
     shadows: true,
     shadowMapSize: 2048,
-    softShadows: true,
     postFx: true,
     bloomStrength: 0.55,
     floodSpots: true,

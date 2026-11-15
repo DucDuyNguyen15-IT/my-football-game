@@ -340,7 +340,8 @@ export class MatchRenderer {
     this.transition.setPreset(graphics.preset);
     const { renderer, sun } = this;
     renderer.setPixelRatio(pixelRatioFor(q, window.devicePixelRatio));
-    const shadowType = q.softShadows ? THREE.PCFSoftShadowMap : THREE.PCFShadowMap;
+    // Three r18x đã bỏ PCFSoftShadowMap (tự lùi về PCF và in cảnh báo, T12).
+    const shadowType = THREE.PCFShadowMap;
     const toneMapping = q.postFx ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     const recompile =
       renderer.shadowMap.enabled !== q.shadows ||
