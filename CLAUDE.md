@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** GĐ8 xong (2026-11-14), giao diện v3 xong. Đang Phần B — review toàn bộ đồ án theo tác giả (`.claude/collab/plan-review-B.md`): B1, B1b, B3, B4, luật 2–4, R78, phần Opus của B2 (8.2) đã xong (2026-11-16)
-- **Việc tiếp theo:** Fable review chéo phần Opus viết (B2 auth/ví/gacha GĐ6, B5 render Three.js, B6 docs, các commit dọn lỗi 16/11) → sửa → GĐ9. Việc còn tồn: `docs/QA-REPORT.md` §6
+- **Giai đoạn đang làm:** GĐ8 xong (2026-11-14), giao diện v3 xong. Đang Phần B — review toàn bộ đồ án theo tác giả (`.claude/collab/plan-review-B.md`): B1, B1b, B3, B4, B5, B6, luật 2–4, R78, phần Opus của B2 (8.2), audit bảo mật server đã xong (2026-11-16)
+- **Việc tiếp theo:** Fable review chéo các commit Opus 16/11 (dọn lỗi Thấp → B5/B6, `.claude/collab/report-review-b5-b6.md`) → GĐ9. Việc còn tồn: `docs/QA-REPORT.md` §6
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
@@ -41,7 +41,7 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | `pnpm test` | Chạy toàn bộ test Vitest (mọi package) — `pnpm test:watch` để chạy theo dõi |
 | `pnpm --filter @pitch/sim exec vitest run` | Chỉ test một package (thay `@pitch/sim` bằng `@pitch/server`, `@pitch/web`, `@pitch/shared`) |
 | `pnpm lint` | ESLint (chặn Three.js/Phaser/DOM/`Math.random` trong `packages/sim`, `Math.random` trong server) |
-| `pnpm typecheck` | `tsc` cho từng package |
+| `pnpm typecheck` | `tsc` cho từng package và `e2e/` |
 | `pnpm check` | lint + typecheck + test — **phải xanh trước mỗi commit** |
 | `pnpm e2e` | E2E luồng chính bằng Playwright (`e2e/`, task 8.1): tự migrate + seed DB test (`E2E_DATABASE_URL` → `DATABASE_URL_TEST` → `pitch_test`, không bao giờ DB dev `pitch`), bật server :3101 + web :5174 riêng. Lần đầu: `pnpm exec playwright install chromium`. Không nằm trong `pnpm check` |
 | `pnpm build` | Build web (`apps/web/dist`) + server (`apps/server/dist`) |
@@ -58,7 +58,7 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 - **Tiết kiệm usage:** phiên vượt ~200k token thì dừng và báo người dùng (trừ khi người dùng cho phép riêng phiên đó).
 - **Phân vai agent (từ 14/11/2026):** không dùng Gemini nữa. Opus điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit; Fable 5.2 làm code từng task trong worktree riêng; Haiku làm việc vặt (docs, chạy lệnh).
 
-## Phối hợp với Gemini (Antigravity)
+## Phối hợp với Gemini (Antigravity) — chỉ khi người dùng giao riêng (ngoại lệ của quy tắc "không dùng Gemini")
 - CLI: `C:\Users\Admin\.gemini\bin\agy.exe` (cài Antigravity rồi chạy `agy install`). Model: `gemini-pro-orchestrator-g1-pro` (Orchestrator Argon, **không** nhận cờ `--effort`).
 - Giao việc: chạy nền trong worktree riêng của Gemini
   `agy -p "Đọc và thực hiện brief ở .claude/collab/brief-<task>.md" --model gemini-pro-orchestrator-g1-pro --mode auto --output-format json`
@@ -81,5 +81,3 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 | 8.4 Rà tiêu chí & QA-REPORT | Fable | ✅ Đã gộp `main` (36/36 tiêu chí) |
 
 Opus đã review cuối và gộp cả 3 nhánh (2026-11-14): `pnpm check` 845 test xanh, `ledger:check` 0 lệch, worktree và nhánh đã dọn.
-
-**Tuần sau:** 8.1 E2E (Playwright, dùng `?half=`/`?autopilot=1` để trận ngắn) → 8.3 hiệu năng → 8.4 rà tiêu chí chấp nhận & hoàn thiện `docs/QA-REPORT.md`.

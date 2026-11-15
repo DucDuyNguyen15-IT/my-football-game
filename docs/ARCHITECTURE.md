@@ -1,6 +1,6 @@
 # Kiến trúc — MFG (My Football Game)
 
-_Phiên bản 1.0 — 2026-10-10 — Giai đoạn 3. Nguồn: `docs/PRD.md`, ADR-0001…0007._
+_Phiên bản 1.1 — 2026-11-16 (rà B6 khớp code) — bản đầu 2026-10-10, Giai đoạn 3. Nguồn: `docs/PRD.md`, ADR-0001…0010._
 _Tài liệu này mô tả **hình dạng** hệ thống. Số liệu kinh tế (giá, tỉ lệ, thưởng) nằm trong PRD và file config server, không lặp lại ở đây._
 
 ---
@@ -72,7 +72,8 @@ apps/
     routes/         auth, cards, player-cards, packs, squad, matches, missions, admin
     services/       transaction + khoá dòng; gọi domain
     domain/         gacha.ts, upgrade.ts, rewards.ts, missions.ts — thuần, nhận rng làm tham số
-    db/             schema.ts, migrations/, seed/
+    db/             schema.ts, migrate.ts, seed/
+  drizzle/          migration SQL 0000…0003 (+ meta/)
 packages/
   sim/src/          math/ rng/ physics/ rules/ ai/ stats/ match.ts
   shared/src/       domain.ts (enum, OVR, formation) · api/*.ts (contract từng nhóm endpoint)
@@ -121,7 +122,8 @@ erDiagram
 |---|---|---|
 | id | bigint identity | PK |
 | username | text | NOT NULL; `UNIQUE (lower(username))`; 3–20 ký tự `[a-zA-Z0-9_]` (validate ở Zod) |
-| password_hash | text | argon2id |
+| password_hash | text | argon2id; NULL = tài khoản chỉ đăng nhập Google (ADR-0010) |
+| google_sub | text | NULL; `UNIQUE` — `sub` của tài khoản Google đã gắn (ADR-0010, migration `0002_google_sign_in.sql`). `CHECK (password_hash IS NOT NULL OR google_sub IS NOT NULL)` |
 | email | text | NULL (tuỳ chọn) |
 | coins | bigint | NOT NULL DEFAULT 0, **`CHECK (coins >= 0)`** |
 | free_pack5_credits | smallint | NOT NULL DEFAULT 0, `CHECK (>= 0)` — gói 5 miễn phí của quà tân thủ |
@@ -333,11 +335,15 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | 13 | `GET /squad` | ✔ | — | `{ formation, slots: { [slot]: Id \| null }, teamRating, warnings[] }` | F6 |
 | 14 | `PUT /squad` | ✔ | `{ formation, slots }` | như #13 | Thay toàn bộ (idempotent). Kiểm sở hữu, trùng thẻ, ≤ 5 dự bị |
 | 15 | `POST /matches` | ✔ | `{ difficulty }` | `{ matchId, token, seed, rewardEligible, home: MatchTeam, away: MatchTeam }` | 201. Kiểm có GK + đủ 7 người (`invalid_squad`). Đội máy sinh ở server. §5.2 |
-| 16 | `POST /matches/:id/result` | ✔ | `{ token, homeGoals, awayGoals, shootout?: { home, away } }` | `{ outcome, reward, balance, missions: MissionProgress[] }` | Token dùng 1 lần; nộp lại đúng token cho trận đã `finished` → trả kết quả cũ (không cộng lần 2). `missions` là `[]` cho tới task 7.4. F7 |
+| 16 | `POST /matches/:id/result` | ✔ | `{ token, homeGoals, awayGoals, shootout?: { home, away } }` | `{ outcome, reward, balance, missions: MissionProgress[] }` | Token dùng 1 lần; nộp lại đúng token cho trận đã `finished` → trả kết quả cũ (không cộng lần 2). F7 |
 | 17 | `GET /missions/today` | ✔ | — | `MissionProgress[]` | Tự tạo 3 nhiệm vụ cho ngày GMT+7 nếu chưa có. F12 |
 | 18 | `POST /missions/:code/claim` | ✔ | — | `{ reward, balance }` | Một lần/ngày/nhiệm vụ |
 | 18b | `POST /missions/expired/claim` | ✔ | — | `{ items, balance }` | Tự nhận nhiệm vụ ngày cũ đã xong mà chưa nhận; `items` chỉ trả đúng một lần (client hiện bảng thông báo khi vào game). Quyết định 15/11/2026 |
 | 19 | `GET /admin/retention` | admin | `?from=&to=` | `[{ cohortDay, registered, d1, d7 }]` | F13 |
+| 20 | `GET /admin/onboarding` | admin | `?from=&to=` | Số liệu phễu tân thủ | Task 7.6 |
+| 21 | `GET /config/auth` | — | — | `{ googleClientId \| null }` | null → ẩn nút Google. ADR-0010 |
+| 22 | `POST /auth/google` | — | `{ idToken, username? }` | `{ status: 'signed_in', me } \| { status: 'needs_username', suggestedUsername }` | 404 khi chưa cấu hình Google. 201 khi vừa tạo tài khoản. ADR-0010 |
+| 23 | `POST /dev/grant-coins` | ✔ | `{ amount }` | `{ balance }` | **Chỉ đăng ký khi `ENABLE_DEV_ROUTES=1`** (dev/E2E) |
 
 `MatchTeam = { formation, players: [{ slot, cardId, level, position, stats (đã áp cấp + và phạt sai vị trí) }] }` — sim nhận thẳng cấu trúc này, client không tự tính chỉ số hiệu lực.
 
@@ -426,9 +432,9 @@ Cùng khuôn với §5.1: `BEGIN` → khoá `users` → khoá `player_cards` c�
 |---|---|
 | Dev | `pnpm dev`: Vite :5173 (proxy `/api` → :3000) + Fastify :3000 (`tsx watch`). Postgres 16 chạy bằng Docker (`docker compose -f docker-compose.dev.yml up -d`, thêm ở task 6.1) |
 | Test | Vitest. Test DB-integration dùng Postgres thật qua `DATABASE_URL_TEST`; mỗi test chạy trong transaction rồi rollback, hoặc truncate giữa các file |
-| Prod | Docker Compose: Caddy (HTTPS + file tĩnh web + reverse proxy `/api`) + server + Postgres (ADR-0007). Migration chạy khi server khởi động |
+| Prod | Docker Compose: Caddy (HTTPS + file tĩnh web + reverse proxy `/api`) + server + Postgres (ADR-0007). Migration: hiện **chưa** tự chạy khi server khởi động — chạy tay `pnpm --filter @pitch/server db:migrate` (sau `pg_dump`); GĐ9.1 dự kiến cho chạy lúc khởi động (`docs/plans/phase-9-deploy.md`) |
 
-Biến môi trường (server): `DATABASE_URL`, `SESSION_SECRET`, `PORT`, `HOST`, `NODE_ENV`, `MATCH_MIN_DURATION_SEC` (mặc định 360; test đặt nhỏ), `ENABLE_DEV_ROUTES` (chỉ bật route `/api/v1/dev/*` khi `=1`; mặc định tắt — không suy ra từ `NODE_ENV`).
+Biến môi trường (server): `DATABASE_URL`, `SESSION_SECRET`, `PORT`, `HOST`, `NODE_ENV`, `MATCH_MIN_DURATION_SEC` (mặc định 360; test đặt nhỏ), `ENABLE_DEV_ROUTES` (chỉ bật route `/api/v1/dev/*` khi `=1`; mặc định tắt — không suy ra từ `NODE_ENV`), `DATABASE_URL_TEST` (DB cho test), `TRUST_PROXY` (`=1` chỉ khi chạy sau Caddy — đọc IP thật từ `X-Forwarded-For`), `GOOGLE_CLIENT_ID` (thiếu thì tắt đăng nhập Google). Production bắt buộc đặt `DATABASE_URL` và `SESSION_SECRET` (`config/env.ts`).
 Quyền admin: cột `users.is_admin`, bật bằng script `pnpm --filter @pitch/server admin:grant <username>` (không có API cấp quyền).
 
 ## 9. Quyết định mở (chưa cần ADR)

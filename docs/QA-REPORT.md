@@ -1,12 +1,12 @@
 # Báo cáo QA & Bảo mật — MFG (My Football Game)
 
-_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Cập nhật lần cuối: 2026-11-14 (task 8.4)._
+_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Cập nhật lần cuối: 2026-11-16 (Phần B review; tóm tắt bên dưới là số liệu ngày 2026-11-14 trừ chỗ ghi khác)._
 
 **Tóm tắt (2026-11-14)**
 
 | Hạng mục | Kết quả | Chi tiết |
 |---|---|---|
-| Bảo mật (8.2) | Không còn lỗi High/Critical; 6 phát hiện đã sửa, 2 ghi nhận theo thiết kế MVP; `pnpm audit` 0 High/Critical | §1 |
+| Bảo mật (8.2) | Không còn lỗi High/Critical; SEC-01…13: 10 đã sửa, 3 ghi nhận/chấp nhận (cập nhật 16/11); `pnpm audit` 0 High/Critical | §1 |
 | Hiệu năng (8.3) | Bundle, p95 mở gói (41–71 ms), truy vấn retention/onboarding (< 100 ms) đã đo; FPS cả trận trên Intel UHD: **Cao 74,6 · Thấp 166,0 FPS TB** (≥ 55); 20 lần vào/ra trận không rò bộ nhớ | §2 |
 | E2E luồng chính (8.1) | `pnpm e2e` xanh 3 lần liên tiếp | §3 |
 | Tiêu chí chấp nhận PRD (8.4) | 36 tiêu chí: **36 Đạt**, 0 Chưa đạt, 0 Không áp dụng | §4 |
@@ -248,7 +248,7 @@ Rà tĩnh phía code (không thay cho số đo): `MatchCanvas` huỷ renderer kh
 
 - **Ngày rà:** 2026-11-14 · **Nguồn:** mọi mục "Tiêu chí chấp nhận" trong `docs/PRD.md` (§5, §6.3–§6.6, §7, §8) — 36 tiêu chí — cùng mục tiêu ở §9 và bảng chỉ số §10.
 - **Cách rà:** với từng tiêu chí, mở file test và đọc phần thân test để chắc test kiểm đúng điều tiêu chí yêu cầu (không suy theo tên file). Tiêu chí về giao diện chưa có test tự động thì kiểm tay bằng Playwright trên giao diện thật (nhật ký ở 4.9). Đường dẫn test tính từ gốc repo; tên trong ngoặc kép là tên `it(...)`.
-- **Trạng thái nền:** `pnpm check` xanh (lint + typecheck + 87 file / 852 test Vitest) ngày 2026-11-14 trên DB `pitch_test_a`; mọi test nêu dưới đây nằm trong `pnpm check`, trừ chỗ ghi rõ "chạy riêng".
+- **Trạng thái nền:** `pnpm check` xanh (lint + typecheck + 87 file / 852 test Vitest) ngày 2026-11-14 (ngày 2026-11-16: 94 file / 979 test) trên DB `pitch_test_a`; mọi test nêu dưới đây nằm trong `pnpm check`, trừ chỗ ghi rõ "chạy riêng".
 
 ### 4.1 Tổng hợp
 
