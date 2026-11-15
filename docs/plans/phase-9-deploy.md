@@ -28,6 +28,13 @@
 - Không có CORS (web và API cùng origin) — giữ nguyên, không thêm `@fastify/cors`.
 - Backup Postgres tự động (đã có ở 9.2) + theo dõi lỗi: ít nhất cảnh báo khi healthcheck lỗi và gom log `internal_error` của server.
 
+**Checklist pháp lý & dữ liệu trước khi public (rà 2026-11-16):** áp vào 9.2, xong trước khi đưa link công khai.
+- Trang **Chính sách bảo mật** (dữ liệu lưu: tên đăng nhập, hash mật khẩu, mã Google + email nếu đăng nhập Google, sự kiện analytics nội bộ; cookie `sid` chỉ để đăng nhập; bên thứ 3 duy nhất: Google Đăng nhập; mục đích; cách yêu cầu xoá) và **Điều khoản sử dụng** (xu/thẻ là tiền ảo, không quy đổi, không hoàn tiền; cầu thủ hư cấu). Link ở màn đăng nhập + chân trang.
+- Form đăng ký: ô đồng ý Điều khoản + Chính sách (Nghị định 13/2023), ghi mục đích thu dữ liệu.
+- **Xoá tài khoản** (quyền xoá dữ liệu, NĐ 13): API `DELETE /api/v1/me` (xác nhận mật khẩu, xoá dữ liệu người chơi + phiên) + nút trong game; có test.
+- **Bản quyền model 3D:** người dùng tự tìm hiểu giấy phép bóng/khung thành (Sketchfab) và cầu thủ (Mixamo). Chưa rõ giấy phép → bản public không kèm file đó (game tự vẽ bằng code); dùng được → ghi nguồn trong README/trang giới thiệu.
+- Sau mỗi lần cập nhật lớn: rà lại checklist bảo mật + checklist này.
+
 ### 9.3 — README & bàn giao `[ ]`
 - **Phụ thuộc:** 9.2 · **Model:** default
 - **Bối cảnh:** `CLAUDE.md` (Lệnh thường dùng), `docs/ARCHITECTURE.md`; skill `ecc:update-docs`.
