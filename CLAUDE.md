@@ -3,8 +3,8 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Giai đoạn đang làm:** GĐ8 xong (2026-11-14). Trước GĐ9: làm lại giao diện v3 "Bộ áo mới" (Gemini, ngoại lệ có đồng ý của người dùng) → review toàn bộ đồ án (Fable làm, Opus review chéo)
-- **Việc tiếp theo:** chọn 1 trong 3 hướng thiết kế v3 ở `docs/design/v3/` (nhánh `feat/ui-v3-directions`); sau đó áp vào `apps/web` theo 3 đợt. Việc còn tồn: `docs/QA-REPORT.md` §6
+- **Giai đoạn đang làm:** GĐ8 xong (2026-11-14), giao diện v3 xong. Đang Phần B — review toàn bộ đồ án theo tác giả (`.claude/collab/plan-review-B.md`): B1, B1b, B3, B4, luật 2–4, R78, phần Opus của B2 (8.2) đã xong (2026-11-16)
+- **Việc tiếp theo:** Fable review chéo phần Opus viết (B2 auth/ví/gacha GĐ6, B5 render Three.js, B6 docs, các commit dọn lỗi 16/11) → sửa → GĐ9. Việc còn tồn: `docs/QA-REPORT.md` §6
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
