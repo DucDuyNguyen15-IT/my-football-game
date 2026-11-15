@@ -63,12 +63,12 @@ export function Topbar() {
               {me.coins.toLocaleString('vi-VN')}
             </span>
           </span>
-          <span className="user">
+          <Link to="/account" className="user" aria-label={`Tài khoản ${me.username}`}>
             <span className="user__dot" aria-hidden="true">
               {me.username.slice(0, 1).toUpperCase()}
             </span>
             <span className="user__name">{me.username}</span>
-          </span>
+          </Link>
           <button
             type="button"
             className="btn btn--ghost btn--sm"

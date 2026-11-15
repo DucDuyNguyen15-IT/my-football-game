@@ -3,13 +3,14 @@
  * nhập thì chuyển về trang định vào (hoặc trang chủ).
  */
 import { useCallback, useId, useState, type FormEvent, type ReactNode } from 'react';
-import { Navigate, useLocation, useSearchParams } from 'react-router';
+import { Link, Navigate, useLocation, useSearchParams } from 'react-router';
 import { LoginRequest, RegisterRequest, Username } from '@pitch/shared';
 import { useAuthConfig, useGoogleSignIn, useLogin, useMe, useRegister } from '../../api/auth';
 import { useEconomy } from '../../api/player-cards';
 import { describeAuthError, fieldErrorOf, type AuthField, type AuthNotice } from './authErrors';
 import { GoogleButton } from './GoogleButton';
 import './auth.css';
+import '../legal/legal.css';
 
 type Mode = 'login' | 'register';
 type FieldErrors = Partial<Record<AuthField, string>>;
@@ -58,6 +59,9 @@ export function AuthPage() {
   const [password, setPassword] = useState('');
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  /** Đồng ý Điều khoản + Chính sách khi đăng ký (NĐ 13/2023). */
+  const [agreed, setAgreed] = useState(false);
+  const [consentError, setConsentError] = useState(false);
   const [localErrors, setLocalErrors] = useState<FieldErrors>({});
   /** Lần đầu đăng nhập Google: giữ ID token để gửi lại kèm tên đăng nhập. */
   const [googleStep, setGoogleStep] = useState<{ idToken: string; suggested: string } | null>(null);
@@ -122,6 +126,10 @@ export function AuthPage() {
       return;
     }
     setLocalErrors({});
+    if (mode === 'register' && !agreed) {
+      setConsentError(true);
+      return;
+    }
     google.reset();
     setJustRegistered(mode === 'register');
     active.mutate(parsed.data, {
@@ -264,6 +272,31 @@ export function AuthPage() {
                   </Field>
                 )}
 
+                {isRegister && (
+                  <label className="consent">
+                    <input
+                      type="checkbox"
+                      checked={agreed}
+                      aria-invalid={consentError && !agreed}
+                      onChange={(e) => {
+                        setAgreed(e.target.checked);
+                        setConsentError(false);
+                      }}
+                    />
+                    <span>
+                      Tôi đồng ý <Link to="/terms">Điều khoản sử dụng</Link> và{' '}
+                      <Link to="/privacy">Chính sách bảo mật</Link> (dữ liệu tài khoản và dữ liệu
+                      chơi chỉ dùng để chạy game).
+                    </span>
+                  </label>
+                )}
+                {isRegister && consentError && !agreed && (
+                  <p className="field__error" role="alert">
+                    <WarnIcon />
+                    Cần đồng ý Điều khoản và Chính sách để tạo tài khoản.
+                  </p>
+                )}
+
                 {notice && <Notice notice={notice} />}
 
                 <button
@@ -293,6 +326,7 @@ export function AuthPage() {
               <p className="muted auth__foot">
                 Không có giao dịch tiền thật. Xu chỉ kiếm được khi chơi.
               </p>
+              <LegalLinks />
             </>
           )}
         </div>
@@ -300,6 +334,13 @@ export function AuthPage() {
     </main>
   );
 }
+
+const LegalLinks = () => (
+  <nav className="legal-links" aria-label="Pháp lý">
+    <Link to="/privacy">Chính sách bảo mật</Link>
+    <Link to="/terms">Điều khoản sử dụng</Link>
+  </nav>
+);
 
 const WarnIcon = () => (
   <svg
@@ -442,6 +483,10 @@ function GoogleUsernameStep({
           <span className="btn__label">Vào sân &amp; nhận quà</span>
         </button>
         <span className="muted auth__foot">{giftText} đang chờ</span>
+        <span className="muted auth__foot">
+          Tạo tài khoản nghĩa là bạn đồng ý <Link to="/terms">Điều khoản</Link> và{' '}
+          <Link to="/privacy">Chính sách bảo mật</Link>.
+        </span>
         <button
           type="button"
           className="btn btn--ghost btn--block"

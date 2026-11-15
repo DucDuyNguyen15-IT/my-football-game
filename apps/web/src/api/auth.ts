@@ -3,6 +3,7 @@ import {
   AuthConfig,
   GoogleAuthResult,
   Me,
+  type DeleteAccountRequest,
   type GoogleAuthRequest,
   type LoginRequest,
   type RegisterRequest,
@@ -59,6 +60,18 @@ export function useGoogleSignIn() {
       apiFetch('/auth/google', GoogleAuthResult, { method: 'POST', body }),
     onSuccess: (result) => {
       if (result.status === 'signed_in') qc.setQueryData(meKey, result.me);
+    },
+  });
+}
+
+/** Xoá tài khoản (DELETE /me, ẩn danh hoá phía server): thành công thì xử lý như đăng xuất. */
+export function useDeleteAccount() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (body: DeleteAccountRequest) => apiFetch('/me', null, { method: 'DELETE', body }),
+    onSuccess: () => {
+      qc.setQueryData(meKey, null);
+      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== meKey[0] });
     },
   });
 }

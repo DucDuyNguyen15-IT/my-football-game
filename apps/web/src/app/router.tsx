@@ -1,10 +1,12 @@
 import { lazy, Suspense } from 'react';
 import { createBrowserRouter, Navigate } from 'react-router';
+import { AccountPage } from '../features/account/AccountPage';
 import { AdminPage } from '../features/admin/AdminPage';
 import { AuthPage } from '../features/auth/AuthPage';
 import { CollectionPage } from '../features/collection/CollectionPage';
 import { HomePage } from '../features/home/HomePage';
 import { IntroGate } from '../features/intro/IntroGate';
+import { PrivacyPage, TermsPage } from '../features/legal/LegalPage';
 import { ShopPage } from '../features/shop/ShopPage';
 import { SquadPage } from '../features/squad/SquadPage';
 import { UpgradePage } from '../features/upgrade/UpgradePage';
@@ -16,6 +18,9 @@ const PlayPage = lazy(() =>
 );
 
 export const router = createBrowserRouter([
+  // Trang pháp lý công khai, mở thẳng không qua intro (link từ màn đăng nhập, email…).
+  { path: '/privacy', element: <PrivacyPage /> },
+  { path: '/terms', element: <TermsPage /> },
   {
     element: <IntroGate />,
     children: [
@@ -40,6 +45,7 @@ export const router = createBrowserRouter([
               { path: '/squad', element: <SquadPage /> },
               { path: '/upgrade', element: <UpgradePage /> },
               { path: '/admin', element: <AdminPage /> },
+              { path: '/account', element: <AccountPage /> },
             ],
           },
         ],

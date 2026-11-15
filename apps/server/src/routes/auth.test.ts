@@ -1,7 +1,7 @@
 import { eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { ApiError, MeResponse } from '@pitch/shared';
-import { sessions, users } from '../db/schema';
+import { analyticsEvents, sessions, users } from '../db/schema';
 import { hashToken, SESSION_TTL_MS } from '../services/auth';
 import { createTestApp, createUser, resetTestData, testDb } from '../../test/helpers';
 
@@ -139,6 +139,66 @@ describe('POST /auth/logout', () => {
       headers: { 'content-type': 'application/json' },
     });
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('DELETE /me (xoá tài khoản = ẩn danh hoá)', () => {
+  const del = (sid: string, body: object) =>
+    app.inject({
+      method: 'DELETE',
+      url: '/api/v1/me',
+      payload: body,
+      headers: { 'content-type': 'application/json' },
+      cookies: { sid },
+    });
+
+  it('sai tên xác nhận hoặc sai/thiếu mật khẩu → 403, tài khoản còn nguyên', async () => {
+    const sid = await loginOk();
+    for (const body of [
+      { username: 'nguoi_khac', password: 'dung-mat-khau' },
+      { username: 'tester_1', password: 'sai-mat-khau' },
+      { username: 'tester_1' },
+    ]) {
+      const res = await del(sid, body);
+      expect(res.statusCode).toBe(403);
+      expect(ApiError.parse(res.json()).error.code).toBe('invalid_credentials');
+    }
+    expect((await me(sid)).statusCode).toBe(200);
+  });
+
+  it('đúng tên + mật khẩu → 204, xoá tên/mật khẩu/email/phiên/analytics, không đăng nhập lại được', async () => {
+    const sid = await loginOk(); // đăng nhập ghi 1 sự kiện analytics
+    const [before] = await testDb().select().from(users);
+    await testDb().update(users).set({ email: 'a@b.vn' }).where(eq(users.id, before!.id));
+    expect(await testDb().select().from(analyticsEvents)).not.toHaveLength(0);
+
+    const res = await del(sid, { username: 'TESTER_1', password: 'dung-mat-khau' });
+    expect(res.statusCode).toBe(204);
+    expect(res.cookies.find((c) => c.name === 'sid')!.value).toBe('');
+    expect((await me(sid)).statusCode).toBe(401);
+    expect((await login({ username: 'tester_1', password: 'dung-mat-khau' })).statusCode).toBe(401);
+
+    const [after] = await testDb().select().from(users);
+    expect(after).toMatchObject({
+      id: before!.id,
+      username: `deleted-${before!.id}`,
+      email: null,
+      googleSub: null,
+    });
+    expect(after!.passwordHash).not.toMatch(/^\$argon2/);
+    expect(await testDb().select().from(sessions)).toHaveLength(0);
+    expect(await testDb().select().from(analyticsEvents)).toHaveLength(0);
+  });
+
+  it('tài khoản chỉ Google (không mật khẩu): chỉ cần gõ đúng tên', async () => {
+    const sid = await loginOk();
+    await testDb()
+      .update(users)
+      .set({ passwordHash: null, googleSub: 'google-sub-1' })
+      .where(eq(users.username, 'Tester_1'));
+    expect((await del(sid, { username: 'Tester_1' })).statusCode).toBe(204);
+    const [after] = await testDb().select().from(users);
+    expect(after!.googleSub).toBeNull();
   });
 });
 

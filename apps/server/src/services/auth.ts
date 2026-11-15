@@ -9,7 +9,15 @@ import {
   STARTER_SQUAD,
 } from '../config/economy';
 import type { Db, Tx } from '../db/client';
-import { packBoxes, playerCards, sessions, squads, squadSlots, users } from '../db/schema';
+import {
+  analyticsEvents,
+  packBoxes,
+  playerCards,
+  sessions,
+  squads,
+  squadSlots,
+  users,
+} from '../db/schema';
 import { AppError } from '../plugins/errors';
 import { track } from './analytics';
 
@@ -26,6 +34,38 @@ export function hashPassword(password: string): Promise<string> {
 
 export function verifyPassword(hash: string, password: string): Promise<boolean> {
   return argon2.verify(hash, password);
+}
+
+/**
+ * Hash của tài khoản đã xoá: không phải chuỗi argon2 nên không mật khẩu nào khớp; giữ để thoả CHECK
+ * `users_has_login_method`. Tên `deleted-<id>` có dấu `-`, không qua được `Username` nên cũng không
+ * đăng nhập hay đăng ký trùng được.
+ */
+export const DELETED_PASSWORD_HASH = '!deleted';
+
+/**
+ * Xoá tài khoản bằng cách ẩn danh hoá (chốt 2026-11-16): bỏ tên, mật khẩu, email, liên kết Google,
+ * mọi phiên và sự kiện analytics. Thẻ, trận và sổ cái xu (append-only, trigger chặn DELETE) giữ lại
+ * dưới id không còn gắn với ai.
+ */
+export async function anonymizeUser(db: Db, userId: number): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx
+      .update(users)
+      .set({
+        username: `deleted-${userId}`,
+        passwordHash: DELETED_PASSWORD_HASH,
+        googleSub: null,
+        email: null,
+        isAdmin: false,
+        failedLoginCount: 0,
+        failedLoginWindowStart: null,
+        lockedUntil: null,
+      })
+      .where(eq(users.id, userId));
+    await tx.delete(analyticsEvents).where(eq(analyticsEvents.userId, userId));
+    await tx.delete(sessions).where(eq(sessions.userId, userId));
+  });
 }
 
 let dummyHash: Promise<string> | null = null;

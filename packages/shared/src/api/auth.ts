@@ -14,6 +14,16 @@ export const Password = z.string().min(8, 'Mật khẩu ít nhất 8 ký tự').
 export const LoginRequest = z.object({ username: Username, password: z.string().min(1).max(72) });
 export type LoginRequest = z.infer<typeof LoginRequest>;
 
+/**
+ * DELETE /api/v1/me → 204 (xoá tài khoản, NĐ 13/2023): gõ lại đúng tên đăng nhập để xác nhận; tài
+ * khoản có mật khẩu phải nhập mật khẩu (tài khoản chỉ Google thì bỏ trống).
+ */
+export const DeleteAccountRequest = z.object({
+  username: z.string().max(40),
+  password: z.string().max(72).optional(),
+});
+export type DeleteAccountRequest = z.infer<typeof DeleteAccountRequest>;
+
 /** POST /api/v1/auth/register → 201 `MeResponse` (task 6.3b). */
 export const RegisterRequest = z.object({
   username: Username,

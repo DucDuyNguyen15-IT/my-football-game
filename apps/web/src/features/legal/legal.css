@@ -1,0 +1,60 @@
+.legal {
+  min-height: 100vh;
+  padding: var(--sp-6) 16px 48px;
+  background: var(--c-bg);
+  color: var(--c-text);
+}
+.legal__nav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 20px;
+  margin-bottom: 24px;
+  font-size: var(--fs-sm);
+}
+.legal__body {
+  max-width: 72ch;
+  margin: 0 auto;
+  line-height: 1.6;
+}
+.legal__body .h3 {
+  margin: 28px 0 8px;
+}
+.legal__body ul {
+  padding-left: 1.25em;
+}
+.legal__body li + li {
+  margin-top: 6px;
+}
+.legal a {
+  color: var(--c-accent);
+}
+.account__form {
+  display: grid;
+  gap: var(--sp-4);
+  max-width: 420px;
+  margin-top: var(--sp-4);
+}
+.account__form .btn {
+  justify-self: start;
+}
+.legal-links {
+  display: flex;
+  justify-content: center;
+  gap: 16px;
+  font-size: var(--fs-xs);
+}
+.legal-links a,
+.consent a {
+  color: var(--c-accent);
+}
+.consent {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+  font-size: var(--fs-sm);
+  line-height: 1.45;
+}
+.consent input {
+  margin-top: 3px;
+  accent-color: var(--c-accent);
+}

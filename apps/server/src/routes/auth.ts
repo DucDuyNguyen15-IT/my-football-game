@@ -1,5 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import {
+  DeleteAccountRequest,
   GoogleAuthRequest,
   LoginRequest,
   RegisterRequest,
@@ -12,6 +13,7 @@ import { clearSessionCookie, requireAuth, SESSION_COOKIE, setSessionCookie } fro
 import { AppError } from '../plugins/errors';
 import { track } from '../services/analytics';
 import {
+  anonymizeUser,
   burnPasswordCheck,
   clearLoginFailures,
   createAccount,
@@ -159,5 +161,33 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
 
   app.get('/api/v1/me', { preHandler: requireAuth }, async (req): Promise<MeResponse> => {
     return { data: await meWithRewards(app, req.user!) };
+  });
+
+  /**
+   * Xoá tài khoản (NĐ 13/2023): xác nhận bằng tên + mật khẩu rồi ẩn danh hoá (`anonymizeUser`).
+   * Sai xác nhận trả 403 (không 401: web coi 401 là hết phiên). Mật khẩu sai đếm chung khoá đăng
+   * nhập để route này không thành chỗ dò mật khẩu.
+   */
+  app.delete('/api/v1/me', { preHandler: requireAuth }, async (req, reply) => {
+    const { username, password } = DeleteAccountRequest.parse(req.body);
+    const user = req.user!;
+    // So không phân biệt hoa thường, như đăng nhập.
+    if (username.toLowerCase() !== user.username.toLowerCase()) {
+      throw new AppError('invalid_credentials', 403, 'Tên xác nhận không khớp tên đăng nhập');
+    }
+    if (user.passwordHash !== null) {
+      if (!password) throw new AppError('invalid_credentials', 403, 'Nhập mật khẩu để xác nhận');
+      const lockedMs = await reserveLoginAttempt(app.db, user.id, app.clock.now());
+      if (lockedMs > 0) {
+        reply.header('retry-after', String(Math.ceil(lockedMs / 1000)));
+        throw new AppError('login_locked', 429, 'Nhập sai quá nhiều lần, thử lại sau 15 phút');
+      }
+      if (!(await verifyPassword(user.passwordHash, password))) {
+        throw new AppError('invalid_credentials', 403, 'Sai mật khẩu');
+      }
+    }
+    await anonymizeUser(app.db, user.id);
+    clearSessionCookie(reply);
+    return reply.code(204).send();
   });
 }

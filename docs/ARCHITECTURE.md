@@ -325,6 +325,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | 3 | `POST /auth/login` | — | `{ username, password }` | `Me` | Khoá 15' sau 5 lần sai/15'. F8 |
 | 4 | `POST /auth/logout` | ✔ | — | — | 204, xoá session |
 | 5 | `GET /me` | ✔ | — | `Me` = `{ id, username, coins, freePack5Credits, rewardedMatchesToday, rewardedMatchesLimit }` | |
+| 5b | `DELETE /me` | ✔ | `{ username, password? }` | 204, xoá cookie | Xoá tài khoản (NĐ 13) = ẩn danh hoá: tên → `deleted-<id>`, bỏ mật khẩu/email/Google, xoá phiên + analytics; thẻ/trận/sổ cái giữ lại. Sai xác nhận 403 `invalid_credentials`, sai mật khẩu đếm chung khoá đăng nhập (2026-11-16) |
 | 6 | `GET /cards` | — | — | `Card[]` (toàn bộ ~150 mẫu) | Cache dài (`ETag`). Client dùng để hiển thị theo `cardId` |
 | 7 | `GET /player-cards` | ✔ | `?position=&rarity=&sort=ovr\|-ovr\|acquired\|-acquired` | `PlayerCard[]` = `{ id, cardId, level, luck, inSquad, effectiveStats }` | F5 kho thẻ |
 | 8 | `POST /player-cards/sell` | ✔ | `{ playerCardIds: Id[] (1–50) }` | `{ coinsGained, balance }` | Tất cả hoặc không. Xác nhận Vàng+/thẻ + là việc của UI. F11 |

@@ -47,6 +47,10 @@ test('luồng chính: đăng ký → mở gói → xếp đội → đá trận 
     );
     await page.getByLabel('Tên đăng nhập').fill(username);
     await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+    // Chưa tick đồng ý Điều khoản + Chính sách → không tạo tài khoản.
+    await page.getByRole('button', { name: 'Tạo tài khoản & nhận quà' }).click();
+    await expect(page.getByText('Cần đồng ý Điều khoản và Chính sách')).toBeVisible();
+    await page.getByRole('checkbox', { name: /Tôi đồng ý/ }).check();
     await page.getByRole('button', { name: 'Tạo tài khoản & nhận quà' }).click();
 
     await expect(page).toHaveURL(/\/shop\?onboarding=1$/);
@@ -173,5 +177,21 @@ test('luồng chính: đăng ký → mở gói → xếp đội → đá trận 
     await page.getByRole('link', { name: 'Kho thẻ', exact: true }).click();
     await expect(page.getByRole('heading', { level: 1, name: 'Kho thẻ' })).toBeVisible();
     await expectWallet(page, coins);
+  });
+
+  await test.step('xoá tài khoản → về màn đăng nhập, không đăng nhập lại được', async () => {
+    await page.getByRole('link', { name: `Tài khoản ${username}` }).click();
+    await expect(page.getByRole('heading', { level: 1, name: 'Tài khoản' })).toBeVisible();
+    const submit = page.getByRole('button', { name: 'Xoá vĩnh viễn tài khoản' });
+    await expect(submit).toBeDisabled();
+    await page.getByLabel('Gõ lại tên đăng nhập để xác nhận').fill(username);
+    await page.getByLabel(/^Mật khẩu/).fill(password);
+    await submit.click();
+    await expect(page).toHaveURL(/\/login$/);
+
+    await page.getByLabel('Tên đăng nhập').fill(username);
+    await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+    await page.locator('#auth-form').getByRole('button', { name: 'Đăng nhập' }).click();
+    await expect(page.getByText('Sai tên đăng nhập hoặc mật khẩu')).toBeVisible();
   });
 });

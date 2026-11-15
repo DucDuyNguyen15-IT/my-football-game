@@ -717,6 +717,11 @@
   font-weight: 600;
   font-size: var(--fs-sm);
   color: var(--c-text);
+  /* Là link sang /account. */
+  text-decoration: none;
+}
+.user:hover {
+  border-color: var(--c-line-strong);
 }
 .user__dot {
   width: 24px;
