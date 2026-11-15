@@ -21,6 +21,9 @@ declare module 'fastify' {
 
 const AUTH_PREFIX = '/api/v1/auth/';
 const noop: Limiter = async () => {};
+// So theo mẫu route đã khớp, không theo `req.url` thô: router giải mã `%xx` nên `/api/v1/%61uth/login`
+// vẫn vào route đăng nhập mà `req.url` không bắt đầu bằng AUTH_PREFIX (né giới hạn /auth).
+const isAuthRoute = (req: FastifyRequest) => req.routeOptions.url?.startsWith(AUTH_PREFIX) ?? false;
 
 /**
  * Đăng ký `@fastify/rate-limit` ở chế độ `global: false` và tự gọi limiter trong hook: route khai báo
@@ -51,11 +54,11 @@ export function registerRateLimit(app: FastifyInstance, config: RateLimitConfig 
     });
     // Các route `/api/v1/auth/*` (kể cả `/logout`) đã qua `authLimit` ở `onRequest` nên không đếm lần 2.
     app.userRateLimit = async (req, reply) => {
-      if (req.url.startsWith(AUTH_PREFIX)) return;
+      if (isAuthRoute(req)) return;
       return userLimiter.call(app, req, reply);
     };
   });
   app.addHook('onRequest', async (req, reply) => {
-    if (req.url.startsWith(AUTH_PREFIX)) await authLimit(req, reply);
+    if (isAuthRoute(req)) await authLimit(req, reply);
   });
 }

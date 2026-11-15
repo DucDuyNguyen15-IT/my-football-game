@@ -375,6 +375,25 @@ describe('rate limit trước khi truy vấn/ghi phiên lặp trong requireAuth'
     }
   });
 
+  it('đường dẫn mã hoá %xx (/api/v1/%61uth/login) vẫn bị tính vào giới hạn /auth theo IP (B2-01)', async () => {
+    const limited = buildApp({ db: testDb(), clock });
+    try {
+      const login = (url: string) =>
+        limited.inject({
+          method: 'POST',
+          url,
+          remoteAddress: '10.0.0.31',
+          payload: { username: 'khong_ton_tai', password: 'saimatkhau1' },
+        });
+      for (let i = 0; i < 10; i++) expect((await login('/api/v1/auth/login')).statusCode).toBe(401);
+      const encoded = await login('/api/v1/%61uth/login');
+      expect(encoded.statusCode).toBe(429);
+      expect(errorCode(encoded)).toBe('rate_limited');
+    } finally {
+      await limited.close();
+    }
+  });
+
   it('POST /api/v1/auth/logout chỉ tính vào authLimit, không trừ thêm lượt userRateLimit', async () => {
     const { sid, userId } = await signup();
     const secondSession = await createSession(testDb(), userId, clock.now());
