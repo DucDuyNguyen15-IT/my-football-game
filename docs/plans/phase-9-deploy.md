@@ -20,6 +20,14 @@
 - **Kiểm chứng:** link HTTPS công khai chạy luồng chính; file backup tồn tại và khôi phục được vào DB trống.
 - **Xong khi:** tiêu chí "có link chạy thật".
 
+**Checklist bảo mật khi deploy (rà 2026-11-16, phần code server đã đạt — xem `docs/QA-REPORT.md` §1):** áp vào 9.1/9.2.
+- Postgres trong `docker-compose.yml` prod **không** khai báo `ports` (chỉ mạng nội bộ Docker); server cũng chỉ lộ qua Caddy.
+- Tách user DB: role chủ (chạy migration) và role ứng dụng chỉ có `SELECT/INSERT/UPDATE/DELETE` trên bảng `public` (không DDL, không superuser).
+- `TRUST_PROXY=1` chỉ khi server đứng sau Caddy và Caddy đặt lại `X-Forwarded-For`; nếu thêm Cloudflare phía trước thì Caddy chỉ tin IP Cloudflare (`trusted_proxies`) — sai cấu hình là né được rate limit theo IP.
+- Caddyfile: HTTPS + chuyển hướng HTTP→HTTPS, HSTS, CSP cho trang SPA (`default-src 'self'`, cho phép `accounts.google.com` nếu bật đăng nhập Google), `X-Frame-Options`/`nosniff`/`Referrer-Policy`.
+- Không có CORS (web và API cùng origin) — giữ nguyên, không thêm `@fastify/cors`.
+- Backup Postgres tự động (đã có ở 9.2) + theo dõi lỗi: ít nhất cảnh báo khi healthcheck lỗi và gom log `internal_error` của server.
+
 ### 9.3 — README & bàn giao `[ ]`
 - **Phụ thuộc:** 9.2 · **Model:** default
 - **Bối cảnh:** `CLAUDE.md` (Lệnh thường dùng), `docs/ARCHITECTURE.md`; skill `ecc:update-docs`.
