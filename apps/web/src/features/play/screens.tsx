@@ -139,15 +139,9 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
   const [inSlot, setInSlot] = useState<SquadSlot | null>(null);
   const out = subs.options.onPitch.find((p) => p.id === outId);
   const incoming = subs.options.bench.find((b) => b.slot === inSlot);
-  const { hasKeeper, keeperOnly } = subs.options;
   const mismatch =
-    out !== undefined &&
-    incoming !== undefined &&
-    !canSwap(out.position, incoming.position, hasKeeper);
-  // Chờ phạt đền: chỉ được đưa thủ môn dự bị vào khung thành đang trống.
-  const keeperNeeded = keeperOnly && incoming !== undefined && incoming.position !== 'GK';
-  const valid =
-    out !== undefined && incoming !== undefined && !mismatch && !keeperNeeded && subs.left > 0;
+    out !== undefined && incoming !== undefined && !canSwap(out.position, incoming.position);
+  const valid = out !== undefined && incoming !== undefined && !mismatch && subs.left > 0;
   return (
     <>
       <h3 className="panel__title" id="pause-panel-title">
@@ -193,19 +187,9 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
           ))}
         </fieldset>
       </div>
-      {!hasKeeper && !mismatch && !keeperNeeded && (
-        <p className="muted">
-          Đội đang không có thủ môn: chọn thủ môn dự bị để vào thay một cầu thủ ngoài sân.
-        </p>
-      )}
       {mismatch && (
         <p className="subs__warn" role="alert">
           Thủ môn chỉ thay được bằng thủ môn.
-        </p>
-      )}
-      {keeperNeeded && (
-        <p className="subs__warn" role="alert">
-          Đang chờ phạt đền: chỉ được đưa thủ môn dự bị vào sân.
         </p>
       )}
       <button

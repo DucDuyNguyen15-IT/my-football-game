@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import {
   ApiError,
@@ -14,7 +14,7 @@ import {
 } from '@pitch/shared';
 import { MATCH_REWARD, MATCH_REWARD_DAILY_CAP } from '../config/economy';
 import { readSeedCards, seedCards } from '../db/seed';
-import { coinTransactions, matches, users } from '../db/schema';
+import { coinTransactions, matches, squadSlots, users } from '../db/schema';
 import { CPU_TARGET_OVR, startersAverageOvr } from '../domain/match-teams';
 import { hashMatchToken } from '../services/matches';
 import { createTestApp, FakeClock, resetTestData, testDb } from '../../test/helpers';
@@ -144,6 +144,26 @@ describe('POST /api/v1/matches', () => {
     expect(err.code).toBe('invalid_squad');
     expect(err.message).toContain('thủ môn');
     expect(err.details).toEqual([{ field: 'slots.GK', message: 'Ô đá chính đang trống' }]);
+    expect(await testDb().select().from(matches)).toHaveLength(0);
+  });
+
+  it('đội hình cũ có cầu thủ ngoài sân ở ô GK → 422 invalid_squad, không tạo trận', async () => {
+    const sid = await signup();
+    const me = await testDb().select({ id: users.id }).from(users);
+    const userId = me[0]!.id;
+    // Dữ liệu trước luật 16/11 (PUT /squad giờ đã chặn): bỏ thủ môn, đưa thẻ ô P1 sang ô GK.
+    await testDb()
+      .delete(squadSlots)
+      .where(and(eq(squadSlots.userId, userId), eq(squadSlots.slot, 'GK')));
+    await testDb()
+      .update(squadSlots)
+      .set({ slot: 'GK' })
+      .where(and(eq(squadSlots.userId, userId), eq(squadSlots.slot, 'P1')));
+    const res = await start(sid, { difficulty: 'easy' });
+    expect(res.statusCode).toBe(422);
+    const err = ApiError.parse(res.json()).error;
+    expect(err.code).toBe('invalid_squad');
+    expect(err.details).toEqual([{ field: 'slots.GK', message: 'Ô GK phải là thẻ thủ môn' }]);
     expect(await testDb().select().from(matches)).toHaveLength(0);
   });
 

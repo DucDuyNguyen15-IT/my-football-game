@@ -11,7 +11,7 @@ export const SquadSlots = z.object(slotsShape).strict();
 export type SquadSlots = z.infer<typeof SquadSlots>;
 
 export const SquadWarningSchema = z.object({
-  code: z.enum(['missing_gk', 'missing_starters', 'misposition']),
+  code: z.enum(['missing_gk', 'gk_not_keeper', 'missing_starters', 'misposition']),
   slot: SquadSlot.optional(),
   message: z.string(),
 });

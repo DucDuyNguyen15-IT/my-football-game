@@ -230,7 +230,7 @@ describe('thứ tự khoá PUT /squad (users → player_cards id ASC → squads)
     const { sid } = await signup();
     const getRes = await app.inject({ method: 'GET', url: '/api/v1/squad', cookies: { sid } });
     const squad = SquadResponse.parse(getRes.json()).data;
-    const swapped = { ...squad.slots, GK: squad.slots.P1, P1: squad.slots.GK };
+    const swapped = { ...squad.slots, P1: squad.slots.P6, P6: squad.slots.P1 };
 
     const lockQueries: string[] = [];
     const db = testDb();

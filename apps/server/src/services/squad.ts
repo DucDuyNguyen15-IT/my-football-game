@@ -64,7 +64,8 @@ export function getSquad(db: Db, catalog: CardCatalog, userId: number): Promise<
 /**
  * PUT /squad: khoá theo thứ tự `users` → `player_cards` (id tăng dần) → `squads`
  * (ARCHITECTURE §3.4); thẻ không phải của mình → 404, một thẻ ở hai ô → 422 `invalid_squad`;
- * xoá-chèn lại `squad_slots`. Thiếu người chỉ là cảnh báo.
+ * ô GK không phải thẻ thủ môn → 422 `invalid_squad`; xoá-chèn lại `squad_slots`. Thiếu người chỉ
+ * là cảnh báo.
  */
 export async function putSquad(
   db: Db,
@@ -100,6 +101,13 @@ export async function putSquad(
       await tx.insert(squadSlots).values(entries.map((e) => ({ userId, ...e })));
     }
     await tx.update(squads).set({ formation, updatedAt: now }).where(eq(squads.userId, userId));
-    return readSquad(tx, catalog, userId);
+    const squad = await readSquad(tx, catalog, userId);
+    // Ném lỗi trong transaction → huỷ toàn bộ thay đổi.
+    if (squad.warnings.some((w) => w.code === 'gk_not_keeper')) {
+      throw new AppError('invalid_squad', 422, 'Ô GK phải là thẻ thủ môn', [
+        { field: 'slots.GK', message: 'Ô GK phải là thẻ thủ môn' },
+      ]);
+    }
+    return squad;
   });
 }

@@ -357,8 +357,6 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
   const [subs, setSubs] = useState<SubOptions>({
     onPitch: [],
     bench: [],
-    hasKeeper: true,
-    keeperOnly: false,
   });
   const setPaused = useCallback((value: boolean) => {
     pausedRef.current = value;

@@ -1,4 +1,4 @@
-import type { MatchPlayerSetup, SquadSlot } from '@pitch/shared';
+import type { SquadSlot } from '@pitch/shared';
 import { ZERO } from '../math/vec2';
 import type { MatchState, PlayerState, TeamSide, Windup } from '../types';
 
@@ -6,9 +6,8 @@ import type { MatchState, PlayerState, TeamSide, Windup } from '../types';
  * Thay người (PRD §5, F3): chỉ khi bóng chết (cả nghỉ giữa hiệp), tối đa MAX_SUBS lượt mỗi đội.
  * Người vào đứng đúng chỗ người ra, nhận ô sơ đồ của người ra (AI dùng ô để chọn vị trí), thể lực
  * đầy. Người ra không quay lại sân; người bị thẻ đỏ đã rời sân nên không thay được.
- * Không thay lúc đang chờ đá phạt đền. Ngoại lệ: đội không còn thủ môn được đưa thủ môn dự bị vào
- * thay một cầu thủ ngoài sân (kể cả trước quả phạt đền). Từ 15/11 thủ môn không bị thẻ đỏ nữa
- * (`rules/fouls.ts`), nhánh này chỉ còn là phòng hờ cho state dựng tay.
+ * Không thay lúc đang chờ đá phạt đền. Đội luôn có thủ môn: ô GK bắt buộc là thẻ thủ môn
+ * (`evaluateSquad`, 16/11) và thủ môn không bị thẻ đỏ (`rules/fouls.ts`, 15/11).
  */
 
 export const MAX_SUBS = 3;
@@ -26,23 +25,14 @@ export type SubRejection =
 
 export type SubResult = { ok: true; state: MatchState } | { ok: false; reason: SubRejection };
 
-const hasKeeper = (state: MatchState, team: TeamSide): boolean =>
-  state.players.some((p) => p.team === team && p.position === 'GK');
-
 /**
- * Đội `team` lúc này được thay những ai: `open` = mọi lượt hợp lệ; `keeper_only` = chỉ được đưa thủ
- * môn dự bị vào (đang chờ phạt đền mà đội không còn thủ môn); `closed` = không được thay (bóng sống,
- * luân lưu, hết trận, hết lượt, chờ phạt đền). Menu thay người bật/tắt theo giá trị này.
+ * Đội `team` lúc này được thay người không: `closed` khi bóng sống, luân lưu, hết trận, hết lượt hoặc
+ * chờ phạt đền. Menu thay người bật/tắt theo giá trị này.
  */
-export function substitutionWindow(
-  state: MatchState,
-  team: TeamSide,
-): 'open' | 'keeper_only' | 'closed' {
+export function substitutionWindow(state: MatchState, team: TeamSide): 'open' | 'closed' {
   if (state.shootout || !state.ballDead || state.phase === 'full_time') return 'closed';
   if (state.subsUsed[team] >= MAX_SUBS) return 'closed';
-  if (state.restart?.type !== 'penalty') return 'open';
-  const keeperOnBench = state.bench[team].some((p) => p.position === 'GK');
-  return !hasKeeper(state, team) && keeperOnBench ? 'keeper_only' : 'closed';
+  return state.restart?.type === 'penalty' ? 'closed' : 'open';
 }
 
 /** Lý do không cho thay (null = hợp lệ). */
@@ -60,19 +50,12 @@ function rejection(
   if (!out) return 'not_on_pitch';
   const incoming = state.bench[team].find((p) => p.slot === benchSlot);
   if (!incoming) return 'not_on_bench';
-  // Chỉ một thủ môn trên sân: thủ môn đổi thủ môn, cầu thủ ngoài sân đổi cầu thủ ngoài sân. Đội mất
-  // thủ môn (thẻ đỏ) thì thủ môn dự bị được vào thay một cầu thủ ngoài sân.
-  const keeperIn = fillsEmptyGoal(state, team, incoming);
-  if (!keeperIn && (out.position === 'GK') !== (incoming.position === 'GK')) {
-    return 'keeper_mismatch';
-  }
-  if (state.restart?.type === 'penalty' && !keeperIn) return 'penalty_pending';
+  // Thủ môn đổi thủ môn, cầu thủ ngoài sân đổi cầu thủ ngoài sân (ô GK luôn là thủ môn, thủ môn không
+  // bị đỏ nên đội không bao giờ mất thủ môn).
+  if ((out.position === 'GK') !== (incoming.position === 'GK')) return 'keeper_mismatch';
+  if (state.restart?.type === 'penalty') return 'penalty_pending';
   return null;
 }
-
-/** Thủ môn dự bị vào sân khi đội không còn thủ môn (bị thẻ đỏ). */
-const fillsEmptyGoal = (state: MatchState, team: TeamSide, incoming: MatchPlayerSetup): boolean =>
-  incoming.position === 'GK' && !hasKeeper(state, team);
 
 /** Đổi id người lấy đà và người nhận dự kiến của cú phát bóng đang lấy đà. */
 function swapWindup(windup: Windup, swap: (id: string) => string): Windup {
@@ -102,8 +85,7 @@ export function substitute(
   const player: PlayerState = {
     id: inId,
     team,
-    // Thủ môn vào thay cầu thủ ngoài sân (đội mất thủ môn): nhận ô GK, ô của người ra bỏ trống.
-    slot: fillsEmptyGoal(state, team, incoming) ? 'GK' : out.slot,
+    slot: out.slot,
     position: incoming.position,
     stats: incoming.stats,
     pos: out.pos,
@@ -131,22 +113,11 @@ export function substitute(
 }
 
 /**
- * Đội máy tự thay: mất thủ môn (thẻ đỏ) mà còn thủ môn dự bị thì đưa vào thay cầu thủ ngoài sân mệt
- * nhất; rồi lần lượt người mệt nhất dưới AI_SUB_STAMINA, lấy dự bị cùng vị trí (không có thì cầu thủ
+ * Đội máy tự thay: lần lượt người mệt nhất dưới AI_SUB_STAMINA, lấy dự bị cùng vị trí (không có thì cầu thủ
  * ngoài sân bất kỳ), tới khi hết lượt / hết dự bị phù hợp. Không có gì để thay thì trả nguyên `state`.
  */
 export function autoSubstitute(state: MatchState, team: TeamSide): MatchState {
   let s = state;
-  const spareKeeper = state.bench[team].find((b) => b.position === 'GK');
-  if (spareKeeper && !hasKeeper(state, team)) {
-    const outfield = state.players.filter((p) => p.team === team);
-    const out = outfield.reduce<PlayerState | null>(
-      (a, b) => (a === null || b.stamina < a.stamina ? b : a),
-      null,
-    );
-    const r = out && substitute(s, team, out.id, spareKeeper.slot);
-    if (r?.ok) s = r.state;
-  }
   const tired = s.players
     .filter((p) => p.team === team && p.stamina < AI_SUB_STAMINA)
     .sort((a, b) => a.stamina - b.stamina);

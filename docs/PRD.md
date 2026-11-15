@@ -186,11 +186,13 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - Đội hình gồm **7 đá chính + tối đa 5 dự bị**. Một thẻ chỉ được ở một vị trí.
 - **3 sơ đồ:** 2-3-1 (cân bằng), 3-2-1 (phòng ngự), 2-2-2 (tấn công), không tính thủ môn.
 - Xếp thẻ vào ô khác nhóm vị trí → **−15% mọi chỉ số** của thẻ đó trong trận. UI hiện cảnh báo đỏ.
+- **Ô GK chỉ nhận thẻ thủ môn** (không áp phạt −15% mà chặn hẳn): server từ chối lưu đội hình và từ chối vào trận nếu ô GK là cầu thủ ngoài sân (chốt 2026-11-16; nhờ vậy đội luôn có thủ môn trên sân, bỏ ngoại lệ thay thủ môn dự bị lúc chờ phạt đền).
 - **Chỉ số đội** = trung bình OVR hiệu lực (đã trừ phạt sai vị trí) của 7 người đá chính.
 
 **Tiêu chí chấp nhận F6**
 - [x] Kéo-thả thẻ từ kho vào ô; đổi sơ đồ thì giữ các thẻ còn hợp lệ, thẻ thừa chuyển về dự bị hoặc kho.
 - [x] Không vào được trận nếu thiếu thủ môn hoặc chưa đủ 7 người đá chính (thông báo rõ thiếu gì).
+- [x] Không lưu được đội hình có cầu thủ ngoài sân ở ô GK (test tự động; 2026-11-16).
 - [x] Chỉ số đội và cảnh báo sai vị trí cập nhật ngay khi thay đổi.
 - [x] Đội hình lưu ở server, đăng nhập máy khác vẫn còn.
 - [x] Thẻ đang nằm trong đội hình không thể bán hay dùng làm nguyên liệu ép.

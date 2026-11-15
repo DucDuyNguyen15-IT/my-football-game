@@ -301,9 +301,13 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
     });
 
   const misplaced = new Set(
-    evaluation.warnings.filter((w) => w.code === 'misposition').map((w) => w.slot),
+    evaluation.warnings
+      .filter((w) => w.code === 'misposition' || w.code === 'gk_not_keeper')
+      .map((w) => w.slot),
   );
   const missing = evaluation.warnings.filter((w) => w.code !== 'misposition');
+  // Server từ chối lưu đội hình có ô GK không phải thủ môn.
+  const gkInvalid = evaluation.warnings.some((w) => w.code === 'gk_not_keeper');
   const dragItem = dragging ? items.get(dragging) : undefined;
 
   function autoFillBest() {
@@ -417,7 +421,7 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
           <button
             type="button"
             className="btn btn--primary"
-            disabled={!dirty || saver.isPending}
+            disabled={!dirty || gkInvalid || saver.isPending}
             aria-busy={saver.isPending}
             onClick={() => save()}
           >

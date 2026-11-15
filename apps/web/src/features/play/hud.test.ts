@@ -156,28 +156,11 @@ describe('thay người trên HUD', () => {
     expect(canSwap('MF', 'GK')).toBe(false);
   });
 
-  it('canSwap: đội mất thủ môn thì thủ môn dự bị vào thay cầu thủ ngoài sân', () => {
-    expect(canSwap('MF', 'GK', false)).toBe(true);
-    expect(canSwap('MF', 'FW', false)).toBe(true);
-  });
-
-  it('subWindow / subOptions: chờ phạt đền thì đóng; mất thủ môn mà còn thủ môn dự bị thì keeper_only', () => {
+  it('subWindow: chờ phạt đền thì đóng', () => {
     const s = match();
     expect(toHudSnapshot(s).subWindow).toBe('open');
     const pen: MatchState = { ...s, restart: { ...s.restart!, type: 'penalty' } };
     expect(toHudSnapshot(pen).subWindow).toBe('closed');
-    expect(subOptions(pen)).toMatchObject({ hasKeeper: true, keeperOnly: false });
-    const gk = s.players.find((p) => p.id === 'home-GK')!;
-    const noKeeper: MatchState = {
-      ...pen,
-      players: pen.players.filter((p) => p.id !== 'home-GK'),
-      bench: {
-        ...pen.bench,
-        home: [...pen.bench.home, { slot: 'B5', position: 'GK', stats: gk.stats }],
-      },
-    };
-    expect(toHudSnapshot(noKeeper).subWindow).toBe('keeper_only');
-    expect(subOptions(noKeeper)).toMatchObject({ hasKeeper: false, keeperOnly: true });
   });
 });
 

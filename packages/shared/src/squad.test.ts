@@ -53,6 +53,11 @@ describe('evaluateSquad', () => {
     expect(ev.effective.B1).toEqual(stats);
   });
 
+  it('cầu thủ ngoài sân ở ô GK → gk_not_keeper (không phải misposition)', () => {
+    const ev = evaluateSquad('2-3-1', { ...full(), GK: m('1', 'DF') });
+    expect(ev.warnings).toEqual([expect.objectContaining({ code: 'gk_not_keeper', slot: 'GK' })]);
+  });
+
   it('sai vị trí → cảnh báo + chỉ số người đó −15%, rating giảm theo', () => {
     const slots = { ...full(), P1: m('2', 'FW') };
     const ev = evaluateSquad('2-3-1', slots);

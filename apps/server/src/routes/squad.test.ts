@@ -73,16 +73,17 @@ describe('GET /api/v1/squad', () => {
 });
 
 describe('PUT /api/v1/squad', () => {
-  it('đổi chỗ thủ môn ↔ hậu vệ → cảnh báo sai vị trí, rating giảm; đăng nhập lại vẫn còn', async () => {
+  it('đổi chỗ hậu vệ ↔ tiền đạo → cảnh báo sai vị trí, rating giảm; đăng nhập lại vẫn còn', async () => {
     const sid = await signup();
     const before = await getSquad(sid);
-    const slots = { ...before.slots, GK: before.slots.P1, P1: before.slots.GK };
+    // 2-3-1: P1 = DF, P6 = FW.
+    const slots = { ...before.slots, P1: before.slots.P6, P6: before.slots.P1 };
     const res = await put(sid, { formation: '2-3-1', slots });
     expect(res.statusCode).toBe(200);
     const saved = SquadResponse.parse(res.json()).data;
     expect(saved.warnings.map((w) => [w.code, w.slot])).toEqual([
-      ['misposition', 'GK'],
       ['misposition', 'P1'],
+      ['misposition', 'P6'],
     ]);
     expect(saved.teamRating).toBeLessThan(before.teamRating);
 
@@ -131,6 +132,18 @@ describe('PUT /api/v1/squad', () => {
     const res = await put(sid, {
       formation: '2-3-1',
       slots: { ...before.slots, B5: before.slots.GK },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(errorCode(res)).toBe('invalid_squad');
+    expect(await getSquad(sid)).toEqual(before);
+  });
+
+  it('cầu thủ ngoài sân ở ô GK → 422 invalid_squad, đội hình không đổi', async () => {
+    const sid = await signup();
+    const before = await getSquad(sid);
+    const res = await put(sid, {
+      formation: '2-3-1',
+      slots: { ...before.slots, GK: before.slots.P1, P1: before.slots.GK },
     });
     expect(res.statusCode).toBe(422);
     expect(errorCode(res)).toBe('invalid_squad');

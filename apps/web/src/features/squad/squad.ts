@@ -125,7 +125,7 @@ export function sameSquad(
 /**
  * Tự xếp đội mạnh nhất (7.6 / squad.html):
  * ưu tiên thẻ OVR cao nhất đúng vị trí cho từng ô đá chính; ô còn thiếu lấp bằng thẻ OVR cao nhất
- * còn lại; ghế dự bị xếp tối đa 5 thẻ mạnh nhất còn lại (giữ 1 thủ môn dự bị nếu có).
+ * còn lại (trừ ô GK: không có thủ môn thì để trống); ghế dự bị xếp tối đa 5 thẻ mạnh nhất còn lại (giữ 1 thủ môn dự bị nếu có).
  */
 export function autoFillSquad(
   formation: Formation,
@@ -150,9 +150,9 @@ export function autoFillSquad(
     }
   }
 
-  // Lượt 2: lấp ô đá chính còn trống nếu thiếu vị trí chuyên biệt.
+  // Lượt 2: lấp ô đá chính còn trống nếu thiếu vị trí chuyên biệt (ô GK chỉ nhận thủ môn).
   for (const slot of STARTER_SLOTS) {
-    if (next[slot]) continue;
+    if (next[slot] || slot === 'GK') continue;
     const fallback = sorted.find((c) => !used.has(c.id));
     if (fallback) {
       next[slot] = fallback.id;

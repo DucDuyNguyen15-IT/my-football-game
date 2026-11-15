@@ -24,7 +24,8 @@ export interface SquadMember {
   level: number;
 }
 
-export type SquadWarningCode = 'missing_gk' | 'missing_starters' | 'misposition';
+/** `gk_not_keeper` là lỗi cứng: server từ chối lưu và vào trận (16/11, thay ngoại lệ `keeper_only`). */
+export type SquadWarningCode = 'missing_gk' | 'gk_not_keeper' | 'missing_starters' | 'misposition';
 export interface SquadWarning {
   code: SquadWarningCode;
   slot?: SquadSlot;
@@ -49,8 +50,9 @@ const ROLE_NAME: Record<Position, string> = {
 };
 
 /**
- * Đánh giá đội hình: phát hiện trùng thẻ, cảnh báo (thiếu thủ môn, thiếu người đá chính, sai vị
- * trí) và chỉ số đội. Thiếu người chỉ là cảnh báo khi lưu — chặn vào trận ở 6.11.
+ * Đánh giá đội hình: phát hiện trùng thẻ, cảnh báo (thiếu thủ môn, ô GK không phải thủ môn, thiếu
+ * người đá chính, sai vị trí) và chỉ số đội. Thiếu người chỉ là cảnh báo khi lưu — chặn vào trận ở
+ * 6.11; ô GK không phải thủ môn thì chặn cả lưu.
  */
 export function evaluateSquad(
   formation: Formation,
@@ -74,7 +76,9 @@ export function evaluateSquad(
     if (!role) continue;
     starters += 1;
     ovrSum += computeOvr(m.position, stats);
-    if (role !== m.position) {
+    if (slot === 'GK' && m.position !== 'GK') {
+      warnings.push({ code: 'gk_not_keeper', slot, message: 'Ô GK phải là thẻ thủ môn' });
+    } else if (role !== m.position) {
       warnings.push({
         code: 'misposition',
         slot,

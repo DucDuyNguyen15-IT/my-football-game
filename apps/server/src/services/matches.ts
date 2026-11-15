@@ -87,6 +87,12 @@ export async function startMatch(
       slots[SquadSlot.parse(row.slot)] = { card, level: row.level };
     }
 
+    // Đội hình lưu trước luật 16/11 có thể đặt cầu thủ ngoài sân ở ô GK.
+    if (slots.GK && slots.GK.card.position !== 'GK') {
+      throw new AppError('invalid_squad', 422, 'Ô GK phải là thẻ thủ môn — sửa đội hình trước', [
+        { field: 'slots.GK', message: 'Ô GK phải là thẻ thủ môn' },
+      ]);
+    }
     const home = buildHomeTeam(squad.formation, slots);
     if (!home.ok) {
       const missing = home.missing;

@@ -176,4 +176,15 @@ describe('autoFillSquad', () => {
     expect(s.P6).toBe('fw1');
     expect([s.P2, s.P3]).toEqual(['mf2', 'mf3']);
   });
+
+  it('không có thủ môn thì để trống ô GK, không lấp bằng cầu thủ ngoài sân', () => {
+    const cards = ['a', 'b', 'c', 'd', 'e', 'f', 'g'].map((id, i) => ({
+      id,
+      position: 'MF' as const,
+      ovr: 60 + i,
+    }));
+    const s = autoFillSquad('2-3-1', cards);
+    expect(s.GK).toBeNull();
+    expect(Object.values(s).filter(Boolean)).toHaveLength(7);
+  });
 });
