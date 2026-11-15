@@ -8,7 +8,7 @@ const w = (p, s) => { const f = path.join(OUT, p); fs.mkdirSync(path.dirname(f),
 const C = (name, value, usage) => ({ name, value: { dark: value }, usage });
 const tokens = {
   name: 'MFG — Sân đêm', version: 2,
-  meta: { source: 'github', repo: 'DucDuyNguyen15-IT/my-football-game', ref: 'main@6e3fde2', package: 'apps/web', paths: { tokens: ['apps/web/src/styles/tokens.css', 'docs/design/design-tokens.json'], docs: ['docs/DESIGN.md', 'docs/design/claude-design-prompt.md'] }, components: { CardView: 'apps/web/src/components/card/CardView.tsx', HoldButton: 'apps/web/src/components/HoldButton.tsx', BoxMeter: 'apps/web/src/features/shop/BoxMeter.tsx' }, synced: '2026-11-03' },
+  meta: { source: 'github', repo: 'DucDuyNguyen15-IT/my-football-game', ref: 'main@8ab28a9', package: 'apps/web', paths: { tokens: ['apps/web/src/styles/tokens.css', 'docs/design/design-tokens.json'], docs: ['docs/DESIGN.md', 'docs/design/claude-design-prompt.md'] }, components: { CardView: 'apps/web/src/components/card/CardView.tsx', HoldButton: 'apps/web/src/components/HoldButton.tsx', BoxMeter: 'apps/web/src/features/shop/BoxMeter.tsx' }, synced: '2026-11-03' },
   color: {
     themes: [{ id: 'dark', name: 'Sân đêm' }],
     tokens: [
@@ -314,7 +314,7 @@ w('README.md', `# MFG — Sân đêm
 
 Design system cho **MFG**, game bóng đá 7v7 trên trình duyệt: đá với máy + sưu tầm thẻ cầu thủ (gacha bằng **xu ảo**) + xếp đội hình. Vòng lặp 15 phút: **mở gói → xếp đội → đá trận → nhận xu → mở gói tiếp**. Mỗi màn phải chỉ rõ bước tiếp theo.
 
-Nguồn: \`apps/web/src/styles/tokens.css\`, \`apps/web/src/components/card/*\`, \`apps/web/src/app/app.css\`, \`docs/DESIGN.md\` (repo my-football-game @ 6e3fde2). Code sẽ dựng bằng **React + Vite + CSS thuần dùng biến CSS** — không Tailwind, không thư viện UI. Tên token ở đây trùng tên biến CSS trong code (\`--c-accent\`, \`--sp-5\`…).
+Nguồn: \`apps/web/src/styles/tokens.css\`, \`apps/web/src/components/card/*\`, \`apps/web/src/app/app.css\`, \`docs/DESIGN.md\` (repo my-football-game @ 8ab28a9). Code sẽ dựng bằng **React + Vite + CSS thuần dùng biến CSS** — không Tailwind, không thư viện UI. Tên token ở đây trùng tên biến CSS trong code (\`--c-accent\`, \`--sp-5\`…).
 
 ## Giọng điệu: "Sân đêm"
 

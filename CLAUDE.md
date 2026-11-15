@@ -75,7 +75,7 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 | 8.2 Security review | Gemini | ✅ Đã gộp `main` |
 | 7.4 Nhiệm vụ ngày | Gemini | ✅ Đã gộp `main` |
 | 7.5 Analytics & retention | Gemini | ✅ Đã gộp `main` |
-| 7.6 Onboarding | Gemini | ✅ Đã gộp `main` (merge `e0d4954`) |
+| 7.6 Onboarding | Gemini | ✅ Đã gộp `main` (merge `6c44f0a`) |
 | 8.1 E2E | Fable | ✅ Đã gộp `main` |
 | 8.3 Hiệu năng | Fable + Opus | ✅ Opus đo FPS/bộ nhớ bằng Chrome thật (Cao 74,6 / Thấp 166 FPS TB, không rò) |
 | 8.4 Rà tiêu chí & QA-REPORT | Fable | ✅ Đã gộp `main` (36/36 tiêu chí) |
