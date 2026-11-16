@@ -29,17 +29,17 @@ export class ContactWidgetView {
 
   constructor(private readonly parent: HTMLElement) {}
 
-  show(contact: Vec2): void {
+  show(contact: Vec2, foot: 'right' | 'left'): void {
     if (!this.root) this.create();
     // Làm tròn 1/100 bán kính: không ghi DOM mỗi khung khi điểm chạm đứng yên.
     const x = Math.round(contact.x * 100) / 100;
     const y = Math.round(contact.y * 100) / 100;
-    const key = `${x},${y}`;
+    const key = `${x},${y},${foot}`;
     if (key === this.key) return;
     this.key = key;
     this.dot!.setAttribute('cx', String(BOX / 2 + x * (R - DOT)));
     this.dot!.setAttribute('cy', String(BOX / 2 - y * (R - DOT)));
-    this.label!.textContent = contactLabel(contact);
+    this.label!.textContent = contactLabel(contact, foot);
   }
 
   hide(): void {

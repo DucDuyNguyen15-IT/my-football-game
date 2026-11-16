@@ -1,4 +1,4 @@
-import { FORMATION_LINES, type Formation, type SquadSlot } from '@pitch/shared';
+import { FORMATION_LINES, type Foot, type Formation, type SquadSlot } from '@pitch/shared';
 import type { PassKind } from '../actions/pass';
 import { attackSign } from '../actions/shoot';
 import { add, dot, length, normalize, scale, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
@@ -130,6 +130,41 @@ function chooseTaker(players: readonly PlayerState[], plan: RestartPlan): Player
   return pool.reduce((best, p) => (dist(p) < dist(best) ? p : best));
 }
 
+/** Tình huống sút/đá bóng bằng chân: người đá đứng lệch sang phía ngược chân đá. */
+const FOOTED_RESTARTS: ReadonlySet<RestartType> = new Set([
+  'free_kick',
+  'corner',
+  'goal_kick',
+  'penalty',
+]);
+/** Người đá đứng lệch ngang khỏi đường bóng chừng này mét (chân đá ở ngay sau bóng). */
+export const TAKER_SIDE_OFFSET = 0.3;
+
+/**
+ * Chân đá tình huống cố định. Hai chân: bóng ở nửa trái sân (nhìn về khung thành đối thủ, hướng
+ * `goalSign`) thì đá như thuận trái, nửa phải (hoặc giữa) thì như thuận phải.
+ * Bên phải hướng d nhìn từ sau lưng là (−d.y, d.x) (`setPieceAim.rightOf`), nên với d = (goalSign, 0)
+ * bên phải là y cùng dấu goalSign.
+ */
+export function kickingFoot(
+  foot: Foot | undefined,
+  spot: Vec2,
+  goalSign: 1 | -1,
+): 'right' | 'left' {
+  if (foot === 'left') return 'left';
+  if (foot !== 'both') return 'right';
+  return spot.y * goalSign < 0 ? 'left' : 'right';
+}
+
+/** Chỗ người đá đứng: sau bóng; tình huống đá bằng chân thì lệch sang phía ngược chân đá. */
+function takerSpot(p: PlayerState, restart: Restart, facing: Vec2, goalSign: 1 | -1): Vec2 {
+  const behind = sub(restart.spot, scale(facing, DRIBBLE_OFFSET));
+  if (!FOOTED_RESTARTS.has(restart.type)) return behind;
+  // Thuận phải đứng bên trái bóng và ngược lại.
+  const side = kickingFoot(p.foot, restart.spot, goalSign) === 'right' ? -1 : 1;
+  return add(behind, scale(vec2(-facing.y, facing.x), side * TAKER_SIDE_OFFSET));
+}
+
 /**
  * Giữ tình huống trong lúc chờ: người thực hiện đứng yên sau bóng (hướng `aim` khác 0 thì xoay theo),
  * đối phương bị đẩy ra ngoài khoảng cách tối thiểu. Gọi mỗi tick khi bóng chết.
@@ -145,7 +180,7 @@ export function holdRestart(
   return players.map((p) => {
     if (p.id === restart.takerId) {
       const facing = length(aim) > 0 ? normalize(aim) : p.facing;
-      return { ...p, facing, pos: sub(restart.spot, scale(facing, DRIBBLE_OFFSET)), vel: ZERO };
+      return { ...p, facing, pos: takerSpot(p, restart, facing, goalSide), vel: ZERO };
     }
     if (restart.type === 'penalty') return holdPenalty(p, restart, goalSide);
     if (p.team === restart.team) return p;

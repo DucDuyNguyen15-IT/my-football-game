@@ -46,6 +46,7 @@ const card = (id: string, rarity: Rarity, over: Partial<Card> = {}): Card => ({
   },
   ovr: 80,
   avatarSeed: 'a1b2c3d4',
+  foot: 'right',
   ...over,
 });
 

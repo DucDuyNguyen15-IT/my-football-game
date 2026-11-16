@@ -39,6 +39,7 @@ const card = (position: Card['position']): Card => ({
   stats: base,
   ovr: 80,
   avatarSeed: 'a1b2c3d4',
+  foot: 'right',
 });
 
 const cells = (html: string, abbr: string) =>

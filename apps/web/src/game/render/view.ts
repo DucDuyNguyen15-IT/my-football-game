@@ -3,9 +3,11 @@
  */
 import type { SquadSlot } from '@pitch/shared';
 import {
+  attackSign,
   BALL_RADIUS,
   CONTACT_RESTARTS,
   HALF_LENGTH,
+  kickingFoot,
   MAX_CHARGE_TICKS,
   PASS_FULL_CHARGE_TICKS,
   MIN_SHOT_POWER,
@@ -124,6 +126,16 @@ export function setPieceContact(state: Pick<MatchState, 'restart' | 'autopilot'>
   return restartContact(r);
 }
 
+/** Chân người đá tình huống cố định sẽ dùng (hai chân thì theo nửa sân đặt bóng). */
+export function setPieceFoot(
+  state: Pick<MatchState, 'restart' | 'players' | 'half'>,
+): 'right' | 'left' {
+  const r = state.restart;
+  if (!r) return 'right';
+  const taker = state.players.find((p) => p.id === r.takerId);
+  return kickingFoot(taker?.foot, r.spot, attackSign(r.team, state.half));
+}
+
 export interface PenaltyRing {
   /** Tâm trên vạch cuối (toạ độ sân x, y; `z` độ cao tâm bóng, m). */
   x: number;
@@ -166,10 +178,13 @@ export function penaltyRing(
 /** Điểm chạm cách tâm bóng dưới mức này (theo bán kính) vẫn tính là chạm giữa. */
 export const CONTACT_CENTRE = 0.25;
 
-/** Tên cú đá theo điểm chạm (x phải, y trên; nhìn từ sau lưng người đá chân phải). */
-export function contactLabel(c: Vec2): string {
+/**
+ * Tên cú đá theo điểm chạm (x phải, y trên; nhìn từ sau lưng người đá). Chân phải chạm bên phải bóng
+ * là má trong, bên trái là má ngoài; chân trái ngược lại.
+ */
+export function contactLabel(c: Vec2, foot: 'right' | 'left' = 'right'): string {
   if (Math.hypot(c.x, c.y) < CONTACT_CENTRE) return 'Sút căng';
   if (Math.abs(c.x) >= Math.abs(c.y))
-    return c.x > 0 ? 'Sút xoáy bằng má trong' : 'Sút xoáy bằng má ngoài';
+    return c.x > 0 === (foot === 'right') ? 'Sút xoáy bằng má trong' : 'Sút xoáy bằng má ngoài';
   return c.y < 0 ? 'Sút bổng' : 'Sút chìm';
 }

@@ -25,6 +25,7 @@ const card = (over: Partial<Card> = {}): Card => ({
   },
   ovr: 81,
   avatarSeed: 'a1b2c3d4',
+  foot: 'right',
   ...over,
 });
 

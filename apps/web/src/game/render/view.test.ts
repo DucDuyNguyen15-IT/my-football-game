@@ -27,6 +27,7 @@ import {
   penaltyRing,
   penaltyRingColor,
   setPieceContact,
+  setPieceFoot,
   shirtNumber,
 } from './view';
 
@@ -175,6 +176,32 @@ describe('điểm chạm tình huống cố định', () => {
     expect(contactLabel({ x: -0.8, y: 0 })).toBe('Sút xoáy bằng má ngoài');
     expect(contactLabel({ x: 0, y: -0.7 })).toBe('Sút bổng');
     expect(contactLabel({ x: 0.2, y: 0.7 })).toBe('Sút chìm');
+    // Chân trái: bên phải bóng là má ngoài, bên trái là má trong.
+    expect(contactLabel({ x: 0.8, y: 0.2 }, 'left')).toBe('Sút xoáy bằng má ngoài');
+    expect(contactLabel({ x: -0.8, y: 0 }, 'left')).toBe('Sút xoáy bằng má trong');
+    expect(contactLabel({ x: 0, y: -0.7 }, 'left')).toBe('Sút bổng');
+  });
+
+  it('setPieceFoot: theo chân thuận; hai chân thì theo nửa sân nhìn về khung thành đối thủ', () => {
+    const state = (foot: 'right' | 'left' | 'both' | undefined, y: number) =>
+      ({
+        half: 1,
+        restart: {
+          type: 'free_kick',
+          team: 'home',
+          spot: { x: 20, y },
+          takerId: 'h1',
+          startTick: 0,
+          readyTick: 0,
+        },
+        players: [{ id: 'h1', foot }],
+      }) as unknown as Parameters<typeof setPieceFoot>[0];
+    expect(setPieceFoot(state('left', 5))).toBe('left');
+    expect(setPieceFoot(state('right', -5))).toBe('right');
+    expect(setPieceFoot(state(undefined, -5))).toBe('right');
+    // Đội nhà hiệp 1 tấn công về +x: bên phải nhìn từ sau lưng là y > 0.
+    expect(setPieceFoot(state('both', 5))).toBe('right');
+    expect(setPieceFoot(state('both', -5))).toBe('left');
   });
 
   it('setPieceContact chỉ hiện khi đội người chơi đá phạt / phạt góc', () => {

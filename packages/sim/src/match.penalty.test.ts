@@ -98,8 +98,8 @@ describe('máy Dễ: thủ môn bắt phạt đền kém hơn (luật 4)', () =>
     const teams = { home: starterLikeTeam, away: () => cpuEasyTeam };
     const rate = (r: ReturnType<typeof runPenalties>, team: 'home' | 'away') =>
       r.goals[team] / r.kicks[team];
-    // Người chơi nhắm vòng tròn sát góc, lực vừa (đợt 6). Đo 6.400 lượt: Dễ 80,0% — Khó 68,4%
-    // (máy sút 77,0% / 77,0%).
+    // Người chơi nhắm vòng tròn sát góc (vòng thu nhỏ 16/11). Đo 2.000 lượt: Dễ 81,8% — Khó 71,3%
+    // (máy sút 75,7% / 77,0%).
     const easy = runPenalties('easy', 2000, teams, true);
     const hard = runPenalties('hard', 2000, teams, true);
     expect(easy.kicks.home).toBeGreaterThan(800);

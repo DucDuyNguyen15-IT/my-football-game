@@ -174,6 +174,7 @@ function spawnTeam(team: MatchTeamSetup, side: TeamSide): PlayerState[] {
       slot: p.slot,
       position: pitchPosition(team, p),
       stats: p.stats,
+      foot: p.foot ?? 'right',
       // Vị trí thật do kickoffPlayers đặt.
       pos: ZERO,
       vel: ZERO,

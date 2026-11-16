@@ -40,6 +40,7 @@ import {
   lerpPos,
   penaltyRing,
   setPieceContact,
+  setPieceFoot,
   type PenaltyRing,
 } from '../render/view';
 import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
@@ -88,6 +89,9 @@ const MOVE_KEYS: ReadonlySet<string> = new Set(['up', 'down', 'left', 'right', '
 const TONE_EXPOSURE = 1.15;
 const MARKER_Y = 2.2;
 const CHARGE_BAR_Y = 2.75;
+/** Thanh lực ở góc máy tình huống cố định: độ cao (m) và tỉ lệ. */
+const SET_PIECE_BAR_Y = 2.2;
+const SET_PIECE_BAR_SCALE = 0.5;
 /** Tâm vòng đếm ngược (m): trên mũi tên người điều khiển và thanh lực. */
 const COUNTDOWN_Y = 3.55;
 /** Đường kính vòng đếm ngược theo mét trong cảnh; trên màn hình không nhỏ hơn COUNTDOWN_MIN_PX. */
@@ -919,7 +923,14 @@ export class MatchRenderer {
     const bar = this.chargeBar;
     bar.group.visible = meter !== null;
     if (meter && controlled) {
-      bar.group.position.set(controlled.position.x, CHARGE_BAR_Y, controlled.position.z);
+      // Góc máy sau lưng: thanh sát đỉnh đầu, nhỏ lại (camera chỉ cách vài mét).
+      const close = this.setPieceW > 0.5;
+      bar.group.position.set(
+        controlled.position.x,
+        close ? SET_PIECE_BAR_Y : CHARGE_BAR_Y,
+        controlled.position.z,
+      );
+      bar.group.scale.setScalar(close ? SET_PIECE_BAR_SCALE : 1);
       bar.group.quaternion.copy(this.camera.quaternion);
       bar.fill.scale.x = Math.max(0.001, meter.fill);
       bar.fillMat.color.setHex(CHARGE_COLORS[meter.kind]);
@@ -980,7 +991,7 @@ export class MatchRenderer {
       cameraOverride || this.cutHold || this.frozen || this.transition.isActive()
         ? null
         : setPieceContact(this.curr);
-    if (contact) this.contactWidget.show(contact);
+    if (contact) this.contactWidget.show(contact, setPieceFoot(this.curr));
     else this.contactWidget.hide();
     this.drawPenaltyRing(
       cameraOverride || this.cutHold || this.frozen ? null : penaltyRing(this.curr),

@@ -1,4 +1,5 @@
 import type {
+  Foot,
   Difficulty,
   Formation,
   MatchPlayerSetup,
@@ -33,6 +34,8 @@ export interface PlayerState {
   slot: SquadSlot;
   position: Position;
   stats: PlayerStats;
+  /** Chân thuận; không có = chân phải (dữ liệu demo, fixture test). */
+  foot?: Foot;
   pos: Vec2;
   vel: Vec2;
   /** Hướng mặt, vector đơn vị. */

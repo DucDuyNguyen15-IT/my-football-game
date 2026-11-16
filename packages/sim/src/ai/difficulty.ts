@@ -28,14 +28,15 @@ export interface AiProfile {
  * (task 5.13) — mô phỏng người chơi trung bình, nằm giữa Dễ và Khó.
  */
 export const AI_PROFILES: Record<Difficulty | 'teammate' | 'proxy', AiProfile> = {
-  // Thủ môn máy Dễ đoán đúng hướng phạt đền chỉ bằng nửa bình thường (luật 4, 2026-11-15) — số đo ở
+  // Thủ môn máy Dễ đoán đúng hướng phạt đền kém hơn bình thường (luật 4, 2026-11-15; 0,5 → 0,8 khi vòng
+  // ngắm phạt đền thu nhỏ 16/11 để người chơi nhắm góc không vượt ~85%) — số đo ở
   // `PENALTY_ERROR_MULT` (stats/params.ts).
   easy: {
     reactionDelayTicks: 30,
     passErrorMult: 2.5,
     shotErrorMult: 2.5,
     aggression: 0.2,
-    penaltyGuessMult: 0.5,
+    penaltyGuessMult: 0.8,
   },
   hard: {
     reactionDelayTicks: 12,

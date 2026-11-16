@@ -134,9 +134,9 @@ export function penaltyAimZ(power: number): number {
 }
 /**
  * Bán kính vòng ngắm (m) theo Sút: chỉ số 1 → [0], 99 → [1]. Cân để người chơi nhắm sát góc vào
- * ~80% trước máy Dễ, ~68% trước máy Khó (`match.penalty.test.ts`).
+ * ~82% trước máy Dễ, ~71% trước máy Khó (`match.penalty.test.ts`; thu nhỏ từ [1,55; 0,65] ngày 16/11).
  */
-export const PENALTY_RADIUS_RANGE = [1.55, 0.65] as const;
+export const PENALTY_RADIUS_RANGE = [1.15, 0.5] as const;
 /** Lực vượt ngưỡng này thì vòng nở ra, mỗi 0,1 lực vượt thêm PENALTY_OVERPOWER_GROW/10. */
 export const PENALTY_OVERPOWER_FROM = 0.8;
 export const PENALTY_OVERPOWER_GROW = 2.5;

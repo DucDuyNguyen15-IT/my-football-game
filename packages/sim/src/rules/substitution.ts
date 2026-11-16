@@ -88,6 +88,7 @@ export function substitute(
     slot: out.slot,
     position: incoming.position,
     stats: incoming.stats,
+    foot: incoming.foot ?? 'right',
     pos: out.pos,
     vel: ZERO,
     facing: out.facing,

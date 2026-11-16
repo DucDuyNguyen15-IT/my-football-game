@@ -1,6 +1,13 @@
 // Sinh danh mục ~150 thẻ hư cấu, tất định theo seed (task 6.2). Không dùng tên cầu thủ thật hay tên nhại:
 // tên ghép từ âm tiết theo "quốc tịch" hư cấu, biệt danh theo lối chơi.
-import { computeOvr, OVR_RANGE, type PlayerStats, type Position, type Rarity } from '@pitch/shared';
+import {
+  computeOvr,
+  OVR_RANGE,
+  type Foot,
+  type PlayerStats,
+  type Position,
+  type Rarity,
+} from '@pitch/shared';
 
 /** Một dòng của `src/db/seed/cards.json` = một dòng bảng `cards`. */
 export interface CardSeedRow extends PlayerStats {
@@ -12,9 +19,13 @@ export interface CardSeedRow extends PlayerStats {
   rarity: Rarity;
   ovr: number;
   avatarSeed: string;
+  foot: Foot;
 }
 
 export const CARD_SEED = 20261025;
+
+/** Số thẻ thuận trái / hai chân trong danh mục 150 thẻ (còn lại thuận phải). Hai chân ≤ 5%. */
+export const FOOT_COUNTS = { left: 33, both: 6 } as const;
 
 /** Số mẫu thẻ theo độ hiếm (PRD §6.1). */
 export const RARITY_COUNTS: Record<Rarity, number> = {
@@ -280,9 +291,31 @@ export function generateCards(seed = CARD_SEED): CardSeedRow[] {
           avatarSeed: Math.floor(rand() * 0x100000000)
             .toString(16)
             .padStart(8, '0'),
+          foot: 'right',
         });
       }
     }
   }
-  return rows;
+  return assignFeet(rows, seed);
+}
+
+/**
+ * Chia chân thuận theo hạn ngạch cố định (`FOOT_COUNTS`), xáo bằng dòng ngẫu nhiên riêng để không
+ * làm đổi tên/chỉ số các thẻ đã sinh trước đó.
+ */
+function assignFeet(rows: CardSeedRow[], seed: number): CardSeedRow[] {
+  const rand = seededRandom(seed ^ 0x0f007f00);
+  const order = rows.map((_, i) => i);
+  for (let i = order.length - 1; i > 0; i--) {
+    const j = Math.floor(rand() * (i + 1));
+    [order[i], order[j]] = [order[j]!, order[i]!];
+  }
+  const feet = new Map<number, Foot>();
+  order.forEach((idx, k) =>
+    feet.set(
+      idx,
+      k < FOOT_COUNTS.both ? 'both' : k < FOOT_COUNTS.both + FOOT_COUNTS.left ? 'left' : 'right',
+    ),
+  );
+  return rows.map((r, i) => ({ ...r, foot: feet.get(i)! }));
 }

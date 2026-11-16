@@ -30,6 +30,7 @@ const createdAt = () => ts('created_at').notNull().defaultNow();
 // 3.1 Enum
 export const positionEnum = pgEnum('position', ['GK', 'DF', 'MF', 'FW']);
 export const rarityEnum = pgEnum('rarity', ['bronze', 'silver', 'gold', 'legend']);
+export const footEnum = pgEnum('foot', ['right', 'left', 'both']);
 export const formationEnum = pgEnum('formation', ['2-3-1', '3-2-1', '2-2-2']);
 export const difficultyEnum = pgEnum('difficulty', ['easy', 'hard']);
 export const matchStatusEnum = pgEnum('match_status', ['started', 'finished', 'expired']);
@@ -120,6 +121,7 @@ export const cards = pgTable(
     kicking: statCol('kicking'),
     ovr: smallint('ovr').notNull(),
     avatarSeed: text('avatar_seed').notNull(),
+    foot: footEnum('foot').notNull().default('right'),
   },
   (t) => [
     index('cards_rarity_idx').on(t.rarity),
