@@ -8,6 +8,7 @@ export * from './physics/player';
 export * from './stats/params';
 export * from './rules/possession';
 export * from './actions/foot';
+export * from './actions/volley';
 export * from './rules/restarts';
 export * from './rules/setPieceAim';
 export * from './rules/clock';

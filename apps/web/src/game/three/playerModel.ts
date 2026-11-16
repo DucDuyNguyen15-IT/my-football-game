@@ -138,6 +138,8 @@ const ONE_SHOT: Partial<Record<ClipName, OneShot>> = {
   shot: { start: 0.3, speed: 1.6 },
   penalty: { start: 0.6, speed: 1.5 },
   header: { start: 0.45, speed: 1.3 },
+  // Móc bóng: bàn chân nhanh nhất ~0,77 s; sim cho bóng đi ngay nên bỏ đoạn bật người lên.
+  scissor: { start: 0.62, speed: 1.2, fallback: 'shot' },
   throw_in: { start: 1.4, speed: 1.3 },
   tackle: { start: 0, speed: 1.5 },
   trip: { start: 0, speed: 1.5, next: 'get_up' },

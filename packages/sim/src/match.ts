@@ -34,6 +34,7 @@ import {
   type PassKind,
 } from './actions/pass';
 import { attackSign, finesseShot, shootBall, shotPower, shotTarget } from './actions/shoot';
+import { tryScissor } from './actions/volley';
 import {
   isFromBehind,
   pokeBall,
@@ -1555,6 +1556,31 @@ function stepPlay(
   if (!owner) {
     if (kickLock && tick >= kickLock.untilTick) kickLock = null;
     const down = (p: PlayerState) => tackleRecovery[p.id] !== undefined;
+    // Bóng bổng ngang hông–vai sát cầu thủ tấn công giỏi trong vòng cấm: có thể móc bóng.
+    const volley = tryScissor(
+      players,
+      state.players,
+      ball,
+      state.ball,
+      state.half,
+      (p) => p.id !== kickLock?.playerId && !down(p) && p.position !== 'GK',
+      rng,
+    );
+    rng = volley.rng;
+    if (volley.kicker) {
+      const k = volley.kicker;
+      return {
+        ...played,
+        rng,
+        backPass: null,
+        ball: volley.ball,
+        kickLock: lock(k.id),
+        passReceiver: null,
+        lastTouchTeam: k.team,
+        shots: addShot(shots, k.team),
+        lastShot: shotFrom(true, k.team, tick),
+      };
+    }
     const capturer = findCapturer(
       players.filter((p) => !down(p)),
       ball,

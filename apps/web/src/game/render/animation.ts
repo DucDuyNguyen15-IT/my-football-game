@@ -7,6 +7,7 @@
  * Tên clip khớp `CLIPS` trong `scripts/build-player-model.mjs`.
  */
 import {
+  CONTROL_HEIGHT,
   DRIBBLE_OFFSET,
   isKeeperHandling,
   kickFoot,
@@ -28,6 +29,7 @@ export type ClipName =
   | 'shot'
   | 'penalty'
   | 'header'
+  | 'scissor'
   | 'tackle'
   | 'trip'
   | 'stumble'
@@ -53,7 +55,15 @@ export type ClipName =
  * Clip đá bóng có bản chân trái `<tên>_l` (lật gương lúc `pnpm assets`); `<tên>` là chân phải.
  * Khớp `FOOTED` trong `scripts/build-player-model.mjs`.
  */
-export const FOOTED_CLIPS = ['pass', 'shot', 'penalty', 'header', 'tackle', 'gk_kick'] as const;
+export const FOOTED_CLIPS = [
+  'pass',
+  'shot',
+  'penalty',
+  'header',
+  'scissor',
+  'tackle',
+  'gk_kick',
+] as const;
 export type FootedClip = (typeof FOOTED_CLIPS)[number];
 
 /** Bản clip theo chân đá. */
@@ -216,7 +226,8 @@ function kickClip(prev: MatchState, curr: MatchState, kicker: string): ClipName 
 }
 
 /** Chân thuận (thủ môn phát bóng từ tay); hai chân hoặc không có = chân phải. */
-const preferredFoot = (p: PlayerState | undefined): KickFoot => (p?.foot === 'left' ? 'left' : 'right');
+const preferredFoot = (p: PlayerState | undefined): KickFoot =>
+  p?.foot === 'left' ? 'left' : 'right';
 
 export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[] {
   const events: AnimEvent[] = [];
@@ -232,6 +243,15 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     const windupDone = prev.windup?.playerId === kicker;
     if (!windupDone && (prev.ballOwnerId === kicker || prev.restart?.takerId === kicker)) {
       events.push({ playerId: kicker, clip: kickClip(prev, curr, kicker) });
+    } else if (
+      prev.ballOwnerId === null &&
+      prev.ball.z > CONTROL_HEIGHT &&
+      curr.lastShot?.tick === curr.tick
+    ) {
+      // Sút bóng đang bay cao hơn tầm khống chế = móc bóng (`tryScissor` của sim).
+      const p = prev.players.find((x) => x.id === kicker);
+      const foot = p ? kickFoot(p, prev.ball.pos, curr.ball.vel) : 'right';
+      events.push({ playerId: kicker, clip: withFoot('scissor', foot) });
     }
   }
 

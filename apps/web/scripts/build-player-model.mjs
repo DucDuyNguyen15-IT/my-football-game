@@ -33,6 +33,7 @@ const CLIPS = {
   shot: 'strike foward jog',
   penalty: 'soccer penalty kick',
   header: 'header soccerball',
+  scissor: 'scissor kick',
   tackle: 'soccer tackle (2)',
   trip: 'soccer trip',
   fallen: 'fallen idle',
@@ -67,6 +68,7 @@ const FOOTED = {
   shot: 'right',
   penalty: 'right',
   header: 'left',
+  scissor: 'right',
   tackle: 'left',
   gk_kick: 'right',
 };

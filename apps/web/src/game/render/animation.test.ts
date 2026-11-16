@@ -177,6 +177,12 @@ describe('animationEvents', () => {
     expect(animationEvents(prev, curr)).toEqual([{ playerId: GK, clip: 'gk_kick_l' }]);
   });
 
+  it('sút bóng tự do đang bay cao hơn tầm khống chế → móc bóng', () => {
+    const prev = { ...base(), ballOwnerId: null, ball: { ...base().ball, z: 1.4 } };
+    const curr = kicked(prev, { lastShot: { team: 'home', tick: prev.tick + 1 } });
+    expect(animationEvents(prev, curr)[0]?.clip).toMatch(/^scissor/);
+  });
+
   it('bóng cao ngang đầu lúc chạm → header', () => {
     const prev = { ...owning(base()), ball: { ...base().ball, z: 1.5 } };
     expect(animationEvents(prev, kicked(prev))[0]?.clip).toBe('header');
