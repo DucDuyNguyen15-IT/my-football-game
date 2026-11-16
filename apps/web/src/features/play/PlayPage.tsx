@@ -387,8 +387,9 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
       setPaused(!pausedRef.current);
     };
     // Alt+Tab sang cửa sổ khác: trận tự tạm dừng thay vì chạy tiếp khi người chơi không nhìn.
+    // Autopilot (đo FPS `?perf=1`, e2e) không ai điều khiển: chạy tiếp để số đo không hỏng.
     const onBlur = () => {
-      if (lastHud.current?.phase !== 'full_time') setPaused(true);
+      if (!autopilot && lastHud.current?.phase !== 'full_time') setPaused(true);
     };
     window.addEventListener('keydown', onKey);
     window.addEventListener('blur', onBlur);
@@ -396,7 +397,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('blur', onBlur);
     };
-  }, [setPaused]);
+  }, [setPaused, autopilot]);
 
   const bridge = useMemo<MatchBridge>(() => {
     let nextId = 1;

@@ -94,6 +94,21 @@ export function keysToInput(keys: KeyState): PlayerInput {
 const ACTION_KEYS = ['pass', 'lob', 'shoot', 'through'] as const;
 
 /**
+ * Chỉ giữ lại các nút hành động đang giữ. Dùng khi phím bị nhả ngoài trận (menu tạm dừng, mất focus)
+ * lúc sim đang nạp lực: sim đá ngay khi thấy "nhả", nên coi như còn giữ tới khi người chơi bấm lại
+ * rồi nhả trong trận.
+ */
+export function actionKeysOnly(held: KeyState): KeyState {
+  const out = { ...NO_KEYS };
+  for (const key of ACTION_KEYS) out[key] = held[key];
+  return out;
+}
+
+export function isActionKey(key: keyof KeyState): boolean {
+  return (ACTION_KEYS as readonly string[]).includes(key);
+}
+
+/**
  * Chặn nút hành động bấm (hoặc còn giữ) lúc người chơi chưa nhìn thấy sân — đang giữ hình / màn
  * chuyển cảnh còn che: phím đó không vào sim cho tới khi nhả ra rồi bấm lại. Không có lớp chặn này
  * thì giữ S xuyên qua màn che sẽ thành một lần bấm mới ngay lúc màn mở (sim thấy "vừa bấm").

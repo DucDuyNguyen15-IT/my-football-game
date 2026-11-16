@@ -164,7 +164,7 @@ Kết luận: cả hai thấp hơn nhiều so với ngưỡng 500 ms nên **khô
 | Sau vòng 15 | 10,8 | 383 | 0 |
 | Sau vòng 20 | 11,0 | 383 | 0 |
 
-Kết luận: **không rò**. Heap tăng chậm dần rồi gần như đứng (vòng 10 → 20 chỉ +0,3 MB, ~3%, nằm trong ngưỡng ≤ 10%; phần tăng ban đầu là module/cache đã tải), DOM không đổi, canvas WebGL được gỡ hết, không có cảnh báo "Too many active WebGL contexts". Bộ nhớ GPU không đo được qua CDP (không thay bằng số đoán). Console có cảnh báo Three.js `PCFSoftShadowMap has been removed. Using PCFShadowMap instead.` (không ảnh hưởng, §6 T12).
+Kết luận: **không rò**. Heap tăng chậm dần rồi gần như đứng (vòng 10 → 20 chỉ +0,3 MB, ~3%, nằm trong ngưỡng ≤ 10%; phần tăng ban đầu là module/cache đã tải), DOM không đổi, canvas WebGL được gỡ hết, không có cảnh báo "Too many active WebGL contexts". Bộ nhớ GPU không đo được qua CDP (không thay bằng số đoán). Console có cảnh báo Three.js `PCFSoftShadowMap has been removed. Using PCFShadowMap instead.` (không ảnh hưởng, §6 T12; số đo 14/11 — cảnh báo đã hết từ 16/11 sau khi bỏ `PCFSoftShadowMap`).
 
 #### A/B chuyển cảnh (đo 2026-11-16, review M3)
 

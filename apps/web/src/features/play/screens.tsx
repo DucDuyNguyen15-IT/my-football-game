@@ -2,7 +2,7 @@
  * Các màn của luồng trận (docs/design/screens/match*.html, pause.html, result*.html): HUD phụ (gợi ý
  * phím, nghỉ giữa hiệp), menu tạm dừng, kết quả.
  */
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { HALF_TIME_MAX_TICKS, TICK_RATE } from '@pitch/sim';
 import type { Difficulty, MissionProgress, Position, SquadSlot } from '@pitch/shared';
@@ -682,6 +682,11 @@ export function ResultScreen({
   const level = DIFFICULTY_LABEL[difficulty];
   // Chưa nộp xong (hoặc còn gửi lại được): vào trận mới sẽ làm server huỷ trận này.
   const unsaved = reward.kind === 'pending' || (reward.kind === 'error' && reward.retryable);
+  // autoFocus không ăn vì lúc mount nút còn khoá: focus khi nút bật lại để Enter là đá tiếp.
+  const rematchRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!unsaved) rematchRef.current?.focus();
+  }, [unsaved]);
   return (
     <main className="night-bg result" aria-labelledby="result-title">
       <div className="result__main">
@@ -755,7 +760,7 @@ export function ResultScreen({
           <button
             type="button"
             className="btn btn--primary btn--lg"
-            autoFocus
+            ref={rematchRef}
             disabled={unsaved}
             onClick={onRematch}
           >
