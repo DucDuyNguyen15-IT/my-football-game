@@ -945,8 +945,28 @@ function stepDeadBall(
   } | null = null;
   let { rng, windup } = state;
   let shotChargeTicks = 0;
+  let passCharge: MatchState['passCharge'] = null;
   // Phát bóng: thủ môn lấy đà rồi bóng mới đi.
   const goalKick = restart.type === 'goal_kick';
+  // Chuyền bóng chết như bóng sống: bấm S/A bắt đầu nạp lực, giữ thì lực tăng, nhả mới đá.
+  const releasePass = (charge: NonNullable<MatchState['passCharge']>) => {
+    const dir = setAim ?? (length(input.move) > 0 ? input.move : charge.dir);
+    const power = passPower(charge.ticks);
+    if (goalKick) {
+      windup = startWindup(taker.id, tick, 'kick', {
+        type: 'assisted',
+        kind: charge.kind,
+        dir,
+        power,
+      });
+      return null;
+    }
+    return touch({
+      ...kickPass(state.players, taker, restart.spot, dir, charge.kind, state.rng, tick, power),
+      shot: false,
+    });
+  };
+  const charging = state.passCharge;
   if (windup) {
     if (tick >= windup.releaseTick) {
       kicked = releaseWindup(state, state.players, windup, restart.spot, rng, tick);
@@ -961,13 +981,23 @@ function stepDeadBall(
     // Còn người đang đi về vị trí.
   } else if (expired && state.shotChargeTicks > 0) {
     kicked = release(state.shotChargeTicks);
+  } else if (expired && charging) {
+    kicked = releasePass(charging);
   } else if (humanRestart && !expired) {
-    if (canPass && (pressed('pass') || pressed('lob'))) {
+    if (charging && input[charging.kind === 'ground' ? 'pass' : 'lob']) {
+      passCharge = {
+        ...charging,
+        ticks: Math.min(PASS_FULL_CHARGE_TICKS, charging.ticks + 1),
+        dir: length(input.move) > 0 ? input.move : charging.dir,
+      };
+    } else if (charging) {
+      kicked = releasePass(charging);
+    } else if (canPass && (pressed('pass') || pressed('lob'))) {
       const dir = setAim ?? (length(input.move) > 0 ? input.move : taker.facing);
       const kind = pressed('pass') ? 'ground' : 'lob';
-      if (goalKick)
-        windup = startWindup(taker.id, tick, 'kick', { type: 'assisted', kind, dir, power: 0 });
-      else kicked = touch({ ...pass(kind, dir), shot: false });
+      // Giao bóng, ném biên (camera TV) vẫn bấm là đá.
+      if (aimed) passCharge = { kind, ticks: 1, dir, through: false };
+      else kicked = { ...pass(kind, dir), shot: false };
     } else if (canShoot && input.shoot && (state.shotChargeTicks > 0 || pressed('shoot'))) {
       shotChargeTicks = state.shotChargeTicks + 1;
     } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
@@ -1071,7 +1101,7 @@ function stepDeadBall(
     controlledId,
     ai,
     shotChargeTicks,
-    passCharge: null,
+    passCharge,
     stoppage: { ...state.stoppage, overrunTicks: state.stoppage.overrunTicks + overrun },
     input,
   };

@@ -209,7 +209,9 @@ describe('thực hiện lại bóng', () => {
     const dead = homeCorner();
     const waited = repeat(dead, NO_INPUT, 10 * TICK_RATE);
     expect(waited.phase).toBe('dead_ball');
-    const taken = step(waited, J);
+    // Phạt góc: bấm J nạp lực, nhả mới đá.
+    expect(step(waited, J).phase).toBe('dead_ball');
+    const taken = step(step(waited, J), NO_INPUT);
     expect(taken.phase).toBe('play');
     expect(taken.kickLock?.playerId).toBe(dead.restart!.takerId);
   });
@@ -230,7 +232,7 @@ describe('thực hiện lại bóng', () => {
     for (const p of next.players) {
       expect(length(sub(p.pos, playerOf(dead, p.id).pos))).toBeLessThan(0.15 + RESTART_SETTLE_DIST);
     }
-    expect(step(dead, J).phase).toBe('play');
+    expect(step(step(dead, J), NO_INPUT).phase).toBe('play');
   });
 
   it('bóng chết khi AI đang chạy: cả hai đội đứng thẳng vào đội hình quanh bóng, quay mặt về bóng', () => {

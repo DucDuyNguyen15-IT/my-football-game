@@ -331,9 +331,21 @@ describe('thực hiện đá phạt / phạt đền', () => {
   it('đá phạt: đội người chờ, bấm J để chuyền', () => {
     const fk = homeRestart('free_kick', vec2(0, 0));
     expect(repeat(fk, NO_INPUT, 300).phase).toBe('dead_ball');
-    const s = step(fk, J);
+    // Bấm J chỉ bắt đầu nạp lực (camera sau lưng), nhả mới đá.
+    const pressed = step(fk, J);
+    expect(pressed.phase).toBe('dead_ball');
+    expect(pressed.passCharge?.kind).toBe('ground');
+    const s = step(pressed, NO_INPUT);
     expect(s.phase).toBe('play');
     expect(length(s.ball.vel)).toBeGreaterThan(0);
+  });
+
+  it('đá phạt: giữ J lâu thì bóng đi mạnh hơn bấm nhanh', () => {
+    const fk = homeRestart('free_kick', vec2(0, 0));
+    const tap = step(step(fk, J), NO_INPUT);
+    const held = step(repeat(fk, J, 40), NO_INPUT);
+    expect(held.phase).toBe('play');
+    expect(length(held.ball.vel)).toBeGreaterThan(length(tap.ball.vel));
   });
 
   it('đá phạt: giữ rồi thả D để sút thẳng về khung thành', () => {

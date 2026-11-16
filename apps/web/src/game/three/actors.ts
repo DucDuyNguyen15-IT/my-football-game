@@ -171,12 +171,17 @@ export class ActorKit {
    */
   createChargeBar(): { group: THREE.Group; fill: THREE.Mesh; fillMat: THREE.MeshBasicMaterial } {
     const group = new THREE.Group();
+    // Viền tối + nền sáng: thấy rõ cả trên cỏ tối lẫn khán đài sáng (góc máy sau lưng).
+    const border = new THREE.Mesh(
+      new THREE.PlaneGeometry(CHARGE_BAR_W + 0.14, CHARGE_BAR_H + 0.14),
+      new THREE.MeshBasicMaterial({ color: COLORS.bg, transparent: true, depthTest: false }),
+    );
     const bg = new THREE.Mesh(
       new THREE.PlaneGeometry(CHARGE_BAR_W + 0.06, CHARGE_BAR_H + 0.06),
       new THREE.MeshBasicMaterial({
-        color: COLORS.bg,
+        color: 0xe6e9ee,
         transparent: true,
-        opacity: 0.8,
+        opacity: 0.9,
         depthTest: false,
       }),
     );
@@ -194,9 +199,10 @@ export class ActorKit {
     });
     const fill = new THREE.Mesh(fillGeo, fillMat);
     fill.position.set(-CHARGE_BAR_W / 2, 0, 0.001);
+    border.renderOrder = 9;
     bg.renderOrder = 10;
     fill.renderOrder = 11;
-    group.add(bg, fill);
+    group.add(border, bg, fill);
     group.visible = false;
     return { group, fill, fillMat };
   }
