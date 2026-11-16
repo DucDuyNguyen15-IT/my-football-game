@@ -13,8 +13,10 @@ import {
 import { GOAL_WIDTH, HALF_LENGTH, isInPenaltyArea } from '../pitch';
 import { nextFloat, type RngState } from '../rng';
 import {
+  GK_BODY_BLOCK_DIST,
   GK_DIVE_SPEED,
   keeperCatchChance,
+  keeperReachFor,
   keeperPenaltyGuessChance,
   keeperPositionAccuracy,
 } from '../stats/params';
@@ -177,6 +179,22 @@ export function penaltyGuess(
 export function diveStep(gk: PlayerState, target: Vec2): PlayerState {
   const move = clampLength(sub(target, gk.pos), GK_DIVE_SPEED * TICK_DT);
   return { ...gk, pos: add(gk.pos, move), vel: scale(move, 1 / TICK_DT) };
+}
+
+/** Đứng đón (không lao người) chỉ với tới phần này của tầm với cản phá — thân và tay sát người. */
+export const GK_STAND_REACH_MULT = 0.6;
+
+/**
+ * Tầm với (m, mặt sân) để chạm cú sút: chưa phản ứng chỉ chặn bằng người; đang lao người thì đủ tầm
+ * với nhưng chỉ ở phía đang lao (bóng ở sau lưng hướng lao chỉ chạm thân); đứng đón thì ngắn hơn.
+ */
+export function keeperReach(gk: PlayerState, ball: BallState, ready: boolean): number {
+  if (!ready) return GK_BODY_BLOCK_DIST;
+  const full = keeperReachFor(gk.stats.positioning);
+  const speed = length(gk.vel);
+  if (speed < DIVING_SPEED) return full * GK_STAND_REACH_MULT;
+  const along = dot(sub(ball.pos, gk.pos), scale(gk.vel, 1 / speed));
+  return along >= -LEG_TRAIL ? full : GK_BODY_BLOCK_DIST;
 }
 
 /** Phần người thủ môn chạm bóng. */

@@ -130,6 +130,18 @@ export function diveClip(
   return p.vel.x * left.x + p.vel.y * left.y > 0 ? 'gk_dive_left' : 'gk_dive_right';
 }
 
+/** Bóng lệch khỏi tâm thủ môn ít hơn chừng này (m, theo phương ngang người) thì đỡ bằng thân. */
+const PARRY_BODY_SIDE = 0.35;
+
+/** Bóng bị chạm: đổi hướng quá ~25° hoặc mất quá 30% tốc độ. */
+function deflected(a: { x: number; y: number }, b: { x: number; y: number }): boolean {
+  const la = Math.hypot(a.x, a.y);
+  const lb = Math.hypot(b.x, b.y);
+  if (la < 1e-6) return false;
+  if (lb < la * 0.7) return true;
+  return (a.x * b.x + a.y * b.y) / (la * lb) < 0.9;
+}
+
 export interface AnimEvent {
   playerId: string;
   clip: ClipName;
@@ -204,6 +216,24 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     prev.lastShot.team !== keeper.team
   ) {
     events.push({ playerId: keeper.id, clip: 'gk_catch' });
+  }
+
+  // Thủ môn đẩy bóng ra: sim khoá thủ môn, xoá cú sút và đổi hướng/giảm tốc bóng (bị sút qua người
+  // thì bóng giữ nguyên đường bay). Bay người về phía bóng, bóng sát người thì đỡ bằng thân.
+  const parrier = lock && newLock ? curr.players.find((p) => p.id === lock.playerId) : undefined;
+  if (
+    parrier?.position === 'GK' &&
+    curr.ballOwnerId === null &&
+    prev.lastShot !== null &&
+    prev.lastShot.team !== parrier.team &&
+    curr.lastShot === null &&
+    deflected(prev.ball.vel, curr.ball.vel)
+  ) {
+    const left = leftOf(parrier.facing);
+    const side = (curr.ball.pos.x - parrier.pos.x) * left.x + (curr.ball.pos.y - parrier.pos.y) * left.y;
+    const clip: ClipName =
+      Math.abs(side) < PARRY_BODY_SIDE ? 'gk_catch' : side > 0 ? 'gk_dive_left' : 'gk_dive_right';
+    events.push({ playerId: parrier.id, clip });
   }
   return events;
 }

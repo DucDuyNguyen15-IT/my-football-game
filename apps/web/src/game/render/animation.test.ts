@@ -257,6 +257,44 @@ describe('animationEvents', () => {
     expect(animationEvents(prev, curr)).toEqual([{ playerId: 'away-GK', clip: 'gk_catch' }]);
   });
 
+  describe('thủ môn đẩy bóng ra', () => {
+    const shotAt = (ballY: number): [MatchState, MatchState] => {
+      const gk = player(base(), 'away-GK');
+      const prev: MatchState = {
+        ...base(),
+        ballOwnerId: null,
+        lastShot: { team: 'home', tick: 0 },
+        ball: { pos: v(gk.pos.x - 1, gk.pos.y + ballY), vel: v(20, 0), z: 0.5, vz: 0 },
+      };
+      const curr: MatchState = {
+        ...prev,
+        tick: prev.tick + 1,
+        lastShot: null,
+        kickLock: { playerId: 'away-GK', untilTick: prev.tick + 10 },
+      };
+      return [prev, curr];
+    };
+
+    it('bóng đổi hướng → bay người về phía bóng; sát người → đỡ bằng thân', () => {
+      const gk = player(base(), 'away-GK');
+      const leftY = gk.facing.x > 0 ? -1 : 1; // bên trái thủ môn theo hướng mặt (leftOf = (f.y, −f.x))
+      for (const [dy, clip] of [
+        [leftY, 'gk_dive_left'],
+        [-leftY, 'gk_dive_right'],
+        [0, 'gk_catch'],
+      ] as const) {
+        const [prev, curr] = shotAt(dy);
+        const parried = { ...curr, ball: { ...curr.ball, pos: v(gk.pos.x, gk.pos.y + dy), vel: v(-8, 3) } };
+        expect(animationEvents(prev, parried)).toEqual([{ playerId: 'away-GK', clip }]);
+      }
+    });
+
+    it('bị sút qua người (bóng giữ đường bay) → không có động tác', () => {
+      const [prev, curr] = shotAt(1);
+      expect(animationEvents(prev, curr)).toEqual([]);
+    });
+  });
+
   it('không có gì xảy ra → không có sự kiện', () => {
     const s = withPlayer(base(), ME, { vel: v(2, 0) });
     expect(animationEvents(s, { ...s, tick: s.tick + 1 })).toEqual([]);

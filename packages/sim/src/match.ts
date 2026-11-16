@@ -17,6 +17,7 @@ import {
   diveStep,
   diveTarget,
   keeperContact,
+  keeperReach,
   penaltyGuess,
   resolveSave,
 } from './ai/goalkeeper';
@@ -102,12 +103,13 @@ import {
 import {
   AI_STAND_TACKLE_COOLDOWN_TICKS,
   CONTAIN_DIST,
-  GK_BODY_BLOCK_DIST,
   GK_REACH_HEIGHT,
   KEEPER_WINDUP_TICKS,
-  keeperReachFor,
   keeperReactionTicks,
   keeperSaveChance,
+  miscontrolChance,
+  MISCONTROL_KEEP_VEL,
+  MISCONTROL_SPEED_RANGE,
   CONTAIN_STEER_WEIGHT,
   PENALTY_ERROR_MULT,
   lobRangeFor,
@@ -1403,8 +1405,7 @@ function stepPlay(
   const keeper = shot && players.find((p) => p.position === 'GK' && p.team !== shot.team);
   if (keeper && ballOwnerId === null && ball.z <= GK_REACH_HEIGHT) {
     const ready = reacted(keeper);
-    const reach = ready ? keeperReachFor(keeper.stats.positioning) : GK_BODY_BLOCK_DIST;
-    if (length(sub(ball.pos, keeper.pos)) <= reach) {
+    if (length(sub(ball.pos, keeper.pos)) <= keeperReach(keeper, ball, ready)) {
       const [roll, afterRoll] = nextFloat(rng);
       rng = afterRoll;
       lastShot = null;
@@ -1498,7 +1499,21 @@ function stepPlay(
       ball,
       kickLock?.playerId ?? null,
     );
-    const captured = capturer === null ? undefined : players.find((p) => p.id === capturer);
+    let captured = capturer === null ? undefined : players.find((p) => p.id === capturer);
+    // Bóng lao nhanh có thể chạm chân bật ra thay vì dính (chỉ gieo khi đủ nhanh để bóng chậm
+    // không làm lệch chuỗi ngẫu nhiên).
+    const relVel = captured ? sub(ball.vel, captured.vel) : null;
+    if (captured && relVel && length(relVel) > MISCONTROL_SPEED_RANGE[0]) {
+      const [roll, afterRoll] = nextFloat(rng);
+      rng = afterRoll;
+      if (roll < miscontrolChance(captured.stats.dribbling, length(relVel))) {
+        ball = { ...ball, vel: add(captured.vel, scale(relVel, MISCONTROL_KEEP_VEL)) };
+        kickLock = lock(captured.id);
+        lastTouchTeam = captured.team;
+        lastShot = null;
+        captured = undefined;
+      }
+    }
     if (captured) {
       const dribbled = dribbleBall(captured);
       // Khống chế bóng sát vạch khi quay mặt ra ngoài: bóng dính chân đã nằm ngoài vạch → bóng chết
@@ -1517,6 +1532,7 @@ function stepPlay(
 
   return {
     ...played,
+    rng,
     backPass,
     ball,
     ballOwnerId,
