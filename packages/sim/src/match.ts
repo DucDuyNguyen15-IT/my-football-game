@@ -1587,6 +1587,9 @@ function stepPlay(
   if (!owner) {
     if (kickLock && tick >= kickLock.untilTick) kickLock = null;
     const down = (p: PlayerState) => tackleRecovery[p.id] !== undefined;
+    // Vừa có cú đánh đầu / móc bóng: chờ hết khoá rồi mới ai đó chạm bóng bổng tiếp, không thì
+    // hai người sát bóng đánh đầu qua lại mỗi tick (review Fable V1).
+    const aerialLocked = kickLock?.touch !== undefined;
     // Bóng bổng ngang hông–vai sát cầu thủ tấn công giỏi trong vòng cấm: có thể móc bóng.
     const volley = tryScissor(
       players,
@@ -1594,7 +1597,7 @@ function stepPlay(
       ball,
       state.ball,
       state.half,
-      (p) => p.id !== kickLock?.playerId && !down(p) && p.position !== 'GK',
+      (p) => !aerialLocked && p.id !== kickLock?.playerId && !down(p) && p.position !== 'GK',
       rng,
     );
     rng = volley.rng;
@@ -1624,7 +1627,7 @@ function stepPlay(
           up,
           ball,
           state.half,
-          (p) => p.id !== kickLock?.playerId,
+          (p) => !aerialLocked && p.id !== kickLock?.playerId,
           (p) => (p.id === human && length(input.move) > 0 ? input.move : null),
           rng,
         );
