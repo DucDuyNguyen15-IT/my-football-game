@@ -13,19 +13,28 @@ export function MatchCanvas({
   setup,
   bridge,
   graphics = DEFAULT_GRAPHICS,
+  avatarSeeds,
 }: {
   setup: MatchSetup;
   bridge?: MatchBridge;
   graphics?: GraphicsSettings;
+  avatarSeeds?: ReadonlyMap<string, string>;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<MatchRenderer | null>(null);
   const graphicsRef = useRef(graphics);
+  const avatarSeedsRef = useRef(avatarSeeds);
 
   useEffect(() => {
     const parent = hostRef.current;
     if (!parent) return;
-    const renderer = new MatchRenderer(parent, setup, bridge, graphicsRef.current);
+    const renderer = new MatchRenderer(
+      parent,
+      setup,
+      bridge,
+      graphicsRef.current,
+      avatarSeedsRef.current,
+    );
     rendererRef.current = renderer;
     return () => {
       rendererRef.current = null;
@@ -37,6 +46,11 @@ export function MatchCanvas({
     graphicsRef.current = graphics;
     rendererRef.current?.setGraphics(graphics);
   }, [graphics]);
+
+  useEffect(() => {
+    avatarSeedsRef.current = avatarSeeds;
+    rendererRef.current?.setAvatarSeeds(avatarSeeds);
+  }, [avatarSeeds]);
 
   return (
     <div

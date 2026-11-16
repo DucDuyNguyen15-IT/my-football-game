@@ -213,6 +213,7 @@ export class MatchRenderer {
     setup: MatchSetup,
     private readonly bridge?: MatchBridge,
     graphics: GraphicsSettings = DEFAULT_GRAPHICS,
+    private avatarSeeds?: ReadonlyMap<string, string>,
   ) {
     this.curr = createMatch(setup);
     this.prev = this.curr;
@@ -292,7 +293,12 @@ export class MatchRenderer {
   private addActor(p: PlayerState): THREE.Object3D {
     let root: THREE.Object3D;
     if (this.playerModel && this.modelMaterials) {
-      const actor = new ModelActor(this.playerModel, p, this.modelMaterials);
+      const actor = new ModelActor(
+        this.playerModel,
+        p,
+        this.modelMaterials,
+        this.avatarSeeds?.get(p.id),
+      );
       this.models.set(p.id, actor);
       root = actor.root;
     } else {
@@ -301,6 +307,14 @@ export class MatchRenderer {
     this.actors.set(p.id, root);
     this.scene.add(root);
     return root;
+  }
+
+  /** Cập nhật màu da/tóc từ `avatar_seed` khi danh mục thẻ tải xong hoặc đổi trận. */
+  setAvatarSeeds(seeds?: ReadonlyMap<string, string>): void {
+    this.avatarSeeds = seeds;
+    for (const [id, actor] of this.models) {
+      actor.setAvatarSeed(seeds?.get(id));
+    }
   }
 
   /** Lệnh từ React (thay người) áp vào sim; lệnh sai luật bị sim từ chối, bỏ qua. */
@@ -323,7 +337,7 @@ export class MatchRenderer {
     this.modelMaterials = materials;
     for (const p of this.curr.players) {
       const placeholder = this.actors.get(p.id);
-      const actor = new ModelActor(model, p, materials);
+      const actor = new ModelActor(model, p, materials, this.avatarSeeds?.get(p.id));
       if (placeholder) {
         actor.root.position.copy(placeholder.position);
         actor.root.rotation.y = placeholder.rotation.y;
@@ -407,6 +421,7 @@ export class MatchRenderer {
     this.countdown.dispose();
     this.transition.dispose();
     disposeTree(this.scene);
+    this.modelMaterials?.dispose();
     if (this.playerModel) disposeTree(this.playerModel.scene);
     this.renderer.dispose();
     // Trình duyệt chỉ cho ~16 WebGL context sống cùng lúc; trả ngay thay vì chờ GC.

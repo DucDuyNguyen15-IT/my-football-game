@@ -12,9 +12,10 @@ import { fileURLToPath } from 'node:url';
 import * as THREE from 'three';
 import { FBXLoader } from 'three/examples/jsm/loaders/FBXLoader.js';
 import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
+import { mergeVertices } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { NodeIO } from '@gltf-transform/core';
 import { ALL_EXTENSIONS } from '@gltf-transform/extensions';
-import { dedup, meshopt, prune, resample, simplify, weld } from '@gltf-transform/functions';
+import { dedup, meshopt, prune, resample, simplifyPrimitive, weld } from '@gltf-transform/functions';
 import { MeshoptEncoder, MeshoptSimplifier } from 'meshoptimizer';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..');
@@ -120,7 +121,16 @@ if (!existsSync(characterPath)) {
 const character = loadFbx(characterPath);
 character.animations = [];
 // FBXLoader để lại thông tin biến đổi gốc trong userData → GLTFExporter ghi thành extras (~50 KB thừa).
-character.traverse((o) => (o.userData = {}));
+// Gộp đỉnh trùng theo vị trí + trọng số xương (bỏ uv/normal tách cạnh của Mixamo) rồi tính lại normal mượt.
+character.traverse((o) => {
+  o.userData = {};
+  if (o.isMesh) {
+    o.geometry.deleteAttribute('uv');
+    o.geometry.deleteAttribute('normal');
+    o.geometry = mergeVertices(o.geometry, 1e-4);
+    o.geometry.computeVertexNormals();
+  }
+});
 
 const clips = [];
 /** Tốc độ bước của clip di chuyển, ghi vào `extras` của GLB (web đọc ở `playerModel.ts`). */
@@ -163,23 +173,82 @@ const glb = await new GLTFExporter().parseAsync(scene, {
   animations: clips,
   onlyVisible: false,
 });
-// Nén: bỏ khung hình thừa (nội suy tuyến tính đã đủ), giảm đa giác (camera ở xa, không thấy khác),
-// gộp dữ liệu trùng, nén meshopt (EXT_meshopt_compression — web giải bằng MeshoptDecoder của Three.js).
+/** Tính lại vertex normal mượt (trung bình có trọng số diện tích) sau khi simplify. */
+function recomputeSmoothNormals(doc) {
+  const pA = new THREE.Vector3();
+  const pB = new THREE.Vector3();
+  const pC = new THREE.Vector3();
+  const cb = new THREE.Vector3();
+  const ab = new THREE.Vector3();
+  for (const mesh of doc.getRoot().listMeshes()) {
+    for (const prim of mesh.listPrimitives()) {
+      const pos = prim.getAttribute('POSITION');
+      const idx = prim.getIndices();
+      const norm = prim.getAttribute('NORMAL');
+      if (!pos || !idx || !norm) continue;
+      const accum = new Float32Array(pos.getCount() * 3);
+      const triCount = idx.getCount() / 3;
+      for (let t = 0; t < triCount; t++) {
+        const i0 = idx.getScalar(t * 3);
+        const i1 = idx.getScalar(t * 3 + 1);
+        const i2 = idx.getScalar(t * 3 + 2);
+        const a = pos.getElement(i0, []);
+        const b = pos.getElement(i1, []);
+        const c = pos.getElement(i2, []);
+        pA.set(a[0], a[1], a[2]);
+        pB.set(b[0], b[1], b[2]);
+        pC.set(c[0], c[1], c[2]);
+        cb.subVectors(pC, pB);
+        ab.subVectors(pA, pB);
+        cb.cross(ab);
+        for (const vi of [i0, i1, i2]) {
+          accum[vi * 3] += cb.x;
+          accum[vi * 3 + 1] += cb.y;
+          accum[vi * 3 + 2] += cb.z;
+        }
+      }
+      for (let i = 0; i < pos.getCount(); i++) {
+        const x = accum[i * 3];
+        const y = accum[i * 3 + 1];
+        const z = accum[i * 3 + 2];
+        const len = Math.hypot(x, y, z) || 1;
+        norm.setElement(i, [x / len, y / len, z / len]);
+      }
+    }
+  }
+}
+
+// Nén: bỏ khung hình thừa, gộp đỉnh trùng, giữ chi tiết thân/đầu (0,92) và giảm mạnh khớp nhỏ (0,25)
+// để tổng tam giác vẫn < 2× cũ, tính lại normal mượt, nén meshopt.
 await Promise.all([MeshoptEncoder.ready, MeshoptSimplifier.ready]);
 const io = new NodeIO()
   .registerExtensions(ALL_EXTENSIONS)
   .registerDependencies({ 'meshopt.encoder': MeshoptEncoder });
 const doc = await io.readBinary(new Uint8Array(glb));
-await doc.transform(
-  resample({ tolerance: 1e-4 }),
-  weld(),
-  simplify({ simplifier: MeshoptSimplifier, ratio: 0.35, error: 0.002 }),
-  dedup(),
-  prune(),
-  meshopt({ encoder: MeshoptEncoder, level: 'medium' }),
-);
+await doc.transform(resample({ tolerance: 1e-4 }), weld());
+for (const mesh of doc.getRoot().listMeshes()) {
+  for (const prim of mesh.listPrimitives()) {
+    const matName = prim.getMaterial()?.getName() ?? '';
+    const ratio = matName.includes('Joints') ? 0.25 : 0.92;
+    simplifyPrimitive(prim, { simplifier: MeshoptSimplifier, ratio, error: 0.002 });
+  }
+}
+recomputeSmoothNormals(doc);
+await doc.transform(dedup(), prune(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
+let totalTris = 0;
+let totalVerts = 0;
+for (const mesh of doc.getRoot().listMeshes()) {
+  for (const prim of mesh.listPrimitives()) {
+    const verts = prim.getAttribute('POSITION')?.getCount() ?? 0;
+    const tris = (prim.getIndices()?.getCount() ?? verts) / 3;
+    totalVerts += verts;
+    totalTris += tris;
+  }
+}
 const out = await io.writeBinary(doc);
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, out);
 console.log('Tốc độ bước (m/s):', clipSpeeds);
-console.log(`Đã ghi ${OUT} (${(out.byteLength / 1e6).toFixed(2)} MB, ${clips.length} clip)`);
+console.log(
+  `Đã ghi ${OUT} (${(out.byteLength / 1e6).toFixed(2)} MB, ${clips.length} clip, ${totalTris} tris, ${totalVerts} verts)`,
+);

@@ -9,6 +9,7 @@ import { isTransientError, useStartMatch, useSubmitMatchResult } from '../../api
 import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
+import { avatarSeedsForMatch } from '../../game/render/kit';
 import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
 import { MatchTutorialOverlay } from '../onboarding/MatchTutorialOverlay';
 import { markTutorialSeen, readTutorialSeen, resetTutorialSeen } from '../onboarding/onboarding';
@@ -356,6 +357,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
   }, [started, later]);
 
   const catalog = useCardCatalog().data;
+  const avatarSeeds = useMemo(() => avatarSeedsForMatch(match, catalog), [match, catalog]);
   const catalogRef = useRef(catalog);
   const homePlayersRef = useRef(match.home.players);
   const [subs, setSubs] = useState<SubOptions>({
@@ -432,7 +434,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
 
   return (
     <>
-      <MatchCanvas setup={setup} bridge={bridge} graphics={graphics} />
+      <MatchCanvas setup={setup} bridge={bridge} graphics={graphics} avatarSeeds={avatarSeeds} />
       {hud && (
         <div className="hud">
           <div className="hud-top">
