@@ -49,7 +49,7 @@ pnpm dev                                             # web http://localhost:5173
 
 Không có `.env` thì server dùng giá trị dev khớp `docker-compose.dev.yml`. Các biến môi trường khác (đăng nhập Google, …) xem [.env.example](.env.example).
 
-**Model 3D:** model cầu thủ (Mixamo), bóng và khung thành không có trong repo vì lý do giấy phép, nên game tự vẽ chúng bằng hình khối. Nếu có file gốc trong `assets-src/` thì chạy `pnpm assets` để dựng `apps/web/public/models/*.glb`.
+**Model 3D:** file model không nằm trong repo (xem [Nguồn tài nguyên](#nguồn-tài-nguyên)); thiếu file thì game tự vẽ cầu thủ, bóng, khung thành bằng hình khối. Nếu có file gốc trong `assets-src/` thì chạy `pnpm assets` để dựng `apps/web/public/models/*.glb`.
 
 ## Kiểm thử
 
@@ -83,6 +83,14 @@ Mở `https://localhost` (trình duyệt sẽ cảnh báo chứng chỉ nội b�
 - [docs/ROADMAP.md](docs/ROADMAP.md): các giai đoạn phát triển. Tiến độ ở [docs/PROGRESS.md](docs/PROGRESS.md)
 - [docs/DESIGN.md](docs/DESIGN.md): thiết kế giao diện và điều khiển
 - [CLAUDE.md](CLAUDE.md): quy ước cho agent AI tham gia phát triển
+
+## Nguồn tài nguyên
+
+| Tài nguyên | Tác giả / nguồn | Giấy phép |
+|---|---|---|
+| "Football" (bóng) | BSlegt, Sketchfab | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), đã chỉnh sửa (nén, chuẩn hoá toạ độ) |
+| "Football Net" (khung thành) | Bryan Okafor - Ogu, Sketchfab | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/), đã chỉnh sửa (nén, chuẩn hoá toạ độ) |
+| Nhân vật và hoạt ảnh cầu thủ | [Adobe Mixamo](https://www.mixamo.com/) | Miễn phí bản quyền, dùng được cho thương mại khi nhúng trong game; không được phân phối lại file gốc riêng lẻ, nên không đưa vào repo |
 
 ## Liên hệ
 

@@ -1,7 +1,11 @@
 /**
  * `pnpm assets` (phần đạo cụ) — nén model bóng và khung thành tải từ Sketchfab cho intro và trận 3D.
- * File gốc để ở `assets-src/sketchfab/` (không commit: chưa rõ giấy phép, repo public). Kết quả
- * `apps/web/public/models/{ball,goal}.glb` cũng bị Git bỏ qua; thiếu file thì game vẽ bóng/khung bằng code.
+ * Giấy phép CC BY 4.0 (https://creativecommons.org/licenses/by/4.0/): dùng thương mại được, bắt buộc
+ * ghi nguồn và ghi rõ đã chỉnh sửa (script này nén lại + nướng biến đổi):
+ *   - "Football" — BSlegt (Sketchfab)
+ *   - "Football Net" — Bryan Okafor - Ogu (Sketchfab)
+ * File gốc để ở `assets-src/sketchfab/`; nó và kết quả `apps/web/public/models/{ball,goal}.glb` không
+ * commit (dựng lại bằng `pnpm assets`); thiếu file thì game vẽ bóng/khung bằng code.
  *
  * Toạ độ chuẩn sau khi dựng (web tự co giãn về kích thước sim lúc nạp, xem `three/propModels.ts`):
  *   - ball.glb: tâm ở gốc, bán kính 1.
