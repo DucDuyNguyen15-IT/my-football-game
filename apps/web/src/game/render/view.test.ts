@@ -5,7 +5,7 @@ import {
   MAX_CHARGE_TICKS,
   NO_INPUT,
   PASS_FULL_CHARGE_TICKS,
-  PENALTY_AIM_Z,
+  penaltyAimZ,
   PENALTY_SPOT_DIST,
   penaltyRadius,
   TICK_RATE,
@@ -196,7 +196,7 @@ describe('điểm chạm tình huống cố định', () => {
 });
 
 describe('penaltyRing', () => {
-  it('chỉ hiện khi đang lấy đà; tâm trên vạch cuối phía chấm phạt đền, bán kính theo người sút', () => {
+  it('hiện khi giữ D và lúc lấy đà; lực mạnh thì cao, to, đỏ; nhẹ thì thấp, nhỏ, xanh', () => {
     const { players } = createMatch({
       home: starterLikeTeam,
       away: cpuEasyTeam,
@@ -211,15 +211,28 @@ describe('penaltyRing', () => {
       startTick: 0,
       readyTick: 0,
     } as const;
-    expect(penaltyRing({ restart, players })).toBeNull();
+    const base = { restart, players, shotChargeTicks: 0, autopilot: false };
+    expect(penaltyRing(base)).toBeNull();
+    expect(penaltyRing({ ...base, shotChargeTicks: 10, autopilot: true })).toBeNull();
+    expect(
+      penaltyRing({ ...base, restart: { ...restart, team: 'away' }, shotChargeTicks: 10 }),
+    ).toBeNull();
+    // Đang giữ D: tâm giữa khung, lực theo số tick đã giữ.
+    const weak = penaltyRing({ ...base, shotChargeTicks: 1 })!;
+    const strong = penaltyRing({ ...base, shotChargeTicks: MAX_CHARGE_TICKS })!;
+    expect(weak).toMatchObject({ x: -HALF_LENGTH, y: 0, over: false });
+    expect(strong.over).toBe(true);
+    expect(strong.z).toBeGreaterThan(weak.z);
+    expect(strong.radius).toBeGreaterThan(weak.radius);
+    // Lấy đà: lực đã chốt, tâm người chơi đã dời.
     const run = { power: 0.8, y: 1.2, releaseTick: 10 };
-    const ring = penaltyRing({ restart: { ...restart, penaltyRunUp: run }, players });
     const taker = players.find((p) => p.id === 'home-P6')!;
-    expect(ring).toEqual({
+    expect(penaltyRing({ ...base, restart: { ...restart, penaltyRunUp: run } })).toEqual({
       x: -HALF_LENGTH,
       y: 1.2,
-      z: PENALTY_AIM_Z + BALL_RADIUS,
+      z: penaltyAimZ(0.8) + BALL_RADIUS,
       radius: penaltyRadius(taker, 0.8),
+      over: false,
     });
   });
 });

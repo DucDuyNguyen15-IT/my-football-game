@@ -12,6 +12,8 @@ import {
   movePenaltyAim,
   PENALTY_AIM_MAX_Y,
   PENALTY_OVERPOWER_FROM,
+  penaltyAimZ,
+  penaltyOverpowered,
   penaltyRadius,
   penaltyShot,
   rightOf,
@@ -87,11 +89,18 @@ describe('ngắm phạt đền', () => {
     expect(y).toBe(PENALTY_AIM_MAX_Y);
   });
 
-  it('vòng nở khi quá lực và khi mệt', () => {
+  it('lực mạnh hơn thì vòng to và cao hơn; quá lực nở thêm; mệt cũng nở', () => {
     const base = penaltyRadius(shooter, 0.6);
-    expect(penaltyRadius(shooter, PENALTY_OVERPOWER_FROM)).toBe(base);
-    expect(penaltyRadius(shooter, 1)).toBeGreaterThan(base);
+    const atLimit = penaltyRadius(shooter, PENALTY_OVERPOWER_FROM);
+    expect(penaltyRadius(shooter, 0.3)).toBeLessThan(base);
+    expect(atLimit).toBeGreaterThan(base);
+    // Quá lực: nở nhanh hơn hẳn so với đoạn trước ngưỡng.
+    expect(penaltyRadius(shooter, 1) - atLimit).toBeGreaterThan(atLimit - base);
     expect(penaltyRadius({ ...shooter, stamina: 5 }, 0.6)).toBeGreaterThan(base);
+    expect(penaltyAimZ(1)).toBeGreaterThan(penaltyAimZ(0.6));
+    expect(penaltyAimZ(0.6)).toBeGreaterThan(penaltyAimZ(0.3));
+    expect(penaltyOverpowered(1)).toBe(true);
+    expect(penaltyOverpowered(PENALTY_OVERPOWER_FROM)).toBe(false);
   });
 
   it('bóng tới vạch cuối trong vòng tròn quanh tâm ngắm; cùng PRNG thì cùng kết quả', () => {

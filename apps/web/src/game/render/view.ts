@@ -8,9 +8,11 @@ import {
   HALF_LENGTH,
   MAX_CHARGE_TICKS,
   PASS_FULL_CHARGE_TICKS,
-  PENALTY_AIM_Z,
+  penaltyAimZ,
+  penaltyOverpowered,
   penaltyRadius,
   restartContact,
+  shotPower,
   TICK_RATE,
 } from '@pitch/sim';
 import type { MatchState, Vec2 } from '@pitch/sim';
@@ -122,21 +124,36 @@ export function setPieceContact(state: Pick<MatchState, 'restart' | 'autopilot'>
   return restartContact(r);
 }
 
+export interface PenaltyRing {
+  /** Tâm trên vạch cuối (toạ độ sân x, y; `z` độ cao tâm bóng, m). */
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  /** Quá lực: vẽ đỏ (không thì xanh lá). */
+  over: boolean;
+}
+
 /**
- * Vòng ngắm phạt đền khi người chơi đang lấy đà: tâm trên vạch cuối (toạ độ sân x, y; `z` độ cao tâm
- * bóng) và bán kính (m). Không lấy đà thì null.
+ * Vòng ngắm phạt đền của người chơi: hiện từ lúc giữ D (lực đang nạp, tâm giữa khung) tới hết pha
+ * lấy đà (lực đã chốt, tâm người chơi dời). Lực càng mạnh vòng càng cao và to. Không thì null.
  */
 export function penaltyRing(
-  state: Pick<MatchState, 'restart' | 'players'>,
-): { x: number; y: number; z: number; radius: number } | null {
-  const run = state.restart?.penaltyRunUp;
-  const taker = run && state.players.find((p) => p.id === state.restart!.takerId);
-  if (!run || !taker) return null;
+  state: Pick<MatchState, 'restart' | 'players' | 'shotChargeTicks' | 'autopilot'>,
+): PenaltyRing | null {
+  const r = state.restart;
+  if (!r || r.type !== 'penalty' || r.team !== 'home' || state.autopilot) return null;
+  const run = r.penaltyRunUp;
+  if (!run && state.shotChargeTicks <= 0) return null;
+  const taker = state.players.find((p) => p.id === r.takerId);
+  if (!taker) return null;
+  const power = run ? run.power : shotPower(state.shotChargeTicks);
   return {
-    x: Math.sign(state.restart!.spot.x) * HALF_LENGTH,
-    y: run.y,
-    z: PENALTY_AIM_Z + BALL_RADIUS,
-    radius: penaltyRadius(taker, run.power),
+    x: Math.sign(r.spot.x) * HALF_LENGTH,
+    y: run ? run.y : 0,
+    z: penaltyAimZ(power) + BALL_RADIUS,
+    radius: penaltyRadius(taker, power),
+    over: penaltyOverpowered(power),
   };
 }
 

@@ -118,11 +118,26 @@ export const PENALTY_RUNUP_TICKS = Math.round(0.8 / TICK_DT);
 export const PENALTY_AIM_SPEED = 4;
 /** Tâm vòng ngắm không ra xa hơn chừng này mét khỏi giữa khung thành. */
 export const PENALTY_AIM_MAX_Y = GOAL_WIDTH / 2 + 0.5;
-/** Độ cao (m) tâm vòng ngắm, giữa khung thành. */
-export const PENALTY_AIM_Z = GOAL_HEIGHT / 2;
+/** Độ cao (m) tâm vòng ngắm theo lực: lực nhỏ nhất → [0], hết lực → [1] (xà ở GOAL_HEIGHT). */
+export const PENALTY_AIM_Z_RANGE = [0.35, GOAL_HEIGHT * 0.65] as const;
+/** Bán kính vòng nhân hệ số này theo lực: lực nhỏ nhất → [0], hết lực → [1] (chưa tính quá lực). */
+export const PENALTY_RADIUS_POWER_RANGE = [0.6, 1.16] as const;
+
+/** Lực 0…1 quy về t 0…1 trên đoạn MIN_SHOT_POWER…1. */
+const powerT = (power: number): number =>
+  Math.min(1, Math.max(0, (power - MIN_SHOT_POWER) / (1 - MIN_SHOT_POWER)));
+
+/** Độ cao (m) tâm vòng ngắm: sút càng mạnh vòng càng lên cao. */
+export function penaltyAimZ(power: number): number {
+  const [lo, hi] = PENALTY_AIM_Z_RANGE;
+  return lo + (hi - lo) * powerT(power);
+}
+
+/** Quá lực: vòng nở to và (phía hiển thị) chuyển màu đỏ. */
+export const penaltyOverpowered = (power: number): boolean => power > PENALTY_OVERPOWER_FROM;
 /**
  * Bán kính vòng ngắm (m) theo Sút: chỉ số 1 → [0], 99 → [1]. Cân để người chơi nhắm sát góc vào
- * ~81% trước máy Dễ, ~70% trước máy Khó (`match.penalty.test.ts`).
+ * ~80% trước máy Dễ, ~68% trước máy Khó (`match.penalty.test.ts`).
  */
 export const PENALTY_RADIUS_RANGE = [1.55, 0.65] as const;
 /** Lực vượt ngưỡng này thì vòng nở ra, mỗi 0,1 lực vượt thêm PENALTY_OVERPOWER_GROW/10. */
@@ -132,8 +147,10 @@ export const PENALTY_OVERPOWER_GROW = 2.5;
 /** Bán kính vòng ngắm phạt đền (m). */
 export function penaltyRadius(shooter: PlayerState, power: number): number {
   const over = Math.max(0, power - PENALTY_OVERPOWER_FROM) * PENALTY_OVERPOWER_GROW;
+  const [lo, hi] = PENALTY_RADIUS_POWER_RANGE;
+  const byPower = lo + (hi - lo) * powerT(power);
   return (
-    (statScale(shooter.stats.shooting, ...PENALTY_RADIUS_RANGE) * (1 + over)) /
+    (statScale(shooter.stats.shooting, ...PENALTY_RADIUS_RANGE) * byPower * (1 + over)) /
     fatigueFactor(shooter.stamina)
   );
 }
@@ -145,7 +162,7 @@ export function movePenaltyAim(y: number, moveX: number, goalSign: 1 | -1): numb
 }
 
 /**
- * Sút phạt đền vào một điểm ngẫu nhiên trong vòng tròn tâm (vạch cuối, y, PENALTY_AIM_Z): điểm trong
+ * Sút phạt đền vào một điểm ngẫu nhiên trong vòng tròn tâm (vạch cuối, y, penaltyAimZ): điểm trong
  * hình vuông kẹp vào hình tròn (dày hơn ở mép, đủ dùng). Vận tốc đứng tính để bóng tới khung thành ở
  * đúng độ cao (bỏ qua cản gió như `shootBall`). PRNG tiến 2 lần.
  */
@@ -161,7 +178,7 @@ export function penaltyShot(
   const [v, r2] = nextFloat(r1);
   const off = scale(clampLength(vec2(u * 2 - 1, v * 2 - 1), 1), penaltyRadius(shooter, power));
   const target = vec2(goalSign * HALF_LENGTH, y + off.x);
-  const z = Math.max(0, PENALTY_AIM_Z + off.y);
+  const z = Math.max(0, penaltyAimZ(power) + off.y);
   const offset = sub(target, spot);
   const dist = Math.max(1, length(offset));
   const p = Math.min(1, Math.max(MIN_SHOT_POWER, power));
