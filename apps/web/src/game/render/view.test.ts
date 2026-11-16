@@ -14,9 +14,11 @@ import {
   COUNTDOWN_VISIBLE_SEC,
   SNAP_DISTANCE,
   chargeMeter,
+  contactLabel,
   countdownArcStep,
   countdownRing,
   lerpPos,
+  setPieceContact,
   shirtNumber,
 } from './view';
 
@@ -100,7 +102,10 @@ describe('countdownRing', () => {
 
   it('tình huống cố định nào của người chơi cũng có vòng 5 giây cuối trên đầu người thực hiện (luật 3)', () => {
     // Trận thật: đội nhà giao bóng đầu trận, không bấm gì.
-    let s = step(createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 7 }), NO_INPUT);
+    let s = step(
+      createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 7 }),
+      NO_INPUT,
+    );
     const takerId = s.restart!.takerId;
     const deadline = s.actionDeadline!.deadlineTick;
     expect(s.actionDeadline!.kind).toBe('kickoff');
@@ -152,5 +157,34 @@ describe('countdownRing', () => {
     expect(countdownArcStep(0)).toBe(0);
     expect(countdownArcStep(0.5)).toBe(COUNTDOWN_ARC_STEPS / 2);
     expect(countdownArcStep(0.9999)).toBe(COUNTDOWN_ARC_STEPS - 1);
+  });
+});
+
+describe('điểm chạm tình huống cố định', () => {
+  it('contactLabel theo vùng chạm', () => {
+    expect(contactLabel({ x: 0.1, y: -0.1 })).toBe('Sút căng');
+    expect(contactLabel({ x: 0.8, y: 0.2 })).toBe('Sút xoáy bằng má trong');
+    expect(contactLabel({ x: -0.8, y: 0 })).toBe('Sút xoáy bằng má ngoài');
+    expect(contactLabel({ x: 0, y: -0.7 })).toBe('Sút bổng');
+    expect(contactLabel({ x: 0.2, y: 0.7 })).toBe('Sút chìm');
+  });
+
+  it('setPieceContact chỉ hiện khi đội người chơi đá phạt / phạt góc', () => {
+    const restart = (type: 'free_kick' | 'corner' | 'penalty', team: 'home' | 'away') =>
+      ({ type, team, spot: { x: 0, y: 0 }, takerId: 'h1', startTick: 0, readyTick: 0 }) as const;
+    expect(setPieceContact({ restart: restart('free_kick', 'home'), autopilot: false })).toEqual({
+      x: 0,
+      y: 0,
+    });
+    expect(
+      setPieceContact({
+        restart: { ...restart('corner', 'home'), contact: { x: 1, y: 0 } },
+        autopilot: false,
+      }),
+    ).toEqual({ x: 1, y: 0 });
+    expect(setPieceContact({ restart: restart('penalty', 'home'), autopilot: false })).toBeNull();
+    expect(setPieceContact({ restart: restart('free_kick', 'away'), autopilot: false })).toBeNull();
+    expect(setPieceContact({ restart: restart('free_kick', 'home'), autopilot: true })).toBeNull();
+    expect(setPieceContact({ restart: null, autopilot: false })).toBeNull();
   });
 });

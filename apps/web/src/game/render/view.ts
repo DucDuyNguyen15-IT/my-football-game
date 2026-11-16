@@ -2,7 +2,13 @@
  * Tính toán phía hiển thị, thuần (không Three.js): nội suy giữa 2 tick, số áo. Không chứa luật/vật lý.
  */
 import type { SquadSlot } from '@pitch/shared';
-import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS, TICK_RATE } from '@pitch/sim';
+import {
+  CONTACT_RESTARTS,
+  MAX_CHARGE_TICKS,
+  PASS_FULL_CHARGE_TICKS,
+  restartContact,
+  TICK_RATE,
+} from '@pitch/sim';
 import type { MatchState, Vec2 } from '@pitch/sim';
 
 /**
@@ -104,3 +110,21 @@ export const COUNTDOWN_ARC_STEPS = 180;
 /** Nấc viền đen hiện tại (0…COUNTDOWN_ARC_STEPS); hết giờ mới đủ vòng. */
 export const countdownArcStep = (elapsed: number): number =>
   elapsed >= 1 ? COUNTDOWN_ARC_STEPS : Math.floor(Math.max(0, elapsed) * COUNTDOWN_ARC_STEPS);
+
+/** Điểm chạm đang chọn khi đội người chơi đá phạt / phạt góc (widget góc màn hình); không thì null. */
+export function setPieceContact(state: Pick<MatchState, 'restart' | 'autopilot'>): Vec2 | null {
+  const r = state.restart;
+  if (!r || r.team !== 'home' || state.autopilot || !CONTACT_RESTARTS.has(r.type)) return null;
+  return restartContact(r);
+}
+
+/** Điểm chạm cách tâm bóng dưới mức này (theo bán kính) vẫn tính là chạm giữa. */
+export const CONTACT_CENTRE = 0.25;
+
+/** Tên cú đá theo điểm chạm (x phải, y trên; nhìn từ sau lưng người đá chân phải). */
+export function contactLabel(c: Vec2): string {
+  if (Math.hypot(c.x, c.y) < CONTACT_CENTRE) return 'Sút căng';
+  if (Math.abs(c.x) >= Math.abs(c.y))
+    return c.x > 0 ? 'Sút xoáy bằng má trong' : 'Sút xoáy bằng má ngoài';
+  return c.y < 0 ? 'Sút bổng' : 'Sút chìm';
+}

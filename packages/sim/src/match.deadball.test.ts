@@ -87,4 +87,32 @@ describe('ngắm đá phạt (camera sau lưng)', () => {
     expect(s.restart!.aim).toEqual(aim);
     expect(s.restart!.contact!.y).toBeGreaterThan(0);
   });
+
+  it('đá phạt chạm lệch phải: bóng xoáy và cong sang trái so với cú chạm giữa', () => {
+    const base = step(ready(), NO_INPUT);
+    const kick = (contactRight: boolean) => {
+      let s = base;
+      if (contactRight)
+        for (let i = 0; i < 40; i++) s = step(s, held({ adjust: true, move: vec2(1, 0) }));
+      for (let i = 0; i < 30; i++) s = step(s, held({ shoot: true }));
+      s = step(s, NO_INPUT);
+      expect(s.phase).toBe('play');
+      const kicked = s.ball;
+      for (let i = 0; i < 40; i++) s = step(s, NO_INPUT);
+      return { kicked, ball: s.ball };
+    };
+    const centre = kick(false);
+    const curled = kick(true);
+    expect(centre.kicked.spin).toBeUndefined();
+    expect(curled.kicked.spin!.side).toBeLessThan(0);
+    // Độ lệch sang phải (rightOf) so với hướng bay lúc rời chân: âm = cong sang trái.
+    const sideDrift = (k: typeof centre) => {
+      const d = sub(k.ball.pos, k.kicked.pos);
+      const v = k.kicked.vel;
+      const dir = vec2(v.x / length(v), v.y / length(v));
+      const across = vec2(-dir.y, dir.x);
+      return d.x * across.x + d.y * across.y;
+    };
+    expect(sideDrift(curled)).toBeLessThan(sideDrift(centre) - 0.5);
+  });
 });

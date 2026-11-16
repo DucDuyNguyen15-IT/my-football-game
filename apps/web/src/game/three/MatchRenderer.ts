@@ -33,7 +33,7 @@ import {
 } from '../render/camera';
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
-import { chargeMeter, countdownRing, lerp, lerpPos } from '../render/view';
+import { chargeMeter, countdownRing, lerp, lerpPos, setPieceContact } from '../render/view';
 import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
 import {
   REPLAY_AFTER_TICKS,
@@ -45,6 +45,7 @@ import {
   type Replay,
 } from '../render/replay';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
+import { ContactWidgetView } from './contactWidget';
 import { CountdownRingView } from './countdown';
 import { buildGrass, type Grass } from './grass';
 import { buildPitch, NetRig } from './pitch';
@@ -66,11 +67,7 @@ import {
   resolveQuality,
   type QualitySettings,
 } from '../render/quality';
-import {
-  buildTransitionSpec,
-  detectTransition,
-  type TransitionSpec,
-} from '../render/transition';
+import { buildTransitionSpec, detectTransition, type TransitionSpec } from '../render/transition';
 import { CutHold, snapshotHold } from '../render/cutHold';
 import { MatchStinger } from './stinger';
 
@@ -116,9 +113,7 @@ function disposeTree(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   root.traverse((obj) => {
-    if (
-      !(obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line)
-    )
+    if (!(obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line))
       return;
     geometries.add(obj.geometry as THREE.BufferGeometry);
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -153,6 +148,7 @@ export class MatchRenderer {
   private playerModel: PlayerModel | null = null;
   private readonly kit = new ActorKit();
   private readonly countdown: CountdownRingView;
+  private readonly contactWidget: ContactWidgetView;
   private readonly transition: MatchStinger;
   private readonly ringPos = new THREE.Vector3();
   private readonly ringEdge = new THREE.Vector3();
@@ -269,6 +265,7 @@ export class MatchRenderer {
     this.marker = kit.createMarker();
     this.chargeBar = kit.createChargeBar();
     this.countdown = new CountdownRingView(parent);
+    this.contactWidget = new ContactWidgetView(parent);
     this.transition = new MatchStinger(parent, this.renderer);
     this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
 
@@ -417,6 +414,7 @@ export class MatchRenderer {
     this.resizeObserver.disconnect();
     this.postFx.dispose();
     this.countdown.dispose();
+    this.contactWidget.dispose();
     this.transition.dispose();
     disposeTree(this.scene);
     if (this.playerModel) disposeTree(this.playerModel.scene);
@@ -682,14 +680,7 @@ export class MatchRenderer {
       const holdCam = this.frozen?.cam;
       this.draw(hold, hold, 1, activeDt, activeDt, holdCam);
     } else if (this.frozen) {
-      this.draw(
-        this.frozen.state,
-        this.frozen.state,
-        1,
-        activeDt,
-        activeDt,
-        this.frozen.cam,
-      );
+      this.draw(this.frozen.state, this.frozen.state, 1, activeDt, activeDt, this.frozen.cam);
       this.applyFallTilt();
     } else if (this.cutHold) {
       // Diễn tiếp pha bóng: camera vẫn bám bóng đang lăn.
@@ -698,13 +689,7 @@ export class MatchRenderer {
     } else if (this.goalHold) {
       this.draw(this.goalHold, this.goalHold, 1, dt, activeDt);
     } else {
-      this.draw(
-        this.prev,
-        this.curr,
-        this.accumulator / TICK_DT,
-        dt,
-        activeDt,
-      );
+      this.draw(this.prev, this.curr, this.accumulator / TICK_DT, dt, activeDt);
     }
     this.render();
     if (this.debug) this.refreshDebug(now);
@@ -729,7 +714,14 @@ export class MatchRenderer {
     this.accumulator = 0;
     // Giữ phím di chuyển (keyup trong replay vẫn nhả); nút hành động thì xoá.
     const h = this.held;
-    this.held = { ...NO_KEYS, up: h.up, down: h.down, left: h.left, right: h.right, sprint: h.sprint };
+    this.held = {
+      ...NO_KEYS,
+      up: h.up,
+      down: h.down,
+      left: h.left,
+      right: h.right,
+      sprint: h.sprint,
+    };
     this.taps.consume();
 
     if (!this.stingerEnabled) {
@@ -742,21 +734,18 @@ export class MatchRenderer {
     this.pendingReplay = prepared;
     const holdState = this.goalHold ?? this.prev;
     const holdCam = this.cam;
-    this.transition.play(
-      buildTransitionSpec('replay_in', { team: this.goalScoredTeam }),
-      {
-        onCovered: () => {
-          this.frozen = null;
-          this.goalHold = null;
-          if (!this.pendingReplay) return;
-          this.replay = this.pendingReplay;
-          this.pendingReplay = null;
-          this.replayCam = null;
-          this.replayExiting = false;
-          this.showReplayLabel(true);
-        },
+    this.transition.play(buildTransitionSpec('replay_in', { team: this.goalScoredTeam }), {
+      onCovered: () => {
+        this.frozen = null;
+        this.goalHold = null;
+        if (!this.pendingReplay) return;
+        this.replay = this.pendingReplay;
+        this.pendingReplay = null;
+        this.replayCam = null;
+        this.replayExiting = false;
+        this.showReplayLabel(true);
       },
-    );
+    });
     this.frozen = { state: holdState, cam: holdCam };
   }
 
@@ -861,10 +850,7 @@ export class MatchRenderer {
     this.goalSide = side;
     this.goalScoredTeam = this.curr.score.home > this.prev.score.home ? 'home' : 'away';
     const netY = Math.max(-2.7, Math.min(2.7, prevBall.pos.y));
-    this.nets.hit(
-      side,
-      new THREE.Vector3(side * 30, BALL_DRAW_RADIUS + prevBall.z, netY),
-    );
+    this.nets.hit(side, new THREE.Vector3(side * 30, BALL_DRAW_RADIUS + prevBall.z, netY));
     this.crowd.cheer();
 
     // Diễn tiếp thay vì đứng hình: bóng bay vào lưới rồi dừng, cầu thủ chạy chậm dần (review M2).
@@ -959,7 +945,10 @@ export class MatchRenderer {
     if (dt > 0 && !cameraOverride) this.cam = followCamera(this.cam, ground, dt);
     // Góc sau lưng người đá: lướt vào/ra trong SET_PIECE_BLEND_SEC; `this.cam` vẫn bám bóng để quay về mượt.
     const setPiece = cameraOverride ? null : setPieceAim(curr);
-    this.setPieceW = Math.min(1, Math.max(0, this.setPieceW + (setPiece ? dt : -dt) / SET_PIECE_BLEND_SEC));
+    this.setPieceW = Math.min(
+      1,
+      Math.max(0, this.setPieceW + (setPiece ? dt : -dt) / SET_PIECE_BLEND_SEC),
+    );
     if (setPiece) this.setPieceCam = setPieceCamera(setPiece.spot, setPiece.aim);
     const view =
       cameraOverride ??
@@ -974,6 +963,13 @@ export class MatchRenderer {
     this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + dolly.z);
     this.camera.lookAt(look.x, look.y, look.z);
     this.drawCountdown(cameraOverride || this.cutHold ? null : countdownRing(this.curr));
+    // Điểm chạm: chỉ khi sân không bị chuyển cảnh che / giữ khung.
+    const contact =
+      cameraOverride || this.cutHold || this.frozen || this.transition.isActive()
+        ? null
+        : setPieceContact(this.curr);
+    if (contact) this.contactWidget.show(contact);
+    else this.contactWidget.hide();
   }
 
   /**

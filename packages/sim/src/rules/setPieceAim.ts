@@ -1,7 +1,7 @@
 import { add, clampLength, length, normalize, scale, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { HALF_LENGTH } from '../pitch';
 import { TICK_DT } from '../tick';
-import type { Restart, RestartType } from '../types';
+import type { BallState, Restart, RestartType } from '../types';
 import { restartFacing } from './restarts';
 
 /*
@@ -60,4 +60,46 @@ export function aimTarget(spot: Vec2, aim: Vec2, goalSign: 1 | -1): Vec2 {
   const goalX = goalSign * HALF_LENGTH;
   if (aim.x * goalSign > 1e-6) return add(spot, scale(aim, (goalX - spot.x) / aim.x));
   return add(spot, scale(aim, AIM_FAR_DIST));
+}
+
+/** Độ xoáy cạnh/xoáy dọc khi chạm mép bóng (như sút xoáy Z+D, `FINESSE_SPIN`). */
+export const CONTACT_SPIN = 0.8;
+/** Chạm đáy bóng: vận tốc đứng ×(1 + CONTACT_LIFT); chạm đỉnh: ×(1 − CONTACT_LIFT). */
+export const CONTACT_LIFT = 0.5;
+/** Chạm mép bóng mất bấy nhiêu phần tốc độ so với sút căng giữa bóng. */
+export const CONTACT_SLOW = 0.15;
+
+export interface ContactKick {
+  spinSide: number;
+  spinTop: number;
+  vzMult: number;
+  speedMult: number;
+}
+
+/**
+ * Điểm chạm → quỹ đạo. Chạm lệch phải (má trong chân phải) thì bóng cong sang trái và ngược lại
+ * (`BallSpin.side` > 0 cong về `rightOf`). Chạm thấp: bóng bổng, xoáy ngược; chạm cao: bóng chìm,
+ * xoáy lên. Chạm giữa: sút căng, không xoáy.
+ */
+export function contactKick(contact: Vec2): ContactKick {
+  const off = Math.min(1, length(contact));
+  return {
+    // 0 − … để không sinh -0 trong state.
+    spinSide: 0 - contact.x * CONTACT_SPIN,
+    spinTop: 0 + contact.y * CONTACT_SPIN,
+    vzMult: 1 - contact.y * CONTACT_LIFT,
+    speedMult: 1 - off * CONTACT_SLOW,
+  };
+}
+
+/** Áp điểm chạm lên bóng vừa đá; chạm giữa (hoặc chưa chọn) thì giữ nguyên. */
+export function kickWithContact(ball: BallState, contact: Vec2 | undefined): BallState {
+  if (!contact || (contact.x === 0 && contact.y === 0)) return ball;
+  const k = contactKick(contact);
+  return {
+    ...ball,
+    vel: scale(ball.vel, k.speedMult),
+    vz: Math.max(0, ball.vz * k.vzMult),
+    spin: { side: k.spinSide, top: k.spinTop },
+  };
 }

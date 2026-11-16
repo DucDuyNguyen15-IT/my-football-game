@@ -76,6 +76,7 @@ import {
   AIMED_RESTARTS,
   aimTarget,
   CONTACT_RESTARTS,
+  kickWithContact,
   moveContact,
   restartAim,
   restartContact,
@@ -886,6 +887,11 @@ function stepDeadBall(
   const turn = adjusting || takerFar ? 0 : input.move.x;
   const setAim = aimed ? turnAim(restartAim(restart, state.half), turn) : null;
   const contact = adjusting ? moveContact(restartContact(restart), input.move) : restart.contact;
+  // Đá phạt, phạt góc của người chơi: bóng đi theo điểm chạm đã chọn.
+  const touch = <K extends { ball: BallState }>(k: K): K =>
+    humanRestart && CONTACT_RESTARTS.has(restart.type)
+      ? { ...k, ball: kickWithContact(k.ball, contact) }
+      : k;
   const humanShot = (chargeTicks: number) => ({
     ...shootBall(
       taker,
@@ -930,18 +936,18 @@ function stepDeadBall(
   } else if (targets.size > 0) {
     // Còn người đang đi về vị trí.
   } else if (expired && state.shotChargeTicks > 0) {
-    kicked = humanShot(state.shotChargeTicks);
+    kicked = touch(humanShot(state.shotChargeTicks));
   } else if (humanRestart && !expired) {
     if (canPass && (pressed('pass') || pressed('lob'))) {
       const dir = setAim ?? (length(input.move) > 0 ? input.move : taker.facing);
       const kind = pressed('pass') ? 'ground' : 'lob';
       if (goalKick)
         windup = startWindup(taker.id, tick, 'kick', { type: 'assisted', kind, dir, power: 0 });
-      else kicked = { ...pass(kind, dir), shot: false };
+      else kicked = touch({ ...pass(kind, dir), shot: false });
     } else if (canShoot && input.shoot && (state.shotChargeTicks > 0 || pressed('shoot'))) {
       shotChargeTicks = state.shotChargeTicks + 1;
     } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
-      kicked = humanShot(state.shotChargeTicks);
+      kicked = touch(humanShot(state.shotChargeTicks));
     }
   } else if (expired || cpuRestartDue(restart, tick)) {
     const decided = decideRestartKick(restart, state.players, state.half, state.rng);
