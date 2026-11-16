@@ -47,6 +47,17 @@ export interface BallState {
   /** Độ cao so với mặt cỏ (m) và vận tốc theo phương đứng (m/s). */
   z: number;
   vz: number;
+  /**
+   * Xoáy lúc bay (không có = không xoáy), mỗi thành phần khoảng −1…1. `side` > 0: bóng cong sang
+   * trái hướng bay (nhìn từ trên, ngược chiều kim đồng hồ). `top` > 0: xoáy lên, bóng cắm xuống;
+   * < 0: xoáy ngược, bóng bay lâu. Mất khi chạm đất, cột, lưới hoặc người (`physics/ball.ts`).
+   */
+  spin?: BallSpin;
+}
+
+export interface BallSpin {
+  side: number;
+  top: number;
 }
 
 /**

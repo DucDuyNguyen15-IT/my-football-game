@@ -30,6 +30,15 @@ export const GOAL_DEPTH = 1.5;
 /** Vận tốc còn lại khi bóng chạm lưới (lưới hút lực). */
 export const NET_DAMPING = 0.2;
 
+/**
+ * Xoáy (Magnus, đơn giản hoá): gia tốc ngang = SPIN_CURL × side × v vuông góc hướng bay (1/s);
+ * gia tốc đứng thêm = −SPIN_DIP × top × |v ngang|. Bóng 25 m/s xoáy cạnh đủ (side 1) lệch ~3 m sau 1 s.
+ */
+export const SPIN_CURL = 0.25;
+export const SPIN_DIP = 0.16;
+/** Xoáy giảm chừng này phần mỗi giây. */
+export const SPIN_DECAY = 0.3;
+
 /** Quãng đường tối đa mỗi bước con — nhỏ hơn BALL_RADIUS + POST_RADIUS để không xuyên cột. */
 const MAX_SUBSTEP_DIST = 0.08;
 
@@ -73,6 +82,7 @@ function bounceOffCircle(
 /** Cột dọc (hình trụ đứng) và xà ngang (hình trụ nằm dọc trục y) ở cả hai khung thành. */
 function collideGoalFrame(b: BallState): BallState {
   let { pos, vel, z, vz } = b;
+  let hitFrame = false;
   for (const sx of [1, -1]) {
     const gx = sx * HALF_LENGTH;
     if (Math.abs(pos.x - gx) >= POST_HIT_DIST) continue;
@@ -82,6 +92,7 @@ function collideGoalFrame(b: BallState): BallState {
         if (hit) {
           pos = vec2(hit[0], hit[1]);
           vel = vec2(hit[2], hit[3]);
+          hitFrame = true;
         }
       }
     }
@@ -92,10 +103,11 @@ function collideGoalFrame(b: BallState): BallState {
         z = Math.max(0, hit[1] - BALL_RADIUS);
         vel = vec2(hit[2], vel.y);
         vz = hit[3];
+        hitFrame = true;
       }
     }
   }
-  return { pos, vel, z, vz };
+  return hitFrame || !b.spin ? { pos, vel, z, vz } : { pos, vel, z, vz, spin: b.spin };
 }
 
 /** Lưới: bóng đã vào khung thành thì bị giữ trong hộp sau vạch cuối, dưới xà, giữa hai cột. */
@@ -149,6 +161,11 @@ function integrate(b: BallState, h: number): BallState {
     const keep = Math.max(0, 1 - AIR_DRAG * speed3 * h);
     vel = scale(b.vel, keep);
     vz = b.vz * keep - GRAVITY * h;
+    if (b.spin) {
+      const { side, top } = b.spin;
+      vel = add(vel, scale(vec2(-b.vel.y, b.vel.x), SPIN_CURL * side * h));
+      vz -= SPIN_DIP * top * length(b.vel) * h;
+    }
   }
 
   const pos = add(b.pos, scale(vel, h));
@@ -158,8 +175,11 @@ function integrate(b: BallState, h: number): BallState {
     vz = -vz * BOUNCE_RESTITUTION;
     vel = scale(vel, BOUNCE_FRICTION);
     if (vz < MIN_BOUNCE_VZ) vz = 0;
+    return { pos, vel, z, vz };
   }
-  return { pos, vel, z, vz };
+  if (!b.spin || onGround) return { pos, vel, z, vz };
+  const decay = Math.max(0, 1 - SPIN_DECAY * h);
+  return { pos, vel, z, vz, spin: { side: b.spin.side * decay, top: b.spin.top * decay } };
 }
 
 /** Sự kiện khi tâm bóng đi từ `a` (trong sân) tới `b` (ngoài sân): chọn vạch bị vượt trước. */

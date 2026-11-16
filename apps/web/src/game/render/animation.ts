@@ -230,7 +230,8 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     deflected(prev.ball.vel, curr.ball.vel)
   ) {
     const left = leftOf(parrier.facing);
-    const side = (curr.ball.pos.x - parrier.pos.x) * left.x + (curr.ball.pos.y - parrier.pos.y) * left.y;
+    const side =
+      (curr.ball.pos.x - parrier.pos.x) * left.x + (curr.ball.pos.y - parrier.pos.y) * left.y;
     const clip: ClipName =
       Math.abs(side) < PARRY_BODY_SIDE ? 'gk_catch' : side > 0 ? 'gk_dive_left' : 'gk_dive_right';
     events.push({ playerId: parrier.id, clip });

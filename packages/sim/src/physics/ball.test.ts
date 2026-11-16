@@ -231,3 +231,30 @@ describe('stepBall — tất định', () => {
     expect(run(start, 600)).toEqual(run(start, 600));
   });
 });
+
+describe('xoáy bóng (spin)', () => {
+  const fly = (spin?: BallState['spin'], ticks = 40) => {
+    let b: BallState = { ...ball(vec2(0, 0), vec2(25, 0), 0.5, 4), spin };
+    for (let i = 0; i < ticks; i++) b = stepBall(b, 'home').ball;
+    return b;
+  };
+
+  it('xoáy cạnh dương cong sang trái hướng bay (+y khi bay về +x), âm cong sang phải', () => {
+    expect(fly({ side: 1, top: 0 }).pos.y).toBeGreaterThan(0.5);
+    expect(fly({ side: -1, top: 0 }).pos.y).toBeLessThan(-0.5);
+  });
+
+  it('xoáy lên làm bóng cắm xuống sớm hơn, xoáy ngược bay lâu hơn', () => {
+    const plain = fly(undefined, 30).z;
+    expect(fly({ side: 0, top: 1 }, 30).z).toBeLessThan(plain);
+    expect(fly({ side: 0, top: -1 }, 30).z).toBeGreaterThan(plain);
+  });
+
+  it('không xoáy thì như cũ; xoáy giảm dần và mất khi chạm cỏ', () => {
+    expect(fly({ side: 0, top: 0 }, 10).pos).toEqual(fly(undefined, 10).pos);
+    const mid = fly({ side: 1, top: 0 }, 10);
+    expect(mid.spin!.side).toBeLessThan(1);
+    expect(mid.spin!.side).toBeGreaterThan(0);
+    expect(fly({ side: 1, top: 0 }, 200).spin).toBeUndefined();
+  });
+});

@@ -1513,7 +1513,12 @@ function stepPlay(
       const [roll, afterRoll] = nextFloat(rng);
       rng = afterRoll;
       if (roll < miscontrolChance(captured.stats.dribbling, length(relVel))) {
-        ball = { ...ball, vel: add(captured.vel, scale(relVel, MISCONTROL_KEEP_VEL)) };
+        ball = {
+          pos: ball.pos,
+          z: ball.z,
+          vz: ball.vz,
+          vel: add(captured.vel, scale(relVel, MISCONTROL_KEEP_VEL)),
+        };
         kickLock = lock(captured.id);
         lastTouchTeam = captured.team;
         lastShot = null;

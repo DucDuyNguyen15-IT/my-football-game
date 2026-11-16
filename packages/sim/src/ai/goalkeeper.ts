@@ -11,6 +11,7 @@ import {
   type Vec2,
 } from '../math/vec2';
 import { GOAL_WIDTH, HALF_LENGTH, isInPenaltyArea } from '../pitch';
+import { stepBall } from '../physics/ball';
 import { nextFloat, type RngState } from '../rng';
 import {
   GK_BODY_BLOCK_DIST,
@@ -134,7 +135,8 @@ export function diveTarget(gk: PlayerState, ball: BallState, half: 1 | 2): Vec2 
   const goalX = ownGoal(gk, half).x;
   const vx = ball.vel.x;
   if (vx === 0 || Math.sign(goalX - ball.pos.x) !== Math.sign(vx)) return null;
-  const yAt = (x: number) => ball.pos.y + (ball.vel.y * (x - ball.pos.x)) / vx;
+  const yAt = (x: number) =>
+    ball.spin ? curvedYAt(ball, x) : ball.pos.y + (ball.vel.y * (x - ball.pos.x)) / vx;
   if (Math.abs(yAt(goalX)) > GOAL_WIDTH / 2 + DIVE_MOUTH_MARGIN) return null;
   const ahead = Math.sign(gk.pos.x - ball.pos.x) === Math.sign(vx);
   // Bóng đã qua người: lùi về sát vạch nhưng vẫn đứng trong sân.
@@ -143,6 +145,24 @@ export function diveTarget(gk: PlayerState, ball: BallState, half: 1 | 2): Vec2 
   const misread = 1 + (1 - keeperPositionAccuracy(gk.stats.positioning)) * DIVE_MISREAD;
   const y = ball.pos.y + (yAt(planeX) - ball.pos.y) * misread;
   return vec2(planeX, clamp(y, -DIVE_MAX_Y, DIVE_MAX_Y));
+}
+
+/** Dự đoán bóng xoáy tối đa chừng này bước (mỗi bước 2 tick, tức 2 s). */
+const CURVE_PREDICT_STEPS = 60;
+
+/** Bóng xoáy: y lúc bóng (bay cong) đi tới hoành độ `x`, mô phỏng tiến bằng chính vật lý bóng. */
+function curvedYAt(ball: BallState, x: number): number {
+  let b = ball;
+  for (let i = 0; i < CURVE_PREDICT_STEPS; i++) {
+    const next = stepBall(b, 'home', TICK_DT * 2).ball;
+    if (Math.sign(next.pos.x - x) !== Math.sign(b.pos.x - x)) {
+      const t = (x - b.pos.x) / (next.pos.x - b.pos.x);
+      return b.pos.y + (next.pos.y - b.pos.y) * t;
+    }
+    if (next === b) break;
+    b = next;
+  }
+  return b.pos.y;
 }
 
 /** Phạt đền đoán sai: lao về phía cột bên kia, cách tâm khung thành chừng này mét. */
@@ -244,11 +264,19 @@ export function resolveSave(
     const vx =
       attackSign(gk.team, half) * Math.max(PARRY_MIN_VX, Math.abs(ball.vel.x) * LEG_KEEP_VX);
     const vy = (side * 2 - 1) * LEG_SIDE_RANGE;
-    return { outcome: 'parry', ball: { ...ball, vel: vec2(vx, vy), vz: LEG_VZ }, rng: r2 };
+    return {
+      outcome: 'parry',
+      ball: { pos: ball.pos, z: ball.z, vel: vec2(vx, vy), vz: LEG_VZ },
+      rng: r2,
+    };
   }
   const [side, r2] = nextFloat(r1);
   const vx =
     attackSign(gk.team, half) * Math.max(PARRY_MIN_VX, Math.abs(ball.vel.x) * PARRY_KEEP_VX);
   const vy = (ball.pos.y >= gk.pos.y ? 1 : -1) * (PARRY_SIDE_MIN + side * PARRY_SIDE_RANGE);
-  return { outcome: 'parry', ball: { ...ball, vel: vec2(vx, vy), vz: PARRY_VZ }, rng: r2 };
+  return {
+    outcome: 'parry',
+    ball: { pos: ball.pos, z: ball.z, vel: vec2(vx, vy), vz: PARRY_VZ },
+    rng: r2,
+  };
 }

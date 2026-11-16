@@ -106,6 +106,17 @@ describe('keeperTarget — chọn vị trí', () => {
 });
 
 describe('diveTarget', () => {
+  it('bóng xoáy: lao tới chỗ đường bóng cong cắt ngang, không theo đường thẳng', () => {
+    const gk = gkWith({ positioning: 99 });
+    const shot: BallState = {
+      ...ball(vec2(GOAL_X + 18, 0), vec2(-25, 0), 1),
+      spin: { side: 1, top: 0 },
+    };
+    // Bay về −x, xoáy cạnh dương cong sang trái hướng bay = về −y.
+    expect(diveTarget(gk, shot, 1)!.y).toBeLessThan(-0.3);
+    expect(diveTarget(gk, { ...shot, spin: undefined }, 1)!.y).toBeCloseTo(0, 9);
+  });
+
   it('bóng bay về khung thành → điểm cắt ngang đường thủ môn đứng', () => {
     const gk = gkWith({ positioning: 99 });
     const t = diveTarget(gk, ball(vec2(GOAL_X + 15, 0), vec2(-20, 2)), 1);

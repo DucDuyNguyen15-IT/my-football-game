@@ -231,7 +231,14 @@ describe('animationEvents', () => {
       ...tackled(prev, { outcome: 'foul', victimId: 'away-P4' }),
       phase: 'dead_ball',
       ballOwnerId: null,
-      restart: { type: 'free_kick', team: 'away', spot: v(0, 0), takerId: 'away-P4', startTick: 1, readyTick: 1 },
+      restart: {
+        type: 'free_kick',
+        team: 'away',
+        spot: v(0, 0),
+        takerId: 'away-P4',
+        startTick: 1,
+        readyTick: 1,
+      },
     };
     expect(animationEvents(prev, curr)).toEqual([
       { playerId: ME, clip: 'tackle' },
@@ -246,7 +253,14 @@ describe('animationEvents', () => {
       tick: prev.tick + 1,
       phase: 'dead_ball',
       ballOwnerId: null,
-      restart: { type: 'free_kick', team: 'home', spot: v(0, 0), takerId: ME, startTick: 1, readyTick: 1 },
+      restart: {
+        type: 'free_kick',
+        team: 'home',
+        spot: v(0, 0),
+        takerId: ME,
+        startTick: 1,
+        readyTick: 1,
+      },
     };
     expect(animationEvents(prev, curr)).toEqual([{ playerId: ME, clip: 'trip' }]);
   });
@@ -284,7 +298,10 @@ describe('animationEvents', () => {
         [0, 'gk_catch'],
       ] as const) {
         const [prev, curr] = shotAt(dy);
-        const parried = { ...curr, ball: { ...curr.ball, pos: v(gk.pos.x, gk.pos.y + dy), vel: v(-8, 3) } };
+        const parried = {
+          ...curr,
+          ball: { ...curr.ball, pos: v(gk.pos.x, gk.pos.y + dy), vel: v(-8, 3) },
+        };
         expect(animationEvents(prev, parried)).toEqual([{ playerId: 'away-GK', clip }]);
       }
     });
