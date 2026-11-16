@@ -63,8 +63,9 @@ const SET_PIECE_TYPES: ReadonlySet<RestartType> = new Set([
   'corner',
   'goal_kick',
 ]);
-const SET_PIECE_BACK = 4.5;
-const SET_PIECE_HEIGHT = 2;
+/** Lùi đủ xa và đủ thấp để quả bóng nằm trong khung hình, trên thanh phím HUD (camera 38°). */
+const SET_PIECE_BACK = 6.5;
+const SET_PIECE_HEIGHT = 1.7;
 /** Điểm nhìn phía trước bóng theo hướng ngắm (m), hơi cao để thấy khung thành. */
 const SET_PIECE_AHEAD = 20;
 const SET_PIECE_LOOK_Y = 1;
@@ -101,6 +102,9 @@ const lerp3 = (a: Vec3, b: Vec3, t: number): Vec3 => ({
 
 /** Trộn hai góc máy, `t` 0 → `a`, 1 → `b` (có làm mượt hai đầu). */
 export function blendCamera(a: CameraState, b: CameraState, t: number): CameraState {
+  // Hai đầu trả đúng camera gốc (lerp a + (b − a)·1 lệch số thực).
+  if (t <= 0) return a;
+  if (t >= 1) return b;
   const s = t * t * (3 - 2 * t);
   return { pos: lerp3(a.pos, b.pos, s), look: lerp3(a.look, b.look, s) };
 }

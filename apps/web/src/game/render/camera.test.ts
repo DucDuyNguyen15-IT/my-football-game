@@ -49,6 +49,15 @@ describe('setPieceCamera', () => {
     expect(cam.look.x).toBeGreaterThan(20);
   });
 
+  it('quả bóng nằm trong 2/3 nửa dưới khung hình (FOV dọc 38°), không bị cắt hay che bởi HUD', () => {
+    const cam = setPieceCamera({ x: 20, y: 5 }, { x: 1, y: 0 });
+    const ball = { x: 20, y: 0.11, z: 5 };
+    const toBall = Math.atan2(cam.pos.y - ball.y, ball.x - cam.pos.x);
+    const pitch = Math.atan2(cam.pos.y - cam.look.y, cam.look.x - cam.pos.x);
+    const half = (19 * Math.PI) / 180;
+    expect(Math.tan(toBall - pitch) / Math.tan(half)).toBeLessThan(0.67);
+  });
+
   it('blendCamera: 0 và 1 trả đúng hai đầu', () => {
     const a = initialCamera();
     const b = setPieceCamera({ x: 20, y: 5 }, { x: 1, y: 0 });

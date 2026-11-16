@@ -90,7 +90,7 @@ const TONE_EXPOSURE = 1.15;
 const MARKER_Y = 2.2;
 const CHARGE_BAR_Y = 2.75;
 /** Thanh lực ở góc máy tình huống cố định: độ cao (m) và tỉ lệ. */
-const SET_PIECE_BAR_Y = 2.2;
+const SET_PIECE_BAR_Y = 2.05;
 const SET_PIECE_BAR_SCALE = 0.5;
 /** Tâm vòng đếm ngược (m): trên mũi tên người điều khiển và thanh lực. */
 const COUNTDOWN_Y = 3.55;
