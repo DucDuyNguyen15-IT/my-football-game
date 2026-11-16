@@ -31,6 +31,7 @@ const card = (id: string, rarity: Rarity, name = 'Rafinho Duarte'): Card => ({
   ovr: 78,
   avatarSeed: 'a1b2c3d4',
   foot: 'right',
+  weakFoot: 3,
 });
 
 const catalog = new Map<string, Card>([

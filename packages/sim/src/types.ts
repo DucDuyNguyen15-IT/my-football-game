@@ -36,6 +36,8 @@ export interface PlayerState {
   stats: PlayerStats;
   /** Chân thuận; không có = chân phải (dữ liệu demo, fixture test). */
   foot?: Foot;
+  /** Chân nghịch 2–5 sao; không có = 5 (không phạt). */
+  weakFoot?: number;
   pos: Vec2;
   vel: Vec2;
   /** Hướng mặt, vector đơn vị. */

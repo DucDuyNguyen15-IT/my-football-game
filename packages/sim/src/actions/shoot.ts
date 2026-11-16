@@ -5,6 +5,7 @@ import { nextGaussian, type RngState } from '../rng';
 import { fatigueFactor, shotAngleErrFor, shotHeightErrFor, shotSpeedFor } from '../stats/params';
 import type { BallState, PlayerState, TeamSide } from '../types';
 import { deviate } from './aim';
+import { footErrorMult, kickFoot } from './foot';
 
 /** Giữ K đủ số tick này (1 s) thì sút hết lực. */
 export const MAX_CHARGE_TICKS = 60;
@@ -47,10 +48,13 @@ export function shootBall(
   rng: RngState,
   errorMult = 1,
 ): { ball: BallState; rng: RngState } {
-  // Sai số chia cho hệ số này: mệt và errorMult > 1 đều làm sai số lớn hơn.
-  const fatigue = fatigueFactor(shooter.stamina) / errorMult;
   const offset = sub(target, from);
   const dist = length(offset);
+  // Sai số chia cho hệ số này: mệt, chân nghịch và errorMult > 1 đều làm sai số lớn hơn.
+  const fatigue =
+    fatigueFactor(shooter.stamina) /
+    errorMult /
+    footErrorMult(shooter, kickFoot(shooter, from, dist > 0 ? offset : shooter.facing));
   const [dir, r1] = deviate(
     dist > 0 ? offset : shooter.facing,
     shotAngleErrFor(shooter.stats.shooting) / fatigue,

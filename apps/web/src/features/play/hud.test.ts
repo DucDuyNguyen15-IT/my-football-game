@@ -168,6 +168,7 @@ describe('thay người trên HUD', () => {
           ovr: computeOvr(p.position, p.stats),
           avatarSeed: `seed-${p.slot}`,
           foot: 'right',
+          weakFoot: 3,
         };
         cards.set(cardId, card);
         return { ...p, cardId, level: idx === 1 ? 2 : 0 };

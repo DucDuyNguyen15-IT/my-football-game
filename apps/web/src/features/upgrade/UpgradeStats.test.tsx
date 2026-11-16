@@ -40,6 +40,7 @@ const card = (position: Card['position']): Card => ({
   ovr: 80,
   avatarSeed: 'a1b2c3d4',
   foot: 'right',
+  weakFoot: 3,
 });
 
 const cells = (html: string, abbr: string) =>

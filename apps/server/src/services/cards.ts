@@ -15,8 +15,8 @@ export interface CardCatalog {
 }
 
 export function toCard(row: typeof cards.$inferSelect): Card {
-  const { id, code, name, nickname, position, rarity, ovr, avatarSeed, foot, ...stats } = row;
-  return { id: String(id), code, name, nickname, position, rarity, stats, ovr, avatarSeed, foot };
+  const { id, code, name, nickname, position, rarity, ovr, avatarSeed, foot, weakFoot, ...stats } = row;
+  return { id: String(id), code, name, nickname, position, rarity, stats, ovr, avatarSeed, foot, weakFoot };
 }
 
 export function buildCatalog(all: Card[]): CardCatalog {

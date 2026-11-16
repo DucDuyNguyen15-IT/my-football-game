@@ -175,6 +175,7 @@ function spawnTeam(team: MatchTeamSetup, side: TeamSide): PlayerState[] {
       position: pitchPosition(team, p),
       stats: p.stats,
       foot: p.foot ?? 'right',
+      ...(p.weakFoot === undefined ? {} : { weakFoot: p.weakFoot }),
       // Vị trí thật do kickoffPlayers đặt.
       pos: ZERO,
       vel: ZERO,

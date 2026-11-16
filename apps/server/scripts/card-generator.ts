@@ -20,12 +20,25 @@ export interface CardSeedRow extends PlayerStats {
   ovr: number;
   avatarSeed: string;
   foot: Foot;
+  /** Chân nghịch 2–5 sao; hai chân = 5. */
+  weakFoot: number;
 }
 
 export const CARD_SEED = 20261025;
 
 /** Số thẻ thuận trái / hai chân trong danh mục 150 thẻ (còn lại thuận phải). Hai chân ≤ 5%. */
 export const FOOT_COUNTS = { left: 33, both: 6 } as const;
+
+/**
+ * Tỉ lệ chân nghịch [2, 3, 4 sao] theo độ hiếm cho thẻ một chân (hai chân luôn 5 sao).
+ * 2 sao chỉ ở thẻ đồng và một ít thẻ bạc.
+ */
+export const WEAK_FOOT_SHARE: Record<Rarity, readonly [number, number, number]> = {
+  bronze: [0.5, 0.4, 0.1],
+  silver: [0.1, 0.6, 0.3],
+  gold: [0, 0.6, 0.4],
+  legend: [0, 0.5, 0.5],
+};
 
 /** Số mẫu thẻ theo độ hiếm (PRD §6.1). */
 export const RARITY_COUNTS: Record<Rarity, number> = {
@@ -292,6 +305,7 @@ export function generateCards(seed = CARD_SEED): CardSeedRow[] {
             .toString(16)
             .padStart(8, '0'),
           foot: 'right',
+          weakFoot: 3,
         });
       }
     }
@@ -317,5 +331,13 @@ function assignFeet(rows: CardSeedRow[], seed: number): CardSeedRow[] {
       k < FOOT_COUNTS.both ? 'both' : k < FOOT_COUNTS.both + FOOT_COUNTS.left ? 'left' : 'right',
     ),
   );
-  return rows.map((r, i) => ({ ...r, foot: feet.get(i)! }));
+  // Dòng ngẫu nhiên riêng nữa: thêm chân nghịch không làm đổi chân thuận đã chia.
+  const wf = seededRandom(seed ^ 0x0ea4f007);
+  return rows.map((r, i) => {
+    const foot = feet.get(i)!;
+    if (foot === 'both') return { ...r, foot, weakFoot: 5 };
+    const [two, three] = WEAK_FOOT_SHARE[r.rarity];
+    const u = wf();
+    return { ...r, foot, weakFoot: u < two ? 2 : u < two + three ? 3 : 4 };
+  });
 }

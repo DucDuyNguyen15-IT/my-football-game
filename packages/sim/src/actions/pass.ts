@@ -5,6 +5,7 @@ import { TICK_DT } from '../tick';
 import { fatigueFactor, passAngleErrFor, passPowerErrFor, sprintSpeedFor } from '../stats/params';
 import type { BallState, PlayerState } from '../types';
 import { deviate } from './aim';
+import { footErrorMult, kickFoot } from './foot';
 
 /** Chuyền thấp (J) lăn trên cỏ; chuyền bổng (L) bay qua đầu. */
 export type PassKind = 'ground' | 'lob';
@@ -186,11 +187,12 @@ export function passBall(
   /** Lực chuyền 0…1 của người chơi: bóng sệt tới chân nhanh hơn. */
   passPow = 0,
 ): { ball: BallState; rng: RngState } {
-  // Sai số chia cho hệ số này: mệt và errorMult > 1 đều làm sai số lớn hơn.
-  const fatigue = fatigueFactor(passer.stamina) / errorMult;
   const offset = sub(to, from);
   const dist = length(offset);
   const aim = dist > 0 ? offset : passer.facing;
+  // Sai số chia cho hệ số này: mệt, chân nghịch và errorMult > 1 đều làm sai số lớn hơn.
+  const fatigue =
+    fatigueFactor(passer.stamina) / errorMult / footErrorMult(passer, kickFoot(passer, from, aim));
   const [dir, r1] = deviate(aim, passAngleErrFor(passer.stats.passing) / fatigue, rng);
   const [g, r2] = nextGaussian(r1);
   const power = Math.max(0.2, 1 + (g * passPowerErrFor(passer.stats.passing)) / fatigue);

@@ -35,7 +35,7 @@ describe('generateCards', () => {
 
   it('OVR = computeOvr và nằm trong khoảng của độ hiếm; chỉ số hợp lệ', () => {
     for (const c of seedFile) {
-      const { id, code, name, nickname, position, rarity, ovr, avatarSeed, foot, ...stats } = c;
+      const { id, code, name, nickname, position, rarity, ovr, avatarSeed, foot, weakFoot, ...stats } = c;
       expect(PlayerStats.parse(stats)).toEqual(stats);
       expect(computeOvr(position, stats)).toBe(ovr);
       const [lo, hi] = OVR_RANGE[rarity];
@@ -45,6 +45,8 @@ describe('generateCards', () => {
       expect(name).toMatch(/^\S+ \S+$/);
       expect(nickname.length).toBeGreaterThan(0);
       expect(['right', 'left', 'both']).toContain(foot);
+      expect(weakFoot).toBe(foot === 'both' ? 5 : weakFoot);
+      expect([2, 3, 4, 5]).toContain(weakFoot);
       expect(avatarSeed).toMatch(/^[0-9a-f]{8}$/);
     }
   });
@@ -74,5 +76,13 @@ describe('generateCards', () => {
     expect(count('both')).toBe(FOOT_COUNTS.both);
     expect(count('both') / seedFile.length).toBeLessThanOrEqual(0.05);
     expect(count('right')).toBe(seedFile.length - FOOT_COUNTS.left - FOOT_COUNTS.both);
+  });
+
+  it('chân nghịch: 5 sao chỉ khi hai chân, 2 sao chỉ ở thẻ đồng và ít thẻ bạc', () => {
+    for (const c of seedFile) expect(c.weakFoot === 5).toBe(c.foot === 'both');
+    const two = seedFile.filter((c) => c.weakFoot === 2);
+    expect(two.every((c) => c.rarity === 'bronze' || c.rarity === 'silver')).toBe(true);
+    const silverTwo = two.filter((c) => c.rarity === 'silver').length;
+    expect(silverTwo).toBeLessThan(two.length / 3);
   });
 });

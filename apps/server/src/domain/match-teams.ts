@@ -57,6 +57,7 @@ export function buildHomeTeam(
       position: entry.card.position,
       stats: effectiveStats(entry.card, entry.level, slotRole(formation, slot)),
       foot: entry.card.foot,
+      weakFoot: entry.card.weakFoot,
       cardId: entry.card.id,
       level: entry.level,
     });
@@ -92,6 +93,7 @@ const toPlayer = (slot: SquadSlot, card: Card): MatchPlayerSetup => ({
   position: card.position,
   stats: card.stats,
   foot: card.foot,
+  weakFoot: card.weakFoot,
   cardId: card.id,
   level: 0,
 });

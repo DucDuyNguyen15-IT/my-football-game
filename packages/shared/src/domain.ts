@@ -8,6 +8,9 @@ export type Position = z.infer<typeof Position>;
 export const Foot = z.enum(['right', 'left', 'both']);
 export type Foot = z.infer<typeof Foot>;
 
+/** Chân nghịch 2–5 sao (kiểu x/5): đá bằng chân không thuận lệch nhiều hay ít; hai chân = 5. */
+export const WeakFoot = z.number().int().min(2).max(5);
+
 /** Độ hiếm thẻ, từ thấp tới cao (PRD §6.1). */
 export const Rarity = z.enum(['bronze', 'silver', 'gold', 'legend']);
 export type Rarity = z.infer<typeof Rarity>;

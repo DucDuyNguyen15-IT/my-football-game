@@ -122,6 +122,7 @@ export const cards = pgTable(
     ovr: smallint('ovr').notNull(),
     avatarSeed: text('avatar_seed').notNull(),
     foot: footEnum('foot').notNull().default('right'),
+    weakFoot: smallint('weak_foot').notNull().default(3),
   },
   (t) => [
     index('cards_rarity_idx').on(t.rarity),
@@ -130,6 +131,7 @@ export const cards = pgTable(
       sql`least(${t.pace}, ${t.shooting}, ${t.passing}, ${t.dribbling}, ${t.defending}, ${t.stamina}, ${t.reflexes}, ${t.handling}, ${t.positioning}, ${t.kicking}) >= 1 and greatest(${t.pace}, ${t.shooting}, ${t.passing}, ${t.dribbling}, ${t.defending}, ${t.stamina}, ${t.reflexes}, ${t.handling}, ${t.positioning}, ${t.kicking}) <= 99`,
     ),
     check('cards_ovr_range', sql`${t.ovr} between 1 and 99`),
+    check('cards_weak_foot_range', sql`${t.weakFoot} between 2 and 5`),
   ],
 );
 

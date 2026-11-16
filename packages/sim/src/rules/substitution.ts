@@ -89,6 +89,7 @@ export function substitute(
     position: incoming.position,
     stats: incoming.stats,
     foot: incoming.foot ?? 'right',
+    ...(incoming.weakFoot === undefined ? {} : { weakFoot: incoming.weakFoot }),
     pos: out.pos,
     vel: ZERO,
     facing: out.facing,

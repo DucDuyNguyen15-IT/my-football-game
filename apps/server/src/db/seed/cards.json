@@ -18,7 +18,8 @@
     "kicking": 50,
     "ovr": 55,
     "avatarSeed": "cd681195",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 2,
@@ -39,7 +40,8 @@
     "kicking": 50,
     "ovr": 55,
     "avatarSeed": "10d062c0",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 3,
@@ -60,7 +62,8 @@
     "kicking": 51,
     "ovr": 52,
     "avatarSeed": "1a3a540c",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 4,
@@ -81,7 +84,8 @@
     "kicking": 63,
     "ovr": 51,
     "avatarSeed": "a28ce7b2",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 5,
@@ -102,7 +106,8 @@
     "kicking": 41,
     "ovr": 50,
     "avatarSeed": "b3735b5c",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 6,
@@ -123,7 +128,8 @@
     "kicking": 51,
     "ovr": 55,
     "avatarSeed": "b88e7272",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 2
   },
   {
     "id": 7,
@@ -144,7 +150,8 @@
     "kicking": 44,
     "ovr": 53,
     "avatarSeed": "06d2c080",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 2
   },
   {
     "id": 8,
@@ -165,7 +172,8 @@
     "kicking": 26,
     "ovr": 56,
     "avatarSeed": "ca40659a",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 9,
@@ -186,7 +194,8 @@
     "kicking": 37,
     "ovr": 50,
     "avatarSeed": "1ba41ae9",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 10,
@@ -207,7 +216,8 @@
     "kicking": 27,
     "ovr": 59,
     "avatarSeed": "5559aefd",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 11,
@@ -228,7 +238,8 @@
     "kicking": 23,
     "ovr": 52,
     "avatarSeed": "d1e61956",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 12,
@@ -249,7 +260,8 @@
     "kicking": 23,
     "ovr": 51,
     "avatarSeed": "75f86543",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 13,
@@ -270,7 +282,8 @@
     "kicking": 33,
     "ovr": 55,
     "avatarSeed": "23b5bd29",
-    "foot": "both"
+    "foot": "both",
+    "weakFoot": 5
   },
   {
     "id": 14,
@@ -291,7 +304,8 @@
     "kicking": 29,
     "ovr": 58,
     "avatarSeed": "593f86a8",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 15,
@@ -312,7 +326,8 @@
     "kicking": 34,
     "ovr": 62,
     "avatarSeed": "cbc6fc00",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 2
   },
   {
     "id": 16,
@@ -333,7 +348,8 @@
     "kicking": 25,
     "ovr": 64,
     "avatarSeed": "79337c14",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 17,
@@ -354,7 +370,8 @@
     "kicking": 14,
     "ovr": 50,
     "avatarSeed": "f6c291bb",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 18,
@@ -375,7 +392,8 @@
     "kicking": 25,
     "ovr": 53,
     "avatarSeed": "f2cbd597",
-    "foot": "both"
+    "foot": "both",
+    "weakFoot": 5
   },
   {
     "id": 19,
@@ -396,7 +414,8 @@
     "kicking": 17,
     "ovr": 54,
     "avatarSeed": "32df4bb9",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 20,
@@ -417,7 +436,8 @@
     "kicking": 28,
     "ovr": 58,
     "avatarSeed": "064769ee",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 21,
@@ -438,7 +458,8 @@
     "kicking": 34,
     "ovr": 53,
     "avatarSeed": "0e650cea",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 22,
@@ -459,7 +480,8 @@
     "kicking": 20,
     "ovr": 59,
     "avatarSeed": "857107a3",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 23,
@@ -480,7 +502,8 @@
     "kicking": 22,
     "ovr": 63,
     "avatarSeed": "d2121e05",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 24,
@@ -501,7 +524,8 @@
     "kicking": 20,
     "ovr": 50,
     "avatarSeed": "c6a8b8e8",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 25,
@@ -522,7 +546,8 @@
     "kicking": 19,
     "ovr": 59,
     "avatarSeed": "0378d464",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 2
   },
   {
     "id": 26,
@@ -543,7 +568,8 @@
     "kicking": 19,
     "ovr": 64,
     "avatarSeed": "88cee6d9",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 27,
@@ -564,7 +590,8 @@
     "kicking": 21,
     "ovr": 58,
     "avatarSeed": "ee66c05b",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 28,
@@ -585,7 +612,8 @@
     "kicking": 15,
     "ovr": 59,
     "avatarSeed": "86aaba51",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 29,
@@ -606,7 +634,8 @@
     "kicking": 35,
     "ovr": 55,
     "avatarSeed": "f7442938",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 30,
@@ -627,7 +656,8 @@
     "kicking": 22,
     "ovr": 54,
     "avatarSeed": "b8b2d140",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 31,
@@ -648,7 +678,8 @@
     "kicking": 31,
     "ovr": 52,
     "avatarSeed": "0c8da54f",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 32,
@@ -669,7 +700,8 @@
     "kicking": 33,
     "ovr": 55,
     "avatarSeed": "9089e6ef",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 2
   },
   {
     "id": 33,
@@ -690,7 +722,8 @@
     "kicking": 30,
     "ovr": 58,
     "avatarSeed": "c63d8847",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 34,
@@ -711,7 +744,8 @@
     "kicking": 21,
     "ovr": 57,
     "avatarSeed": "3dcc76ea",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 35,
@@ -732,7 +766,8 @@
     "kicking": 23,
     "ovr": 52,
     "avatarSeed": "fcfa8ef7",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 36,
@@ -753,7 +788,8 @@
     "kicking": 24,
     "ovr": 57,
     "avatarSeed": "7e1ed8f1",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 37,
@@ -774,7 +810,8 @@
     "kicking": 17,
     "ovr": 57,
     "avatarSeed": "589aa30a",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 38,
@@ -795,7 +832,8 @@
     "kicking": 36,
     "ovr": 52,
     "avatarSeed": "dddbda05",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 39,
@@ -816,7 +854,8 @@
     "kicking": 35,
     "ovr": 61,
     "avatarSeed": "3bb8b79d",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 40,
@@ -837,7 +876,8 @@
     "kicking": 36,
     "ovr": 62,
     "avatarSeed": "8863abf3",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 41,
@@ -858,7 +898,8 @@
     "kicking": 18,
     "ovr": 53,
     "avatarSeed": "8866b963",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 42,
@@ -879,7 +920,8 @@
     "kicking": 12,
     "ovr": 56,
     "avatarSeed": "d7ff8dc3",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 43,
@@ -900,7 +942,8 @@
     "kicking": 26,
     "ovr": 54,
     "avatarSeed": "a66083f6",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 44,
@@ -921,7 +964,8 @@
     "kicking": 26,
     "ovr": 51,
     "avatarSeed": "1112ce51",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 45,
@@ -942,7 +986,8 @@
     "kicking": 34,
     "ovr": 64,
     "avatarSeed": "20ade087",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 46,
@@ -963,7 +1008,8 @@
     "kicking": 19,
     "ovr": 58,
     "avatarSeed": "1c24d7ae",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 47,
@@ -984,7 +1030,8 @@
     "kicking": 15,
     "ovr": 58,
     "avatarSeed": "5a135d18",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 48,
@@ -1005,7 +1052,8 @@
     "kicking": 16,
     "ovr": 50,
     "avatarSeed": "b2a858b1",
-    "foot": "both"
+    "foot": "both",
+    "weakFoot": 5
   },
   {
     "id": 49,
@@ -1026,7 +1074,8 @@
     "kicking": 20,
     "ovr": 60,
     "avatarSeed": "bf5e7503",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 50,
@@ -1047,7 +1096,8 @@
     "kicking": 23,
     "ovr": 55,
     "avatarSeed": "b829e3c7",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 51,
@@ -1068,7 +1118,8 @@
     "kicking": 24,
     "ovr": 54,
     "avatarSeed": "52e1b1f0",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 52,
@@ -1089,7 +1140,8 @@
     "kicking": 18,
     "ovr": 63,
     "avatarSeed": "7a2292a6",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 53,
@@ -1110,7 +1162,8 @@
     "kicking": 32,
     "ovr": 63,
     "avatarSeed": "ff387ee3",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 54,
@@ -1131,7 +1184,8 @@
     "kicking": 12,
     "ovr": 64,
     "avatarSeed": "3714fce8",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 55,
@@ -1152,7 +1206,8 @@
     "kicking": 21,
     "ovr": 60,
     "avatarSeed": "d3e4faeb",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 56,
@@ -1173,7 +1228,8 @@
     "kicking": 24,
     "ovr": 56,
     "avatarSeed": "fa3c3e21",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 57,
@@ -1194,7 +1250,8 @@
     "kicking": 13,
     "ovr": 55,
     "avatarSeed": "13c44698",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 58,
@@ -1215,7 +1272,8 @@
     "kicking": 11,
     "ovr": 63,
     "avatarSeed": "31d7e5af",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 59,
@@ -1236,7 +1294,8 @@
     "kicking": 9,
     "ovr": 54,
     "avatarSeed": "0209b43f",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 60,
@@ -1257,7 +1316,8 @@
     "kicking": 27,
     "ovr": 50,
     "avatarSeed": "5edc701f",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 61,
@@ -1278,7 +1338,8 @@
     "kicking": 76,
     "ovr": 65,
     "avatarSeed": "71bcd520",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 62,
@@ -1299,7 +1360,8 @@
     "kicking": 67,
     "ovr": 71,
     "avatarSeed": "24f8813e",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 63,
@@ -1320,7 +1382,8 @@
     "kicking": 64,
     "ovr": 66,
     "avatarSeed": "635ca936",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 64,
@@ -1341,7 +1404,8 @@
     "kicking": 80,
     "ovr": 66,
     "avatarSeed": "c4080e54",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 65,
@@ -1362,7 +1426,8 @@
     "kicking": 60,
     "ovr": 70,
     "avatarSeed": "4122d984",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 66,
@@ -1383,7 +1448,8 @@
     "kicking": 13,
     "ovr": 71,
     "avatarSeed": "ea31ee8b",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 67,
@@ -1404,7 +1470,8 @@
     "kicking": 18,
     "ovr": 69,
     "avatarSeed": "c882db5d",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 68,
@@ -1425,7 +1492,8 @@
     "kicking": 24,
     "ovr": 66,
     "avatarSeed": "1fbc98fb",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 69,
@@ -1446,7 +1514,8 @@
     "kicking": 26,
     "ovr": 73,
     "avatarSeed": "dd44410d",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 70,
@@ -1467,7 +1536,8 @@
     "kicking": 21,
     "ovr": 66,
     "avatarSeed": "28a79772",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 71,
@@ -1488,7 +1558,8 @@
     "kicking": 22,
     "ovr": 70,
     "avatarSeed": "29b1d9fb",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 72,
@@ -1509,7 +1580,8 @@
     "kicking": 28,
     "ovr": 68,
     "avatarSeed": "b129795b",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 73,
@@ -1530,7 +1602,8 @@
     "kicking": 27,
     "ovr": 72,
     "avatarSeed": "32115f05",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 74,
@@ -1551,7 +1624,8 @@
     "kicking": 27,
     "ovr": 68,
     "avatarSeed": "6d5ef9a7",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 75,
@@ -1572,7 +1646,8 @@
     "kicking": 32,
     "ovr": 72,
     "avatarSeed": "2f9b1402",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 76,
@@ -1593,7 +1668,8 @@
     "kicking": 27,
     "ovr": 74,
     "avatarSeed": "10be6159",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 77,
@@ -1614,7 +1690,8 @@
     "kicking": 28,
     "ovr": 74,
     "avatarSeed": "07cd1f3d",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 78,
@@ -1635,7 +1712,8 @@
     "kicking": 15,
     "ovr": 74,
     "avatarSeed": "792fe4bb",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 79,
@@ -1656,7 +1734,8 @@
     "kicking": 26,
     "ovr": 74,
     "avatarSeed": "a48b7465",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 80,
@@ -1677,7 +1756,8 @@
     "kicking": 19,
     "ovr": 66,
     "avatarSeed": "a25ee918",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 81,
@@ -1698,7 +1778,8 @@
     "kicking": 18,
     "ovr": 66,
     "avatarSeed": "5cc70645",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 82,
@@ -1719,7 +1800,8 @@
     "kicking": 23,
     "ovr": 74,
     "avatarSeed": "2157d6a0",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 83,
@@ -1740,7 +1822,8 @@
     "kicking": 24,
     "ovr": 65,
     "avatarSeed": "290d803a",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 84,
@@ -1761,7 +1844,8 @@
     "kicking": 23,
     "ovr": 69,
     "avatarSeed": "d0c99a22",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 85,
@@ -1782,7 +1866,8 @@
     "kicking": 23,
     "ovr": 71,
     "avatarSeed": "c62ea4e8",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 86,
@@ -1803,7 +1888,8 @@
     "kicking": 25,
     "ovr": 69,
     "avatarSeed": "1a29d6ef",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 87,
@@ -1824,7 +1910,8 @@
     "kicking": 17,
     "ovr": 70,
     "avatarSeed": "675e9e68",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 88,
@@ -1845,7 +1932,8 @@
     "kicking": 31,
     "ovr": 71,
     "avatarSeed": "30a9324c",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 89,
@@ -1866,7 +1954,8 @@
     "kicking": 13,
     "ovr": 74,
     "avatarSeed": "a9296b4f",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 90,
@@ -1887,7 +1976,8 @@
     "kicking": 17,
     "ovr": 73,
     "avatarSeed": "9faeb44e",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 2
   },
   {
     "id": 91,
@@ -1908,7 +1998,8 @@
     "kicking": 24,
     "ovr": 67,
     "avatarSeed": "bfba110e",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 92,
@@ -1929,7 +2020,8 @@
     "kicking": 14,
     "ovr": 66,
     "avatarSeed": "3754777d",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 93,
@@ -1950,7 +2042,8 @@
     "kicking": 18,
     "ovr": 68,
     "avatarSeed": "a11f2d42",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 94,
@@ -1971,7 +2064,8 @@
     "kicking": 27,
     "ovr": 67,
     "avatarSeed": "40dd5fe1",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 95,
@@ -1992,7 +2086,8 @@
     "kicking": 8,
     "ovr": 73,
     "avatarSeed": "2493bf68",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 96,
@@ -2013,7 +2108,8 @@
     "kicking": 25,
     "ovr": 70,
     "avatarSeed": "1bbf9992",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 97,
@@ -2034,7 +2130,8 @@
     "kicking": 17,
     "ovr": 66,
     "avatarSeed": "7ec2cc40",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 98,
@@ -2055,7 +2152,8 @@
     "kicking": 30,
     "ovr": 68,
     "avatarSeed": "ba3148c3",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 99,
@@ -2076,7 +2174,8 @@
     "kicking": 14,
     "ovr": 66,
     "avatarSeed": "5e8bcd37",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 100,
@@ -2097,7 +2196,8 @@
     "kicking": 22,
     "ovr": 72,
     "avatarSeed": "d2eba5da",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 2
   },
   {
     "id": 101,
@@ -2118,7 +2218,8 @@
     "kicking": 16,
     "ovr": 72,
     "avatarSeed": "7628d015",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 102,
@@ -2139,7 +2240,8 @@
     "kicking": 16,
     "ovr": 72,
     "avatarSeed": "f11cc6c3",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 103,
@@ -2160,7 +2262,8 @@
     "kicking": 34,
     "ovr": 72,
     "avatarSeed": "7722224e",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 104,
@@ -2181,7 +2284,8 @@
     "kicking": 20,
     "ovr": 69,
     "avatarSeed": "cbedc65b",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 105,
@@ -2202,7 +2306,8 @@
     "kicking": 13,
     "ovr": 67,
     "avatarSeed": "58f11e8b",
-    "foot": "both"
+    "foot": "both",
+    "weakFoot": 5
   },
   {
     "id": 106,
@@ -2223,7 +2328,8 @@
     "kicking": 68,
     "ovr": 80,
     "avatarSeed": "ae56476e",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 107,
@@ -2244,7 +2350,8 @@
     "kicking": 72,
     "ovr": 79,
     "avatarSeed": "0f995327",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 108,
@@ -2265,7 +2372,8 @@
     "kicking": 66,
     "ovr": 77,
     "avatarSeed": "2cbf75f5",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 109,
@@ -2286,7 +2394,8 @@
     "kicking": 79,
     "ovr": 77,
     "avatarSeed": "c231a65a",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 110,
@@ -2307,7 +2416,8 @@
     "kicking": 24,
     "ovr": 83,
     "avatarSeed": "9720a90a",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 111,
@@ -2328,7 +2438,8 @@
     "kicking": 22,
     "ovr": 81,
     "avatarSeed": "586b042c",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 112,
@@ -2349,7 +2460,8 @@
     "kicking": 22,
     "ovr": 84,
     "avatarSeed": "604bbb89",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 113,
@@ -2370,7 +2482,8 @@
     "kicking": 23,
     "ovr": 79,
     "avatarSeed": "2d057ba3",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 114,
@@ -2391,7 +2504,8 @@
     "kicking": 33,
     "ovr": 79,
     "avatarSeed": "94ea24a1",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 115,
@@ -2412,7 +2526,8 @@
     "kicking": 21,
     "ovr": 76,
     "avatarSeed": "bb03de36",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 116,
@@ -2433,7 +2548,8 @@
     "kicking": 26,
     "ovr": 77,
     "avatarSeed": "70b8db5c",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 117,
@@ -2454,7 +2570,8 @@
     "kicking": 26,
     "ovr": 80,
     "avatarSeed": "6f864cde",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 118,
@@ -2475,7 +2592,8 @@
     "kicking": 24,
     "ovr": 77,
     "avatarSeed": "67038627",
-    "foot": "both"
+    "foot": "both",
+    "weakFoot": 5
   },
   {
     "id": 119,
@@ -2496,7 +2614,8 @@
     "kicking": 20,
     "ovr": 76,
     "avatarSeed": "9e480a16",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 120,
@@ -2517,7 +2636,8 @@
     "kicking": 35,
     "ovr": 79,
     "avatarSeed": "3d07d828",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 121,
@@ -2538,7 +2658,8 @@
     "kicking": 25,
     "ovr": 81,
     "avatarSeed": "f0d49219",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 122,
@@ -2559,7 +2680,8 @@
     "kicking": 27,
     "ovr": 82,
     "avatarSeed": "6f9af520",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   },
   {
     "id": 123,
@@ -2580,7 +2702,8 @@
     "kicking": 21,
     "ovr": 83,
     "avatarSeed": "4e3ce7ce",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 124,
@@ -2601,7 +2724,8 @@
     "kicking": 13,
     "ovr": 83,
     "avatarSeed": "4499a204",
-    "foot": "both"
+    "foot": "both",
+    "weakFoot": 5
   },
   {
     "id": 125,
@@ -2622,7 +2746,8 @@
     "kicking": 22,
     "ovr": 78,
     "avatarSeed": "a21b8d0e",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 126,
@@ -2643,7 +2768,8 @@
     "kicking": 15,
     "ovr": 78,
     "avatarSeed": "8a2407d9",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 127,
@@ -2664,7 +2790,8 @@
     "kicking": 25,
     "ovr": 79,
     "avatarSeed": "8c031412",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 128,
@@ -2685,7 +2812,8 @@
     "kicking": 16,
     "ovr": 78,
     "avatarSeed": "828c7e5c",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 129,
@@ -2706,7 +2834,8 @@
     "kicking": 15,
     "ovr": 77,
     "avatarSeed": "f0b7dbbd",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 130,
@@ -2727,7 +2856,8 @@
     "kicking": 28,
     "ovr": 78,
     "avatarSeed": "77974b02",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 131,
@@ -2748,7 +2878,8 @@
     "kicking": 22,
     "ovr": 77,
     "avatarSeed": "e261a855",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 132,
@@ -2769,7 +2900,8 @@
     "kicking": 19,
     "ovr": 84,
     "avatarSeed": "58df4ff3",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 133,
@@ -2790,7 +2922,8 @@
     "kicking": 27,
     "ovr": 75,
     "avatarSeed": "8dc1b950",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 134,
@@ -2811,7 +2944,8 @@
     "kicking": 18,
     "ovr": 78,
     "avatarSeed": "c7e23284",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 135,
@@ -2832,7 +2966,8 @@
     "kicking": 28,
     "ovr": 82,
     "avatarSeed": "1a3fa231",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 136,
@@ -2853,7 +2988,8 @@
     "kicking": 88,
     "ovr": 91,
     "avatarSeed": "8249dbf0",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 137,
@@ -2874,7 +3010,8 @@
     "kicking": 99,
     "ovr": 88,
     "avatarSeed": "1f3e0347",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 138,
@@ -2895,7 +3032,8 @@
     "kicking": 30,
     "ovr": 93,
     "avatarSeed": "4f47c8e7",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 139,
@@ -2916,7 +3054,8 @@
     "kicking": 14,
     "ovr": 85,
     "avatarSeed": "3f5ab396",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 140,
@@ -2937,7 +3076,8 @@
     "kicking": 35,
     "ovr": 94,
     "avatarSeed": "fc1add07",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 141,
@@ -2958,7 +3098,8 @@
     "kicking": 36,
     "ovr": 94,
     "avatarSeed": "babd4a2b",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 142,
@@ -2979,7 +3120,8 @@
     "kicking": 21,
     "ovr": 85,
     "avatarSeed": "bd453f26",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 143,
@@ -3000,7 +3142,8 @@
     "kicking": 20,
     "ovr": 91,
     "avatarSeed": "6e206398",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 144,
@@ -3021,7 +3164,8 @@
     "kicking": 18,
     "ovr": 87,
     "avatarSeed": "d63fbf66",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 145,
@@ -3042,7 +3186,8 @@
     "kicking": 21,
     "ovr": 87,
     "avatarSeed": "cd66eb33",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 146,
@@ -3063,7 +3208,8 @@
     "kicking": 12,
     "ovr": 90,
     "avatarSeed": "55e4c1a5",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 147,
@@ -3084,7 +3230,8 @@
     "kicking": 23,
     "ovr": 91,
     "avatarSeed": "ca495961",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 4
   },
   {
     "id": 148,
@@ -3105,7 +3252,8 @@
     "kicking": 23,
     "ovr": 85,
     "avatarSeed": "7dedef2c",
-    "foot": "right"
+    "foot": "right",
+    "weakFoot": 3
   },
   {
     "id": 149,
@@ -3126,7 +3274,8 @@
     "kicking": 25,
     "ovr": 94,
     "avatarSeed": "bad51e57",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 4
   },
   {
     "id": 150,
@@ -3147,6 +3296,7 @@
     "kicking": 19,
     "ovr": 86,
     "avatarSeed": "1bc7970d",
-    "foot": "left"
+    "foot": "left",
+    "weakFoot": 3
   }
 ]

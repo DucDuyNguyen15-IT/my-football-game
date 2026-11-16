@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Foot, PlayerStats, Position, Rarity } from '../domain';
+import { Foot, PlayerStats, Position, Rarity, WeakFoot } from '../domain';
 import { dataEnvelope, Id } from './common';
 
 /** Một mẫu thẻ trong danh mục (ARCHITECTURE §3.2 `cards`). */
@@ -15,6 +15,7 @@ export const Card = z.object({
   /** Tham số sinh ảnh đại diện (không dùng ảnh thật). */
   avatarSeed: z.string(),
   foot: Foot,
+  weakFoot: WeakFoot,
 });
 export type Card = z.infer<typeof Card>;
 
