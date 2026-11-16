@@ -86,3 +86,40 @@ describe('ModelActor — bóng trong tay', () => {
     expect(out.x).toBeLessThan(-0.4);
   });
 });
+
+describe('ModelActor — màu da/tóc từ avatar_seed', () => {
+  function skinnedModel(): PlayerModel {
+    const scene = new THREE.Group();
+    const root = new THREE.Bone();
+    root.name = 'mixamorigHips';
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
+    geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4));
+    geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+    const mesh = new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial());
+    const skeleton = new THREE.Skeleton([root]);
+    mesh.add(root);
+    mesh.bind(skeleton);
+    scene.add(mesh);
+    return { scene, clips: new Map(), speeds: {} };
+  }
+
+  it('gán material theo avatarSeed và cập nhật khi setAvatarSeed, dùng chung material cùng bảng màu', () => {
+    const state = createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 1 });
+    const p1 = state.players[1]!;
+    const p2 = state.players[2]!;
+    const materials = new ModelMaterials();
+    const model = skinnedModel();
+
+    const a1 = new ModelActor(model, p1, materials, 'seed-alpha');
+    const a2 = new ModelActor(model, p2, materials, 'seed-alpha');
+    const mesh1 = a1.root.getObjectByProperty('type', 'SkinnedMesh') as THREE.SkinnedMesh;
+    const mesh2 = a2.root.getObjectByProperty('type', 'SkinnedMesh') as THREE.SkinnedMesh;
+    expect(mesh1.material).toBe(mesh2.material);
+
+    const before = mesh1.material;
+    a1.setAvatarSeed('ffff0000');
+    expect(mesh1.material).not.toBe(before);
+    materials.dispose();
+  });
+});

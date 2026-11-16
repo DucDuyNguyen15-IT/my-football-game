@@ -7,7 +7,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
-import type { MatchState, PlayerState } from '@pitch/sim';
+import type { MatchState, PlayerState, TeamSide } from '@pitch/sim';
 import {
   baseClip,
   diveClip,
@@ -17,7 +17,7 @@ import {
   type ClipSpeeds,
   type HeldBall,
 } from '../render/animation';
-import { bodyRegion, kitColors } from '../render/kit';
+import { KIT_REGION_BOUNDS, REGION, kitColors } from '../render/kit';
 import { COLORS } from '../render/colors';
 import { playerNumber } from '../render/view';
 import { numberTexture } from './actors';
@@ -54,8 +54,9 @@ export async function loadPlayerModel(): Promise<PlayerModel | null> {
 }
 
 /**
- * Gắn thuộc tính `aRegion` (vùng áo/quần/tất/da/tóc/giày, `render/kit.ts`) cho từng đỉnh theo vị
- * trí ở tư thế gốc. Geometry dùng chung cho mọi bản sao nên chỉ tính một lần lúc nạp.
+ * Gắn thuộc tính `aRestPos` (toạ độ ở tư thế gốc chữ T, mét) để fragment shader phân vùng
+ * áo/quần/tất/da/tóc/giày sắc nét từng pixel mà không bị nội suy nhầm qua các vùng trung gian.
+ * Geometry dùng chung cho mọi bản sao nên chỉ tính một lần lúc nạp.
  */
 function tagBodyRegions(scene: THREE.Object3D): void {
   scene.updateMatrixWorld(true);
@@ -64,18 +65,45 @@ function tagBodyRegions(scene: THREE.Object3D): void {
     if (!(o instanceof THREE.SkinnedMesh)) return;
     o.skeleton.update();
     const count = (o.geometry as THREE.BufferGeometry).getAttribute('position').count;
-    const region = new Float32Array(count);
+    const restPos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
       o.getVertexPosition(i, v).applyMatrix4(o.matrixWorld);
-      region[i] = bodyRegion(v.x, v.y);
+      restPos[i * 3] = v.x;
+      restPos[i * 3 + 1] = v.y;
+      restPos[i * 3 + 2] = v.z;
     }
-    o.geometry.setAttribute('aRegion', new THREE.BufferAttribute(region, 1));
+    o.geometry.setAttribute('aRestPos', new THREE.BufferAttribute(restPos, 3));
   });
 }
 
-/** Material tô màu theo vùng: bảng màu `palette` (thứ tự REGION) đè lên màu gốc. */
-function kitMaterial(palette: readonly number[]): THREE.MeshLambertMaterial {
-  const m = new THREE.MeshLambertMaterial();
+const f32 = (n: number) => (Number.isInteger(n) ? `${n}.0` : String(n));
+
+const REGION_GLSL = (() => {
+  const b = KIT_REGION_BOUNDS;
+  return `int bodyRegionFrag(vec3 p) {
+  float ax = abs(p.x);
+  float y = p.y;
+  float z = p.z;
+  if (ax > ${f32(b.shoulderX)} && y > ${f32(b.sleeveArmMinY)}) {
+    return ax < ${f32(b.sleeveEndX)} ? ${REGION.shirt} : ${REGION.skin};
+  }
+  float hairY = max(${f32(b.hairBackMinY)}, ${f32(b.hairY)} + min(0.0, z) * ${f32(b.hairBackSlope)});
+  if (y > hairY) return ${REGION.hair};
+  float neckDist = length(vec2(p.x, (z - ${f32(b.neckCenterZ)}) * ${f32(b.neckScaleZ)}));
+  if (y > ${f32(b.headY)} || (y > ${f32(b.collarY)} && neckDist < ${f32(b.neckRadius)})) {
+    return ${REGION.skin};
+  }
+  if (y > ${f32(b.waistY)}) return ${REGION.shirt};
+  if (y > ${f32(b.shortsHemY)}) return ${REGION.shorts};
+  if (y > ${f32(b.sockTopY)}) return ${REGION.skin};
+  if (y > ${f32(b.bootTopY)}) return ${REGION.socks};
+  return ${REGION.boots};
+}`;
+})();
+
+/** Material tô màu theo vùng: bảng màu `palette` (thứ tự REGION) đè lên màu gốc, chiếu sáng per-pixel. */
+function kitMaterial(palette: readonly number[]): THREE.MeshStandardMaterial {
+  const m = new THREE.MeshStandardMaterial({ roughness: 0.8, metalness: 0.04 });
   const pal = palette.map((c) => new THREE.Color(c));
   m.onBeforeCompile = (shader) => {
     shader.uniforms.uPal = { value: pal };
@@ -83,28 +111,29 @@ function kitMaterial(palette: readonly number[]): THREE.MeshLambertMaterial {
       .replace(
         '#include <common>',
         `#include <common>
-attribute float aRegion;
-varying float vRegion;`,
+attribute vec3 aRestPos;
+varying vec3 vRestPos;`,
       )
       .replace(
         '#include <begin_vertex>',
         `#include <begin_vertex>
-vRegion = aRegion;`,
+vRestPos = aRestPos;`,
       );
     shader.fragmentShader = shader.fragmentShader
       .replace(
         '#include <common>',
         `#include <common>
 uniform vec3 uPal[${pal.length}];
-varying float vRegion;`,
+varying vec3 vRestPos;
+${REGION_GLSL}`,
       )
       .replace(
         'vec4 diffuseColor = vec4( diffuse, opacity );',
-        'vec4 diffuseColor = vec4( uPal[int(vRegion + 0.5)], opacity );',
+        'vec4 diffuseColor = vec4( uPal[bodyRegionFrag(vRestPos)], opacity );',
       );
   };
   // Mọi bộ quần áo cùng một chương trình shader, chỉ khác uniform.
-  m.customProgramCacheKey = () => 'kit';
+  m.customProgramCacheKey = () => 'kit-std';
   return m;
 }
 
@@ -198,9 +227,9 @@ const TURN_RATE = 12;
 
 /** Material dùng chung cho mọi cầu thủ cùng bộ màu (áo, quần, tất, da, tóc). */
 export class ModelMaterials {
-  private readonly kits = new Map<string, THREE.MeshLambertMaterial>();
+  private readonly kits = new Map<string, THREE.MeshStandardMaterial>();
 
-  kit(palette: readonly number[]): THREE.MeshLambertMaterial {
+  kit(palette: readonly number[]): THREE.MeshStandardMaterial {
     const key = palette.join(',');
     let m = this.kits.get(key);
     if (!m) {
@@ -208,6 +237,11 @@ export class ModelMaterials {
       this.kits.set(key, m);
     }
     return m;
+  }
+
+  dispose(): void {
+    for (const m of this.kits.values()) m.dispose();
+    this.kits.clear();
   }
 }
 
@@ -228,17 +262,29 @@ export class ModelActor {
   private readonly hands: readonly [THREE.Object3D, THREE.Object3D] | null;
   /** Đếm số lần phát clip một lần: chọn bản thay thế và độ dao động tốc độ (tất định theo người). */
   private variant: number;
+  private readonly team: TeamSide;
+  private readonly isKeeper: boolean;
+  private readonly playerId: string;
+  private readonly materials: ModelMaterials;
 
-  constructor(model: PlayerModel, p: PlayerState, materials: ModelMaterials) {
+  constructor(
+    model: PlayerModel,
+    p: PlayerState,
+    materials: ModelMaterials,
+    avatarSeed?: string,
+  ) {
     this.root = cloneSkinned(model.scene);
-    const material = materials.kit(kitColors(p.team, p.position === 'GK', p.id));
+    this.team = p.team;
+    this.isKeeper = p.position === 'GK';
+    this.playerId = p.id;
+    this.materials = materials;
     this.root.traverse((o) => {
       if (!(o instanceof THREE.SkinnedMesh)) return;
-      o.material = material;
       o.castShadow = true;
       // Khung bao của skinned mesh không theo hoạt ảnh: tắt cắt khung để không biến mất khi ngã.
       o.frustumCulled = false;
     });
+    this.setAvatarSeed(avatarSeed);
     this.attachNumber(playerNumber(p.id));
     this.speeds = model.speeds;
     this.variant = playerNumber(p.id);
@@ -258,6 +304,18 @@ export class ModelActor {
       e.action.fadeOut(FADE_SEC);
       this.oneShot = null;
       if (next) this.trigger(next);
+    });
+  }
+
+  /** Cập nhật màu da/tóc theo `avatar_seed` của thẻ (hoặc theo id nếu chưa có thẻ). */
+  setAvatarSeed(avatarSeed?: string): void {
+    const material = this.materials.kit(
+      kitColors(this.team, this.isKeeper, this.playerId, avatarSeed),
+    );
+    this.root.traverse((o) => {
+      if (o instanceof THREE.SkinnedMesh && o.material !== material) {
+        o.material = material;
+      }
     });
   }
 
