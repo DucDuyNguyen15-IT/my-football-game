@@ -16,6 +16,8 @@ export interface KeyState {
   shoot: boolean;
   through: boolean;
   modifier: boolean;
+  finesse: boolean;
+  adjust: boolean;
 }
 
 export const NO_KEYS: KeyState = Object.freeze({
@@ -29,6 +31,8 @@ export const NO_KEYS: KeyState = Object.freeze({
   shoot: false,
   through: false,
   modifier: false,
+  finesse: false,
+  adjust: false,
 });
 
 /**
@@ -46,11 +50,17 @@ export const CONTROL_KEYS: Readonly<Record<keyof KeyState, string>> = Object.fre
   shoot: 'KeyD',
   through: 'KeyW',
   modifier: 'KeyQ',
+  finesse: 'KeyZ',
+  adjust: 'ShiftLeft',
 });
 
-const BY_CODE = new Map(
-  (Object.entries(CONTROL_KEYS) as [keyof KeyState, string][]).map(([name, code]) => [code, name]),
-);
+const BY_CODE = new Map<string, keyof KeyState>([
+  ...(Object.entries(CONTROL_KEYS) as [keyof KeyState, string][]).map(
+    ([name, code]) => [code, name] as const,
+  ),
+  // Shift phải nằm sát cụm mũi tên: dùng được như Shift trái.
+  ['ShiftRight', 'adjust'],
+]);
 
 /** Chức năng của một phím, null nếu không phải phím điều khiển. */
 export function keyForCode(code: string): keyof KeyState | null {
@@ -75,6 +85,8 @@ export function keysToInput(keys: KeyState): PlayerInput {
     switch: false,
     through: keys.through,
     modifier: keys.modifier,
+    finesse: keys.finesse,
+    adjust: keys.adjust,
   };
 }
 

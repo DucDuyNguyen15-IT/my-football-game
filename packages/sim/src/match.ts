@@ -33,7 +33,7 @@ import {
   PASS_FULL_CHARGE_TICKS,
   type PassKind,
 } from './actions/pass';
-import { attackSign, shootBall, shotPower, shotTarget } from './actions/shoot';
+import { attackSign, finesseShot, shootBall, shotPower, shotTarget } from './actions/shoot';
 import {
   isFromBehind,
   pokeBall,
@@ -348,6 +348,8 @@ function sanitizeInput(input: PlayerInput): PlayerInput {
     switch: !!input.switch,
     through: !!input.through,
     modifier: !!input.modifier,
+    finesse: !!input.finesse,
+    adjust: !!input.adjust,
   };
 }
 
@@ -1200,9 +1202,11 @@ function stepPlay(
       // Chỉ nạp lực khi bấm nút sút lúc đang có bóng: giữ nút từ lúc chưa có bóng không thành sút.
       shotChargeTicks += 1;
     } else if (releasedShot) {
-      const target = shotTarget(attackSign(me.team, state.half), input.move.y);
+      const sign = attackSign(me.team, state.half);
       const power = shotPower(shotChargeTicks);
-      ({ ball, rng } = shootBall(asKicker(me), ball.pos, target, power, rng));
+      ({ ball, rng } = input.finesse
+        ? finesseShot(asKicker(me), ball.pos, sign, power, rng)
+        : shootBall(asKicker(me), ball.pos, shotTarget(sign, input.move.y), power, rng));
       ballOwnerId = null;
       kickLock = lock(me.id);
       shotChargeTicks = 0;

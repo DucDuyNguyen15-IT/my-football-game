@@ -47,7 +47,7 @@ describe('keysToInput', () => {
 });
 
 describe('CONTROL_KEYS', () => {
-  it('bộ phím FC Online theo KeyboardEvent.code: mũi tên + E/S/A/D + W/Q', () => {
+  it('bộ phím FC Online theo KeyboardEvent.code: mũi tên + E/S/A/D + W/Q + Z + Shift', () => {
     expect(CONTROL_KEYS).toEqual({
       up: 'ArrowUp',
       down: 'ArrowDown',
@@ -59,6 +59,8 @@ describe('CONTROL_KEYS', () => {
       shoot: 'KeyD',
       through: 'KeyW',
       modifier: 'KeyQ',
+      finesse: 'KeyZ',
+      adjust: 'ShiftLeft',
     });
   });
 
@@ -66,7 +68,10 @@ describe('CONTROL_KEYS', () => {
     expect(keyForCode('KeyS')).toBe('pass');
     expect(keyForCode('ArrowLeft')).toBe('left');
     expect(keyForCode('KeyW')).toBe('through');
-    expect(keyForCode('KeyZ')).toBeNull();
+    expect(keyForCode('KeyZ')).toBe('finesse');
+    expect(keyForCode('ShiftLeft')).toBe('adjust');
+    expect(keyForCode('ShiftRight')).toBe('adjust');
+    expect(keyForCode('KeyX')).toBeNull();
     expect(keyForCode('Escape')).toBeNull();
   });
 });

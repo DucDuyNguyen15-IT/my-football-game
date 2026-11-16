@@ -82,6 +82,10 @@ export interface PlayerInput {
   through: boolean;
   /** Q (giữ): phím phụ, đổi W thành chọc khe bổng. */
   modifier: boolean;
+  /** Z (giữ) khi nhả D: sút xoáy (cong vào góc xa, nhẹ hơn, chính xác hơn). */
+  finesse: boolean;
+  /** Shift (giữ) trong tình huống cố định: mũi tên dời điểm chạm bóng thay vì xoay hướng ngắm. */
+  adjust: boolean;
 }
 
 /** Đóng băng vì được nhiều state dùng chung tham chiếu. */
@@ -94,6 +98,8 @@ export const NO_INPUT: PlayerInput = Object.freeze({
   switch: false,
   through: false,
   modifier: false,
+  finesse: false,
+  adjust: false,
 });
 
 /**

@@ -39,6 +39,8 @@ const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
   ['D (giữ)', 'Sút (giữ để tăng lực)', 'Áp sát / tắc bóng'],
   ['W', 'Chọc khe', '—'],
   ['Q + W', 'Chọc khe bổng', '—'],
+  ['Z + D', 'Sút xoáy vào góc xa', '—'],
+  ['Shift + mũi tên', 'Đá phạt/phạt góc: chỉnh điểm chạm bóng', '—'],
   ['Esc', 'Tạm dừng', 'Tạm dừng'],
 ];
 
@@ -92,6 +94,7 @@ const KEY_HINTS: ReadonlyArray<readonly [string, string]> = [
   ['D', 'Sút / áp sát'],
   ['W', 'Chọc khe'],
   ['Q+W', 'Chọc khe bổng'],
+  ['Z+D', 'Sút xoáy'],
   ['Esc', 'Tạm dừng'],
 ];
 
@@ -159,14 +162,11 @@ function SubPlayerOption({
   const displayName = player.shortName ?? fullName;
   return (
     <label className="subs__item">
-      <input
-        type="radio"
-        name={name}
-        className="sr-only"
-        checked={checked}
-        onChange={onChange}
-      />
-      <span className={`subs__face${player.rarity ? ` r-${player.rarity}` : ''}`} aria-hidden="true">
+      <input type="radio" name={name} className="sr-only" checked={checked} onChange={onChange} />
+      <span
+        className={`subs__face${player.rarity ? ` r-${player.rarity}` : ''}`}
+        aria-hidden="true"
+      >
         {player.avatarSeed ? (
           <Avatar seed={player.avatarSeed} />
         ) : (

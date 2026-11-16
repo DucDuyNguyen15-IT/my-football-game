@@ -11,6 +11,7 @@ import {
   MIN_SHOT_POWER,
   SHOT_MAX_VZ,
   attackSign,
+  finesseShot,
   shootBall,
   shotPower,
   shotTarget,
@@ -138,5 +139,37 @@ describe('độ chính xác sút', () => {
     expect(onTargetRate(shooter({ shooting: 75 }, 10))).toBeLessThan(
       onTargetRate(shooter({ shooting: 75 }, 100)),
     );
+  });
+});
+
+describe('finesseShot — sút xoáy Z+D', () => {
+  /** y và độ cao đáy bóng lúc bóng qua vạch cuối +x (null nếu bóng dừng trước). */
+  const crossing = (b0: BallState) => {
+    let b = b0;
+    for (let i = 0; i < 4 * TICK_RATE; i++) {
+      const next = stepBall(b, 'home').ball;
+      if (next.pos.x >= HALF_LENGTH) return { y: next.pos.y, z: next.z };
+      b = next;
+    }
+    return null;
+  };
+
+  it('đứng lệch +y thì cong vào góc xa (−y), phần lớn trúng khung thành', () => {
+    const from = vec2(HALF_LENGTH - 18, 6);
+    let onTarget = 0;
+    for (let seed = 1; seed <= 50; seed++) {
+      const { ball } = finesseShot(shooter({ shooting: 90 }), from, 1, 1, seedRng(seed));
+      expect(ball.spin!.side).not.toBe(0);
+      const c = crossing(ball);
+      if (c && c.y < 0 && c.y > -GOAL_WIDTH / 2 && c.z < 2.2) onTarget++;
+    }
+    expect(onTarget).toBeGreaterThanOrEqual(35);
+  });
+
+  it('nhẹ hơn cú sút thường cùng lực', () => {
+    const from = vec2(HALF_LENGTH - 18, 6);
+    const plain = shootBall(shooter(), from, shotTarget(1, 0), 1, seedRng(1)).ball;
+    const curl = finesseShot(shooter(), from, 1, 1, seedRng(1)).ball;
+    expect(length(curl.vel)).toBeLessThan(length(plain.vel));
   });
 });
