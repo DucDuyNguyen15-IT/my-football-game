@@ -59,6 +59,7 @@ async function createPlayer(i: number, runId: string): Promise<string> {
   const res = await post('/auth/register', {
     username: `bench_${runId}_${i}`,
     password: `bench-${randomBytes(9).toString('hex')}`,
+    acceptTerms: true,
   });
   const cookie = res.headers.getSetCookie()[0]?.split(';')[0];
   if (!cookie) throw new Error('Đăng ký không trả cookie phiên');

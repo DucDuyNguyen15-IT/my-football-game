@@ -73,7 +73,7 @@ apps/
     services/       transaction + khoá dòng; gọi domain
     domain/         gacha.ts, upgrade.ts, rewards.ts, missions.ts — thuần, nhận rng làm tham số
     db/             schema.ts, migrate.ts, seed/
-  drizzle/          migration SQL 0000…0003 (+ meta/)
+  drizzle/          migration SQL 0000…0006 (+ meta/): 0004 `cards.foot`, 0005 `cards.weak_foot`, 0006 `users.terms_accepted_at`
 packages/
   sim/src/          math/ rng/ physics/ rules/ ai/ stats/ match.ts
   shared/src/       domain.ts (enum, OVR, formation) · api/*.ts (contract từng nhóm endpoint)
@@ -321,11 +321,11 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | # | Method & path | Auth | Request | Response `data` | Ghi chú / PRD |
 |---|---|---|---|---|---|
 | 1 | `GET /health` | — | — | `{ status }` | Đã có trong skeleton |
-| 2 | `POST /auth/register` | — | `{ username, password, email? }` | `Me` | 201. Tạo user + hộp + đội hình mặc định + 11 thẻ khởi đầu + 1 lượt gói 5 miễn phí, **một transaction**. Đặt cookie. F8, F9 |
+| 2 | `POST /auth/register` | — | `{ username, password, email?, acceptTerms: true }` | `Me` | 201. Thiếu `acceptTerms` → 400; lưu `users.terms_accepted_at`. Tạo user + hộp + đội hình mặc định + 11 thẻ khởi đầu + 1 lượt gói 5 miễn phí, **một transaction**. Đặt cookie. F8, F9 |
 | 3 | `POST /auth/login` | — | `{ username, password }` | `Me` | Khoá 15' sau 5 lần sai/15'. F8 |
 | 4 | `POST /auth/logout` | ✔ | — | — | 204, xoá session |
 | 5 | `GET /me` | ✔ | — | `Me` = `{ id, username, coins, freePack5Credits, rewardedMatchesToday, rewardedMatchesLimit }` | |
-| 5b | `DELETE /me` | ✔ | `{ username, password? }` | 204, xoá cookie | Xoá tài khoản (NĐ 13) = ẩn danh hoá: tên → `deleted-<id>`, bỏ mật khẩu/email/Google, xoá phiên + analytics; thẻ/trận/sổ cái giữ lại. Sai xác nhận 403 `invalid_credentials`, sai mật khẩu đếm chung khoá đăng nhập (2026-11-16) |
+| 5b | `DELETE /me` | ✔ | `{ username, password? }` | 204, xoá cookie | Xoá tài khoản (NĐ 13) = ẩn danh hoá: tên → `deleted-<id>`, bỏ mật khẩu/email/Google, xoá phiên + analytics; thẻ/trận/sổ cái giữ lại. Sai xác nhận 403 `invalid_credentials`, sai mật khẩu đếm chung khoá đăng nhập (2026-11-16). Tài khoản chỉ Google: phiên phải tạo trong 10 phút gần nhất, không thì 403 `reauth_required` |
 | 6 | `GET /cards` | — | — | `Card[]` (toàn bộ ~150 mẫu) | Cache dài (`ETag`). Client dùng để hiển thị theo `cardId` |
 | 7 | `GET /player-cards` | ✔ | `?position=&rarity=&sort=ovr\|-ovr\|acquired\|-acquired` | `PlayerCard[]` = `{ id, cardId, level, luck, inSquad, effectiveStats }` | F5 kho thẻ |
 | 8 | `POST /player-cards/sell` | ✔ | `{ playerCardIds: Id[] (1–50) }` | `{ coinsGained, balance }` | Tất cả hoặc không. Xác nhận Vàng+/thẻ + là việc của UI. F11 |
@@ -343,7 +343,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | 19 | `GET /admin/retention` | admin | `?from=&to=` | `[{ cohortDay, registered, d1, d7 }]` | F13 |
 | 20 | `GET /admin/onboarding` | admin | `?from=&to=` | Số liệu phễu tân thủ | Task 7.6 |
 | 21 | `GET /config/auth` | — | — | `{ googleClientId \| null }` | null → ẩn nút Google. ADR-0010 |
-| 22 | `POST /auth/google` | — | `{ idToken, username? }` | `{ status: 'signed_in', me } \| { status: 'needs_username', suggestedUsername }` | 404 khi chưa cấu hình Google. 201 khi vừa tạo tài khoản. ADR-0010 |
+| 22 | `POST /auth/google` | — | `{ idToken, username?, acceptTerms? }` (có `username` thì bắt buộc `acceptTerms: true`) | `{ status: 'signed_in', me } \| { status: 'needs_username', suggestedUsername }` | 404 khi chưa cấu hình Google. 201 khi vừa tạo tài khoản. ADR-0010 |
 | 23 | `POST /dev/grant-coins` | ✔ | `{ amount }` | `{ balance }` | **Chỉ đăng ký khi `ENABLE_DEV_ROUTES=1`** (dev/E2E) |
 
 `MatchTeam = { formation, players: [{ slot, cardId, level, position, stats (đã áp cấp + và phạt sai vị trí) }] }` — sim nhận thẳng cấu trúc này, client không tự tính chỉ số hiệu lực.

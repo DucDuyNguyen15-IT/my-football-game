@@ -109,7 +109,7 @@ describe('phiên', () => {
     const reg = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
-      payload: { username: 'Giu_Do', password: 'mat-khau-giu-do' },
+      payload: { username: 'Giu_Do', password: 'mat-khau-giu-do', acceptTerms: true },
       headers: JSON_HEADERS,
     });
     expect(reg.statusCode).toBe(201);

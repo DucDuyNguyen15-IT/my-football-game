@@ -8,7 +8,8 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 - Tình huống cố định của người chơi: camera sau lưng người đá, mũi tên ngắm, Shift+mũi tên chấm điểm chạm (cong/bổng/sệt theo điểm chạm), giữ phím tích lực nhả mới đá, phạt đền ngắm bằng vòng tròn 2D đổi màu theo lực. Thêm xoáy bóng (`BallState.spin`), sút xoáy Z+D, chỉnh vùng chạm bóng (bóng nhanh khó dính chân) và chọc khe bớt căng.
 - Thẻ có chân thuận (migration 0004) và chân nghịch 2–5★ (migration 0005); máy tự chọn chân theo phía bóng, chân không thuận tăng sai số. Animation đá có bản chân trái, thủ môn bắt/đổ người theo độ cao bóng.
 - Sim có đánh đầu và móc bóng (trước đó bóng cao hơn 1 m không ai chạm được); thủ môn ôm bóng bổng trong vòng cấm nhà.
-- Cân bằng: người chơi giỏi sút phạt đền Dễ ~82% / Khó ~71%; AI-vs-AI thắng máy Dễ ~80%, máy Khó ~9% (chủ dự án chốt giữ mức này).
+- Cân bằng: người chơi giỏi sút phạt đền Dễ ~82% / Khó ~71%. AI-vs-AI 100 trận: đội mẫu thắng máy Dễ 81%, máy Khó 9% (trước 18%); đội thẻ thật 75% / 9% (trước 11%). Chủ dự án chốt giữ cân bằng sau đợt chỉnh vùng chạm bóng (khi đó Dễ 85% / Khó 8%).
+- Đánh đầu qua lại mỗi tick (Fable review V1) đã sửa: không ai đánh đầu tiếp khi khoá chạm bóng của cú đánh đầu/móc bóng còn hạn.
 - Cách làm: Opus code trên nhánh `feat/foot-animations`, Fable 5.2 review chéo (`.claude/collab/review-fable-setpiece-foot.md`), video duyệt animation trong trận quay bằng Playwright.
 
 ## Giai đoạn 8 — Kiểm thử, bảo mật, tối ưu (2026-11-14) ✅

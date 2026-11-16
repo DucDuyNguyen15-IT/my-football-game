@@ -19,7 +19,7 @@ const register = (payload: object) =>
   app.inject({
     method: 'POST',
     url: '/api/v1/auth/register',
-    payload,
+    payload: { acceptTerms: true, ...payload },
     headers: { 'content-type': 'application/json' },
   });
 
@@ -60,6 +60,8 @@ describe('POST /auth/register', () => {
     const db = testDb();
     const userId = Number(me.id);
     const owned = await db.select().from(playerCards).where(eq(playerCards.userId, userId));
+    const [row] = await db.select().from(users).where(eq(users.id, userId));
+    expect(row!.termsAcceptedAt).toBeInstanceOf(Date);
     expect(owned).toHaveLength(11);
     expect(owned.every((c) => c.source === 'starter' && c.level === 0)).toBe(true);
     expect(owned.map((c) => c.cardId).sort((a, b) => a - b)).toEqual(
@@ -106,6 +108,9 @@ describe('POST /auth/register', () => {
       { username: 'co dau cach', password: 'mat-khau-dai' },
       { username: 'hop_le', password: 'ngan' },
       { username: 'hop_le', password: 'mat-khau-dai', email: 'khong-phai-email' },
+      // Chưa tick ô đồng ý Điều khoản (gọi thẳng API, bỏ qua web) — review Fable main-b V1.
+      { username: 'hop_le', password: 'mat-khau-dai', acceptTerms: false },
+      { username: 'hop_le', password: 'mat-khau-dai', acceptTerms: undefined },
     ]) {
       const res = await register(body);
       expect(res.statusCode).toBe(400);

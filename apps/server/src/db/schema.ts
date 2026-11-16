@@ -69,6 +69,8 @@ export const users = pgTable(
     failedLoginWindowStart: ts('failed_login_window_start'),
     lockedUntil: ts('locked_until'),
     isAdmin: boolean('is_admin').notNull().default(false),
+    /** Lúc đồng ý Điều khoản + Chính sách khi tạo tài khoản (NĐ 13); `null` = tài khoản tạo trước khi có ô đồng ý. */
+    termsAcceptedAt: ts('terms_accepted_at'),
     createdAt: createdAt(),
   },
   (t) => [

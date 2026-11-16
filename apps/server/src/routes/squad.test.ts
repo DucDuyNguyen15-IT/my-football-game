@@ -21,7 +21,7 @@ async function signup(username = 'nguoi_choi'): Promise<string> {
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/register',
-    payload: { username, password: PASSWORD },
+    payload: { username, password: PASSWORD, acceptTerms: true },
     headers: json,
   });
   expect(res.statusCode).toBe(201);

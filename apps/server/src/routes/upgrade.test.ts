@@ -36,7 +36,7 @@ async function signup(
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/register',
-    payload: { username, password: 'mat-khau-dai' },
+    payload: { username, password: 'mat-khau-dai', acceptTerms: true },
     headers: json,
   });
   expect(res.statusCode).toBe(201);

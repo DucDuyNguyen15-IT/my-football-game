@@ -680,6 +680,8 @@ export function ResultScreen({
     hud.bookings.filter((b) => b.team === team && b.card === card).length;
   const headline = shootout ? SHOOTOUT_LABEL[shootout] : OUTCOME_LABEL[outcome];
   const level = DIFFICULTY_LABEL[difficulty];
+  // Chưa nộp xong (hoặc còn gửi lại được): vào trận mới sẽ làm server huỷ trận này.
+  const unsaved = reward.kind === 'pending' || (reward.kind === 'error' && reward.retryable);
   return (
     <main className="night-bg result" aria-labelledby="result-title">
       <div className="result__main">
@@ -754,12 +756,26 @@ export function ResultScreen({
             type="button"
             className="btn btn--primary btn--lg"
             autoFocus
-            disabled={reward.kind === 'pending' || (reward.kind === 'error' && reward.retryable)}
+            disabled={unsaved}
             onClick={onRematch}
           >
             Đá tiếp
           </button>
-          <Link to="/" className="btn btn--secondary btn--lg">
+          {/* Rời đi rồi vào trận khác cũng làm server huỷ trận này (review Fable main-a V1): hỏi trước. */}
+          <Link
+            to="/"
+            className="btn btn--secondary btn--lg"
+            onClick={(e) => {
+              if (
+                unsaved &&
+                !window.confirm(
+                  'Kết quả trận chưa lưu xong. Rời đi bây giờ có thể mất thưởng trận này. Vẫn rời đi?',
+                )
+              ) {
+                e.preventDefault();
+              }
+            }}
+          >
             Về trang chủ
           </Link>
         </div>

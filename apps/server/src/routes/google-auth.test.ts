@@ -58,10 +58,14 @@ const google = (payload: object, a = app, cookies?: Record<string, string>) =>
   a.inject({
     method: 'POST',
     url: '/api/v1/auth/google',
-    payload,
+    // Tạo tài khoản (có username) thì web luôn gửi kèm đồng ý Điều khoản.
+    payload: 'username' in payload ? { acceptTerms: true, ...payload } : payload,
     headers: JSON_HEADERS,
     ...(cookies ? { cookies } : {}),
   });
+/** Gửi đúng `payload` (không tự thêm `acceptTerms`). */
+const googleRaw = (payload: object) =>
+  app.inject({ method: 'POST', url: '/api/v1/auth/google', payload, headers: JSON_HEADERS });
 const sidOf = (res: { cookies: { name: string; value: string }[] }) =>
   res.cookies.find((c) => c.name === 'sid')?.value;
 const errorCode = (res: { json: () => unknown }) => ApiError.parse(res.json()).error.code;
@@ -220,5 +224,14 @@ describe('suggestUsername', () => {
     expect(suggestUsername('a-very-long-name-for-email@x.com')).toBe('a_very_long_name_for');
     expect(suggestUsername('ab@x.com')).toBeNull();
     expect(suggestUsername(null)).toBeNull();
+  });
+});
+
+describe('POST /auth/google — đồng ý Điều khoản (review Fable main-b V1)', () => {
+  it('tạo tài khoản mà thiếu acceptTerms → 400, không tạo user', async () => {
+    const res = await googleRaw({ idToken: await idToken(), username: 'chua_dong_y' });
+    expect(res.statusCode).toBe(400);
+    expect(errorCode(res)).toBe('validation_error');
+    expect(await testDb().select().from(users)).toHaveLength(0);
   });
 });

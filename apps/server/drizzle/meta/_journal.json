@@ -43,6 +43,13 @@
       "when": 1794826534128,
       "tag": "0005_card_weak_foot",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794843577106,
+      "tag": "0006_users_terms_accepted",
+      "breakpoints": true
     }
   ]
 }
