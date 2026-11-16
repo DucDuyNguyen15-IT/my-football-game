@@ -7,7 +7,6 @@
  * Tên clip khớp `CLIPS` trong `scripts/build-player-model.mjs`.
  */
 import {
-  CONTROL_HEIGHT,
   DRIBBLE_OFFSET,
   isKeeperHandling,
   kickFoot,
@@ -47,6 +46,13 @@ export type ClipName =
   | 'gk_miss'
   | 'gk_dive_left'
   | 'gk_dive_right'
+  | 'gk_dive_high_left'
+  | 'gk_dive_high_right'
+  | 'gk_block_alt_left'
+  | 'gk_block_alt_right'
+  | 'gk_catch_leap'
+  | 'header_alt'
+  | 'pass_alt'
   | 'gk_throw'
   | 'gk_kick'
   | `${FootedClip}_l`;
@@ -63,6 +69,7 @@ export const FOOTED_CLIPS = [
   'scissor',
   'tackle',
   'gk_kick',
+  'pass_alt',
 ] as const;
 export type FootedClip = (typeof FOOTED_CLIPS)[number];
 
@@ -167,15 +174,18 @@ export function diveClip(
 /** Bóng thấp hơn mức này (m) thì thủ môn đổ người sát cỏ (body block) thay vì bay người. */
 const LOW_SAVE_Z = 0.4;
 
-/** Cản phá sang một bên: bóng sệt thì đổ người sát cỏ, bóng nảy cao thì bay người. */
-const sideSave = (toLeft: boolean, ballZ: number): ClipName =>
-  ballZ < LOW_SAVE_Z
-    ? toLeft
-      ? 'gk_block_left'
-      : 'gk_block_right'
-    : toLeft
-      ? 'gk_dive_left'
-      : 'gk_dive_right';
+/** Bóng cao hơn mức này (m) thì bay người vươn cao (đẩy bóng qua xà). */
+const HIGH_SAVE_Z = 1.6;
+
+/**
+ * Cản phá sang một bên: bóng sệt thì đổ người sát cỏ, bóng nảy cao thì bay người, bóng sát xà thì
+ * bay người vươn cao.
+ */
+const sideSave = (toLeft: boolean, ballZ: number): ClipName => {
+  const side = toLeft ? 'left' : 'right';
+  if (ballZ < LOW_SAVE_Z) return `gk_block_${side}`;
+  return ballZ > HIGH_SAVE_Z ? `gk_dive_high_${side}` : `gk_dive_${side}`;
+};
 
 /**
  * Bắt bóng theo độ cao bóng lúc bắt (m): ngưỡng nằm giữa độ cao hai tay khép của các clip
@@ -188,6 +198,8 @@ export function catchClip(z: number): ClipName {
   return 'gk_catch_high';
 }
 
+/** Bóng bổng không phải cú sút, cao hơn mức này (m) lúc thủ môn bắt: bật nhảy bắt. */
+const LEAP_CATCH_Z = 1.6;
 /** Bóng bay cao hơn mức này (m) mà thủ môn ôm được (tạt, chuyền bổng) cũng phát clip bắt bóng. */
 const AERIAL_CATCH_Z = 0.5;
 /** Thủng lưới mà bóng qua vạch cao hơn mức này (m) và thủ môn ở gần thì với tay hụt. */
@@ -243,15 +255,12 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     const windupDone = prev.windup?.playerId === kicker;
     if (!windupDone && (prev.ballOwnerId === kicker || prev.restart?.takerId === kicker)) {
       events.push({ playerId: kicker, clip: kickClip(prev, curr, kicker) });
-    } else if (
-      prev.ballOwnerId === null &&
-      prev.ball.z > CONTROL_HEIGHT &&
-      curr.lastShot?.tick === curr.tick
-    ) {
-      // Sút bóng đang bay cao hơn tầm khống chế = móc bóng (`tryScissor` của sim).
+    } else if (lock.touch === 'scissor') {
       const p = prev.players.find((x) => x.id === kicker);
       const foot = p ? kickFoot(p, prev.ball.pos, curr.ball.vel) : 'right';
       events.push({ playerId: kicker, clip: withFoot('scissor', foot) });
+    } else if (lock.touch === 'header') {
+      events.push({ playerId: kicker, clip: 'header' });
     }
   }
 
@@ -299,7 +308,9 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     ((prev.lastShot !== null && prev.lastShot.team !== keeper.team) ||
       (prev.ball.z > AERIAL_CATCH_Z && isKeeperHandling(keeper, curr.half, curr.backPass)))
   ) {
-    events.push({ playerId: keeper.id, clip: catchClip(prev.ball.z) });
+    // Băng ra bắt bóng bổng (tạt, chuyền dài) cao quá đầu: bật nhảy bắt.
+    const leap = prev.lastShot === null && prev.ball.z > LEAP_CATCH_Z;
+    events.push({ playerId: keeper.id, clip: leap ? 'gk_catch_leap' : catchClip(prev.ball.z) });
   }
 
   // Thủng lưới bóng cao trong tầm với: thủ môn nhảy với hụt.

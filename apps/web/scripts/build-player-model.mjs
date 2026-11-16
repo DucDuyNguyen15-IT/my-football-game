@@ -30,6 +30,9 @@ const CLIPS = {
   strafe_left: 'jog strafe left',
   strafe_right: 'jog strafe right',
   pass: 'kick soccerball',
+  // Biến thể (web chọn xen kẽ): chuyền chân phải gốc, đánh đầu kiểu khác.
+  pass_alt: 'kick soccerball (2)',
+  header_alt: 'header soccerball (2)',
   shot: 'strike foward jog',
   penalty: 'soccer penalty kick',
   header: 'header soccerball',
@@ -49,6 +52,10 @@ const CLIPS = {
   // Đổ người cản bóng sệt (+X Mixamo là bên trái nhân vật: bản gốc sang trái).
   gk_block_left: 'goalkeeper body block',
   gk_block_right: 'goalkeeper body block (2)',
+  // Đổ người kiểu khác (sang trái); bản phải lật gương (`MIRRORED`).
+  gk_block_alt_left: 'goalkeeper body block (3)',
+  // Băng ra bật nhảy bắt bóng bổng: hai tay khép ở 2,3 m lúc 1,49 s.
+  gk_catch_leap: 'goalkeeper catch (3)',
   gk_miss: 'goalkeeper miss',
   // Mixamo quay mặt về +Z nên +X là bên trái nhân vật: bản gốc lao sang trái (dx +2,2 m), (2) sang phải.
   gk_dive_left: 'goalkeeper diving save',
@@ -71,7 +78,33 @@ const FOOTED = {
   scissor: 'right',
   tackle: 'left',
   gk_kick: 'right',
+  pass_alt: 'right',
 };
+
+/** Clip lật gương từ clip khác (không có bản đối xứng trong gói). */
+const MIRRORED = { gk_block_alt_right: 'gk_block_alt_left' };
+
+/**
+ * Bay người vươn cao (đẩy bóng sát xà) — không có trong gói Mixamo: chế từ clip bay người, nâng
+ * hông thêm tối đa `HIGH_DIVE_LIFT_CM` theo nửa sóng sin trong lúc bay (rời đất ~0,45 s, chạm đất
+ * ~1,45 s, đo ở clip gốc) để tay lên ~1,7–1,9 m.
+ */
+const HIGH_DIVES = { gk_dive_high_left: 'gk_dive_left', gk_dive_high_right: 'gk_dive_right' };
+const HIGH_DIVE_LIFT_CM = 80;
+const HIGH_DIVE_AIR = [0.45, 1.45];
+function liftClip(clip, name) {
+  const [t0, t1] = HIGH_DIVE_AIR;
+  const tracks = clip.tracks.map((tr) => {
+    if (!tr.name.endsWith('Hips.position')) return tr;
+    const v = Float32Array.from(tr.values);
+    for (let i = 0; i < tr.times.length; i++) {
+      const t = tr.times[i];
+      if (t > t0 && t < t1) v[i * 3 + 1] += HIGH_DIVE_LIFT_CM * Math.sin((Math.PI * (t - t0)) / (t1 - t0));
+    }
+    return new tr.constructor(tr.name, tr.times, v);
+  });
+  return new THREE.AnimationClip(name, clip.duration, tracks);
+}
 
 const swapSide = (n) => n.replace(/Left|Right/g, (s) => (s === 'Left' ? 'Right' : 'Left'));
 function mirrorClip(clip, name) {
@@ -194,6 +227,9 @@ for (const [name, file] of Object.entries(CLIPS)) {
   }
   addClip(name, path);
 }
+const byName = (n) => clips.find((c) => c.name === n);
+for (const [name, from] of Object.entries(MIRRORED)) clips.push(mirrorClip(byName(from), name));
+for (const [name, from] of Object.entries(HIGH_DIVES)) clips.push(liftClip(byName(from), name));
 for (const [name, files] of Object.entries(OPTIONAL_CLIPS)) {
   const path = findOptional(files);
   if (path) addClip(name, path);

@@ -135,9 +135,13 @@ interface OneShot {
  */
 const ONE_SHOT: Partial<Record<ClipName, OneShot>> = {
   pass: { start: 0.1, speed: 1.5 },
+  // Chuyền chân phải gốc: chạm ~0,43 s.
+  pass_alt: { start: 0, speed: 1.5, fallback: 'pass' },
   shot: { start: 0.3, speed: 1.6 },
   penalty: { start: 0.6, speed: 1.5 },
   header: { start: 0.45, speed: 1.3 },
+  // Đầu chạm bóng ~0,56 s; phần sau đứng chờ dài nên cắt ở 1,6 s.
+  header_alt: { start: 0.15, speed: 1.3, stop: 1.6, fallback: 'header' },
   // Móc bóng: bàn chân nhanh nhất ~0,77 s; sim cho bóng đi ngay nên bỏ đoạn bật người lên.
   scissor: { start: 0.62, speed: 1.2, fallback: 'shot' },
   throw_in: { start: 1.4, speed: 1.3 },
@@ -150,17 +154,34 @@ const ONE_SHOT: Partial<Record<ClipName, OneShot>> = {
   gk_catch_low: { start: 0.22, speed: 1.2, fallback: 'gk_catch' },
   gk_catch: { start: 0.1, speed: 1.2 },
   gk_catch_high: { start: 0.65, speed: 1.2, fallback: 'gk_catch' },
+  // Bật nhảy bắt bóng bổng: hai tay khép trên đầu ~1,49 s (bỏ đoạn chạy lên vì hông đã ghim).
+  gk_catch_leap: { start: 1.1, speed: 1.6, fallback: 'gk_catch_high' },
   // Đổ người sát cỏ: tay chạm bóng ~0,85 s, phát sớm như bay người (~0,4 s sau khi bắt đầu lao).
   gk_block_left: { start: 0.3, speed: 1.4, fallback: 'gk_dive_left' },
   gk_block_right: { start: 0.3, speed: 1.4, fallback: 'gk_dive_right' },
+  gk_block_alt_left: { start: 0.5, speed: 1.4, fallback: 'gk_block_left' },
+  gk_block_alt_right: { start: 0.5, speed: 1.4, fallback: 'gk_block_right' },
   // Thủng lưới: bóng đã qua, nhảy với cao nhất (0,73 s) ngay sau đó.
   gk_miss: { start: 0.45, speed: 1.3 },
   gk_dive_left: { start: 0.35, speed: 1.4 },
   gk_dive_right: { start: 0.35, speed: 1.4 },
+  // Bay người vươn cao: chế từ clip bay người (`pnpm assets`), cùng nhịp.
+  gk_dive_high_left: { start: 0.35, speed: 1.4, fallback: 'gk_dive_left' },
+  gk_dive_high_right: { start: 0.35, speed: 1.4, fallback: 'gk_dive_right' },
   gk_throw: { start: 0.9, speed: 1.3 },
   gk_kick: { start: 1.47, speed: 1.3 },
 };
 const FADE_SEC = 0.15;
+/** Clip có bản thay thế: phát xen kẽ để động tác lặp lại không giống hệt nhau. */
+const ALTERNATES: Partial<Record<ClipName, ClipName>> = {
+  pass: 'pass_alt',
+  pass_l: 'pass_alt_l',
+  header: 'header_alt',
+  gk_block_left: 'gk_block_alt_left',
+  gk_block_right: 'gk_block_alt_right',
+};
+/** Tốc độ phát clip một lần dao động ±chừng này (tỉ lệ) giữa các lần. */
+const SPEED_JITTER = 0.08;
 /** Clip nằm sân: sim đã cho chạy lại (hết khoá, bóng sống) mà còn phát thì cắt về chạy. */
 const GROUNDED = new Set<ClipName>(['tackle', 'trip', 'get_up']);
 const MOVING_SPEED = 1;
@@ -205,6 +226,8 @@ export class ModelActor {
   private readonly speeds: ClipSpeeds;
   private readonly spine: THREE.Object3D | undefined;
   private readonly hands: readonly [THREE.Object3D, THREE.Object3D] | null;
+  /** Đếm số lần phát clip một lần: chọn bản thay thế và độ dao động tốc độ (tất định theo người). */
+  private variant: number;
 
   constructor(model: PlayerModel, p: PlayerState, materials: ModelMaterials) {
     this.root = cloneSkinned(model.scene);
@@ -218,6 +241,7 @@ export class ModelActor {
     });
     this.attachNumber(playerNumber(p.id));
     this.speeds = model.speeds;
+    this.variant = playerNumber(p.id);
     this.spine = this.root.getObjectByName('mixamorigSpine');
     const right = this.root.getObjectByName('mixamorigRightHand');
     const left = this.root.getObjectByName('mixamorigLeftHand');
@@ -255,13 +279,21 @@ export class ModelActor {
   }
 
   /** Phát clip một lần (chuyền, sút, xoạc…), đè lên clip lặp đang chạy. */
-  trigger(clip: ClipName): void {
-    const cfg = ONE_SHOT[baseClip(clip)] ?? { start: 0, speed: 1 };
+  trigger(wanted: ClipName): void {
+    this.variant += 1;
+    const alt = ALTERNATES[wanted];
+    const clip = alt && this.variant % 2 === 1 && this.actions.has(alt) ? alt : wanted;
+    this.play(clip, 1 + SPEED_JITTER * Math.sin(this.variant * 2.4));
+  }
+
+  private play(clip: ClipName, jitter: number): void {
+    const base = ONE_SHOT[baseClip(clip)] ?? { start: 0, speed: 1 };
+    const cfg = { ...base, speed: base.speed * jitter };
     // Model cũ chưa dựng lại (`pnpm assets`): thiếu bản chân trái thì dùng bản chân phải.
     const action =
       this.actions.get(cfg.source ?? clip) ?? this.actions.get(cfg.source ?? baseClip(clip));
     if (!action) {
-      if (cfg.fallback) this.trigger(cfg.fallback);
+      if (cfg.fallback) this.play(cfg.fallback, jitter);
       return;
     }
     if (this.oneShot?.action === action) {

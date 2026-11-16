@@ -177,10 +177,15 @@ describe('animationEvents', () => {
     expect(animationEvents(prev, curr)).toEqual([{ playerId: GK, clip: 'gk_kick_l' }]);
   });
 
-  it('sút bóng tự do đang bay cao hơn tầm khống chế → móc bóng', () => {
+  it('chạm bóng bổng: sim đánh dấu móc bóng → scissor, đánh đầu → header', () => {
     const prev = { ...base(), ballOwnerId: null, ball: { ...base().ball, z: 1.4 } };
-    const curr = kicked(prev, { lastShot: { team: 'home', tick: prev.tick + 1 } });
-    expect(animationEvents(prev, curr)[0]?.clip).toMatch(/^scissor/);
+    const touch = (t: 'scissor' | 'header') =>
+      kicked(prev, {
+        lastShot: { team: 'home', tick: prev.tick + 1 },
+        kickLock: { playerId: ME, untilTick: prev.tick + 13, touch: t },
+      });
+    expect(animationEvents(prev, touch('scissor'))[0]?.clip).toMatch(/^scissor/);
+    expect(animationEvents(prev, touch('header'))[0]?.clip).toBe('header');
   });
 
   it('bóng cao ngang đầu lúc chạm → header', () => {
