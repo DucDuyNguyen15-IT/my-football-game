@@ -40,7 +40,15 @@ const CLIPS = {
   throw_in: 'throw in',
   gk_idle: 'goalkeeper idle (2)',
   gk_sidestep: 'goalkeeper sidestep',
+  // Bắt bóng theo độ cao lúc hai tay khép (đo trong clip): xúc 0,3 m, thấp 0,8 m, ngực 1,3 m, cao 2,3 m.
+  gk_scoop: 'goalkeeper scoop',
+  gk_catch_low: 'goalkeeper catch',
   gk_catch: 'goalkeeper catch (2)',
+  gk_catch_high: 'goalkeeper catch (4)',
+  // Đổ người cản bóng sệt (+X Mixamo là bên trái nhân vật: bản gốc sang trái).
+  gk_block_left: 'goalkeeper body block',
+  gk_block_right: 'goalkeeper body block (2)',
+  gk_miss: 'goalkeeper miss',
   // Mixamo quay mặt về +Z nên +X là bên trái nhân vật: bản gốc lao sang trái (dx +2,2 m), (2) sang phải.
   gk_dive_left: 'goalkeeper diving save',
   gk_dive_right: 'goalkeeper diving save (2)',

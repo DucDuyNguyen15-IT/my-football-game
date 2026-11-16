@@ -119,6 +119,8 @@ interface OneShot {
   source?: ClipName;
   /** Dừng ở giây này của clip rồi trả về chạy/đứng. */
   stop?: number;
+  /** Model cũ (chưa chạy lại `pnpm assets`) thiếu clip này thì phát clip thay thế. */
+  fallback?: ClipName;
 }
 
 /**
@@ -141,7 +143,16 @@ const ONE_SHOT: Partial<Record<ClipName, OneShot>> = {
   trip: { start: 0, speed: 1.5, next: 'get_up' },
   stumble: { start: 0, speed: 1.2, source: 'trip', stop: 0.35 },
   get_up: { start: 0.4, speed: 2.4 },
+  // Bắt bóng phát lúc sim đã ôm bóng: `start` = lúc hai tay khép − ~0,15 s × `speed` (đo ở `pnpm assets`).
+  gk_scoop: { start: 0.45, speed: 1.2, fallback: 'gk_catch' },
+  gk_catch_low: { start: 0.22, speed: 1.2, fallback: 'gk_catch' },
   gk_catch: { start: 0.1, speed: 1.2 },
+  gk_catch_high: { start: 0.65, speed: 1.2, fallback: 'gk_catch' },
+  // Đổ người sát cỏ: tay chạm bóng ~0,85 s, phát sớm như bay người (~0,4 s sau khi bắt đầu lao).
+  gk_block_left: { start: 0.3, speed: 1.4, fallback: 'gk_dive_left' },
+  gk_block_right: { start: 0.3, speed: 1.4, fallback: 'gk_dive_right' },
+  // Thủng lưới: bóng đã qua, nhảy với cao nhất (0,73 s) ngay sau đó.
+  gk_miss: { start: 0.45, speed: 1.3 },
   gk_dive_left: { start: 0.35, speed: 1.4 },
   gk_dive_right: { start: 0.35, speed: 1.4 },
   gk_throw: { start: 0.9, speed: 1.3 },
@@ -244,10 +255,13 @@ export class ModelActor {
   /** Phát clip một lần (chuyền, sút, xoạc…), đè lên clip lặp đang chạy. */
   trigger(clip: ClipName): void {
     const cfg = ONE_SHOT[baseClip(clip)] ?? { start: 0, speed: 1 };
-    // Model cũ chưa dựng lại (`pnpm assets`) thiếu bản chân trái: dùng bản chân phải.
+    // Model cũ chưa dựng lại (`pnpm assets`): thiếu bản chân trái thì dùng bản chân phải.
     const action =
       this.actions.get(cfg.source ?? clip) ?? this.actions.get(cfg.source ?? baseClip(clip));
-    if (!action) return;
+    if (!action) {
+      if (cfg.fallback) this.trigger(cfg.fallback);
+      return;
+    }
     if (this.oneShot?.action === action) {
       // Đang đứng ở khung giữ của chính clip này (chờ ném biên): chạy tiếp, không trộn với chính nó.
       action.paused = false;

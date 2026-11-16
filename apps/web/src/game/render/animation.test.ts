@@ -111,13 +111,22 @@ describe('heldBall', () => {
 
 describe('diveClip', () => {
   it('thủ môn lao nhanh sang ngang khi bóng tự do sau cú sút đối phương → bay người đúng phía', () => {
-    const s0 = { ...base(), ballOwnerId: null, lastShot: { team: 'home' as const, tick: 0 } };
+    const s0 = {
+      ...base(),
+      ballOwnerId: null,
+      lastShot: { team: 'home' as const, tick: 0 },
+      ball: { ...base().ball, z: 1 },
+    };
     const gk = { ...player(s0, 'away-GK'), facing: v(-1, 0) };
     // Mặt −x: trái nhân vật là +y sim.
     expect(diveClip({ ...gk, vel: v(0, 6) }, s0)).toBe('gk_dive_left');
     expect(diveClip({ ...gk, vel: v(0, -6) }, s0)).toBe('gk_dive_right');
     expect(diveClip({ ...gk, vel: v(0, 1) }, s0)).toBeNull();
     expect(diveClip({ ...gk, vel: v(0, 6) }, { ...s0, lastShot: null })).toBeNull();
+    // Bóng sệt: đổ người sát cỏ thay vì bay người.
+    const low = { ...s0, ball: { ...s0.ball, z: 0.1 } };
+    expect(diveClip({ ...gk, vel: v(0, 6) }, low)).toBe('gk_block_left');
+    expect(diveClip({ ...gk, vel: v(0, -6) }, low)).toBe('gk_block_right');
   });
 });
 
@@ -294,10 +303,34 @@ describe('animationEvents', () => {
     expect(animationEvents(prev, curr)).toEqual([{ playerId: ME, clip: 'trip' }]);
   });
 
-  it('thủ môn bắt được cú sút → gk_catch', () => {
-    const prev = { ...base(), ballOwnerId: null, lastShot: { team: 'home' as const, tick: 0 } };
-    const curr = { ...prev, tick: prev.tick + 1, ballOwnerId: 'away-GK' };
-    expect(animationEvents(prev, curr)).toEqual([{ playerId: 'away-GK', clip: 'gk_catch' }]);
+  it('thủ môn bắt được cú sút → clip theo độ cao bóng', () => {
+    for (const [z, clip] of [
+      [0.1, 'gk_scoop'],
+      [0.8, 'gk_catch_low'],
+      [1.3, 'gk_catch'],
+      [2.1, 'gk_catch_high'],
+    ] as const) {
+      const prev = {
+        ...base(),
+        ballOwnerId: null,
+        lastShot: { team: 'home' as const, tick: 0 },
+        ball: { ...base().ball, z },
+      };
+      const curr = { ...prev, tick: prev.tick + 1, ballOwnerId: 'away-GK' };
+      expect(animationEvents(prev, curr)).toEqual([{ playerId: 'away-GK', clip }]);
+    }
+  });
+
+  it('thủng lưới bóng cao gần thủ môn → với hụt; bóng sệt hoặc ở xa → không', () => {
+    const gk = player(base(), 'away-GK');
+    const at = (z: number, dy: number) => {
+      const prev = { ...base(), ball: { ...base().ball, pos: v(gk.pos.x, gk.pos.y + dy), z } };
+      const curr = { ...prev, tick: prev.tick + 1, score: { home: 1, away: 0 } };
+      return animationEvents(prev, curr);
+    };
+    expect(at(2, 1)).toEqual([{ playerId: 'away-GK', clip: 'gk_miss' }]);
+    expect(at(0.2, 1)).toEqual([]);
+    expect(at(2, 5)).toEqual([]);
   });
 
   describe('thủ môn đẩy bóng ra', () => {
@@ -307,7 +340,7 @@ describe('animationEvents', () => {
         ...base(),
         ballOwnerId: null,
         lastShot: { team: 'home', tick: 0 },
-        ball: { pos: v(gk.pos.x - 1, gk.pos.y + ballY), vel: v(20, 0), z: 0.5, vz: 0 },
+        ball: { pos: v(gk.pos.x - 1, gk.pos.y + ballY), vel: v(20, 0), z: 1.2, vz: 0 },
       };
       const curr: MatchState = {
         ...prev,

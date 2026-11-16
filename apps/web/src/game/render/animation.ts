@@ -36,7 +36,13 @@ export type ClipName =
   | 'throw_in'
   | 'gk_idle'
   | 'gk_sidestep'
+  | 'gk_scoop'
+  | 'gk_catch_low'
   | 'gk_catch'
+  | 'gk_catch_high'
+  | 'gk_block_left'
+  | 'gk_block_right'
+  | 'gk_miss'
   | 'gk_dive_left'
   | 'gk_dive_right'
   | 'gk_throw'
@@ -137,16 +143,47 @@ export function locomotionFor(
 /** Thủ môn đang lao người sau cú sút của đối phương: clip lao sang trái/phải nhân vật, null nếu không. */
 export function diveClip(
   p: PlayerState,
-  state: Pick<MatchState, 'ballOwnerId' | 'lastShot'>,
-): 'gk_dive_left' | 'gk_dive_right' | null {
+  state: Pick<MatchState, 'ballOwnerId' | 'lastShot' | 'ball'>,
+): ClipName | null {
   const shot = state.lastShot;
   if (p.position !== 'GK' || state.ballOwnerId !== null || !shot || shot.team === p.team) {
     return null;
   }
   if (speedOf(p) < DIVE_MIN_SPEED) return null;
   const left = leftOf(p.facing);
-  return p.vel.x * left.x + p.vel.y * left.y > 0 ? 'gk_dive_left' : 'gk_dive_right';
+  return sideSave(p.vel.x * left.x + p.vel.y * left.y > 0, state.ball.z);
 }
+
+/** Bóng thấp hơn mức này (m) thì thủ môn đổ người sát cỏ (body block) thay vì bay người. */
+const LOW_SAVE_Z = 0.4;
+
+/** Cản phá sang một bên: bóng sệt thì đổ người sát cỏ, bóng nảy cao thì bay người. */
+const sideSave = (toLeft: boolean, ballZ: number): ClipName =>
+  ballZ < LOW_SAVE_Z
+    ? toLeft
+      ? 'gk_block_left'
+      : 'gk_block_right'
+    : toLeft
+      ? 'gk_dive_left'
+      : 'gk_dive_right';
+
+/**
+ * Bắt bóng theo độ cao bóng lúc bắt (m): ngưỡng nằm giữa độ cao hai tay khép của các clip
+ * (xúc 0,3 · thấp 0,8 · ngực 1,3 · cao 2,3 m, đo lúc `pnpm assets`).
+ */
+export function catchClip(z: number): ClipName {
+  if (z < 0.5) return 'gk_scoop';
+  if (z < 1.05) return 'gk_catch_low';
+  if (z < 1.75) return 'gk_catch';
+  return 'gk_catch_high';
+}
+
+/** Bóng bay cao hơn mức này (m) mà thủ môn ôm được (tạt, chuyền bổng) cũng phát clip bắt bóng. */
+const AERIAL_CATCH_Z = 0.5;
+/** Thủng lưới mà bóng qua vạch cao hơn mức này (m) và thủ môn ở gần thì với tay hụt. */
+const MISS_MIN_Z = 1.5;
+/** Thủ môn cách bóng (theo phương ngang) không quá chừng này (m) lúc thủng lưới thì mới với hụt. */
+const MISS_REACH = 3;
 
 /** Bóng lệch khỏi tâm thủ môn ít hơn chừng này (m, theo phương ngang người) thì đỡ bằng thân. */
 const PARRY_BODY_SIDE = 0.35;
@@ -233,16 +270,26 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     events.push({ playerId: owner, clip: 'trip' });
   }
 
-  // Thủ môn bắt dính cú sút của đối phương.
+  // Thủ môn bắt dính cú sút của đối phương, hoặc ôm bóng bổng (tạt, chuyền dài): clip theo độ cao.
   const catcher = curr.ballOwnerId;
   const keeper = catcher === null ? undefined : curr.players.find((p) => p.id === catcher);
   if (
     keeper?.position === 'GK' &&
-    prev.ballOwnerId !== catcher &&
-    prev.lastShot !== null &&
-    prev.lastShot.team !== keeper.team
+    prev.ballOwnerId === null &&
+    ((prev.lastShot !== null && prev.lastShot.team !== keeper.team) ||
+      (prev.ball.z > AERIAL_CATCH_Z && isKeeperHandling(keeper, curr.half, curr.backPass)))
   ) {
-    events.push({ playerId: keeper.id, clip: 'gk_catch' });
+    events.push({ playerId: keeper.id, clip: catchClip(prev.ball.z) });
+  }
+
+  // Thủng lưới bóng cao trong tầm với: thủ môn nhảy với hụt.
+  for (const team of ['home', 'away'] as const) {
+    if (curr.score[team] <= prev.score[team]) continue;
+    const gk = prev.players.find((p) => p.position === 'GK' && p.team !== team);
+    const b = prev.ball;
+    if (gk && b.z > MISS_MIN_Z && Math.hypot(b.pos.x - gk.pos.x, b.pos.y - gk.pos.y) < MISS_REACH) {
+      events.push({ playerId: gk.id, clip: 'gk_miss' });
+    }
   }
 
   // Thủ môn đẩy bóng ra: sim khoá thủ môn, xoá cú sút và đổi hướng/giảm tốc bóng (bị sút qua người
@@ -259,8 +306,8 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
     const left = leftOf(parrier.facing);
     const side =
       (curr.ball.pos.x - parrier.pos.x) * left.x + (curr.ball.pos.y - parrier.pos.y) * left.y;
-    const clip: ClipName =
-      Math.abs(side) < PARRY_BODY_SIDE ? 'gk_catch' : side > 0 ? 'gk_dive_left' : 'gk_dive_right';
+    const clip =
+      Math.abs(side) < PARRY_BODY_SIDE ? catchClip(prev.ball.z) : sideSave(side > 0, prev.ball.z);
     events.push({ playerId: parrier.id, clip });
   }
   return events;
