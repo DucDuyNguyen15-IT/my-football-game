@@ -156,6 +156,13 @@ export interface Restart {
    * chạy không có phần hiển thị vẫn y hệt; phần hiển thị căn chuyển cảnh theo các hằng số đó.
    */
   readyTick: number;
+  /**
+   * Hướng ngắm người chơi đã xoay (đá phạt, phạt góc, phát bóng — `rules/setPieceAim.ts`); không có
+   * = hướng mặc định `restartFacing`.
+   */
+  aim?: Vec2;
+  /** Điểm chạm trên bóng (đá phạt, phạt góc): x phải, y trên, |contact| ≤ 1; không có = giữa bóng. */
+  contact?: Vec2;
 }
 
 /**

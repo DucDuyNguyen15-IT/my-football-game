@@ -26,7 +26,14 @@ function freeKick(seed: number, team: TeamSide): MatchState {
     ballOwnerId: null,
     lastShot: null,
     ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
-    restart: { type: 'free_kick', team, spot, takerId: taker.id, startTick: s.tick, readyTick: s.tick },
+    restart: {
+      type: 'free_kick',
+      team,
+      spot,
+      takerId: taker.id,
+      startTick: s.tick,
+      readyTick: s.tick,
+    },
     controlledId: team === 'home' ? taker.id : s.controlledId,
   };
 }
@@ -49,4 +56,35 @@ describe('chờ đá phạt không giật', () => {
       for (const n of Object.values(jumps)) expect(n).toBeLessThanOrEqual(2);
     },
   );
+});
+
+describe('ngắm đá phạt (camera sau lưng)', () => {
+  const held = (over: Partial<typeof NO_INPUT>) => ({ ...NO_INPUT, ...over });
+  /** Đá phạt của người chơi, mọi người đã vào vị trí. */
+  const ready = () => {
+    let s = freeKick(3, 'home');
+    const takerAt = (m: MatchState) =>
+      length(sub(m.players.find((p) => p.id === m.restart!.takerId)!.pos, m.restart!.spot));
+    for (let i = 0; i < 300 && takerAt(s) > 0.7; i++) s = step(s, NO_INPUT);
+    return s;
+  };
+
+  it('giữ mũi tên phải xoay hướng ngắm sang phải, người đá quay theo', () => {
+    let s = ready();
+    const before = s.restart!.aim;
+    for (let i = 0; i < 20; i++) s = step(s, held({ move: vec2(1, 0) }));
+    const aim = s.restart!.aim!;
+    expect(aim).not.toEqual(before);
+    const taker = s.players.find((p) => p.id === s.restart!.takerId)!;
+    expect(taker.facing.x).toBeCloseTo(aim.x, 6);
+    expect(taker.facing.y).toBeCloseTo(aim.y, 6);
+  });
+
+  it('giữ Shift + mũi tên lên dời điểm chạm lên trên, hướng ngắm đứng yên', () => {
+    let s = step(ready(), NO_INPUT);
+    const aim = s.restart!.aim;
+    for (let i = 0; i < 10; i++) s = step(s, held({ adjust: true, move: vec2(0, -1) }));
+    expect(s.restart!.aim).toEqual(aim);
+    expect(s.restart!.contact!.y).toBeGreaterThan(0);
+  });
 });

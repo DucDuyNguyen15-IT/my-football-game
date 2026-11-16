@@ -72,6 +72,15 @@ import {
   WHISTLE_PENALTY_WAIT_TICKS,
   WHISTLE_SHOT_WAIT_TICKS,
 } from './rules/limits';
+import {
+  AIMED_RESTARTS,
+  aimTarget,
+  CONTACT_RESTARTS,
+  moveContact,
+  restartAim,
+  restartContact,
+  turnAim,
+} from './rules/setPieceAim';
 import { autoSubstitute } from './rules/substitution';
 import { nextShooter, SHOOTOUT_KICK_TICKS, shooterFor, shootoutWinner } from './rules/shootout';
 import {
@@ -868,11 +877,20 @@ function stepDeadBall(
     kickPass(state.players, taker, restart.spot, dir, kind, state.rng, tick);
   // Phạt đền có hệ số sai số riêng (không theo mức độ khó); đá phạt sút như bóng sống.
   const penalty = restart.type === 'penalty';
+  // Đá phạt, phạt góc, phát bóng của người chơi: mũi tên trái/phải xoay hướng ngắm (camera sau lưng
+  // người đá), giữ Shift thì dời điểm chạm bóng (`rules/setPieceAim.ts`).
+  const takerFar = length(sub(taker.pos, restart.spot)) > DRIBBLE_OFFSET + RESTART_SETTLE_DIST;
+  const aimed = humanRestart && AIMED_RESTARTS.has(restart.type);
+  const adjusting = aimed && input.adjust && CONTACT_RESTARTS.has(restart.type);
+  // Người đá chưa tới bóng thì chưa xoay (giữ hướng mặc định để đi đúng chỗ).
+  const turn = adjusting || takerFar ? 0 : input.move.x;
+  const setAim = aimed ? turnAim(restartAim(restart, state.half), turn) : null;
+  const contact = adjusting ? moveContact(restartContact(restart), input.move) : restart.contact;
   const humanShot = (chargeTicks: number) => ({
     ...shootBall(
       taker,
       restart.spot,
-      shotTarget(goalSign, input.move.y),
+      setAim ? aimTarget(restart.spot, setAim, goalSign) : shotTarget(goalSign, input.move.y),
       shotPower(chargeTicks),
       state.rng,
       penalty ? PENALTY_ERROR_MULT : 1,
@@ -883,8 +901,7 @@ function stepDeadBall(
   // Mọi người đã được đặt vào vị trí lúc bóng chết (luật 2). Ai rời chỗ sau đó (người chơi chạy vào
   // khoảng cách cấm, bị chen) thì tự đi về; chưa xong thì chưa thực hiện được.
   // Phạt đền: hướng bấm chỉ dùng để nhắm lúc sút, người sút luôn quay mặt về khung thành.
-  const humanAim = humanRestart && restart.type !== 'penalty' ? input.move : ZERO;
-  const takerFar = length(sub(taker.pos, restart.spot)) > DRIBBLE_OFFSET + RESTART_SETTLE_DIST;
+  const humanAim = setAim ?? (humanRestart && restart.type !== 'penalty' ? input.move : ZERO);
   // Người thực hiện vừa đi tới bóng thì quay mặt về hướng thực hiện mặc định.
   const aim =
     length(humanAim) > 0 ? humanAim : takerFar ? restartFacing(restart, state.half) : ZERO;
@@ -916,7 +933,7 @@ function stepDeadBall(
     kicked = humanShot(state.shotChargeTicks);
   } else if (humanRestart && !expired) {
     if (canPass && (pressed('pass') || pressed('lob'))) {
-      const dir = length(input.move) > 0 ? input.move : taker.facing;
+      const dir = setAim ?? (length(input.move) > 0 ? input.move : taker.facing);
       const kind = pressed('pass') ? 'ground' : 'lob';
       if (goalKick)
         windup = startWindup(taker.id, tick, 'kick', { type: 'assisted', kind, dir, power: 0 });
@@ -1015,6 +1032,7 @@ function stepDeadBall(
     tick,
     rng,
     windup,
+    restart: setAim ? { ...restart, aim: setAim, contact } : restart,
     players,
     controlledId,
     ai,
