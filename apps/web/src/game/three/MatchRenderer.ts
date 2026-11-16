@@ -92,6 +92,8 @@ const CHARGE_BAR_Y = 2.75;
 /** Thanh lực ở góc máy tình huống cố định: độ cao (m) và tỉ lệ. */
 const SET_PIECE_BAR_Y = 2.05;
 const SET_PIECE_BAR_SCALE = 0.5;
+/** Góc máy tình huống cố định: ẩn cầu thủ cách camera dưới chừng này mét (camera sau bóng 6,5 m). */
+const SET_PIECE_HIDE_RADIUS = 4.5;
 /** Tâm vòng đếm ngược (m): trên mũi tên người điều khiển và thanh lực. */
 const COUNTDOWN_Y = 3.55;
 /** Đường kính vòng đếm ngược theo mét trong cảnh; trên màn hình không nhỏ hơn COUNTDOWN_MIN_PX. */
@@ -894,11 +896,17 @@ export class MatchRenderer {
     const prevById = new Map(prev.players.map((p) => [p.id, p]));
     const onPitch = new Set<string>();
 
+    // Góc máy sau lưng: ẩn cầu thủ đứng sát camera (trừ người đá) để không che khung hình.
+    const near = this.setPieceW > 0.5 && !cameraOverride ? this.camera.position : null;
     for (const p of curr.players) {
       const actor = this.actors.get(p.id) ?? this.addActor(p);
       onPitch.add(p.id);
       const pos = lerpPos((prevById.get(p.id) ?? p).pos, p.pos, alpha);
       actor.position.set(pos.x, 0, pos.y);
+      actor.visible =
+        !near ||
+        p.id === curr.restart?.takerId ||
+        Math.hypot(pos.x - near.x, pos.y - near.z) > SET_PIECE_HIDE_RADIUS;
       const model = this.models.get(p.id);
       if (model) model.update(animDt, p, curr, headingFromFacing(p.facing));
       else actor.rotation.y = headingFromFacing(p.facing);
