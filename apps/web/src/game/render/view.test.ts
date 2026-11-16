@@ -3,6 +3,7 @@ import {
   BALL_RADIUS,
   HALF_LENGTH,
   MAX_CHARGE_TICKS,
+  MIN_SHOT_POWER,
   NO_INPUT,
   PASS_FULL_CHARGE_TICKS,
   penaltyAimZ,
@@ -24,6 +25,7 @@ import {
   countdownRing,
   lerpPos,
   penaltyRing,
+  penaltyRingColor,
   setPieceContact,
   shirtNumber,
 } from './view';
@@ -196,7 +198,7 @@ describe('điểm chạm tình huống cố định', () => {
 });
 
 describe('penaltyRing', () => {
-  it('hiện khi giữ D và lúc lấy đà; lực mạnh thì cao, to, đỏ; nhẹ thì thấp, nhỏ, xanh', () => {
+  it('hiện khi giữ D và lúc lấy đà; lực mạnh thì cao, to; nhẹ thì thấp, nhỏ', () => {
     const { players } = createMatch({
       home: starterLikeTeam,
       away: cpuEasyTeam,
@@ -220,8 +222,7 @@ describe('penaltyRing', () => {
     // Đang giữ D: tâm giữa khung, lực theo số tick đã giữ.
     const weak = penaltyRing({ ...base, shotChargeTicks: 1 })!;
     const strong = penaltyRing({ ...base, shotChargeTicks: MAX_CHARGE_TICKS })!;
-    expect(weak).toMatchObject({ x: -HALF_LENGTH, y: 0, over: false });
-    expect(strong.over).toBe(true);
+    expect(weak).toMatchObject({ x: -HALF_LENGTH, y: 0 });
     expect(strong.z).toBeGreaterThan(weak.z);
     expect(strong.radius).toBeGreaterThan(weak.radius);
     // Lấy đà: lực đã chốt, tâm người chơi đã dời.
@@ -232,7 +233,14 @@ describe('penaltyRing', () => {
       y: 1.2,
       z: penaltyAimZ(0.8) + BALL_RADIUS,
       radius: penaltyRadius(taker, 0.8),
-      over: false,
+      color: penaltyRingColor(0.8),
     });
+  });
+
+  it('màu theo lực: xanh lá → vàng → cam → đỏ', () => {
+    expect(penaltyRingColor(MIN_SHOT_POWER)).toBe('hsl(120 90% 55%)');
+    expect(penaltyRingColor(0.65)).toBe('hsl(60 90% 55%)');
+    expect(penaltyRingColor(0.825)).toBe('hsl(30 90% 55%)');
+    expect(penaltyRingColor(1)).toBe('hsl(0 90% 55%)');
   });
 });

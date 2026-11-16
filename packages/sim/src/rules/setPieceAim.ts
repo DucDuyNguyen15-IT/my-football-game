@@ -132,9 +132,6 @@ export function penaltyAimZ(power: number): number {
   const [lo, hi] = PENALTY_AIM_Z_RANGE;
   return lo + (hi - lo) * powerT(power);
 }
-
-/** Quá lực: vòng nở to và (phía hiển thị) chuyển màu đỏ. */
-export const penaltyOverpowered = (power: number): boolean => power > PENALTY_OVERPOWER_FROM;
 /**
  * Bán kính vòng ngắm (m) theo Sút: chỉ số 1 → [0], 99 → [1]. Cân để người chơi nhắm sát góc vào
  * ~80% trước máy Dễ, ~68% trước máy Khó (`match.penalty.test.ts`).

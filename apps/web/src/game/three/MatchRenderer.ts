@@ -1006,7 +1006,7 @@ export class MatchRenderer {
     const w = this.parent.clientWidth;
     const h = this.parent.clientHeight;
     const r = Math.hypot((ringEdge.x - ringPos.x) * (w / 2), (ringEdge.y - ringPos.y) * (h / 2));
-    this.penaltyRing.show(((ringPos.x + 1) / 2) * w, ((1 - ringPos.y) / 2) * h, r, ring.over);
+    this.penaltyRing.show(((ringPos.x + 1) / 2) * w, ((1 - ringPos.y) / 2) * h, r, ring.color);
   }
 
   /**

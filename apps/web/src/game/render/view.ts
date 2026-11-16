@@ -8,8 +8,8 @@ import {
   HALF_LENGTH,
   MAX_CHARGE_TICKS,
   PASS_FULL_CHARGE_TICKS,
+  MIN_SHOT_POWER,
   penaltyAimZ,
-  penaltyOverpowered,
   penaltyRadius,
   restartContact,
   shotPower,
@@ -130,8 +130,14 @@ export interface PenaltyRing {
   y: number;
   z: number;
   radius: number;
-  /** Quá lực: vẽ đỏ (không thì xanh lá). */
-  over: boolean;
+  /** Màu vòng (hsl): lực nhẹ xanh lá → vàng → cam → hết lực đỏ. */
+  color: string;
+}
+
+/** Màu vòng phạt đền theo lực: hue 120 (xanh lá) giảm đều về 0 (đỏ) khi lực từ nhỏ nhất tới hết lực. */
+export function penaltyRingColor(power: number): string {
+  const t = Math.min(1, Math.max(0, (power - MIN_SHOT_POWER) / (1 - MIN_SHOT_POWER)));
+  return `hsl(${Math.round(120 * (1 - t))} 90% 55%)`;
 }
 
 /**
@@ -153,7 +159,7 @@ export function penaltyRing(
     y: run ? run.y : 0,
     z: penaltyAimZ(power) + BALL_RADIUS,
     radius: penaltyRadius(taker, power),
-    over: penaltyOverpowered(power),
+    color: penaltyRingColor(power),
   };
 }
 

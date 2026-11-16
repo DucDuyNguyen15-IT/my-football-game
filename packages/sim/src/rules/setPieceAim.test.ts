@@ -13,7 +13,6 @@ import {
   PENALTY_AIM_MAX_Y,
   PENALTY_OVERPOWER_FROM,
   penaltyAimZ,
-  penaltyOverpowered,
   penaltyRadius,
   penaltyShot,
   rightOf,
@@ -99,8 +98,6 @@ describe('ngắm phạt đền', () => {
     expect(penaltyRadius({ ...shooter, stamina: 5 }, 0.6)).toBeGreaterThan(base);
     expect(penaltyAimZ(1)).toBeGreaterThan(penaltyAimZ(0.6));
     expect(penaltyAimZ(0.6)).toBeGreaterThan(penaltyAimZ(0.3));
-    expect(penaltyOverpowered(1)).toBe(true);
-    expect(penaltyOverpowered(PENALTY_OVERPOWER_FROM)).toBe(false);
   });
 
   it('bóng tới vạch cuối trong vòng tròn quanh tâm ngắm; cùng PRNG thì cùng kết quả', () => {

@@ -1,10 +1,8 @@
 /**
  * Vòng ngắm phạt đền 2D: SVG đè lên canvas như `CountdownRingView`, tâm và bán kính chiếu từ mặt
- * khung thành ra màn hình. Xanh lá khi lực vừa, đỏ khi quá lực. Chỉ ghi DOM khi giá trị đổi.
+ * khung thành ra màn hình. Màu theo lực (`penaltyRingColor`). Chỉ ghi DOM khi giá trị đổi.
  */
 const SVG_NS = 'http://www.w3.org/2000/svg';
-const GREEN = '#3ddc84';
-const RED = '#ff4d4d';
 
 export class PenaltyRingView {
   private svg: SVGSVGElement | null = null;
@@ -14,16 +12,15 @@ export class PenaltyRingView {
   constructor(private readonly parent: HTMLElement) {}
 
   /** Tâm (`x`, `y`) px tính từ góc trên-trái khung trận, bán kính `r` px. */
-  show(x: number, y: number, r: number, over: boolean): void {
+  show(x: number, y: number, r: number, color: string): void {
     if (!this.svg) this.create();
-    const key = `${Math.round(x)},${Math.round(y)},${Math.round(r)},${over}`;
+    const key = `${Math.round(x)},${Math.round(y)},${Math.round(r)},${color}`;
     if (key === this.key) return;
     this.key = key;
     const c = this.circle!;
     c.setAttribute('cx', String(Math.round(x)));
     c.setAttribute('cy', String(Math.round(y)));
     c.setAttribute('r', String(Math.max(2, Math.round(r))));
-    const color = over ? RED : GREEN;
     c.setAttribute('stroke', color);
     c.setAttribute('fill', color);
   }
