@@ -3,9 +3,13 @@
  */
 import type { SquadSlot } from '@pitch/shared';
 import {
+  BALL_RADIUS,
   CONTACT_RESTARTS,
+  HALF_LENGTH,
   MAX_CHARGE_TICKS,
   PASS_FULL_CHARGE_TICKS,
+  PENALTY_AIM_Z,
+  penaltyRadius,
   restartContact,
   TICK_RATE,
 } from '@pitch/sim';
@@ -116,6 +120,24 @@ export function setPieceContact(state: Pick<MatchState, 'restart' | 'autopilot'>
   const r = state.restart;
   if (!r || r.team !== 'home' || state.autopilot || !CONTACT_RESTARTS.has(r.type)) return null;
   return restartContact(r);
+}
+
+/**
+ * Vòng ngắm phạt đền khi người chơi đang lấy đà: tâm trên vạch cuối (toạ độ sân x, y; `z` độ cao tâm
+ * bóng) và bán kính (m). Không lấy đà thì null.
+ */
+export function penaltyRing(
+  state: Pick<MatchState, 'restart' | 'players'>,
+): { x: number; y: number; z: number; radius: number } | null {
+  const run = state.restart?.penaltyRunUp;
+  const taker = run && state.players.find((p) => p.id === state.restart!.takerId);
+  if (!run || !taker) return null;
+  return {
+    x: Math.sign(state.restart!.spot.x) * HALF_LENGTH,
+    y: run.y,
+    z: PENALTY_AIM_Z + BALL_RADIUS,
+    radius: penaltyRadius(taker, run.power),
+  };
 }
 
 /** Điểm chạm cách tâm bóng dưới mức này (theo bán kính) vẫn tính là chạm giữa. */

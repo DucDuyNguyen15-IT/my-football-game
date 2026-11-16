@@ -33,7 +33,14 @@ import {
 } from '../render/camera';
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
-import { chargeMeter, countdownRing, lerp, lerpPos, setPieceContact } from '../render/view';
+import {
+  chargeMeter,
+  countdownRing,
+  lerp,
+  lerpPos,
+  penaltyRing,
+  setPieceContact,
+} from '../render/view';
 import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
 import {
   REPLAY_AFTER_TICKS,
@@ -169,6 +176,7 @@ export class MatchRenderer {
   private q: QualitySettings = resolveQuality(DEFAULT_GRAPHICS);
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
+  private readonly penaltyRing: THREE.Mesh;
   private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
   /** Bóng chuyển giữa tay và vị trí sim: trượt từ `ballBlendFrom` trong BALL_BLEND_SEC. */
   private ballInHands = false;
@@ -267,7 +275,21 @@ export class MatchRenderer {
     this.countdown = new CountdownRingView(parent);
     this.contactWidget = new ContactWidgetView(parent);
     this.transition = new MatchStinger(parent, this.renderer);
-    this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
+    // Vòng ngắm phạt đền: vành tròn bán kính 1 nằm trên mặt khung thành (mặt phẳng x = const).
+    this.penaltyRing = new THREE.Mesh(
+      new THREE.RingGeometry(0.88, 1, 48),
+      new THREE.MeshBasicMaterial({
+        color: 0xffffff,
+        transparent: true,
+        opacity: 0.9,
+        side: THREE.DoubleSide,
+        depthTest: false,
+      }),
+    );
+    this.penaltyRing.rotation.y = Math.PI / 2;
+    this.penaltyRing.renderOrder = 10;
+    this.penaltyRing.visible = false;
+    this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group, this.penaltyRing);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
     this.resizeObserver.observe(parent);
@@ -970,6 +992,13 @@ export class MatchRenderer {
         : setPieceContact(this.curr);
     if (contact) this.contactWidget.show(contact);
     else this.contactWidget.hide();
+    const ring = cameraOverride || this.cutHold || this.frozen ? null : penaltyRing(this.curr);
+    this.penaltyRing.visible = ring !== null;
+    if (ring) {
+      // Sim (x, y, z cao) → Three (x, y cao, z).
+      this.penaltyRing.position.set(ring.x, ring.z, ring.y);
+      this.penaltyRing.scale.setScalar(ring.radius);
+    }
   }
 
   /**

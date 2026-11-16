@@ -1,8 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BALL_RADIUS,
+  HALF_LENGTH,
   MAX_CHARGE_TICKS,
   NO_INPUT,
   PASS_FULL_CHARGE_TICKS,
+  PENALTY_AIM_Z,
+  PENALTY_SPOT_DIST,
+  penaltyRadius,
   TICK_RATE,
   cpuEasyTeam,
   createMatch,
@@ -18,6 +23,7 @@ import {
   countdownArcStep,
   countdownRing,
   lerpPos,
+  penaltyRing,
   setPieceContact,
   shirtNumber,
 } from './view';
@@ -186,5 +192,34 @@ describe('điểm chạm tình huống cố định', () => {
     expect(setPieceContact({ restart: restart('free_kick', 'away'), autopilot: false })).toBeNull();
     expect(setPieceContact({ restart: restart('free_kick', 'home'), autopilot: true })).toBeNull();
     expect(setPieceContact({ restart: null, autopilot: false })).toBeNull();
+  });
+});
+
+describe('penaltyRing', () => {
+  it('chỉ hiện khi đang lấy đà; tâm trên vạch cuối phía chấm phạt đền, bán kính theo người sút', () => {
+    const { players } = createMatch({
+      home: starterLikeTeam,
+      away: cpuEasyTeam,
+      seed: 1,
+      difficulty: 'easy',
+    });
+    const restart = {
+      type: 'penalty',
+      team: 'home',
+      spot: { x: -(HALF_LENGTH - PENALTY_SPOT_DIST), y: 0 },
+      takerId: 'home-P6',
+      startTick: 0,
+      readyTick: 0,
+    } as const;
+    expect(penaltyRing({ restart, players })).toBeNull();
+    const run = { power: 0.8, y: 1.2, releaseTick: 10 };
+    const ring = penaltyRing({ restart: { ...restart, penaltyRunUp: run }, players });
+    const taker = players.find((p) => p.id === 'home-P6')!;
+    expect(ring).toEqual({
+      x: -HALF_LENGTH,
+      y: 1.2,
+      z: PENALTY_AIM_Z + BALL_RADIUS,
+      radius: penaltyRadius(taker, 0.8),
+    });
   });
 });

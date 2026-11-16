@@ -1,7 +1,21 @@
-import { add, clampLength, length, normalize, scale, vec2, ZERO, type Vec2 } from '../math/vec2';
-import { HALF_LENGTH } from '../pitch';
+import { MIN_SHOT_POWER } from '../actions/shoot';
+import {
+  add,
+  clampLength,
+  length,
+  normalize,
+  scale,
+  sub,
+  vec2,
+  ZERO,
+  type Vec2,
+} from '../math/vec2';
+import { GRAVITY } from '../physics/ball';
+import { GOAL_HEIGHT, GOAL_WIDTH, HALF_LENGTH } from '../pitch';
+import { nextFloat, type RngState } from '../rng';
+import { fatigueFactor, shotSpeedFor, statScale } from '../stats/params';
 import { TICK_DT } from '../tick';
-import type { BallState, Restart, RestartType } from '../types';
+import type { BallState, PlayerState, Restart, RestartType } from '../types';
 import { restartFacing } from './restarts';
 
 /*
@@ -90,6 +104,71 @@ export function contactKick(contact: Vec2): ContactKick {
     vzMult: 1 - contact.y * CONTACT_LIFT,
     speedMult: 1 - off * CONTACT_SLOW,
   };
+}
+
+/*
+ * Phạt đền của người chơi: giữ D lấy lực, nhả D thì lấy đà PENALTY_RUNUP_TICKS; trong lúc lấy đà
+ * mũi tên trái/phải dời vòng tròn ngắm trên khung thành. Bóng đi vào một điểm ngẫu nhiên (PRNG sim)
+ * trong vòng; vòng to hơn khi sút quá lực, chỉ số Sút thấp, hoặc mệt.
+ */
+
+/** Pha lấy đà phạt đền (0,8 s). */
+export const PENALTY_RUNUP_TICKS = Math.round(0.8 / TICK_DT);
+/** Tốc độ dời tâm vòng ngắm (m/s) khi giữ mũi tên. */
+export const PENALTY_AIM_SPEED = 4;
+/** Tâm vòng ngắm không ra xa hơn chừng này mét khỏi giữa khung thành. */
+export const PENALTY_AIM_MAX_Y = GOAL_WIDTH / 2 + 0.5;
+/** Độ cao (m) tâm vòng ngắm, giữa khung thành. */
+export const PENALTY_AIM_Z = GOAL_HEIGHT / 2;
+/**
+ * Bán kính vòng ngắm (m) theo Sút: chỉ số 1 → [0], 99 → [1]. Cân để người chơi nhắm sát góc vào
+ * ~81% trước máy Dễ, ~70% trước máy Khó (`match.penalty.test.ts`).
+ */
+export const PENALTY_RADIUS_RANGE = [1.55, 0.65] as const;
+/** Lực vượt ngưỡng này thì vòng nở ra, mỗi 0,1 lực vượt thêm PENALTY_OVERPOWER_GROW/10. */
+export const PENALTY_OVERPOWER_FROM = 0.8;
+export const PENALTY_OVERPOWER_GROW = 2.5;
+
+/** Bán kính vòng ngắm phạt đền (m). */
+export function penaltyRadius(shooter: PlayerState, power: number): number {
+  const over = Math.max(0, power - PENALTY_OVERPOWER_FROM) * PENALTY_OVERPOWER_GROW;
+  return (
+    (statScale(shooter.stats.shooting, ...PENALTY_RADIUS_RANGE) * (1 + over)) /
+    fatigueFactor(shooter.stamina)
+  );
+}
+
+/** Dời tâm vòng ngắm một tick theo mũi tên (move.x > 0 = sang phải khi nhìn từ sau lưng). */
+export function movePenaltyAim(y: number, moveX: number, goalSign: 1 | -1): number {
+  const next = y + moveX * goalSign * PENALTY_AIM_SPEED * TICK_DT;
+  return Math.min(PENALTY_AIM_MAX_Y, Math.max(-PENALTY_AIM_MAX_Y, next));
+}
+
+/**
+ * Sút phạt đền vào một điểm ngẫu nhiên trong vòng tròn tâm (vạch cuối, y, PENALTY_AIM_Z): điểm trong
+ * hình vuông kẹp vào hình tròn (dày hơn ở mép, đủ dùng). Vận tốc đứng tính để bóng tới khung thành ở
+ * đúng độ cao (bỏ qua cản gió như `shootBall`). PRNG tiến 2 lần.
+ */
+export function penaltyShot(
+  shooter: PlayerState,
+  spot: Vec2,
+  goalSign: 1 | -1,
+  y: number,
+  power: number,
+  rng: RngState,
+): { ball: BallState; rng: RngState } {
+  const [u, r1] = nextFloat(rng);
+  const [v, r2] = nextFloat(r1);
+  const off = scale(clampLength(vec2(u * 2 - 1, v * 2 - 1), 1), penaltyRadius(shooter, power));
+  const target = vec2(goalSign * HALF_LENGTH, y + off.x);
+  const z = Math.max(0, PENALTY_AIM_Z + off.y);
+  const offset = sub(target, spot);
+  const dist = Math.max(1, length(offset));
+  const p = Math.min(1, Math.max(MIN_SHOT_POWER, power));
+  const speed = shotSpeedFor(shooter.stats.shooting) * p;
+  const t = dist / speed;
+  const vz = Math.max(0, z / t + 0.5 * GRAVITY * t);
+  return { ball: { pos: spot, vel: scale(offset, speed / dist), z: 0, vz }, rng: r2 };
 }
 
 /** Áp điểm chạm lên bóng vừa đá; chạm giữa (hoặc chưa chọn) thì giữ nguyên. */

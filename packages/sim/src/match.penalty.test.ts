@@ -23,7 +23,14 @@ function cpuPenalty(difficulty: 'easy' | 'hard'): BallState {
     ...s0,
     phase: 'dead_ball',
     ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
-    restart: { type: 'penalty', team: 'away', spot, takerId: 'away-P6', startTick: s0.tick, readyTick: s0.tick },
+    restart: {
+      type: 'penalty',
+      team: 'away',
+      spot,
+      takerId: 'away-P6',
+      startTick: s0.tick,
+      readyTick: s0.tick,
+    },
   };
   for (let i = 0; i < 12 * TICK_RATE && s.restart; i++) s = step(s, NO_INPUT);
   expect(s.restart).toBeNull();
@@ -42,7 +49,7 @@ describe('phạt đền', () => {
     expect(rate).toBeLessThan(0.85);
   }, 30_000);
 
-  it('người chơi nhắm sát góc, lực đầy (B1b-5): vẫn không vượt quá ~85% (đo 4.000 lượt sau luật 4: Dễ 80%, Khó 67%)', () => {
+  it('người chơi nhắm vòng tròn sát góc (B1b-5, đợt 6): vẫn không vượt quá ~85%', () => {
     // 1.000 lượt (trước 100): mẫu ~50 quả của đội nhà dao động ±6 điểm %, sát trần sau luật 4.
     const r = runPenalties('easy', 1000, undefined, true);
     expect(r.kicks.home).toBeGreaterThan(400);
@@ -91,7 +98,8 @@ describe('máy Dễ: thủ môn bắt phạt đền kém hơn (luật 4)', () =>
     const teams = { home: starterLikeTeam, away: () => cpuEasyTeam };
     const rate = (r: ReturnType<typeof runPenalties>, team: 'home' | 'away') =>
       r.goals[team] / r.kicks[team];
-    // Người chơi nhắm sát góc, lực đầy. Đo 8.000 lượt: Dễ 79,5% — Khó 71,7% (máy sút 77,6% / 77,8%).
+    // Người chơi nhắm vòng tròn sát góc, lực vừa (đợt 6). Đo 6.400 lượt: Dễ 81,5% — Khó 70,0%
+    // (máy sút 76,9% / 77,2%).
     const easy = runPenalties('easy', 2000, teams, true);
     const hard = runPenalties('hard', 2000, teams, true);
     expect(easy.kicks.home).toBeGreaterThan(800);

@@ -78,6 +78,9 @@ import {
   CONTACT_RESTARTS,
   kickWithContact,
   moveContact,
+  movePenaltyAim,
+  PENALTY_RUNUP_TICKS,
+  penaltyShot,
   restartAim,
   restartContact,
   turnAim,
@@ -899,10 +902,23 @@ function stepDeadBall(
       setAim ? aimTarget(restart.spot, setAim, goalSign) : shotTarget(goalSign, input.move.y),
       shotPower(chargeTicks),
       state.rng,
-      penalty ? PENALTY_ERROR_MULT : 1,
     ),
     shot: true,
   });
+  // Phạt đền của người chơi: nhả D thì lấy đà, trong lúc lấy đà mũi tên dời vòng ngắm.
+  const runUp = humanRestart && penalty ? restart.penaltyRunUp : undefined;
+  let penaltyRunUp = runUp && { ...runUp, y: movePenaltyAim(runUp.y, input.move.x, goalSign) };
+  const release = (chargeTicks: number) => {
+    if (penalty) {
+      penaltyRunUp = {
+        power: shotPower(chargeTicks),
+        y: 0,
+        releaseTick: tick + PENALTY_RUNUP_TICKS,
+      };
+      return null;
+    }
+    return touch(humanShot(chargeTicks));
+  };
 
   // Mọi người đã được đặt vào vị trí lúc bóng chết (luật 2). Ai rời chỗ sau đó (người chơi chạy vào
   // khoảng cách cấm, bị chen) thì tự đi về; chưa xong thì chưa thực hiện được.
@@ -933,10 +949,15 @@ function stepDeadBall(
       kicked = releaseWindup(state, state.players, windup, restart.spot, rng, tick);
       windup = null;
     }
+  } else if (penaltyRunUp) {
+    if (tick >= penaltyRunUp.releaseTick) {
+      const { y, power } = penaltyRunUp;
+      kicked = { ...penaltyShot(taker, restart.spot, goalSign, y, power, state.rng), shot: true };
+    }
   } else if (targets.size > 0) {
     // Còn người đang đi về vị trí.
   } else if (expired && state.shotChargeTicks > 0) {
-    kicked = touch(humanShot(state.shotChargeTicks));
+    kicked = release(state.shotChargeTicks);
   } else if (humanRestart && !expired) {
     if (canPass && (pressed('pass') || pressed('lob'))) {
       const dir = setAim ?? (length(input.move) > 0 ? input.move : taker.facing);
@@ -947,7 +968,7 @@ function stepDeadBall(
     } else if (canShoot && input.shoot && (state.shotChargeTicks > 0 || pressed('shoot'))) {
       shotChargeTicks = state.shotChargeTicks + 1;
     } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
-      kicked = touch(humanShot(state.shotChargeTicks));
+      kicked = release(state.shotChargeTicks);
     }
   } else if (expired || cpuRestartDue(restart, tick)) {
     const decided = decideRestartKick(restart, state.players, state.half, state.rng);
@@ -1038,7 +1059,11 @@ function stepDeadBall(
     tick,
     rng,
     windup,
-    restart: setAim ? { ...restart, aim: setAim, contact } : restart,
+    restart: setAim
+      ? { ...restart, aim: setAim, contact }
+      : penaltyRunUp
+        ? { ...restart, penaltyRunUp }
+        : restart,
     players,
     controlledId,
     ai,

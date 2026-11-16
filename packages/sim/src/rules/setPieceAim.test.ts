@@ -1,11 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { length, vec2 } from '../math/vec2';
-import { HALF_LENGTH } from '../pitch';
+import { cpuEasyTeam, starterLikeTeam } from '../fixtures/demoTeams';
+import { createMatch } from '../match';
+import { HALF_LENGTH, PENALTY_SPOT_DIST } from '../pitch';
+import { seedRng } from '../rng';
 import {
   aimTarget,
   contactKick,
   kickWithContact,
   moveContact,
+  movePenaltyAim,
+  PENALTY_AIM_MAX_Y,
+  PENALTY_OVERPOWER_FROM,
+  penaltyRadius,
+  penaltyShot,
   rightOf,
   turnAim,
 } from './setPieceAim';
@@ -60,5 +68,40 @@ describe('setPieceAim', () => {
     expect(kickWithContact(ball, undefined)).toBe(ball);
     expect(kickWithContact(ball, vec2(0, 0))).toBe(ball);
     expect(kickWithContact(ball, vec2(0, -1)).vz).toBeGreaterThan(3);
+  });
+});
+
+describe('ngắm phạt đền', () => {
+  const shooter = createMatch({
+    home: starterLikeTeam,
+    away: cpuEasyTeam,
+    seed: 1,
+    difficulty: 'easy',
+  }).players.find((p) => p.id === 'home-P6')!;
+
+  it('mũi tên phải dời vòng sang phải nhìn từ sau lưng (cả hai chiều tấn công), kẹp ngoài cột', () => {
+    expect(movePenaltyAim(0, 1, 1)).toBeGreaterThan(0);
+    expect(movePenaltyAim(0, 1, -1)).toBeLessThan(0);
+    let y = 0;
+    for (let i = 0; i < 1000; i++) y = movePenaltyAim(y, 1, 1);
+    expect(y).toBe(PENALTY_AIM_MAX_Y);
+  });
+
+  it('vòng nở khi quá lực và khi mệt', () => {
+    const base = penaltyRadius(shooter, 0.6);
+    expect(penaltyRadius(shooter, PENALTY_OVERPOWER_FROM)).toBe(base);
+    expect(penaltyRadius(shooter, 1)).toBeGreaterThan(base);
+    expect(penaltyRadius({ ...shooter, stamina: 5 }, 0.6)).toBeGreaterThan(base);
+  });
+
+  it('bóng tới vạch cuối trong vòng tròn quanh tâm ngắm; cùng PRNG thì cùng kết quả', () => {
+    const spot = vec2(HALF_LENGTH - PENALTY_SPOT_DIST, 0);
+    const r = penaltyRadius(shooter, 0.8);
+    for (let seed = 1; seed <= 50; seed++) {
+      const { ball } = penaltyShot(shooter, spot, 1, 1.5, 0.8, seedRng(seed));
+      const t = (HALF_LENGTH - spot.x) / ball.vel.x;
+      expect(Math.abs(ball.vel.y * t - 1.5)).toBeLessThanOrEqual(r + 1e-9);
+      expect(penaltyShot(shooter, spot, 1, 1.5, 0.8, seedRng(seed)).ball).toEqual(ball);
+    }
   });
 });

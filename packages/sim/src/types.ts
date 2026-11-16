@@ -163,6 +163,11 @@ export interface Restart {
   aim?: Vec2;
   /** Điểm chạm trên bóng (đá phạt, phạt góc): x phải, y trên, |contact| ≤ 1; không có = giữa bóng. */
   contact?: Vec2;
+  /**
+   * Phạt đền của người chơi đã nhả D, đang lấy đà: lực đã nạp, tâm vòng ngắm (toạ độ y sân, trên
+   * vạch cuối) và tick bóng rời chân (`rules/setPieceAim.ts`).
+   */
+  penaltyRunUp?: { power: number; y: number; releaseTick: number };
 }
 
 /**
