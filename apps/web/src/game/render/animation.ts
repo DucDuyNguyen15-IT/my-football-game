@@ -9,6 +9,8 @@
 import {
   DRIBBLE_OFFSET,
   isKeeperHandling,
+  kickFoot,
+  type KickFoot,
   RESTART_SETTLE_DIST,
   type MatchState,
   type PlayerState,
@@ -38,7 +40,23 @@ export type ClipName =
   | 'gk_dive_left'
   | 'gk_dive_right'
   | 'gk_throw'
-  | 'gk_kick';
+  | 'gk_kick'
+  | `${FootedClip}_l`;
+
+/**
+ * Clip đá bóng có bản chân trái `<tên>_l` (lật gương lúc `pnpm assets`); `<tên>` là chân phải.
+ * Khớp `FOOTED` trong `scripts/build-player-model.mjs`.
+ */
+export const FOOTED_CLIPS = ['pass', 'shot', 'penalty', 'header', 'tackle', 'gk_kick'] as const;
+export type FootedClip = (typeof FOOTED_CLIPS)[number];
+
+/** Bản clip theo chân đá. */
+export const withFoot = (clip: FootedClip, foot: KickFoot): ClipName =>
+  foot === 'left' ? `${clip}_l` : clip;
+
+/** Tên clip gốc (bỏ đuôi chân trái) — để tra cấu hình chung của hai bản. */
+export const baseClip = (clip: ClipName): ClipName =>
+  clip.endsWith('_l') ? (clip.slice(0, -2) as ClipName) : clip;
 
 /**
  * Tốc độ bước (m/s) của clip di chuyển: phát nhanh/chậm theo tốc độ để chân không trượt. Mặc định
@@ -147,17 +165,21 @@ export interface AnimEvent {
   clip: ClipName;
 }
 
-/** Clip chạm bóng của người vừa rời bóng (`kicker`), theo loại tình huống. */
+/** Clip chạm bóng của người vừa rời bóng (`kicker`), theo loại tình huống và chân đá (như sim chọn). */
 function kickClip(prev: MatchState, curr: MatchState, kicker: string): ClipName {
   const restart = prev.restart?.takerId === kicker ? prev.restart.type : null;
-  const isKeeper = prev.players.find((p) => p.id === kicker)?.position === 'GK';
+  const p = prev.players.find((x) => x.id === kicker);
   if (restart === 'throw_in') return 'throw_in';
-  if (restart === 'penalty') return 'penalty';
-  if (restart === 'goal_kick' && isKeeper) return 'gk_kick';
-  if (prev.ball.z > HEADER_MIN_Z) return 'header';
-  if (curr.lastShot?.tick === curr.tick) return 'shot';
-  return 'pass';
+  const foot = p ? kickFoot(p, prev.ball.pos, curr.ball.vel) : 'right';
+  if (restart === 'penalty') return withFoot('penalty', foot);
+  if (restart === 'goal_kick' && p?.position === 'GK') return withFoot('gk_kick', foot);
+  if (prev.ball.z > HEADER_MIN_Z) return withFoot('header', foot);
+  if (curr.lastShot?.tick === curr.tick) return withFoot('shot', foot);
+  return withFoot('pass', foot);
 }
+
+/** Chân thuận (thủ môn phát bóng từ tay); hai chân hoặc không có = chân phải. */
+const preferredFoot = (p: PlayerState | undefined): KickFoot => (p?.foot === 'left' ? 'left' : 'right');
 
 export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[] {
   const events: AnimEvent[] = [];
@@ -179,13 +201,18 @@ export function animationEvents(prev: MatchState, curr: MatchState): AnimEvent[]
   // Thủ môn bắt đầu lấy đà ném / phát bóng (sim nhả bóng sau KEEPER_WINDUP_TICKS).
   const w = curr.windup;
   if (w && (prev.windup?.playerId !== w.playerId || prev.windup.releaseTick !== w.releaseTick)) {
-    events.push({ playerId: w.playerId, clip: w.style === 'throw' ? 'gk_throw' : 'gk_kick' });
+    const keeper = curr.players.find((p) => p.id === w.playerId);
+    const clip = w.style === 'throw' ? 'gk_throw' : withFoot('gk_kick', preferredFoot(keeper));
+    events.push({ playerId: w.playerId, clip });
   }
 
   // Xoạc (A): người xoạc nằm trượt; trúng bóng thì người bị xoạc ngã hoặc vấp.
   const tackle = curr.lastTackle;
   if (tackle && tackle.tick === curr.tick && tackle.tick !== prev.lastTackle?.tick) {
-    events.push({ playerId: tackle.tacklerId, clip: 'tackle' });
+    const tackler = prev.players.find((p) => p.id === tackle.tacklerId);
+    // Chân xoạc: bóng lệch bên nào so với hướng lao thì chân bên đó.
+    const foot = tackler ? kickFoot(tackler, prev.ball.pos, tackler.facing) : 'right';
+    events.push({ playerId: tackle.tacklerId, clip: withFoot('tackle', foot) });
     if (tackle.victimId !== null && tackle.victimReaction !== null) {
       const clip = tackle.victimReaction === 'fall' ? 'trip' : 'stumble';
       events.push({ playerId: tackle.victimId, clip });

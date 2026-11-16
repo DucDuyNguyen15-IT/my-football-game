@@ -9,6 +9,7 @@ import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.j
 import { clone as cloneSkinned } from 'three/examples/jsm/utils/SkeletonUtils.js';
 import type { MatchState, PlayerState } from '@pitch/sim';
 import {
+  baseClip,
   diveClip,
   heldBall,
   locomotionFor,
@@ -215,7 +216,7 @@ export class ModelActor {
     }
     this.mixer.addEventListener('finished', (e) => {
       if (this.oneShot?.action !== e.action) return;
-      const next = ONE_SHOT[this.oneShot.clip]?.next;
+      const next = ONE_SHOT[baseClip(this.oneShot.clip)]?.next;
       // clampWhenFinished giữ khung cuối với trọng số 1: không fade ra thì trộn mãi với clip lặp.
       e.action.fadeOut(FADE_SEC);
       this.oneShot = null;
@@ -242,8 +243,10 @@ export class ModelActor {
 
   /** Phát clip một lần (chuyền, sút, xoạc…), đè lên clip lặp đang chạy. */
   trigger(clip: ClipName): void {
-    const cfg = ONE_SHOT[clip] ?? { start: 0, speed: 1 };
-    const action = this.actions.get(cfg.source ?? clip);
+    const cfg = ONE_SHOT[baseClip(clip)] ?? { start: 0, speed: 1 };
+    // Model cũ chưa dựng lại (`pnpm assets`) thiếu bản chân trái: dùng bản chân phải.
+    const action =
+      this.actions.get(cfg.source ?? clip) ?? this.actions.get(cfg.source ?? baseClip(clip));
     if (!action) return;
     if (this.oneShot?.action === action) {
       // Đang đứng ở khung giữ của chính clip này (chờ ném biên): chạy tiếp, không trộn với chính nó.
@@ -349,10 +352,10 @@ export class ModelActor {
     throwing: boolean,
   ): boolean {
     if (shot.hold) return !throwing;
-    const stop = ONE_SHOT[shot.clip]?.stop;
+    const stop = ONE_SHOT[baseClip(shot.clip)]?.stop;
     if (stop !== undefined && shot.action.time >= stop) return true;
     return (
-      GROUNDED.has(shot.clip) &&
+      GROUNDED.has(baseClip(shot.clip)) &&
       state.phase === 'play' &&
       state.tackleRecovery[p.id] === undefined &&
       Math.hypot(p.vel.x, p.vel.y) > MOVING_SPEED

@@ -49,6 +49,38 @@ const CLIPS = {
 };
 
 /**
+ * Clip đá bóng có hai bản: `<tên>` đá chân phải, `<tên>_l` chân trái — bản kia lật gương: đổi xương
+ * Left↔Right, đảo dấu y/z của quaternion và x của vị trí (Y Bot đối xứng, đo lệch < 1 mm).
+ * Giá trị = chân đá của file gốc (đo tốc độ bàn chân). Đổi danh sách thì sửa cả `FOOTED_CLIPS` ở
+ * `src/game/render/animation.ts`.
+ */
+const FOOTED = {
+  pass: 'left',
+  shot: 'right',
+  penalty: 'right',
+  header: 'left',
+  tackle: 'left',
+  gk_kick: 'right',
+};
+
+const swapSide = (n) => n.replace(/Left|Right/g, (s) => (s === 'Left' ? 'Right' : 'Left'));
+function mirrorClip(clip, name) {
+  const tracks = clip.tracks.map((t) => {
+    const v = Float32Array.from(t.values);
+    if (t.name.endsWith('.quaternion')) {
+      for (let i = 0; i < v.length; i += 4) {
+        v[i + 1] = -v[i + 1];
+        v[i + 2] = -v[i + 2];
+      }
+    } else if (t.name.endsWith('.position')) {
+      for (let i = 0; i < v.length; i += 3) v[i] = -v[i];
+    }
+    return new t.constructor(swapSide(t.name), t.times, v);
+  });
+  return new THREE.AnimationClip(name, clip.duration, tracks);
+}
+
+/**
  * Clip thêm, không có trong Soccer Game Pack: tải riêng từ Mixamo (Y Bot, **bỏ** "In Place" để đo được
  * tốc độ bước) vào `assets-src/mixamo/` hoặc `assets-src/mixamo/extra/`, tên nào trong danh sách cũng
  * được (không phân biệt hoa thường). Thiếu file thì bỏ qua — game dùng `jog` thay thế.
@@ -134,7 +166,15 @@ function addClip(name, path) {
     if (speed > 0.3) clipSpeeds[name] = Number(speed.toFixed(2));
   }
   pinInPlace(clip);
-  clips.push(clip);
+  if (!FOOTED[name]) {
+    clips.push(clip);
+    return;
+  }
+  const mirrored = mirrorClip(clip, '');
+  const [right, left] = FOOTED[name] === 'right' ? [clip, mirrored] : [mirrored, clip];
+  right.name = name;
+  left.name = `${name}_l`;
+  clips.push(right, left);
 }
 for (const [name, file] of Object.entries(CLIPS)) {
   const path = join(PACK, `${file}.fbx`);

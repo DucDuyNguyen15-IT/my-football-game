@@ -139,6 +139,35 @@ describe('animationEvents', () => {
     expect(animationEvents(prev, shot)).toEqual([{ playerId: ME, clip: 'shot' }]);
   });
 
+  it('bóng lệch bên trái đường đá → bản chân trái (_l), bên phải → chân phải', () => {
+    const prev = withPlayer(
+      { ...owning(base()), ball: { ...base().ball, pos: v(0.5, 0), z: 0 } },
+      ME,
+      { pos: v(0, 0), facing: v(1, 0), foot: 'right' },
+    );
+    const at = (vel: { x: number; y: number }) =>
+      animationEvents(prev, kicked(prev, { ball: { ...prev.ball, vel } }))[0]?.clip;
+    // Bên phải hướng d là (−d.y, d.x): đá chéo (1, 1) thì bóng nằm bên trái đường đá.
+    expect(at(v(1, 1))).toBe('pass_l');
+    expect(at(v(1, -1))).toBe('pass');
+  });
+
+  it('thủ môn thuận trái phát bóng bằng bản chân trái', () => {
+    const GK = 'home-GK';
+    const prev = withPlayer({ ...base(), ballOwnerId: GK }, GK, { foot: 'left' });
+    const curr: MatchState = {
+      ...prev,
+      tick: prev.tick + 1,
+      windup: {
+        playerId: GK,
+        releaseTick: prev.tick + 31,
+        style: 'kick',
+        kick: { type: 'assisted', kind: 'ground', dir: v(1, 0), power: 0 },
+      },
+    };
+    expect(animationEvents(prev, curr)).toEqual([{ playerId: GK, clip: 'gk_kick_l' }]);
+  });
+
   it('bóng cao ngang đầu lúc chạm → header', () => {
     const prev = { ...owning(base()), ball: { ...base().ball, z: 1.5 } };
     expect(animationEvents(prev, kicked(prev))[0]?.clip).toBe('header');
