@@ -175,7 +175,7 @@ describe('điểm chạm tình huống cố định', () => {
     expect(contactLabel({ x: 0.8, y: 0.2 })).toBe('Sút xoáy bằng má trong');
     expect(contactLabel({ x: -0.8, y: 0 })).toBe('Sút xoáy bằng má ngoài');
     expect(contactLabel({ x: 0, y: -0.7 })).toBe('Sút bổng');
-    expect(contactLabel({ x: 0.2, y: 0.7 })).toBe('Sút chìm');
+    expect(contactLabel({ x: 0.2, y: 0.7 })).toBe('Đá sệt');
     // Chân trái: bên phải bóng là má ngoài, bên trái là má trong.
     expect(contactLabel({ x: 0.8, y: 0.2 }, 'left')).toBe('Sút xoáy bằng má ngoài');
     expect(contactLabel({ x: -0.8, y: 0 }, 'left')).toBe('Sút xoáy bằng má trong');

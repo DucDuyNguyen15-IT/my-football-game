@@ -12,7 +12,7 @@ import {
 } from '../math/vec2';
 import { GRAVITY } from '../physics/ball';
 import { GOAL_HEIGHT, GOAL_WIDTH, HALF_LENGTH } from '../pitch';
-import { nextFloat, type RngState } from '../rng';
+import { nextFloat, nextGaussian, type RngState } from '../rng';
 import { fatigueFactor, shotSpeedFor, statScale } from '../stats/params';
 import { TICK_DT } from '../tick';
 import type { BallState, PlayerState, Restart, RestartType } from '../types';
@@ -78,8 +78,16 @@ export function aimTarget(spot: Vec2, aim: Vec2, goalSign: 1 | -1): Vec2 {
 
 /** Độ xoáy cạnh/xoáy dọc khi chạm mép bóng (như sút xoáy Z+D, `FINESSE_SPIN`). */
 export const CONTACT_SPIN = 0.8;
-/** Chạm đáy bóng: vận tốc đứng ×(1 + CONTACT_LIFT); chạm đỉnh: ×(1 − CONTACT_LIFT). */
+/** Chạm đáy bóng: vận tốc đứng ×(1 + CONTACT_LIFT); chạm đỉnh bóng thì bóng đi sệt (×0). */
 export const CONTACT_LIFT = 0.5;
+/**
+ * Chạm lệch thì bóng bổng tối thiểu CONTACT_LIFT_VZ × hệ số m/s: chạm mép 9h/3h = 6 m/s (đỉnh ~1,7 m,
+ * tầm trung), 7h30/4h30 ≈ 8 m/s (cao hơn), 10h30 ≈ 3 m/s (thấp), 12h thì sệt.
+ * Xoáy chỉ bẻ cong bóng khi bóng bay (`physics/ball.ts`) nên phải nâng bóng mới thấy đường cong.
+ */
+export const CONTACT_LIFT_VZ = 6;
+/** Sai số độ xoáy (độ lệch chuẩn, tỉ lệ) theo chỉ số Sút: Sút thấp cong thất thường. */
+export const CONTACT_SPIN_ERR_RANGE = [0.45, 0.06] as const;
 /** Chạm mép bóng mất bấy nhiêu phần tốc độ so với sút căng giữa bóng. */
 export const CONTACT_SLOW = 0.15;
 
@@ -87,13 +95,15 @@ export interface ContactKick {
   spinSide: number;
   spinTop: number;
   vzMult: number;
+  /** Vận tốc đứng tối thiểu (m/s) sau khi chạm. */
+  liftVz: number;
   speedMult: number;
 }
 
 /**
  * Điểm chạm → quỹ đạo. Chạm lệch phải (má trong chân phải) thì bóng cong sang trái và ngược lại
- * (`BallSpin.side` > 0 cong về `rightOf`). Chạm thấp: bóng bổng, xoáy ngược; chạm cao: bóng chìm,
- * xoáy lên. Chạm giữa: sút căng, không xoáy.
+ * (`BallSpin.side` > 0 cong về `rightOf`). Chạm thấp: bóng bổng, xoáy ngược; chạm đỉnh: bóng sệt.
+ * Chạm giữa: sút căng, không xoáy.
  */
 export function contactKick(contact: Vec2): ContactKick {
   const off = Math.min(1, length(contact));
@@ -101,7 +111,9 @@ export function contactKick(contact: Vec2): ContactKick {
     // 0 − … để không sinh -0 trong state.
     spinSide: 0 - contact.x * CONTACT_SPIN,
     spinTop: 0 + contact.y * CONTACT_SPIN,
-    vzMult: 1 - contact.y * CONTACT_LIFT,
+    vzMult: contact.y > 0 ? 1 - contact.y : 1 - contact.y * CONTACT_LIFT,
+    // Nửa trên giảm theo y² để 10h30 vẫn bổng nhẹ (còn cong), 12h mới sệt hẳn.
+    liftVz: CONTACT_LIFT_VZ * Math.max(0, off - (contact.y > 0 ? contact.y * contact.y : contact.y / 2)),
     speedMult: 1 - off * CONTACT_SLOW,
   };
 }
@@ -185,14 +197,27 @@ export function penaltyShot(
   return { ball: { pos: spot, vel: scale(offset, speed / dist), z: 0, vz }, rng: r2 };
 }
 
-/** Áp điểm chạm lên bóng vừa đá; chạm giữa (hoặc chưa chọn) thì giữ nguyên. */
-export function kickWithContact(ball: BallState, contact: Vec2 | undefined): BallState {
-  if (!contact || (contact.x === 0 && contact.y === 0)) return ball;
+/**
+ * Áp điểm chạm lên bóng vừa đá; chạm giữa (hoặc chưa chọn) thì giữ nguyên. Độ xoáy cạnh lệch ngẫu
+ * nhiên theo chỉ số Sút (`shooting`) của người đá.
+ */
+export function kickWithContact(
+  ball: BallState,
+  contact: Vec2 | undefined,
+  shooting: number,
+  rng: RngState,
+): { ball: BallState; rng: RngState } {
+  if (!contact || (contact.x === 0 && contact.y === 0)) return { ball, rng };
   const k = contactKick(contact);
+  const [g, r] = nextGaussian(rng);
+  const side = k.spinSide * (1 + g * statScale(shooting, ...CONTACT_SPIN_ERR_RANGE));
   return {
-    ...ball,
-    vel: scale(ball.vel, k.speedMult),
-    vz: Math.max(0, ball.vz * k.vzMult),
-    spin: { side: k.spinSide, top: k.spinTop },
+    ball: {
+      ...ball,
+      vel: scale(ball.vel, k.speedMult),
+      vz: Math.max(0, ball.vz * k.vzMult, k.liftVz),
+      spin: { side: 0 + side, top: k.spinTop },
+    },
+    rng: r,
   };
 }

@@ -56,19 +56,48 @@ describe('setPieceAim', () => {
     expect(low.vzMult).toBeGreaterThan(1);
     expect(low.spinTop).toBeLessThan(0);
     const high = contactKick(vec2(0, 1));
-    expect(high.vzMult).toBeLessThan(1);
+    expect(high.vzMult).toBe(0);
+    expect(high.liftVz).toBe(0);
     expect(high.spinTop).toBeGreaterThan(0);
+    // 9h tầm trung, 7h30 cao hơn, 10h30 thấp hơn.
+    const nine = contactKick(vec2(-1, 0));
+    const sevenThirty = contactKick(vec2(-Math.SQRT1_2, -Math.SQRT1_2));
+    const tenThirty = contactKick(vec2(-Math.SQRT1_2, Math.SQRT1_2));
+    expect(nine.liftVz).toBeGreaterThan(4);
+    expect(sevenThirty.liftVz).toBeGreaterThan(nine.liftVz);
+    expect(tenThirty.liftVz).toBeLessThan(nine.liftVz);
+    expect(sevenThirty.spinSide).toBeGreaterThan(0);
     const mid = contactKick(vec2(0, 0));
-    expect(mid).toEqual({ spinSide: 0, spinTop: 0, vzMult: 1, speedMult: 1 });
+    expect(mid).toEqual({ spinSide: 0, spinTop: 0, vzMult: 1, liftVz: 0, speedMult: 1 });
     expect(Object.is(mid.spinSide, -0)).toBe(false);
     expect(right.speedMult).toBeLessThan(mid.speedMult);
   });
 
-  it('kickWithContact: chạm giữa giữ nguyên bóng', () => {
+  it('kickWithContact: chạm giữa giữ nguyên bóng; chạm đỉnh thì sệt; chạm 9h bóng sệt cũng bổng lên', () => {
     const ball = { pos: vec2(0, 0), vel: vec2(20, 0), z: 0, vz: 3 };
-    expect(kickWithContact(ball, undefined)).toBe(ball);
-    expect(kickWithContact(ball, vec2(0, 0))).toBe(ball);
-    expect(kickWithContact(ball, vec2(0, -1)).vz).toBeGreaterThan(3);
+    const rng = seedRng(1);
+    expect(kickWithContact(ball, undefined, 70, rng).ball).toBe(ball);
+    expect(kickWithContact(ball, vec2(0, 0), 70, rng).ball).toBe(ball);
+    expect(kickWithContact(ball, vec2(0, -1), 70, rng).ball.vz).toBeGreaterThan(3);
+    expect(kickWithContact(ball, vec2(0, 1), 70, rng).ball.vz).toBe(0);
+    const ground = { ...ball, vz: 0 };
+    expect(kickWithContact(ground, vec2(-1, 0), 70, rng).ball.vz).toBeGreaterThan(4);
+  });
+
+  it('kickWithContact: Sút cao thì độ xoáy ổn định hơn Sút thấp', () => {
+    const ball = { pos: vec2(0, 0), vel: vec2(20, 0), z: 0, vz: 0 };
+    const spread = (shooting: number) => {
+      const sides: number[] = [];
+      let rng = seedRng(7);
+      for (let i = 0; i < 400; i++) {
+        const k = kickWithContact(ball, vec2(-1, 0), shooting, rng);
+        sides.push(k.ball.spin!.side);
+        rng = k.rng;
+      }
+      const mean = sides.reduce((a, b) => a + b, 0) / sides.length;
+      return Math.sqrt(sides.reduce((a, b) => a + (b - mean) ** 2, 0) / sides.length);
+    };
+    expect(spread(95)).toBeLessThan(spread(40) / 2);
   });
 });
 

@@ -186,5 +186,5 @@ export function contactLabel(c: Vec2, foot: 'right' | 'left' = 'right'): string 
   if (Math.hypot(c.x, c.y) < CONTACT_CENTRE) return 'Sút căng';
   if (Math.abs(c.x) >= Math.abs(c.y))
     return c.x > 0 === (foot === 'right') ? 'Sút xoáy bằng má trong' : 'Sút xoáy bằng má ngoài';
-  return c.y < 0 ? 'Sút bổng' : 'Sút chìm';
+  return c.y < 0 ? 'Sút bổng' : 'Đá sệt';
 }

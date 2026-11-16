@@ -894,9 +894,9 @@ function stepDeadBall(
   const setAim = aimed ? turnAim(restartAim(restart, state.half), turn) : null;
   const contact = adjusting ? moveContact(restartContact(restart), input.move) : restart.contact;
   // Đá phạt, phạt góc của người chơi: bóng đi theo điểm chạm đã chọn.
-  const touch = <K extends { ball: BallState }>(k: K): K =>
+  const touch = <K extends { ball: BallState; rng: RngState }>(k: K): K =>
     humanRestart && CONTACT_RESTARTS.has(restart.type)
-      ? { ...k, ball: kickWithContact(k.ball, contact) }
+      ? { ...k, ...kickWithContact(k.ball, contact, taker.stats.shooting, k.rng) }
       : k;
   const humanShot = (chargeTicks: number) => ({
     ...shootBall(

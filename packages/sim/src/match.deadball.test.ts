@@ -113,6 +113,7 @@ describe('ngắm đá phạt (camera sau lưng)', () => {
       const across = vec2(-dir.y, dir.x);
       return d.x * across.x + d.y * across.y;
     };
-    expect(sideDrift(curled)).toBeLessThan(sideDrift(centre) - 0.5);
+    // Độ xoáy có sai số theo chỉ số Sút nên chỉ đòi hỏi cong rõ về đúng phía.
+    expect(sideDrift(curled)).toBeLessThan(sideDrift(centre) - 0.2);
   });
 });
