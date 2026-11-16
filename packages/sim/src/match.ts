@@ -416,9 +416,14 @@ export const THROW_RELEASE_HEIGHT = 1.5;
 export const THROW_RELEASE_VZ = 2;
 
 /** Chọc khe bấm nhanh: bóng tới trước người nhận chừng này mét theo hướng tấn công (task 5.16). */
-export const THROUGH_LEAD = 6;
+export const THROUGH_LEAD = 4;
 /** Chọc khe đầy thanh lực: bóng tới trước người nhận chừng này mét (task 5.23). */
-export const THROUGH_LEAD_MAX = 15;
+export const THROUGH_LEAD_MAX = 9;
+/**
+ * Chọc khe chỉ dùng phần này của lực để tăng tốc độ bóng lúc tới nơi (chuyền thường dùng đủ): đầy
+ * lực thì bóng tới chân ~8 m/s thay vì 12 m/s — người chơi thấy chọc khe căng quá, ảo (16/11/2026).
+ */
+export const THROUGH_ARRIVAL_POWER_MULT = 1 / 3;
 
 /**
  * Người chơi chọc khe (W / Q+W): như `kickPass` nhưng đích là khoảng trống phía trước người nhận theo
@@ -448,7 +453,8 @@ function throughPass(
     point: to,
     untilTick: tick + travelTicks + RECEIVE_GRACE_TICKS,
   };
-  return { ...passBall(passer, from, to, kind, rng, PASS_ASSIST_ERROR_MULT, power), receiver };
+  const passPow = power * THROUGH_ARRIVAL_POWER_MULT;
+  return { ...passBall(passer, from, to, kind, rng, PASS_ASSIST_ERROR_MULT, passPow), receiver };
 }
 
 /** Người nhận đường chuyền của AI (chạy đón bóng như đường chuyền của người chơi). */
