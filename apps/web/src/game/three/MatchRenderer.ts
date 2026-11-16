@@ -23,7 +23,14 @@ import {
   keysToInput,
   type KeyState,
 } from '../input/keyboard';
-import { followCamera, initialCamera, type CameraState } from '../render/camera';
+import {
+  blendCamera,
+  followCamera,
+  initialCamera,
+  setPieceAim,
+  setPieceCamera,
+  type CameraState,
+} from '../render/camera';
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
 import { chargeMeter, countdownRing, lerp, lerpPos } from '../render/view';
@@ -91,6 +98,8 @@ const CHARGE_COLORS = {
 const DEBUG_REFRESH_MS = 250;
 /** Bóng trượt giữa tay và vị trí sim trong chừng này giây (lúc bắt / ném), không nhảy cóc. */
 const BALL_BLEND_SEC = 0.12;
+/** Thời gian lướt giữa góc truyền hình và góc sau lưng người đá. */
+const SET_PIECE_BLEND_SEC = 0.6;
 /** Cầu thủ khối (chưa có model): bóng cầm tay trước người chừng này mét, cao ngang ngực / trên đầu. */
 const HELD_BALL_AHEAD = 0.35;
 const CHEST_BALL_Y = 1.1;
@@ -131,6 +140,9 @@ export class MatchRenderer {
   private lastTime = 0;
   private raf = 0;
   private cam: CameraState = initialCamera();
+  /** Trọng số góc sau lưng tình huống cố định (0 = truyền hình) và góc máy đó (giữ lại khi lướt ra). */
+  private setPieceW = 0;
+  private setPieceCam: CameraState = initialCamera();
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -467,6 +479,8 @@ export class MatchRenderer {
         this.goalHold = null;
         this.endCutHold();
         this.cam = followCamera(this.cam, this.curr.ball.pos, 100);
+        // Sân đang bị che: vào thẳng góc sau lưng, không lướt.
+        this.setPieceW = setPieceAim(this.curr) ? 1 : 0;
       },
     });
     this.frozen = { state: holdState, cam: holdCam };
@@ -896,7 +910,8 @@ export class MatchRenderer {
     }
 
     const controlled = this.actors.get(curr.controlledId);
-    this.marker.visible = controlled !== undefined && !curr.autopilot && !cameraOverride;
+    this.marker.visible =
+      controlled !== undefined && !curr.autopilot && !cameraOverride && this.setPieceW === 0;
     if (controlled) {
       const bob = Math.sin(performance.now() / 180) * 0.08;
       this.marker.position.set(controlled.position.x, MARKER_Y + bob, controlled.position.z);
@@ -942,7 +957,14 @@ export class MatchRenderer {
     this.ballShadow.scale.setScalar(1 / (1 + drawnZ * 0.35));
 
     if (dt > 0 && !cameraOverride) this.cam = followCamera(this.cam, ground, dt);
-    const { pos, look } = cameraOverride ?? this.cam;
+    // Góc sau lưng người đá: lướt vào/ra trong SET_PIECE_BLEND_SEC; `this.cam` vẫn bám bóng để quay về mượt.
+    const setPiece = cameraOverride ? null : setPieceAim(curr);
+    this.setPieceW = Math.min(1, Math.max(0, this.setPieceW + (setPiece ? dt : -dt) / SET_PIECE_BLEND_SEC));
+    if (setPiece) this.setPieceCam = setPieceCamera(setPiece.spot, setPiece.aim);
+    const view =
+      cameraOverride ??
+      (this.setPieceW > 0 ? blendCamera(this.cam, this.setPieceCam, this.setPieceW) : this.cam);
+    const { pos, look } = view;
     const dolly = cameraOverride ? { y: 0, z: 0 } : this.transition.currentDollyOffset();
     this.nets.update(animDt);
     const timeSec = performance.now() / 1000;
