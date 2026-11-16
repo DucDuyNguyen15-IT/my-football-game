@@ -34,6 +34,7 @@ import {
   type PassKind,
 } from './actions/pass';
 import { attackSign, finesseShot, shootBall, shotPower, shotTarget } from './actions/shoot';
+import { keeperClaim, tryHeader } from './actions/header';
 import { tryScissor } from './actions/volley';
 import {
   isFromBehind,
@@ -1604,23 +1605,49 @@ function stepPlay(
         rng,
         backPass: null,
         ball: volley.ball,
-        kickLock: lock(k.id),
+        kickLock: { ...lock(k.id), touch: 'scissor' },
         passReceiver: null,
         lastTouchTeam: k.team,
         shots: addShot(shots, k.team),
         lastShot: shotFrom(true, k.team, tick),
       };
     }
-    const capturer = findCapturer(
-      players.filter((p) => !down(p)),
-      ball,
-      kickLock?.playerId ?? null,
-    );
+    const up = players.filter((p) => !down(p));
+    // Bóng bổng quá tầm chân: thủ môn trong vòng cấm nhà bắt dính, không thì đánh đầu.
+    // Cú sút thì đã xét cản phá ở 3b (bắt / đẩy / bị đánh bại), không bắt lại ở đây.
+    const claim = lastShot
+      ? null
+      : keeperClaim(up, ball, state.half, kickLock?.playerId ?? null, backPass);
+    const header = claim
+      ? null
+      : tryHeader(
+          up,
+          ball,
+          state.half,
+          (p) => p.id !== kickLock?.playerId,
+          (p) => (p.id === human && length(input.move) > 0 ? input.move : null),
+          rng,
+        );
+    if (header) {
+      const h = header.header;
+      return {
+        ...played,
+        rng: header.rng,
+        backPass: null,
+        ball: header.ball,
+        kickLock: { ...lock(h.id), touch: 'header' },
+        passReceiver: null,
+        lastTouchTeam: h.team,
+        shots: header.shot ? addShot(shots, h.team) : shots,
+        lastShot: shotFrom(header.shot, h.team, tick),
+      };
+    }
+    const capturer = claim ? claim.id : findCapturer(up, ball, kickLock?.playerId ?? null);
     let captured = capturer === null ? undefined : players.find((p) => p.id === capturer);
     // Bóng lao nhanh có thể chạm chân bật ra thay vì dính (chỉ gieo khi đủ nhanh để bóng chậm
-    // không làm lệch chuỗi ngẫu nhiên).
+    // không làm lệch chuỗi ngẫu nhiên). Thủ môn bắt bằng tay thì không.
     const relVel = captured ? sub(ball.vel, captured.vel) : null;
-    if (captured && relVel && length(relVel) > MISCONTROL_SPEED_RANGE[0]) {
+    if (!claim && captured && relVel && length(relVel) > MISCONTROL_SPEED_RANGE[0]) {
       const [roll, afterRoll] = nextFloat(rng);
       rng = afterRoll;
       if (roll < miscontrolChance(captured.stats.dribbling, length(relVel))) {

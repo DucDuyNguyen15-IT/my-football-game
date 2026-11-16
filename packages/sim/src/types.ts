@@ -304,7 +304,8 @@ export interface MatchState {
   /** Tick `ballOwnerId` đổi lần cuối (AI dùng để biết đã giữ bóng bao lâu). */
   ownerSinceTick: number;
   /** Người vừa chuyền/sút/mất bóng không được chạm lại bóng trước tick `untilTick`. */
-  kickLock: { playerId: string; untilTick: number } | null;
+  /** `touch`: chạm bóng bổng bằng đầu / móc bóng (để phần hiển thị chọn clip). */
+  kickLock: { playerId: string; untilTick: number; touch?: 'header' | 'scissor' } | null;
   /** Số tick người chơi đã giữ nút sút (0 = không nạp lực). */
   shotChargeTicks: number;
   /**
