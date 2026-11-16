@@ -27,7 +27,7 @@ async function signup(username = 'nguoi_choi'): Promise<{ sid: string; userId: n
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/register',
-    payload: { username, password: 'mat-khau-dai' },
+    payload: { username, password: 'mat-khau-dai', acceptTerms: true },
     headers: json,
   });
   expect(res.statusCode).toBe(201);
@@ -176,7 +176,7 @@ describe('xoay phiên khi đăng ký (POST /auth/register)', () => {
     const second = await app.inject({
       method: 'POST',
       url: '/api/v1/auth/register',
-      payload: { username: 'user_b', password: 'mat-khau-dai' },
+      payload: { username: 'user_b', password: 'mat-khau-dai', acceptTerms: true },
       headers: json,
       cookies: { sid: first.sid },
     });
@@ -190,12 +190,14 @@ describe('xoay phiên khi đăng ký (POST /auth/register)', () => {
       .where(eq(sessions.id, hashToken(first.sid)));
     expect(oldSessionRows).toHaveLength(0);
 
-    expect((await app.inject({ method: 'GET', url: '/api/v1/me', cookies: { sid: first.sid } })).statusCode).toBe(
-      401,
-    );
-    expect((await app.inject({ method: 'GET', url: '/api/v1/me', cookies: { sid: secondSid } })).statusCode).toBe(
-      200,
-    );
+    expect(
+      (await app.inject({ method: 'GET', url: '/api/v1/me', cookies: { sid: first.sid } }))
+        .statusCode,
+    ).toBe(401);
+    expect(
+      (await app.inject({ method: 'GET', url: '/api/v1/me', cookies: { sid: secondSid } }))
+        .statusCode,
+    ).toBe(200);
   });
 });
 
@@ -285,7 +287,9 @@ describe('thứ tự khoá PUT /squad (users → player_cards id ASC → squads)
       expect(putRes.statusCode).toBe(200);
       expect(lockQueries).toHaveLength(3);
       expect(lockQueries[0]).toMatch(/from "users".*for update/);
-      expect(lockQueries[1]).toMatch(/from "player_cards".*order by "player_cards"\."id" asc.*for update/);
+      expect(lockQueries[1]).toMatch(
+        /from "player_cards".*order by "player_cards"\."id" asc.*for update/,
+      );
       expect(lockQueries[2]).toMatch(/from "squads".*for update/);
     } finally {
       await tracedApp.close();

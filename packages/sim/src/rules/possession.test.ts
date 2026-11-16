@@ -2,7 +2,14 @@ import type { PlayerStats } from '@pitch/shared';
 import { describe, expect, it } from 'vitest';
 import { length, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { PLAYER_RADIUS } from '../physics/player';
-import { controlRadiusFor } from '../stats/params';
+import {
+  CONTROL_FAST_RADIUS_MULT,
+  CONTROL_SPEED_RANGE,
+  controlRadiusAt,
+  controlRadiusFor,
+  miscontrolChance,
+  MISCONTROL_SPEED_RANGE,
+} from '../stats/params';
 import type { BallState, PlayerState, TeamSide } from '../types';
 import {
   CONTROL_HEIGHT,
@@ -200,4 +207,33 @@ describe('chooseDefensiveSwitchTarget — đổi người khi đối thủ dẫn
 it('bóng dính chân luôn nằm trong bán kính khống chế của chính người dẫn', () => {
   const p = player('home-P1', ZERO, { stats: { dribbling: 1 } });
   expect(findCapturer([p], dribbleBall(p), null)).toBe('home-P1');
+});
+
+describe('controlRadiusAt / miscontrolChance — bóng nhanh khó khống chế', () => {
+  it('bóng chậm giữ nguyên bán kính; bóng rất nhanh chỉ còn CONTROL_FAST_RADIUS_MULT', () => {
+    const r = controlRadiusFor(70);
+    expect(controlRadiusAt(70, CONTROL_SPEED_RANGE[0])).toBe(r);
+    expect(controlRadiusAt(70, 40)).toBeCloseTo(r * CONTROL_FAST_RADIUS_MULT);
+    expect(controlRadiusAt(70, 18)).toBeLessThan(r);
+  });
+
+  it('bóng lao nhanh lướt ngang (0,7 m) không dính chân; bóng chậm cùng chỗ thì dính', () => {
+    const p = player('home-P1', vec2(0, 0.7));
+    expect(findCapturer([p], ball(ZERO, 0, vec2(28, 0)), null)).toBeNull();
+    expect(findCapturer([p], ball(ZERO, 0, vec2(5, 0)), null)).toBe('home-P1');
+  });
+
+  it('tính tốc độ so với cầu thủ: chạy cùng chiều bóng thì dễ khống chế hơn', () => {
+    const still = player('home-P1', vec2(0, 0.7));
+    const running = player('home-P1', vec2(0, 0.7), { vel: vec2(8, 0) });
+    const b = ball(ZERO, 0, vec2(20, 0));
+    expect(findCapturer([still], b, null)).toBeNull();
+    expect(findCapturer([running], b, null)).toBe('home-P1');
+  });
+
+  it('khống chế hỏng: 0 khi bóng chậm, tăng theo tốc độ, Rê bóng cao ít hỏng hơn', () => {
+    expect(miscontrolChance(70, MISCONTROL_SPEED_RANGE[0])).toBe(0);
+    expect(miscontrolChance(70, 20)).toBeGreaterThan(0);
+    expect(miscontrolChance(99, 30)).toBeLessThan(miscontrolChance(1, 30));
+  });
 });

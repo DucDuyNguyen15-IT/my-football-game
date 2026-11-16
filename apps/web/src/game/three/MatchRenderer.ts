@@ -23,10 +23,26 @@ import {
   keysToInput,
   type KeyState,
 } from '../input/keyboard';
-import { followCamera, initialCamera, type CameraState } from '../render/camera';
+import {
+  blendCamera,
+  followCamera,
+  initialCamera,
+  setPieceAim,
+  setPieceCamera,
+  type CameraState,
+} from '../render/camera';
 import { COLORS } from '../render/colors';
 import { animationEvents, heldBall, type HeldBall } from '../render/animation';
-import { chargeMeter, countdownRing, lerp, lerpPos } from '../render/view';
+import {
+  chargeMeter,
+  countdownRing,
+  lerp,
+  lerpPos,
+  penaltyRing,
+  setPieceContact,
+  setPieceFoot,
+  type PenaltyRing,
+} from '../render/view';
 import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
 import {
   REPLAY_AFTER_TICKS,
@@ -38,7 +54,9 @@ import {
   type Replay,
 } from '../render/replay';
 import { ActorKit, BALL_DRAW_RADIUS, headingFromFacing } from './actors';
+import { ContactWidgetView } from './contactWidget';
 import { CountdownRingView } from './countdown';
+import { PenaltyRingView } from './penaltyRing';
 import { buildGrass, type Grass } from './grass';
 import { buildPitch, NetRig } from './pitch';
 import { loadPlayerModel, ModelActor, ModelMaterials, type PlayerModel } from './playerModel';
@@ -59,11 +77,7 @@ import {
   resolveQuality,
   type QualitySettings,
 } from '../render/quality';
-import {
-  buildTransitionSpec,
-  detectTransition,
-  type TransitionSpec,
-} from '../render/transition';
+import { buildTransitionSpec, detectTransition, type TransitionSpec } from '../render/transition';
 import { CutHold, snapshotHold } from '../render/cutHold';
 import { MatchStinger } from './stinger';
 
@@ -75,6 +89,11 @@ const MOVE_KEYS: ReadonlySet<string> = new Set(['up', 'down', 'left', 'right', '
 const TONE_EXPOSURE = 1.15;
 const MARKER_Y = 2.2;
 const CHARGE_BAR_Y = 2.75;
+/** Thanh lực ở góc máy tình huống cố định: độ cao (m) và tỉ lệ. */
+const SET_PIECE_BAR_Y = 2.05;
+const SET_PIECE_BAR_SCALE = 0.5;
+/** Góc máy tình huống cố định: ẩn cầu thủ cách camera dưới chừng này mét (camera sau bóng 6,5 m). */
+const SET_PIECE_HIDE_RADIUS = 4.5;
 /** Tâm vòng đếm ngược (m): trên mũi tên người điều khiển và thanh lực. */
 const COUNTDOWN_Y = 3.55;
 /** Đường kính vòng đếm ngược theo mét trong cảnh; trên màn hình không nhỏ hơn COUNTDOWN_MIN_PX. */
@@ -91,6 +110,8 @@ const CHARGE_COLORS = {
 const DEBUG_REFRESH_MS = 250;
 /** Bóng trượt giữa tay và vị trí sim trong chừng này giây (lúc bắt / ném), không nhảy cóc. */
 const BALL_BLEND_SEC = 0.12;
+/** Thời gian lướt giữa góc truyền hình và góc sau lưng người đá. */
+const SET_PIECE_BLEND_SEC = 0.6;
 /** Cầu thủ khối (chưa có model): bóng cầm tay trước người chừng này mét, cao ngang ngực / trên đầu. */
 const HELD_BALL_AHEAD = 0.35;
 const CHEST_BALL_Y = 1.1;
@@ -107,9 +128,7 @@ function disposeTree(root: THREE.Object3D): void {
   const geometries = new Set<THREE.BufferGeometry>();
   const materials = new Set<THREE.Material>();
   root.traverse((obj) => {
-    if (
-      !(obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line)
-    )
+    if (!(obj instanceof THREE.Mesh || obj instanceof THREE.Points || obj instanceof THREE.Line))
       return;
     geometries.add(obj.geometry as THREE.BufferGeometry);
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
@@ -131,6 +150,9 @@ export class MatchRenderer {
   private lastTime = 0;
   private raf = 0;
   private cam: CameraState = initialCamera();
+  /** Trọng số góc sau lưng tình huống cố định (0 = truyền hình) và góc máy đó (giữ lại khi lướt ra). */
+  private setPieceW = 0;
+  private setPieceCam: CameraState = initialCamera();
 
   private readonly renderer: THREE.WebGLRenderer;
   private readonly scene = new THREE.Scene();
@@ -141,6 +163,7 @@ export class MatchRenderer {
   private playerModel: PlayerModel | null = null;
   private readonly kit = new ActorKit();
   private readonly countdown: CountdownRingView;
+  private readonly contactWidget: ContactWidgetView;
   private readonly transition: MatchStinger;
   private readonly ringPos = new THREE.Vector3();
   private readonly ringEdge = new THREE.Vector3();
@@ -161,6 +184,7 @@ export class MatchRenderer {
   private q: QualitySettings = resolveQuality(DEFAULT_GRAPHICS);
   private readonly ballShadow: THREE.Mesh;
   private readonly marker: THREE.Mesh;
+  private readonly penaltyRing: PenaltyRingView;
   private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
   /** Bóng chuyển giữa tay và vị trí sim: trượt từ `ballBlendFrom` trong BALL_BLEND_SEC. */
   private ballInHands = false;
@@ -257,7 +281,9 @@ export class MatchRenderer {
     this.marker = kit.createMarker();
     this.chargeBar = kit.createChargeBar();
     this.countdown = new CountdownRingView(parent);
+    this.contactWidget = new ContactWidgetView(parent);
     this.transition = new MatchStinger(parent, this.renderer);
+    this.penaltyRing = new PenaltyRingView(parent);
     this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
 
     this.resizeObserver = new ResizeObserver(() => this.resize());
@@ -405,6 +431,8 @@ export class MatchRenderer {
     this.resizeObserver.disconnect();
     this.postFx.dispose();
     this.countdown.dispose();
+    this.contactWidget.dispose();
+    this.penaltyRing.dispose();
     this.transition.dispose();
     disposeTree(this.scene);
     if (this.playerModel) disposeTree(this.playerModel.scene);
@@ -467,6 +495,8 @@ export class MatchRenderer {
         this.goalHold = null;
         this.endCutHold();
         this.cam = followCamera(this.cam, this.curr.ball.pos, 100);
+        // Sân đang bị che: vào thẳng góc sau lưng, không lướt.
+        this.setPieceW = setPieceAim(this.curr) ? 1 : 0;
       },
     });
     this.frozen = { state: holdState, cam: holdCam };
@@ -668,14 +698,7 @@ export class MatchRenderer {
       const holdCam = this.frozen?.cam;
       this.draw(hold, hold, 1, activeDt, activeDt, holdCam);
     } else if (this.frozen) {
-      this.draw(
-        this.frozen.state,
-        this.frozen.state,
-        1,
-        activeDt,
-        activeDt,
-        this.frozen.cam,
-      );
+      this.draw(this.frozen.state, this.frozen.state, 1, activeDt, activeDt, this.frozen.cam);
       this.applyFallTilt();
     } else if (this.cutHold) {
       // Diễn tiếp pha bóng: camera vẫn bám bóng đang lăn.
@@ -684,13 +707,7 @@ export class MatchRenderer {
     } else if (this.goalHold) {
       this.draw(this.goalHold, this.goalHold, 1, dt, activeDt);
     } else {
-      this.draw(
-        this.prev,
-        this.curr,
-        this.accumulator / TICK_DT,
-        dt,
-        activeDt,
-      );
+      this.draw(this.prev, this.curr, this.accumulator / TICK_DT, dt, activeDt);
     }
     this.render();
     if (this.debug) this.refreshDebug(now);
@@ -715,7 +732,14 @@ export class MatchRenderer {
     this.accumulator = 0;
     // Giữ phím di chuyển (keyup trong replay vẫn nhả); nút hành động thì xoá.
     const h = this.held;
-    this.held = { ...NO_KEYS, up: h.up, down: h.down, left: h.left, right: h.right, sprint: h.sprint };
+    this.held = {
+      ...NO_KEYS,
+      up: h.up,
+      down: h.down,
+      left: h.left,
+      right: h.right,
+      sprint: h.sprint,
+    };
     this.taps.consume();
 
     if (!this.stingerEnabled) {
@@ -728,21 +752,18 @@ export class MatchRenderer {
     this.pendingReplay = prepared;
     const holdState = this.goalHold ?? this.prev;
     const holdCam = this.cam;
-    this.transition.play(
-      buildTransitionSpec('replay_in', { team: this.goalScoredTeam }),
-      {
-        onCovered: () => {
-          this.frozen = null;
-          this.goalHold = null;
-          if (!this.pendingReplay) return;
-          this.replay = this.pendingReplay;
-          this.pendingReplay = null;
-          this.replayCam = null;
-          this.replayExiting = false;
-          this.showReplayLabel(true);
-        },
+    this.transition.play(buildTransitionSpec('replay_in', { team: this.goalScoredTeam }), {
+      onCovered: () => {
+        this.frozen = null;
+        this.goalHold = null;
+        if (!this.pendingReplay) return;
+        this.replay = this.pendingReplay;
+        this.pendingReplay = null;
+        this.replayCam = null;
+        this.replayExiting = false;
+        this.showReplayLabel(true);
       },
-    );
+    });
     this.frozen = { state: holdState, cam: holdCam };
   }
 
@@ -847,10 +868,7 @@ export class MatchRenderer {
     this.goalSide = side;
     this.goalScoredTeam = this.curr.score.home > this.prev.score.home ? 'home' : 'away';
     const netY = Math.max(-2.7, Math.min(2.7, prevBall.pos.y));
-    this.nets.hit(
-      side,
-      new THREE.Vector3(side * 30, BALL_DRAW_RADIUS + prevBall.z, netY),
-    );
+    this.nets.hit(side, new THREE.Vector3(side * 30, BALL_DRAW_RADIUS + prevBall.z, netY));
     this.crowd.cheer();
 
     // Diễn tiếp thay vì đứng hình: bóng bay vào lưới rồi dừng, cầu thủ chạy chậm dần (review M2).
@@ -878,11 +896,17 @@ export class MatchRenderer {
     const prevById = new Map(prev.players.map((p) => [p.id, p]));
     const onPitch = new Set<string>();
 
+    // Góc máy sau lưng: ẩn cầu thủ đứng sát camera (trừ người đá) để không che khung hình.
+    const near = this.setPieceW > 0.5 && !cameraOverride ? this.camera.position : null;
     for (const p of curr.players) {
       const actor = this.actors.get(p.id) ?? this.addActor(p);
       onPitch.add(p.id);
       const pos = lerpPos((prevById.get(p.id) ?? p).pos, p.pos, alpha);
       actor.position.set(pos.x, 0, pos.y);
+      actor.visible =
+        !near ||
+        p.id === curr.restart?.takerId ||
+        Math.hypot(pos.x - near.x, pos.y - near.z) > SET_PIECE_HIDE_RADIUS;
       const model = this.models.get(p.id);
       if (model) model.update(animDt, p, curr, headingFromFacing(p.facing));
       else actor.rotation.y = headingFromFacing(p.facing);
@@ -896,7 +920,8 @@ export class MatchRenderer {
     }
 
     const controlled = this.actors.get(curr.controlledId);
-    this.marker.visible = controlled !== undefined && !curr.autopilot && !cameraOverride;
+    this.marker.visible =
+      controlled !== undefined && !curr.autopilot && !cameraOverride && this.setPieceW === 0;
     if (controlled) {
       const bob = Math.sin(performance.now() / 180) * 0.08;
       this.marker.position.set(controlled.position.x, MARKER_Y + bob, controlled.position.z);
@@ -906,7 +931,14 @@ export class MatchRenderer {
     const bar = this.chargeBar;
     bar.group.visible = meter !== null;
     if (meter && controlled) {
-      bar.group.position.set(controlled.position.x, CHARGE_BAR_Y, controlled.position.z);
+      // Góc máy sau lưng: thanh sát đỉnh đầu, nhỏ lại (camera chỉ cách vài mét).
+      const close = this.setPieceW > 0.5;
+      bar.group.position.set(
+        controlled.position.x,
+        close ? SET_PIECE_BAR_Y : CHARGE_BAR_Y,
+        controlled.position.z,
+      );
+      bar.group.scale.setScalar(close ? SET_PIECE_BAR_SCALE : 1);
       bar.group.quaternion.copy(this.camera.quaternion);
       bar.fill.scale.x = Math.max(0.001, meter.fill);
       bar.fillMat.color.setHex(CHARGE_COLORS[meter.kind]);
@@ -942,7 +974,17 @@ export class MatchRenderer {
     this.ballShadow.scale.setScalar(1 / (1 + drawnZ * 0.35));
 
     if (dt > 0 && !cameraOverride) this.cam = followCamera(this.cam, ground, dt);
-    const { pos, look } = cameraOverride ?? this.cam;
+    // Góc sau lưng người đá: lướt vào/ra trong SET_PIECE_BLEND_SEC; `this.cam` vẫn bám bóng để quay về mượt.
+    const setPiece = cameraOverride ? null : setPieceAim(curr);
+    this.setPieceW = Math.min(
+      1,
+      Math.max(0, this.setPieceW + (setPiece ? dt : -dt) / SET_PIECE_BLEND_SEC),
+    );
+    if (setPiece) this.setPieceCam = setPieceCamera(setPiece.spot, setPiece.aim);
+    const view =
+      cameraOverride ??
+      (this.setPieceW > 0 ? blendCamera(this.cam, this.setPieceCam, this.setPieceW) : this.cam);
+    const { pos, look } = view;
     const dolly = cameraOverride ? { y: 0, z: 0 } : this.transition.currentDollyOffset();
     this.nets.update(animDt);
     const timeSec = performance.now() / 1000;
@@ -952,6 +994,38 @@ export class MatchRenderer {
     this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + dolly.z);
     this.camera.lookAt(look.x, look.y, look.z);
     this.drawCountdown(cameraOverride || this.cutHold ? null : countdownRing(this.curr));
+    // Điểm chạm: chỉ khi sân không bị chuyển cảnh che / giữ khung.
+    const contact =
+      cameraOverride || this.cutHold || this.frozen || this.transition.isActive()
+        ? null
+        : setPieceContact(this.curr);
+    if (contact) this.contactWidget.show(contact, setPieceFoot(this.curr));
+    else this.contactWidget.hide();
+    this.drawPenaltyRing(
+      cameraOverride || this.cutHold || this.frozen ? null : penaltyRing(this.curr),
+    );
+  }
+
+  /** Vòng ngắm phạt đền: chiếu tâm (sim x, y, z cao → Three x, y cao, z) và một điểm mép ra màn hình. */
+  private drawPenaltyRing(ring: PenaltyRing | null): void {
+    if (!ring) {
+      this.penaltyRing.hide();
+      return;
+    }
+    const { camera, ringPos, ringEdge } = this;
+    camera.updateMatrixWorld();
+    ringPos.set(ring.x, ring.z, ring.y);
+    ringEdge.set(ring.x, ring.z + ring.radius, ring.y);
+    ringPos.project(camera);
+    ringEdge.project(camera);
+    if (ringPos.z < -1 || ringPos.z > 1) {
+      this.penaltyRing.hide();
+      return;
+    }
+    const w = this.parent.clientWidth;
+    const h = this.parent.clientHeight;
+    const r = Math.hypot((ringEdge.x - ringPos.x) * (w / 2), (ringEdge.y - ringPos.y) * (h / 2));
+    this.penaltyRing.show(((ringPos.x + 1) / 2) * w, ((1 - ringPos.y) / 2) * h, r, ring.color);
   }
 
   /**

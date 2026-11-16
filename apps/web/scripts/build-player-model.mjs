@@ -30,9 +30,13 @@ const CLIPS = {
   strafe_left: 'jog strafe left',
   strafe_right: 'jog strafe right',
   pass: 'kick soccerball',
+  // Biến thể (web chọn xen kẽ): chuyền chân phải gốc, đánh đầu kiểu khác.
+  pass_alt: 'kick soccerball (2)',
+  header_alt: 'header soccerball (2)',
   shot: 'strike foward jog',
   penalty: 'soccer penalty kick',
   header: 'header soccerball',
+  scissor: 'scissor kick',
   tackle: 'soccer tackle (2)',
   trip: 'soccer trip',
   fallen: 'fallen idle',
@@ -40,13 +44,84 @@ const CLIPS = {
   throw_in: 'throw in',
   gk_idle: 'goalkeeper idle (2)',
   gk_sidestep: 'goalkeeper sidestep',
+  // Bắt bóng theo độ cao lúc hai tay khép (đo trong clip): xúc 0,3 m, thấp 0,8 m, ngực 1,3 m, cao 2,3 m.
+  gk_scoop: 'goalkeeper scoop',
+  gk_catch_low: 'goalkeeper catch',
   gk_catch: 'goalkeeper catch (2)',
+  gk_catch_high: 'goalkeeper catch (4)',
+  // Đổ người cản bóng sệt (+X Mixamo là bên trái nhân vật: bản gốc sang trái).
+  gk_block_left: 'goalkeeper body block',
+  gk_block_right: 'goalkeeper body block (2)',
+  // Đổ người kiểu khác (sang trái); bản phải lật gương (`MIRRORED`).
+  gk_block_alt_left: 'goalkeeper body block (3)',
+  // Băng ra bật nhảy bắt bóng bổng: hai tay khép ở 2,3 m lúc 1,49 s.
+  gk_catch_leap: 'goalkeeper catch (3)',
+  gk_miss: 'goalkeeper miss',
   // Mixamo quay mặt về +Z nên +X là bên trái nhân vật: bản gốc lao sang trái (dx +2,2 m), (2) sang phải.
   gk_dive_left: 'goalkeeper diving save',
   gk_dive_right: 'goalkeeper diving save (2)',
   gk_throw: 'goalkeeper overhand throw',
   gk_kick: 'goalkeeper drop kick',
 };
+
+/**
+ * Clip đá bóng có hai bản: `<tên>` đá chân phải, `<tên>_l` chân trái — bản kia lật gương: đổi xương
+ * Left↔Right, đảo dấu y/z của quaternion và x của vị trí (Y Bot đối xứng, đo lệch < 1 mm).
+ * Giá trị = chân đá của file gốc (đo tốc độ bàn chân). Đổi danh sách thì sửa cả `FOOTED_CLIPS` ở
+ * `src/game/render/animation.ts`.
+ */
+const FOOTED = {
+  pass: 'left',
+  shot: 'right',
+  penalty: 'right',
+  header: 'left',
+  scissor: 'right',
+  tackle: 'left',
+  gk_kick: 'right',
+  pass_alt: 'right',
+};
+
+/** Clip lật gương từ clip khác (không có bản đối xứng trong gói). */
+const MIRRORED = { gk_block_alt_right: 'gk_block_alt_left' };
+
+/**
+ * Bay người vươn cao (đẩy bóng sát xà) — không có trong gói Mixamo: chế từ clip bay người, nâng
+ * hông thêm tối đa `HIGH_DIVE_LIFT_CM` theo nửa sóng sin trong lúc bay (rời đất ~0,45 s, chạm đất
+ * ~1,45 s, đo ở clip gốc) để tay lên ~1,7–1,9 m.
+ */
+const HIGH_DIVES = { gk_dive_high_left: 'gk_dive_left', gk_dive_high_right: 'gk_dive_right' };
+const HIGH_DIVE_LIFT_CM = 80;
+const HIGH_DIVE_AIR = [0.45, 1.45];
+function liftClip(clip, name) {
+  const [t0, t1] = HIGH_DIVE_AIR;
+  const tracks = clip.tracks.map((tr) => {
+    if (!tr.name.endsWith('Hips.position')) return tr;
+    const v = Float32Array.from(tr.values);
+    for (let i = 0; i < tr.times.length; i++) {
+      const t = tr.times[i];
+      if (t > t0 && t < t1) v[i * 3 + 1] += HIGH_DIVE_LIFT_CM * Math.sin((Math.PI * (t - t0)) / (t1 - t0));
+    }
+    return new tr.constructor(tr.name, tr.times, v);
+  });
+  return new THREE.AnimationClip(name, clip.duration, tracks);
+}
+
+const swapSide = (n) => n.replace(/Left|Right/g, (s) => (s === 'Left' ? 'Right' : 'Left'));
+function mirrorClip(clip, name) {
+  const tracks = clip.tracks.map((t) => {
+    const v = Float32Array.from(t.values);
+    if (t.name.endsWith('.quaternion')) {
+      for (let i = 0; i < v.length; i += 4) {
+        v[i + 1] = -v[i + 1];
+        v[i + 2] = -v[i + 2];
+      }
+    } else if (t.name.endsWith('.position')) {
+      for (let i = 0; i < v.length; i += 3) v[i] = -v[i];
+    }
+    return new t.constructor(swapSide(t.name), t.times, v);
+  });
+  return new THREE.AnimationClip(name, clip.duration, tracks);
+}
 
 /**
  * Clip thêm, không có trong Soccer Game Pack: tải riêng từ Mixamo (Y Bot, **bỏ** "In Place" để đo được
@@ -134,7 +209,15 @@ function addClip(name, path) {
     if (speed > 0.3) clipSpeeds[name] = Number(speed.toFixed(2));
   }
   pinInPlace(clip);
-  clips.push(clip);
+  if (!FOOTED[name]) {
+    clips.push(clip);
+    return;
+  }
+  const mirrored = mirrorClip(clip, '');
+  const [right, left] = FOOTED[name] === 'right' ? [clip, mirrored] : [mirrored, clip];
+  right.name = name;
+  left.name = `${name}_l`;
+  clips.push(right, left);
 }
 for (const [name, file] of Object.entries(CLIPS)) {
   const path = join(PACK, `${file}.fbx`);
@@ -144,6 +227,9 @@ for (const [name, file] of Object.entries(CLIPS)) {
   }
   addClip(name, path);
 }
+const byName = (n) => clips.find((c) => c.name === n);
+for (const [name, from] of Object.entries(MIRRORED)) clips.push(mirrorClip(byName(from), name));
+for (const [name, from] of Object.entries(HIGH_DIVES)) clips.push(liftClip(byName(from), name));
 for (const [name, files] of Object.entries(OPTIONAL_CLIPS)) {
   const path = findOptional(files);
   if (path) addClip(name, path);

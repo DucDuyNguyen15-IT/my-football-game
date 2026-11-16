@@ -190,7 +190,20 @@ describe('DELETE /me (xoá tài khoản = ẩn danh hoá)', () => {
     expect(await testDb().select().from(analyticsEvents)).toHaveLength(0);
   });
 
-  it('tài khoản chỉ Google (không mật khẩu): chỉ cần gõ đúng tên', async () => {
+  it('tài khoản chỉ Google: phiên đăng nhập quá 10 phút → 403 reauth_required, tài khoản còn nguyên', async () => {
+    const sid = await loginOk();
+    await testDb()
+      .update(users)
+      .set({ passwordHash: null, googleSub: 'google-sub-1' })
+      .where(eq(users.username, 'Tester_1'));
+    clock.advance(11 * 60 * 1000);
+    const res = await del(sid, { username: 'Tester_1' });
+    expect(res.statusCode).toBe(403);
+    expect(ApiError.parse(res.json()).error.code).toBe('reauth_required');
+    expect((await me(sid)).statusCode).toBe(200);
+  });
+
+  it('tài khoản chỉ Google (không mật khẩu), vừa đăng nhập: chỉ cần gõ đúng tên', async () => {
     const sid = await loginOk();
     await testDb()
       .update(users)

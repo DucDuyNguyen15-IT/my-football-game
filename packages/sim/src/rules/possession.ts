@@ -1,7 +1,7 @@
 import { dot, length, normalize, scale, add, sub, type Vec2 } from '../math/vec2';
 import { PLAYER_RADIUS } from '../physics/player';
 import { BALL_RADIUS } from '../pitch';
-import { controlRadiusFor, turnLossCosFor } from '../stats/params';
+import { controlRadiusAt, turnLossCosFor } from '../stats/params';
 import type { BallState, PlayerState, TeamSide } from '../types';
 
 /*
@@ -28,7 +28,7 @@ export function dribbleBall(player: PlayerState): BallState {
 
 /**
  * Cầu thủ khống chế được bóng tự do: gần bóng nhất trong bán kính khống chế của chính người đó
- * (theo Rê bóng), bóng không quá cao. Bằng khoảng cách thì người đứng trước trong mảng thắng.
+ * (theo Rê bóng, co lại khi bóng lao nhanh so với người — `controlRadiusAt`), bóng không quá cao. Bằng khoảng cách thì người đứng trước trong mảng thắng.
  * @param lockedId người đang bị khoá chạm bóng (vừa chuyền/sút/mất bóng), null nếu không có.
  */
 export function findCapturer(
@@ -42,7 +42,8 @@ export function findCapturer(
   for (const p of players) {
     if (p.id === lockedId) continue;
     const dist = length(sub(ball.pos, p.pos));
-    if (dist <= controlRadiusFor(p.stats.dribbling) && dist < bestDist) {
+    const radius = controlRadiusAt(p.stats.dribbling, length(sub(ball.vel, p.vel)));
+    if (dist <= radius && dist < bestDist) {
       best = p.id;
       bestDist = dist;
     }

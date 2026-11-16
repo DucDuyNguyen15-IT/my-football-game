@@ -2,7 +2,21 @@
  * Tính toán phía hiển thị, thuần (không Three.js): nội suy giữa 2 tick, số áo. Không chứa luật/vật lý.
  */
 import type { SquadSlot } from '@pitch/shared';
-import { MAX_CHARGE_TICKS, PASS_FULL_CHARGE_TICKS, TICK_RATE } from '@pitch/sim';
+import {
+  attackSign,
+  BALL_RADIUS,
+  CONTACT_RESTARTS,
+  HALF_LENGTH,
+  kickingFoot,
+  MAX_CHARGE_TICKS,
+  PASS_FULL_CHARGE_TICKS,
+  MIN_SHOT_POWER,
+  penaltyAimZ,
+  penaltyRadius,
+  restartContact,
+  shotPower,
+  TICK_RATE,
+} from '@pitch/sim';
 import type { MatchState, Vec2 } from '@pitch/sim';
 
 /**
@@ -104,3 +118,73 @@ export const COUNTDOWN_ARC_STEPS = 180;
 /** Nấc viền đen hiện tại (0…COUNTDOWN_ARC_STEPS); hết giờ mới đủ vòng. */
 export const countdownArcStep = (elapsed: number): number =>
   elapsed >= 1 ? COUNTDOWN_ARC_STEPS : Math.floor(Math.max(0, elapsed) * COUNTDOWN_ARC_STEPS);
+
+/** Điểm chạm đang chọn khi đội người chơi đá phạt / phạt góc (widget góc màn hình); không thì null. */
+export function setPieceContact(state: Pick<MatchState, 'restart' | 'autopilot'>): Vec2 | null {
+  const r = state.restart;
+  if (!r || r.team !== 'home' || state.autopilot || !CONTACT_RESTARTS.has(r.type)) return null;
+  return restartContact(r);
+}
+
+/** Chân người đá tình huống cố định sẽ dùng (hai chân thì theo nửa sân đặt bóng). */
+export function setPieceFoot(
+  state: Pick<MatchState, 'restart' | 'players' | 'half'>,
+): 'right' | 'left' {
+  const r = state.restart;
+  if (!r) return 'right';
+  const taker = state.players.find((p) => p.id === r.takerId);
+  return kickingFoot(taker?.foot, r.spot, attackSign(r.team, state.half));
+}
+
+export interface PenaltyRing {
+  /** Tâm trên vạch cuối (toạ độ sân x, y; `z` độ cao tâm bóng, m). */
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  /** Màu vòng (hsl): lực nhẹ xanh lá → vàng → cam → hết lực đỏ. */
+  color: string;
+}
+
+/** Màu vòng phạt đền theo lực: hue 120 (xanh lá) giảm đều về 0 (đỏ) khi lực từ nhỏ nhất tới hết lực. */
+export function penaltyRingColor(power: number): string {
+  const t = Math.min(1, Math.max(0, (power - MIN_SHOT_POWER) / (1 - MIN_SHOT_POWER)));
+  return `hsl(${Math.round(120 * (1 - t))} 90% 55%)`;
+}
+
+/**
+ * Vòng ngắm phạt đền của người chơi: hiện từ lúc giữ D (lực đang nạp, tâm giữa khung) tới hết pha
+ * lấy đà (lực đã chốt, tâm người chơi dời). Lực càng mạnh vòng càng cao và to. Không thì null.
+ */
+export function penaltyRing(
+  state: Pick<MatchState, 'restart' | 'players' | 'shotChargeTicks' | 'autopilot'>,
+): PenaltyRing | null {
+  const r = state.restart;
+  if (!r || r.type !== 'penalty' || r.team !== 'home' || state.autopilot) return null;
+  const run = r.penaltyRunUp;
+  if (!run && state.shotChargeTicks <= 0) return null;
+  const taker = state.players.find((p) => p.id === r.takerId);
+  if (!taker) return null;
+  const power = run ? run.power : shotPower(state.shotChargeTicks);
+  return {
+    x: Math.sign(r.spot.x) * HALF_LENGTH,
+    y: run ? run.y : 0,
+    z: penaltyAimZ(power) + BALL_RADIUS,
+    radius: penaltyRadius(taker, power),
+    color: penaltyRingColor(power),
+  };
+}
+
+/** Điểm chạm cách tâm bóng dưới mức này (theo bán kính) vẫn tính là chạm giữa. */
+export const CONTACT_CENTRE = 0.25;
+
+/**
+ * Tên cú đá theo điểm chạm (x phải, y trên; nhìn từ sau lưng người đá). Chân phải chạm bên phải bóng
+ * là má trong, bên trái là má ngoài; chân trái ngược lại.
+ */
+export function contactLabel(c: Vec2, foot: 'right' | 'left' = 'right'): string {
+  if (Math.hypot(c.x, c.y) < CONTACT_CENTRE) return 'Sút căng';
+  if (Math.abs(c.x) >= Math.abs(c.y))
+    return c.x > 0 === (foot === 'right') ? 'Sút xoáy bằng má trong' : 'Sút xoáy bằng má ngoài';
+  return c.y < 0 ? 'Sút bổng' : 'Đá sệt';
+}

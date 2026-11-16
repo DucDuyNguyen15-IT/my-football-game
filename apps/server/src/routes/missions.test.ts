@@ -36,7 +36,7 @@ async function signup(username = 'nguoi_choi'): Promise<{ sid: string; userId: n
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/register',
-    payload: { username, password: 'mat-khau-dai' },
+    payload: { username, password: 'mat-khau-dai', acceptTerms: true },
     headers: json,
   });
   expect(res.statusCode).toBe(201);
@@ -419,7 +419,12 @@ describe('Nhiệm vụ ngày (F12)', () => {
   });
 
   it('chưa đăng nhập → 401 cho POST /missions/expired/claim', async () => {
-    const res = await app.inject({ method: 'POST', url: '/api/v1/missions/expired/claim', payload: {}, headers: json });
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/missions/expired/claim',
+      payload: {},
+      headers: json,
+    });
     expect(res.statusCode).toBe(401);
   });
 
@@ -434,7 +439,10 @@ describe('Nhiệm vụ ngày (F12)', () => {
       .where(and(eq(dailyMissions.userId, userId), eq(dailyMissions.missionCode, first)));
     const again = await getMissions(sid);
     expect(again).toHaveLength(DAILY_MISSION_COUNT);
-    const rows = await testDb().select().from(dailyMissions).where(eq(dailyMissions.userId, userId));
+    const rows = await testDb()
+      .select()
+      .from(dailyMissions)
+      .where(eq(dailyMissions.userId, userId));
     expect(rows.filter((r) => r.day === day)).toHaveLength(DAILY_MISSION_COUNT);
   });
 });

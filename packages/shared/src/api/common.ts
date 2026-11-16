@@ -9,6 +9,7 @@ export const ErrorCode = z.enum([
   'username_taken',
   'invalid_credentials',
   'login_locked',
+  'reauth_required',
   'insufficient_coins',
   'card_in_squad',
   'invalid_material',

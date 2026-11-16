@@ -24,6 +24,7 @@ import {
   isUniqueViolation,
   purgeExpiredSessions,
   registerUser,
+  sessionCreatedAt,
   reserveLoginAttempt,
   toMe,
   verifyPassword,
@@ -67,6 +68,9 @@ export function registerAuthConfigRoute(
     return { data: { googleClientId: google?.clientId ?? null } };
   });
 }
+
+/** Tài khoản chỉ Google xoá được trong khoảng này kể từ lúc đăng nhập. */
+export const DELETE_REAUTH_MS = 10 * 60 * 1000;
 
 export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfig | null): void {
   app.post('/api/v1/auth/register', async (req, reply): Promise<MeResponse> => {
@@ -118,7 +122,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
    */
   app.post('/api/v1/auth/google', async (req, reply): Promise<GoogleAuthResponse> => {
     if (!google) throw new AppError('not_found', 404, 'Chưa bật đăng nhập Google');
-    const { idToken, username } = GoogleAuthRequest.parse(req.body);
+    const { idToken, username, acceptTerms } = GoogleAuthRequest.parse(req.body);
     const now = app.clock.now();
     const identity = await google.verify(idToken, now);
     let user = await findUserByGoogleSub(app.db, identity.sub);
@@ -128,6 +132,14 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
         return {
           data: { status: 'needs_username', suggestedUsername: suggestUsername(identity.email) },
         };
+      }
+      if (!acceptTerms) {
+        throw new AppError(
+          'validation_error',
+          400,
+          'Cần đồng ý Điều khoản và Chính sách để tạo tài khoản',
+          [{ field: 'acceptTerms', message: 'Cần đồng ý Điều khoản và Chính sách' }],
+        );
       }
       try {
         user = await createAccount(
@@ -175,7 +187,19 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
     if (username.toLowerCase() !== user.username.toLowerCase()) {
       throw new AppError('invalid_credentials', 403, 'Tên xác nhận không khớp tên đăng nhập');
     }
-    if (user.passwordHash !== null) {
+    if (user.passwordHash === null) {
+      // Tài khoản chỉ Google không có mật khẩu để xác nhận: đòi phiên vừa đăng nhập (review Fable
+      // main-b V2) để người cầm phiên cũ trên máy dùng chung không xoá được.
+      const token = req.cookies[SESSION_COOKIE];
+      const since = token ? await sessionCreatedAt(app.db, token) : null;
+      if (!since || app.clock.now().getTime() - since.getTime() > DELETE_REAUTH_MS) {
+        throw new AppError(
+          'reauth_required',
+          403,
+          'Vì an toàn, hãy đăng xuất rồi đăng nhập lại bằng Google, sau đó xoá tài khoản trong 10 phút',
+        );
+      }
+    } else {
       if (!password) throw new AppError('invalid_credentials', 403, 'Nhập mật khẩu để xác nhận');
       const lockedMs = await reserveLoginAttempt(app.db, user.id, app.clock.now());
       if (lockedMs > 0) {

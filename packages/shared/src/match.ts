@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { Formation, PlayerStats, Position } from './domain';
+import { Foot, Formation, WeakFoot, PlayerStats, Position } from './domain';
 
 /** Ô đá chính: thủ môn + P1…P6 (vai trò suy từ sơ đồ, xem `FORMATION_LINES`). */
 export const STARTER_SLOTS = ['GK', 'P1', 'P2', 'P3', 'P4', 'P5', 'P6'] as const;
@@ -21,6 +21,10 @@ export const MatchPlayerSetup = z.object({
   position: Position,
   /** Chỉ số đã hiệu lực (đã áp cấp ép thẻ và phạt sai vị trí) — sim dùng thẳng. */
   stats: PlayerStats,
+  /** Chân thuận của thẻ; không có (dữ liệu demo) = chân phải. */
+  foot: Foot.optional(),
+  /** Chân nghịch 2–5 sao; không có (dữ liệu demo) = không phạt. */
+  weakFoot: WeakFoot.optional(),
   /** Có khi đội đến từ server (GĐ6); dữ liệu demo không có. */
   cardId: z.string().optional(),
   level: z.number().int().min(0).max(5).optional(),

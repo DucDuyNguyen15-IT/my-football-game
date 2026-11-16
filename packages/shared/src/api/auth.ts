@@ -29,6 +29,8 @@ export const RegisterRequest = z.object({
   username: Username,
   password: Password,
   email: z.string().email().max(254).optional(),
+  /** Đã tick ô đồng ý Điều khoản + Chính sách (NĐ 13) — server lưu thời điểm vào `users.terms_accepted_at`. */
+  acceptTerms: z.literal(true),
 });
 export type RegisterRequest = z.infer<typeof RegisterRequest>;
 
@@ -40,6 +42,8 @@ export type RegisterRequest = z.infer<typeof RegisterRequest>;
 export const GoogleAuthRequest = z.object({
   idToken: z.string().min(1).max(4096),
   username: Username.optional(),
+  /** Bắt buộc `true` khi gửi kèm `username` (tạo tài khoản mới). */
+  acceptTerms: z.literal(true).optional(),
 });
 export type GoogleAuthRequest = z.infer<typeof GoogleAuthRequest>;
 

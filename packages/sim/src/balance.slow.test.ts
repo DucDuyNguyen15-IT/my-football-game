@@ -32,7 +32,8 @@ describe('phạt đền ~75% thành bàn (B1-09)', () => {
     // 2.000 lượt (~1.000 mỗi đội) cho sai số như phép đo 1.000 lượt cả hai đội trước đây.
     expect(cpu).toBeGreaterThanOrEqual(PENALTY_TARGET.min);
     expect(cpu).toBeLessThanOrEqual(PENALTY_TARGET.max);
-    // Thủ môn máy Dễ đoán sai nhiều hơn: đo 4.000 lượt đội khởi đầu 87,8%.
-    expect(r.goals.home / r.kicks.home).toBeGreaterThanOrEqual(0.82);
+    // Thủ môn máy Dễ đoán sai nhiều hơn: `penaltyGuessMult` 0,8 (từ khi thu nhỏ vòng ngắm phạt đền)
+    // đo 2.000 lượt đội khởi đầu 80,4% (máy ~75%).
+    expect(r.goals.home / r.kicks.home).toBeGreaterThanOrEqual(0.78);
   });
 });

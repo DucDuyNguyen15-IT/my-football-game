@@ -36,7 +36,7 @@ async function signup(username = 'nguoi_choi'): Promise<string> {
   const res = await app.inject({
     method: 'POST',
     url: '/api/v1/auth/register',
-    payload: { username, password: 'mat-khau-dai' },
+    payload: { username, password: 'mat-khau-dai', acceptTerms: true },
     headers: json,
   });
   expect(res.statusCode).toBe(201);
@@ -313,7 +313,10 @@ describe('POST /api/v1/matches/:id/result', () => {
     const m = await startOk(sid);
     clock.advance(6 * MIN);
     const body = { token: m.token, homeGoals: 1, awayGoals: 0 };
-    const [r1, r2] = await Promise.all([submit(sid, m.matchId, body), submit(sid, m.matchId, body)]);
+    const [r1, r2] = await Promise.all([
+      submit(sid, m.matchId, body),
+      submit(sid, m.matchId, body),
+    ]);
     expect([r1.statusCode, r2.statusCode]).toEqual([200, 200]);
     expect(r1.json()).toEqual(r2.json());
     expect((await ledger(user.id)).filter((t) => t.type === 'match_reward')).toHaveLength(1);

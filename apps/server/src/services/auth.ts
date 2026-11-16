@@ -95,8 +95,17 @@ export async function createSession(
 ): Promise<{ token: string; expiresAt: Date }> {
   const token = randomBytes(32).toString('base64url');
   const expiresAt = new Date(now.getTime() + SESSION_TTL_MS);
-  await db.insert(sessions).values({ id: hashToken(token), userId, expiresAt });
+  await db.insert(sessions).values({ id: hashToken(token), userId, expiresAt, createdAt: now });
   return { token, expiresAt };
+}
+
+/** Lúc tạo phiên của token (null nếu không có) — để đòi đăng nhập lại trước thao tác nguy hiểm. */
+export async function sessionCreatedAt(db: Db, token: string): Promise<Date | null> {
+  const [row] = await db
+    .select({ createdAt: sessions.createdAt })
+    .from(sessions)
+    .where(eq(sessions.id, hashToken(token)));
+  return row?.createdAt ?? null;
 }
 
 export async function destroySession(db: Db | Tx, token: string): Promise<void> {
@@ -127,7 +136,10 @@ export async function resolveSession(
 
 /** Ghi hạn mới cho phiên đang dùng khi gia hạn trượt. */
 export async function renewSession(db: Db, token: string, expiresAt: Date): Promise<void> {
-  await db.update(sessions).set({ expiresAt }).where(eq(sessions.id, hashToken(token)));
+  await db
+    .update(sessions)
+    .set({ expiresAt })
+    .where(eq(sessions.id, hashToken(token)));
 }
 
 /** Xoá mọi phiên đã hết hạn (dùng index `sessions_expires_idx`). Trả số phiên đã xoá. */
@@ -252,6 +264,8 @@ export async function createAccount(
           googleSub: input.googleSub ?? null,
           email: input.email ?? null,
           freePack5Credits: STARTER_FREE_PACK5,
+          // Route đăng ký (thường + Google) đã bắt buộc `acceptTerms: true` trước khi gọi tới đây.
+          termsAcceptedAt: now,
           createdAt: now,
         })
         .returning();
@@ -283,13 +297,7 @@ export async function createAccount(
         .values(
           STARTER_SQUAD.slots.map(([slot], i) => ({ userId, slot, playerCardId: owned[i]!.id })),
         );
-      await track(
-        tx,
-        userId,
-        'register',
-        { method: input.googleSub ? 'google' : 'password' },
-        now,
-      );
+      await track(tx, userId, 'register', { method: input.googleSub ? 'google' : 'password' }, now);
       return user!;
     });
   } catch (err) {

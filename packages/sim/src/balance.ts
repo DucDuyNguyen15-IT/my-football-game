@@ -1,6 +1,7 @@
 import type { Difficulty, MatchTeamSetup } from '@pitch/shared';
 import { cpuEasyTeam, cpuHardTeam, starterLikeTeam } from './fixtures/demoTeams';
-import { MAX_CHARGE_TICKS } from './actions/shoot';
+import { MAX_CHARGE_TICKS, MIN_SHOT_POWER } from './actions/shoot';
+import { PENALTY_OVERPOWER_FROM } from './rules/setPieceAim';
 import { createMatch, step } from './match';
 import { TICK_RATE } from './tick';
 import { NO_INPUT, type MatchSetup, type MatchState, type PlayerInput } from './types';
@@ -146,12 +147,26 @@ export function runPenalties(
   return { opponent, kicks, goals, rate: all === 0 ? 0 : (goals.home + goals.away) / all };
 }
 
-/** Người chơi sút phạt đền "giỏi": giữ sút tới lực đầy rồi thả, nhắm sát góc trái/phải xen kẽ. */
+/**
+ * Người chơi sút phạt đền "giỏi": giữ sút tới lực vừa đủ không làm vòng ngắm nở (PENALTY_OVERPOWER_FROM)
+ * rồi thả, lúc lấy đà dời vòng tới PENALTY_GOOD_AIM_Y (trái/phải xen kẽ).
+ */
 function aimedPenaltyInput(s: MatchState): PlayerInput {
   if (s.phase !== 'shootout' || s.restart?.team !== 'home') return NO_INPUT;
-  const y = (s.shootout?.home.length ?? 0) % 2 === 0 ? 1 : -1;
-  const move = { x: 0, y };
+  const runUp = s.restart.penaltyRunUp;
+  if (runUp) {
+    const side = (s.shootout?.home.length ?? 0) % 2 === 0 ? 1 : -1;
+    // move.x đổi sang y sân theo chiều tấn công (`movePenaltyAim`).
+    const x = Math.abs(runUp.y) < PENALTY_GOOD_AIM_Y ? side * Math.sign(s.restart.spot.x) : 0;
+    return { ...NO_INPUT, move: { x, y: 0 } };
+  }
   // Chưa nạp thì nhấn/nhả luân phiên (sim cần một lần nhấn mới, sau khi người sút vào vị trí).
-  const shoot = s.shotChargeTicks > 0 ? s.shotChargeTicks < MAX_CHARGE_TICKS : !s.input.shoot;
-  return { ...NO_INPUT, move, shoot };
+  const shoot = s.shotChargeTicks > 0 ? s.shotChargeTicks < GOOD_CHARGE_TICKS : !s.input.shoot;
+  return { ...NO_INPUT, shoot };
 }
+
+/** Tâm vòng ngắm người chơi giỏi nhắm (m khỏi giữa khung thành) và số tick nạp lực. */
+const PENALTY_GOOD_AIM_Y = 1.6;
+const GOOD_CHARGE_TICKS = Math.round(
+  ((PENALTY_OVERPOWER_FROM - MIN_SHOT_POWER) / (1 - MIN_SHOT_POWER)) * MAX_CHARGE_TICKS,
+);

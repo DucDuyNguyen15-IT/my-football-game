@@ -4,8 +4,8 @@
  * phía người xem). Camera đứng trên khán đài phía +z nhìn chéo xuống, nên mũi tên lên/xuống vẫn là
  * sim −y/+y như bản 2D.
  */
-import { HALF_LENGTH } from '@pitch/sim';
-import type { Vec2 } from '@pitch/sim';
+import { HALF_LENGTH, restartAim } from '@pitch/sim';
+import type { MatchState, RestartType, Vec2 } from '@pitch/sim';
 
 export interface Vec3 {
   x: number;
@@ -54,4 +54,57 @@ export function followCamera(cam: CameraState, ball: Vec2, dt: number): CameraSt
     y: 0,
     z: cam.look.z + (targetZ - cam.look.z) * k,
   });
+}
+
+/** Tình huống cố định dùng góc sau lưng người đá (ném biên, giao bóng giữ góc truyền hình). */
+const SET_PIECE_TYPES: ReadonlySet<RestartType> = new Set([
+  'free_kick',
+  'penalty',
+  'corner',
+  'goal_kick',
+]);
+/** Lùi đủ xa và đủ thấp để quả bóng nằm trong khung hình, trên thanh phím HUD (camera 38°). */
+const SET_PIECE_BACK = 6.5;
+const SET_PIECE_HEIGHT = 1.7;
+/** Điểm nhìn phía trước bóng theo hướng ngắm (m), hơi cao để thấy khung thành. */
+const SET_PIECE_AHEAD = 20;
+const SET_PIECE_LOOK_Y = 1;
+
+/**
+ * Hướng ngắm khi nên dùng góc sau lưng: đội người chơi (`home`, như `HUMAN_TEAM` của sim) đang hưởng
+ * đá phạt/phạt đền/phạt góc/phát bóng và không tự lái; ngược lại `null` (giữ góc truyền hình).
+ */
+export function setPieceAim(
+  state: Pick<MatchState, 'restart' | 'half' | 'autopilot'>,
+): { spot: Vec2; aim: Vec2 } | null {
+  const r = state.restart;
+  if (!r || r.team !== 'home' || state.autopilot || !SET_PIECE_TYPES.has(r.type)) return null;
+  return { spot: r.spot, aim: restartAim(r, state.half) };
+}
+
+/** Camera sau bóng ngược hướng ngắm, ngang tầm người, nhìn theo hướng ngắm. */
+export function setPieceCamera(spot: Vec2, aim: Vec2): CameraState {
+  return {
+    pos: { x: spot.x - aim.x * SET_PIECE_BACK, y: SET_PIECE_HEIGHT, z: spot.y - aim.y * SET_PIECE_BACK },
+    look: {
+      x: spot.x + aim.x * SET_PIECE_AHEAD,
+      y: SET_PIECE_LOOK_Y,
+      z: spot.y + aim.y * SET_PIECE_AHEAD,
+    },
+  };
+}
+
+const lerp3 = (a: Vec3, b: Vec3, t: number): Vec3 => ({
+  x: a.x + (b.x - a.x) * t,
+  y: a.y + (b.y - a.y) * t,
+  z: a.z + (b.z - a.z) * t,
+});
+
+/** Trộn hai góc máy, `t` 0 → `a`, 1 → `b` (có làm mượt hai đầu). */
+export function blendCamera(a: CameraState, b: CameraState, t: number): CameraState {
+  // Hai đầu trả đúng camera gốc (lerp a + (b − a)·1 lệch số thực).
+  if (t <= 0) return a;
+  if (t >= 1) return b;
+  const s = t * t * (3 - 2 * t);
+  return { pos: lerp3(a.pos, b.pos, s), look: lerp3(a.look, b.look, s) };
 }

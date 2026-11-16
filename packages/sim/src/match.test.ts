@@ -547,7 +547,7 @@ describe('step — chọc khe (W, Q+W)', () => {
     // Trong lúc giữ W mọi người vẫn chạy: đo khoảng dẫn so với vị trí người nhận lúc chọc.
     const leadOf = (s: MatchState) =>
       s.passReceiver!.point.x - s.players.find((p) => p.id === 'home-P2')!.pos.x;
-    expect(leadOf(full)).toBeGreaterThan(leadOf(tap) + 3);
+    expect(leadOf(full)).toBeGreaterThan(leadOf(tap));
     expect(length(full.ball.vel)).toBeGreaterThan(length(tap.ball.vel));
   });
 

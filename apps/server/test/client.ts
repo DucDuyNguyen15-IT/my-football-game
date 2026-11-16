@@ -52,6 +52,7 @@ export function apiClient(app: FastifyInstance) {
       const res = await call(null, 'POST', '/auth/register', {
         username,
         password: 'mat-khau-dai',
+        acceptTerms: true,
         ...extra,
       });
       expect(res.statusCode).toBe(201);

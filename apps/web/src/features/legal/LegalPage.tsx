@@ -23,7 +23,8 @@ function LegalShell({ title, children }: { title: string; children: ReactNode })
         {children}
         <h2 className="h3">Liên hệ</h2>
         <p>
-          Câu hỏi, yêu cầu về dữ liệu hoặc khiếu nại: <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
+          Câu hỏi, yêu cầu về dữ liệu hoặc khiếu nại:{' '}
+          <a href={`mailto:${CONTACT_EMAIL}`}>{CONTACT_EMAIL}</a>.
         </p>
       </article>
     </main>
@@ -35,26 +36,26 @@ export function PrivacyPage() {
     <LegalShell title="Chính sách bảo mật">
       <p>
         MFG (My Football Game) là game bóng đá miễn phí trên trình duyệt, do một cá nhân phát triển
-        trong khuôn khổ đồ án học tập. Trang này nói rõ game lưu dữ liệu gì của bạn, để làm gì và bạn
-        có quyền gì, theo Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân.
+        trong khuôn khổ đồ án học tập. Trang này nói rõ game lưu dữ liệu gì của bạn, để làm gì và
+        bạn có quyền gì, theo Nghị định 13/2023/NĐ-CP về bảo vệ dữ liệu cá nhân.
       </p>
 
       <h2 className="h3">Dữ liệu được lưu</h2>
       <ul>
         <li>
-          <b>Tài khoản:</b> tên đăng nhập; mật khẩu chỉ lưu dạng băm một chiều (argon2), không ai đọc
-          lại được mật khẩu gốc; email nếu bạn tự nhập lúc đăng ký.
+          <b>Tài khoản:</b> tên đăng nhập; mật khẩu chỉ lưu dạng băm một chiều (argon2), không ai
+          đọc lại được mật khẩu gốc; email nếu bạn tự nhập lúc đăng ký.
         </li>
         <li>
           <b>Đăng nhập Google</b> (chỉ khi bạn chọn): mã định danh tài khoản Google và email Google.
         </li>
         <li>
-          <b>Dữ liệu chơi:</b> xu, thẻ, đội hình, kết quả trận, nhiệm vụ, lịch sử mở gói và giao dịch
-          xu.
+          <b>Dữ liệu chơi:</b> xu, thẻ, đội hình, kết quả trận, nhiệm vụ, lịch sử mở gói và giao
+          dịch xu.
         </li>
         <li>
-          <b>Sự kiện phân tích nội bộ:</b> các mốc như đăng nhập, mở gói, đá trận, để biết người chơi
-          có quay lại không. Không gửi cho công cụ phân tích bên ngoài.
+          <b>Sự kiện phân tích nội bộ:</b> các mốc như đăng nhập, mở gói, đá trận, để biết người
+          chơi có quay lại không. Không gửi cho công cụ phân tích bên ngoài.
         </li>
         <li>
           <b>Nhật ký máy chủ:</b> địa chỉ IP và thời điểm truy cập, dùng để chống spam, dò mật khẩu.
@@ -63,9 +64,9 @@ export function PrivacyPage() {
 
       <h2 className="h3">Cookie và lưu trữ trên trình duyệt</h2>
       <p>
-        Game chỉ dùng một cookie tên <code>sid</code> để giữ đăng nhập (tối đa 30 ngày). Không có cookie
-        quảng cáo hay theo dõi. Cài đặt đồ hoạ được lưu ngay trên trình duyệt của bạn, không gửi lên
-        máy chủ.
+        Game chỉ dùng một cookie tên <code>sid</code> để giữ đăng nhập (tối đa 30 ngày). Không có
+        cookie quảng cáo hay theo dõi. Cài đặt đồ hoạ được lưu ngay trên trình duyệt của bạn, không
+        gửi lên máy chủ.
       </p>
 
       <h2 className="h3">Mục đích</h2>
@@ -76,24 +77,25 @@ export function PrivacyPage() {
 
       <h2 className="h3">Bên thứ ba</h2>
       <p>
-        Chỉ có Google, khi bạn chọn Đăng nhập bằng Google (theo chính sách của Google). Dữ liệu nằm trên
-        máy chủ thuê để chạy game; nhà cung cấp máy chủ không được dùng dữ liệu cho mục đích khác.
+        Chỉ có Google, khi bạn chọn Đăng nhập bằng Google (theo chính sách của Google). Dữ liệu nằm
+        trên máy chủ thuê để chạy game; nhà cung cấp máy chủ không được dùng dữ liệu cho mục đích
+        khác.
       </p>
 
       <h2 className="h3">Thời gian lưu</h2>
       <p>
-        Đến khi bạn xoá tài khoản. Bản sao lưu cơ sở dữ liệu có thể còn giữ dữ liệu cũ tối đa 30 ngày
-        rồi tự xoá.
+        Đến khi bạn xoá tài khoản. Bản sao lưu cơ sở dữ liệu có thể còn giữ dữ liệu cũ tối đa 30
+        ngày rồi tự xoá.
       </p>
 
       <h2 className="h3">Quyền của bạn</h2>
       <ul>
         <li>Xem, sửa dữ liệu, rút lại sự đồng ý: gửi email theo địa chỉ ở cuối trang.</li>
         <li>
-          <b>Xoá tài khoản:</b> vào trang <Link to="/account">Tài khoản</Link> → Xoá tài khoản. Tên đăng
-          nhập, mật khẩu, email, liên kết Google, phiên đăng nhập và sự kiện phân tích bị xoá ngay. Thẻ,
-          trận và sổ giao dịch xu được giữ lại nhưng không còn gắn với bạn (dùng để đối soát chống gian
-          lận).
+          <b>Xoá tài khoản:</b> vào trang <Link to="/account">Tài khoản</Link> → Xoá tài khoản. Tên
+          đăng nhập, mật khẩu, email, liên kết Google, phiên đăng nhập và sự kiện phân tích bị xoá
+          ngay. Thẻ, trận và sổ giao dịch xu được giữ lại nhưng không còn gắn với bạn (dùng để đối
+          soát chống gian lận).
         </li>
       </ul>
 
@@ -115,17 +117,36 @@ export function TermsPage() {
       <ul>
         <li>Game miễn phí. Không có giao dịch tiền thật và không bán vật phẩm.</li>
         <li>
-          Xu và thẻ cầu thủ là vật phẩm ảo, chỉ kiếm được khi chơi. Chúng không có giá trị tiền tệ, không
-          quy đổi ra tiền, không chuyển nhượng hay mua bán ngoài game, không hoàn lại.
+          Xu và thẻ cầu thủ là vật phẩm ảo, chỉ kiếm được khi chơi. Chúng không có giá trị tiền tệ,
+          không quy đổi ra tiền, không chuyển nhượng hay mua bán ngoài game, không hoàn lại.
         </li>
         <li>Tỉ lệ ra thẻ của từng hộp được công khai trong Cửa hàng.</li>
       </ul>
 
       <h2 className="h3">Nội dung hư cấu</h2>
       <p>
-        Cầu thủ, đội bóng và nhà tài trợ trong game đều là hư cấu. Mọi trùng hợp với người, tổ chức hay
-        thương hiệu có thật là ngẫu nhiên.
+        Cầu thủ, đội bóng và nhà tài trợ trong game đều là hư cấu. Mọi trùng hợp với người, tổ chức
+        hay thương hiệu có thật là ngẫu nhiên.
       </p>
+
+      <h2 className="h3">Nguồn tài nguyên</h2>
+      <ul>
+        <li>
+          Bóng: &ldquo;Football&rdquo; của BSlegt (Sketchfab), giấy phép{' '}
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+            CC BY 4.0
+          </a>
+          , đã chỉnh sửa (nén, chuẩn hoá toạ độ).
+        </li>
+        <li>
+          Khung thành: &ldquo;Football Net&rdquo; của Bryan Okafor - Ogu (Sketchfab), giấy phép{' '}
+          <a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noreferrer">
+            CC BY 4.0
+          </a>
+          , đã chỉnh sửa (nén, chuẩn hoá toạ độ).
+        </li>
+        <li>Nhân vật và hoạt ảnh cầu thủ: Adobe Mixamo.</li>
+      </ul>
 
       <h2 className="h3">Không được làm</h2>
       <ul>
@@ -134,13 +155,16 @@ export function TermsPage() {
         <li>Tấn công, dò mật khẩu hoặc làm quá tải máy chủ.</li>
         <li>Đặt tên đăng nhập xúc phạm, mạo danh người khác.</li>
       </ul>
-      <p>Tài khoản vi phạm có thể bị khoá hoặc xoá, và vật phẩm kiếm được nhờ gian lận có thể bị thu hồi.</p>
+      <p>
+        Tài khoản vi phạm có thể bị khoá hoặc xoá, và vật phẩm kiếm được nhờ gian lận có thể bị thu
+        hồi.
+      </p>
 
       <h2 className="h3">Dịch vụ</h2>
       <p>
-        Đây là dự án cá nhân nên game có thể bảo trì, thay đổi cân bằng hoặc ngừng hoạt động mà không báo
-        trước, và không bảo đảm chạy liên tục. Điều khoản có thể được cập nhật; ngày cập nhật ghi ở đầu
-        trang.
+        Đây là dự án cá nhân nên game có thể bảo trì, thay đổi cân bằng hoặc ngừng hoạt động mà
+        không báo trước, và không bảo đảm chạy liên tục. Điều khoản có thể được cập nhật; ngày cập
+        nhật ghi ở đầu trang.
       </p>
     </LegalShell>
   );

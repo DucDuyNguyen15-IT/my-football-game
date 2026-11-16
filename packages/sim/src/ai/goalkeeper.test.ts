@@ -5,13 +5,22 @@ import { length, sub, vec2, ZERO, type Vec2 } from '../math/vec2';
 import { GOAL_WIDTH, HALF_LENGTH } from '../pitch';
 import { seedRng } from '../rng';
 import {
+  GK_BODY_BLOCK_DIST,
   keeperCatchChance,
   keeperReachFor,
   keeperReactionTicks,
   keeperSaveChance,
 } from '../stats/params';
 import type { BallState, PlayerState } from '../types';
-import { asKicker, diveTarget, keeperContact, keeperTarget, resolveSave } from './goalkeeper';
+import {
+  asKicker,
+  diveTarget,
+  GK_STAND_REACH_MULT,
+  keeperContact,
+  keeperReach,
+  keeperTarget,
+  resolveSave,
+} from './goalkeeper';
 
 /*
  * Thủ môn đội nhà giữ khung thành phía −x (hiệp 1). Đội khách tấn công về −x.
@@ -97,6 +106,17 @@ describe('keeperTarget — chọn vị trí', () => {
 });
 
 describe('diveTarget', () => {
+  it('bóng xoáy: lao tới chỗ đường bóng cong cắt ngang, không theo đường thẳng', () => {
+    const gk = gkWith({ positioning: 99 });
+    const shot: BallState = {
+      ...ball(vec2(GOAL_X + 18, 0), vec2(-25, 0), 1),
+      spin: { side: 1, top: 0 },
+    };
+    // Bay về −x, xoáy cạnh dương cong sang trái hướng bay = về −y.
+    expect(diveTarget(gk, shot, 1)!.y).toBeLessThan(-0.3);
+    expect(diveTarget(gk, { ...shot, spin: undefined }, 1)!.y).toBeCloseTo(0, 9);
+  });
+
   it('bóng bay về khung thành → điểm cắt ngang đường thủ môn đứng', () => {
     const gk = gkWith({ positioning: 99 });
     const t = diveTarget(gk, ball(vec2(GOAL_X + 15, 0), vec2(-20, 2)), 1);
@@ -185,5 +205,22 @@ describe('asKicker', () => {
     expect(asKicker(gk).stats.passing).toBe(77);
     const mf = base.players.find((p) => p.id === 'home-P3')!;
     expect(asKicker(mf)).toBe(mf);
+  });
+});
+
+describe('keeperReach — tầm với chạm cú sút', () => {
+  const at = (y: number) => ball(vec2(GOAL_X + 1.3, y), vec2(-18, 0), 0.5);
+  const full = keeperReachFor(gkWith().stats.positioning);
+
+  it('chưa phản ứng chỉ chặn bằng người; đứng đón ngắn hơn tầm với khi lao người', () => {
+    const gk = gkWith();
+    expect(keeperReach(gk, at(0), false)).toBe(GK_BODY_BLOCK_DIST);
+    expect(keeperReach(gk, at(0), true)).toBeCloseTo(full * GK_STAND_REACH_MULT);
+  });
+
+  it('lao người: đủ tầm với ở phía đang lao, phía sau lưng chỉ chạm thân', () => {
+    const diving = { ...gkWith(), vel: vec2(0, 6) };
+    expect(keeperReach(diving, at(1), true)).toBe(full);
+    expect(keeperReach(diving, at(-1), true)).toBe(GK_BODY_BLOCK_DIST);
   });
 });

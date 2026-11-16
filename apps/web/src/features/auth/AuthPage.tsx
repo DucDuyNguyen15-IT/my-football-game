@@ -114,6 +114,7 @@ export function AuthPage() {
             username,
             password,
             ...(email.trim() && { email: email.trim() }),
+            acceptTerms: agreed,
           });
     if (!parsed.success) {
       const errs: FieldErrors = {};
@@ -121,6 +122,7 @@ export function AuthPage() {
         const f = issue.path[0];
         if (f === 'email' && !errs.email) errs.email = 'Email chưa đúng định dạng.';
         else if ((f === 'username' || f === 'password') && !errs[f]) errs[f] = issue.message;
+        else if (f === 'acceptTerms') setConsentError(true);
       }
       setLocalErrors(errs);
       return;
@@ -132,11 +134,11 @@ export function AuthPage() {
     }
     google.reset();
     setJustRegistered(mode === 'register');
-    active.mutate(parsed.data, {
-      onError: () => {
-        setJustRegistered(false);
-      },
-    });
+    const onError = () => setJustRegistered(false);
+    // Đăng ký có thêm `acceptTerms` nên hai mutation khác kiểu body.
+    // shortcut: ép kiểu vì `parsed` gộp hai safeParse; nhánh register luôn qua RegisterRequest ở trên.
+    if (mode === 'register') register.mutate(parsed.data as RegisterRequest, { onError });
+    else login.mutate(parsed.data, { onError });
   };
 
   const switchMode = (m: Mode) => {
@@ -171,7 +173,8 @@ export function AuthPage() {
               onSubmit={(name) => {
                 setJustRegistered(true);
                 google.mutate(
-                  { idToken: googleStep.idToken, username: name },
+                  // Nút "Vào sân" ghi rõ tạo tài khoản là đồng ý Điều khoản + Chính sách.
+                  { idToken: googleStep.idToken, username: name, acceptTerms: true },
                   {
                     onError: () => {
                       setJustRegistered(false);

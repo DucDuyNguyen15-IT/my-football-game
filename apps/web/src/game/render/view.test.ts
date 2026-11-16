@@ -1,8 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BALL_RADIUS,
+  HALF_LENGTH,
   MAX_CHARGE_TICKS,
+  MIN_SHOT_POWER,
   NO_INPUT,
   PASS_FULL_CHARGE_TICKS,
+  penaltyAimZ,
+  PENALTY_SPOT_DIST,
+  penaltyRadius,
   TICK_RATE,
   cpuEasyTeam,
   createMatch,
@@ -14,9 +20,14 @@ import {
   COUNTDOWN_VISIBLE_SEC,
   SNAP_DISTANCE,
   chargeMeter,
+  contactLabel,
   countdownArcStep,
   countdownRing,
   lerpPos,
+  penaltyRing,
+  penaltyRingColor,
+  setPieceContact,
+  setPieceFoot,
   shirtNumber,
 } from './view';
 
@@ -100,7 +111,10 @@ describe('countdownRing', () => {
 
   it('tình huống cố định nào của người chơi cũng có vòng 5 giây cuối trên đầu người thực hiện (luật 3)', () => {
     // Trận thật: đội nhà giao bóng đầu trận, không bấm gì.
-    let s = step(createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 7 }), NO_INPUT);
+    let s = step(
+      createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 7 }),
+      NO_INPUT,
+    );
     const takerId = s.restart!.takerId;
     const deadline = s.actionDeadline!.deadlineTick;
     expect(s.actionDeadline!.kind).toBe('kickoff');
@@ -152,5 +166,108 @@ describe('countdownRing', () => {
     expect(countdownArcStep(0)).toBe(0);
     expect(countdownArcStep(0.5)).toBe(COUNTDOWN_ARC_STEPS / 2);
     expect(countdownArcStep(0.9999)).toBe(COUNTDOWN_ARC_STEPS - 1);
+  });
+});
+
+describe('điểm chạm tình huống cố định', () => {
+  it('contactLabel theo vùng chạm', () => {
+    expect(contactLabel({ x: 0.1, y: -0.1 })).toBe('Sút căng');
+    expect(contactLabel({ x: 0.8, y: 0.2 })).toBe('Sút xoáy bằng má trong');
+    expect(contactLabel({ x: -0.8, y: 0 })).toBe('Sút xoáy bằng má ngoài');
+    expect(contactLabel({ x: 0, y: -0.7 })).toBe('Sút bổng');
+    expect(contactLabel({ x: 0.2, y: 0.7 })).toBe('Đá sệt');
+    // Chân trái: bên phải bóng là má ngoài, bên trái là má trong.
+    expect(contactLabel({ x: 0.8, y: 0.2 }, 'left')).toBe('Sút xoáy bằng má ngoài');
+    expect(contactLabel({ x: -0.8, y: 0 }, 'left')).toBe('Sút xoáy bằng má trong');
+    expect(contactLabel({ x: 0, y: -0.7 }, 'left')).toBe('Sút bổng');
+  });
+
+  it('setPieceFoot: theo chân thuận; hai chân thì theo nửa sân nhìn về khung thành đối thủ', () => {
+    const state = (foot: 'right' | 'left' | 'both' | undefined, y: number) =>
+      ({
+        half: 1,
+        restart: {
+          type: 'free_kick',
+          team: 'home',
+          spot: { x: 20, y },
+          takerId: 'h1',
+          startTick: 0,
+          readyTick: 0,
+        },
+        players: [{ id: 'h1', foot }],
+      }) as unknown as Parameters<typeof setPieceFoot>[0];
+    expect(setPieceFoot(state('left', 5))).toBe('left');
+    expect(setPieceFoot(state('right', -5))).toBe('right');
+    expect(setPieceFoot(state(undefined, -5))).toBe('right');
+    // Đội nhà hiệp 1 tấn công về +x: bên phải nhìn từ sau lưng là y > 0.
+    expect(setPieceFoot(state('both', 5))).toBe('right');
+    expect(setPieceFoot(state('both', -5))).toBe('left');
+  });
+
+  it('setPieceContact chỉ hiện khi đội người chơi đá phạt / phạt góc', () => {
+    const restart = (type: 'free_kick' | 'corner' | 'penalty', team: 'home' | 'away') =>
+      ({ type, team, spot: { x: 0, y: 0 }, takerId: 'h1', startTick: 0, readyTick: 0 }) as const;
+    expect(setPieceContact({ restart: restart('free_kick', 'home'), autopilot: false })).toEqual({
+      x: 0,
+      y: 0,
+    });
+    expect(
+      setPieceContact({
+        restart: { ...restart('corner', 'home'), contact: { x: 1, y: 0 } },
+        autopilot: false,
+      }),
+    ).toEqual({ x: 1, y: 0 });
+    expect(setPieceContact({ restart: restart('penalty', 'home'), autopilot: false })).toBeNull();
+    expect(setPieceContact({ restart: restart('free_kick', 'away'), autopilot: false })).toBeNull();
+    expect(setPieceContact({ restart: restart('free_kick', 'home'), autopilot: true })).toBeNull();
+    expect(setPieceContact({ restart: null, autopilot: false })).toBeNull();
+  });
+});
+
+describe('penaltyRing', () => {
+  it('hiện khi giữ D và lúc lấy đà; lực mạnh thì cao, to; nhẹ thì thấp, nhỏ', () => {
+    const { players } = createMatch({
+      home: starterLikeTeam,
+      away: cpuEasyTeam,
+      seed: 1,
+      difficulty: 'easy',
+    });
+    const restart = {
+      type: 'penalty',
+      team: 'home',
+      spot: { x: -(HALF_LENGTH - PENALTY_SPOT_DIST), y: 0 },
+      takerId: 'home-P6',
+      startTick: 0,
+      readyTick: 0,
+    } as const;
+    const base = { restart, players, shotChargeTicks: 0, autopilot: false };
+    expect(penaltyRing(base)).toBeNull();
+    expect(penaltyRing({ ...base, shotChargeTicks: 10, autopilot: true })).toBeNull();
+    expect(
+      penaltyRing({ ...base, restart: { ...restart, team: 'away' }, shotChargeTicks: 10 }),
+    ).toBeNull();
+    // Đang giữ D: tâm giữa khung, lực theo số tick đã giữ.
+    const weak = penaltyRing({ ...base, shotChargeTicks: 1 })!;
+    const strong = penaltyRing({ ...base, shotChargeTicks: MAX_CHARGE_TICKS })!;
+    expect(weak).toMatchObject({ x: -HALF_LENGTH, y: 0 });
+    expect(strong.z).toBeGreaterThan(weak.z);
+    expect(strong.radius).toBeGreaterThan(weak.radius);
+    // Lấy đà: lực đã chốt, tâm người chơi đã dời.
+    const run = { power: 0.8, y: 1.2, releaseTick: 10 };
+    const taker = players.find((p) => p.id === 'home-P6')!;
+    expect(penaltyRing({ ...base, restart: { ...restart, penaltyRunUp: run } })).toEqual({
+      x: -HALF_LENGTH,
+      y: 1.2,
+      z: penaltyAimZ(0.8) + BALL_RADIUS,
+      radius: penaltyRadius(taker, 0.8),
+      color: penaltyRingColor(0.8),
+    });
+  });
+
+  it('màu theo lực: xanh lá → vàng → cam → đỏ', () => {
+    expect(penaltyRingColor(MIN_SHOT_POWER)).toBe('hsl(120 90% 55%)');
+    expect(penaltyRingColor(0.65)).toBe('hsl(60 90% 55%)');
+    expect(penaltyRingColor(0.825)).toBe('hsl(30 90% 55%)');
+    expect(penaltyRingColor(1)).toBe('hsl(0 90% 55%)');
   });
 });

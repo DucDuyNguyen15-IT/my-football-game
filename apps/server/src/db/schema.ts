@@ -30,6 +30,7 @@ const createdAt = () => ts('created_at').notNull().defaultNow();
 // 3.1 Enum
 export const positionEnum = pgEnum('position', ['GK', 'DF', 'MF', 'FW']);
 export const rarityEnum = pgEnum('rarity', ['bronze', 'silver', 'gold', 'legend']);
+export const footEnum = pgEnum('foot', ['right', 'left', 'both']);
 export const formationEnum = pgEnum('formation', ['2-3-1', '3-2-1', '2-2-2']);
 export const difficultyEnum = pgEnum('difficulty', ['easy', 'hard']);
 export const matchStatusEnum = pgEnum('match_status', ['started', 'finished', 'expired']);
@@ -68,6 +69,8 @@ export const users = pgTable(
     failedLoginWindowStart: ts('failed_login_window_start'),
     lockedUntil: ts('locked_until'),
     isAdmin: boolean('is_admin').notNull().default(false),
+    /** Lúc đồng ý Điều khoản + Chính sách khi tạo tài khoản (NĐ 13); `null` = tài khoản tạo trước khi có ô đồng ý. */
+    termsAcceptedAt: ts('terms_accepted_at'),
     createdAt: createdAt(),
   },
   (t) => [
@@ -120,6 +123,8 @@ export const cards = pgTable(
     kicking: statCol('kicking'),
     ovr: smallint('ovr').notNull(),
     avatarSeed: text('avatar_seed').notNull(),
+    foot: footEnum('foot').notNull().default('right'),
+    weakFoot: smallint('weak_foot').notNull().default(3),
   },
   (t) => [
     index('cards_rarity_idx').on(t.rarity),
@@ -128,6 +133,7 @@ export const cards = pgTable(
       sql`least(${t.pace}, ${t.shooting}, ${t.passing}, ${t.dribbling}, ${t.defending}, ${t.stamina}, ${t.reflexes}, ${t.handling}, ${t.positioning}, ${t.kicking}) >= 1 and greatest(${t.pace}, ${t.shooting}, ${t.passing}, ${t.dribbling}, ${t.defending}, ${t.stamina}, ${t.reflexes}, ${t.handling}, ${t.positioning}, ${t.kicking}) <= 99`,
     ),
     check('cards_ovr_range', sql`${t.ovr} between 1 and 99`),
+    check('cards_weak_foot_range', sql`${t.weakFoot} between 2 and 5`),
   ],
 );
 

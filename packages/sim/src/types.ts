@@ -1,4 +1,5 @@
 import type {
+  Foot,
   Difficulty,
   Formation,
   MatchPlayerSetup,
@@ -33,6 +34,10 @@ export interface PlayerState {
   slot: SquadSlot;
   position: Position;
   stats: PlayerStats;
+  /** Chân thuận; không có = chân phải (dữ liệu demo, fixture test). */
+  foot?: Foot;
+  /** Chân nghịch 2–5 sao; không có = 5 (không phạt). */
+  weakFoot?: number;
   pos: Vec2;
   vel: Vec2;
   /** Hướng mặt, vector đơn vị. */
@@ -47,6 +52,17 @@ export interface BallState {
   /** Độ cao so với mặt cỏ (m) và vận tốc theo phương đứng (m/s). */
   z: number;
   vz: number;
+  /**
+   * Xoáy lúc bay (không có = không xoáy), mỗi thành phần khoảng −1…1. `side` > 0: bóng cong sang
+   * trái hướng bay (nhìn từ trên, ngược chiều kim đồng hồ). `top` > 0: xoáy lên, bóng cắm xuống;
+   * < 0: xoáy ngược, bóng bay lâu. Mất khi chạm đất, cột, lưới hoặc người (`physics/ball.ts`).
+   */
+  spin?: BallSpin;
+}
+
+export interface BallSpin {
+  side: number;
+  top: number;
 }
 
 /**
@@ -71,6 +87,10 @@ export interface PlayerInput {
   through: boolean;
   /** Q (giữ): phím phụ, đổi W thành chọc khe bổng. */
   modifier: boolean;
+  /** Z (giữ) khi nhả D: sút xoáy (cong vào góc xa, nhẹ hơn, chính xác hơn). */
+  finesse: boolean;
+  /** Shift (giữ) trong tình huống cố định: mũi tên dời điểm chạm bóng thay vì xoay hướng ngắm. */
+  adjust: boolean;
 }
 
 /** Đóng băng vì được nhiều state dùng chung tham chiếu. */
@@ -83,6 +103,8 @@ export const NO_INPUT: PlayerInput = Object.freeze({
   switch: false,
   through: false,
   modifier: false,
+  finesse: false,
+  adjust: false,
 });
 
 /**
@@ -139,6 +161,18 @@ export interface Restart {
    * chạy không có phần hiển thị vẫn y hệt; phần hiển thị căn chuyển cảnh theo các hằng số đó.
    */
   readyTick: number;
+  /**
+   * Hướng ngắm người chơi đã xoay (đá phạt, phạt góc, phát bóng — `rules/setPieceAim.ts`); không có
+   * = hướng mặc định `restartFacing`.
+   */
+  aim?: Vec2;
+  /** Điểm chạm trên bóng (đá phạt, phạt góc): x phải, y trên, |contact| ≤ 1; không có = giữa bóng. */
+  contact?: Vec2;
+  /**
+   * Phạt đền của người chơi đã nhả D, đang lấy đà: lực đã nạp, tâm vòng ngắm (toạ độ y sân, trên
+   * vạch cuối) và tick bóng rời chân (`rules/setPieceAim.ts`).
+   */
+  penaltyRunUp?: { power: number; y: number; releaseTick: number };
 }
 
 /**
@@ -270,7 +304,8 @@ export interface MatchState {
   /** Tick `ballOwnerId` đổi lần cuối (AI dùng để biết đã giữ bóng bao lâu). */
   ownerSinceTick: number;
   /** Người vừa chuyền/sút/mất bóng không được chạm lại bóng trước tick `untilTick`. */
-  kickLock: { playerId: string; untilTick: number } | null;
+  /** `touch`: chạm bóng bổng bằng đầu / móc bóng (để phần hiển thị chọn clip). */
+  kickLock: { playerId: string; untilTick: number; touch?: 'header' | 'scissor' } | null;
   /** Số tick người chơi đã giữ nút sút (0 = không nạp lực). */
   shotChargeTicks: number;
   /**

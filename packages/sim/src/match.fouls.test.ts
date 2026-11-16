@@ -331,9 +331,21 @@ describe('thực hiện đá phạt / phạt đền', () => {
   it('đá phạt: đội người chờ, bấm J để chuyền', () => {
     const fk = homeRestart('free_kick', vec2(0, 0));
     expect(repeat(fk, NO_INPUT, 300).phase).toBe('dead_ball');
-    const s = step(fk, J);
+    // Bấm J chỉ bắt đầu nạp lực (camera sau lưng), nhả mới đá.
+    const pressed = step(fk, J);
+    expect(pressed.phase).toBe('dead_ball');
+    expect(pressed.passCharge?.kind).toBe('ground');
+    const s = step(pressed, NO_INPUT);
     expect(s.phase).toBe('play');
     expect(length(s.ball.vel)).toBeGreaterThan(0);
+  });
+
+  it('đá phạt: giữ J lâu thì bóng đi mạnh hơn bấm nhanh', () => {
+    const fk = homeRestart('free_kick', vec2(0, 0));
+    const tap = step(step(fk, J), NO_INPUT);
+    const held = step(repeat(fk, J, 40), NO_INPUT);
+    expect(held.phase).toBe('play');
+    expect(length(held.ball.vel)).toBeGreaterThan(length(tap.ball.vel));
   });
 
   it('đá phạt: giữ rồi thả D để sút thẳng về khung thành', () => {
@@ -349,9 +361,16 @@ describe('thực hiện đá phạt / phạt đền', () => {
   it('phạt đền: S không làm gì, chỉ sút bằng D', () => {
     const pk = homeRestart('penalty', vec2(HALF_LENGTH - PENALTY_SPOT_DIST, 0));
     expect(step(pk, J).phase).toBe('dead_ball');
-    const s = step(repeat(pk, D, 40), NO_INPUT);
+    // Nhả D: chưa sút, vào pha lấy đà (đợt 6); mũi tên phải dời vòng ngắm sang phải (+y khi tấn công +x).
+    let s = step(repeat(pk, D, 40), NO_INPUT);
+    expect(s.phase).toBe('dead_ball');
+    expect(s.restart?.penaltyRunUp?.y).toBe(0);
+    const release = s.restart!.penaltyRunUp!.releaseTick;
+    while (s.restart) s = step(s, { ...NO_INPUT, move: vec2(1, 0) });
+    expect(s.tick).toBe(release);
     expect(s.phase).toBe('play');
     expect(s.ball.vel.x).toBeGreaterThan(10);
+    expect(s.ball.vel.y).toBeGreaterThan(0);
   });
 
   it('phạt đền của đội máy: thủ môn đội nhà đứng giữa khung, người khác ra ngoài vòng cấm, máy tự sút sau 3 s', () => {
@@ -483,7 +502,14 @@ describe('đá phạt trong vòng cấm nhà', () => {
       ballDead: true,
       ballOwnerId: null,
       ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
-      restart: { type: 'free_kick', team: 'home', spot, takerId: ME, startTick: s0.tick, readyTick: s0.tick },
+      restart: {
+        type: 'free_kick',
+        team: 'home',
+        spot,
+        takerId: ME,
+        startTick: s0.tick,
+        readyTick: s0.tick,
+      },
     };
     for (let i = 0; i < 3 * 60; i++) {
       s = step(s, NO_INPUT);

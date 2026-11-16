@@ -82,6 +82,32 @@ export function fatigueFactor(stamina: number): number {
 export const controlRadiusFor = (dribbling: number): number =>
   statScale(dribbling, ...CONTROL_RADIUS_RANGE);
 
+/**
+ * Bóng nhanh khó khống chế: tốc độ bóng so với cầu thủ (m/s) tới [0] thì giữ nguyên bán kính,
+ * tới [1] trở lên chỉ còn CONTROL_FAST_RADIUS_MULT — bóng phải đi gần như thẳng vào chân.
+ */
+export const CONTROL_SPEED_RANGE = [10, 26] as const;
+export const CONTROL_FAST_RADIUS_MULT = 0.4;
+/** Bán kính khống chế (m) theo Rê bóng và tốc độ bóng so với cầu thủ. */
+export function controlRadiusAt(dribbling: number, relSpeed: number): number {
+  const [slow, fast] = CONTROL_SPEED_RANGE;
+  const t = clamp((relSpeed - slow) / (fast - slow), 0, 1);
+  return controlRadiusFor(dribbling) * (1 - t * (1 - CONTROL_FAST_RADIUS_MULT));
+}
+/**
+ * Khống chế hỏng (bóng chạm chân bật ra): từ tốc độ [0] (m/s) xác suất tăng dần, tới [1] là
+ * tối đa — tối đa theo Rê bóng trong MISCONTROL_MAX_RANGE (Rê bóng 1 → [0], 99 → [1]).
+ */
+export const MISCONTROL_SPEED_RANGE = [13, 28] as const;
+export const MISCONTROL_MAX_RANGE = [0.7, 0.2] as const;
+/** Bóng bật ra khỏi chân giữ lại phần này của vận tốc (so với cầu thủ). */
+export const MISCONTROL_KEEP_VEL = 0.35;
+export function miscontrolChance(dribbling: number, relSpeed: number): number {
+  const [lo, hi] = MISCONTROL_SPEED_RANGE;
+  const t = clamp((relSpeed - lo) / (hi - lo), 0, 1);
+  return t * statScale(dribbling, ...MISCONTROL_MAX_RANGE);
+}
+
 export const turnLossCosFor = (dribbling: number): number =>
   statScale(dribbling, ...TURN_LOSS_COS_RANGE);
 

@@ -11,10 +11,13 @@ import {
   type Vec2,
 } from '../math/vec2';
 import { GOAL_WIDTH, HALF_LENGTH, isInPenaltyArea } from '../pitch';
+import { stepBall } from '../physics/ball';
 import { nextFloat, type RngState } from '../rng';
 import {
+  GK_BODY_BLOCK_DIST,
   GK_DIVE_SPEED,
   keeperCatchChance,
+  keeperReachFor,
   keeperPenaltyGuessChance,
   keeperPositionAccuracy,
 } from '../stats/params';
@@ -132,7 +135,8 @@ export function diveTarget(gk: PlayerState, ball: BallState, half: 1 | 2): Vec2 
   const goalX = ownGoal(gk, half).x;
   const vx = ball.vel.x;
   if (vx === 0 || Math.sign(goalX - ball.pos.x) !== Math.sign(vx)) return null;
-  const yAt = (x: number) => ball.pos.y + (ball.vel.y * (x - ball.pos.x)) / vx;
+  const yAt = (x: number) =>
+    ball.spin ? curvedYAt(ball, x) : ball.pos.y + (ball.vel.y * (x - ball.pos.x)) / vx;
   if (Math.abs(yAt(goalX)) > GOAL_WIDTH / 2 + DIVE_MOUTH_MARGIN) return null;
   const ahead = Math.sign(gk.pos.x - ball.pos.x) === Math.sign(vx);
   // Bóng đã qua người: lùi về sát vạch nhưng vẫn đứng trong sân.
@@ -141,6 +145,24 @@ export function diveTarget(gk: PlayerState, ball: BallState, half: 1 | 2): Vec2 
   const misread = 1 + (1 - keeperPositionAccuracy(gk.stats.positioning)) * DIVE_MISREAD;
   const y = ball.pos.y + (yAt(planeX) - ball.pos.y) * misread;
   return vec2(planeX, clamp(y, -DIVE_MAX_Y, DIVE_MAX_Y));
+}
+
+/** Dự đoán bóng xoáy tối đa chừng này bước (mỗi bước 2 tick, tức 2 s). */
+const CURVE_PREDICT_STEPS = 60;
+
+/** Bóng xoáy: y lúc bóng (bay cong) đi tới hoành độ `x`, mô phỏng tiến bằng chính vật lý bóng. */
+function curvedYAt(ball: BallState, x: number): number {
+  let b = ball;
+  for (let i = 0; i < CURVE_PREDICT_STEPS; i++) {
+    const next = stepBall(b, 'home', TICK_DT * 2).ball;
+    if (Math.sign(next.pos.x - x) !== Math.sign(b.pos.x - x)) {
+      const t = (x - b.pos.x) / (next.pos.x - b.pos.x);
+      return b.pos.y + (next.pos.y - b.pos.y) * t;
+    }
+    if (next === b) break;
+    b = next;
+  }
+  return b.pos.y;
 }
 
 /** Phạt đền đoán sai: lao về phía cột bên kia, cách tâm khung thành chừng này mét. */
@@ -177,6 +199,22 @@ export function penaltyGuess(
 export function diveStep(gk: PlayerState, target: Vec2): PlayerState {
   const move = clampLength(sub(target, gk.pos), GK_DIVE_SPEED * TICK_DT);
   return { ...gk, pos: add(gk.pos, move), vel: scale(move, 1 / TICK_DT) };
+}
+
+/** Đứng đón (không lao người) chỉ với tới phần này của tầm với cản phá — thân và tay sát người. */
+export const GK_STAND_REACH_MULT = 0.6;
+
+/**
+ * Tầm với (m, mặt sân) để chạm cú sút: chưa phản ứng chỉ chặn bằng người; đang lao người thì đủ tầm
+ * với nhưng chỉ ở phía đang lao (bóng ở sau lưng hướng lao chỉ chạm thân); đứng đón thì ngắn hơn.
+ */
+export function keeperReach(gk: PlayerState, ball: BallState, ready: boolean): number {
+  if (!ready) return GK_BODY_BLOCK_DIST;
+  const full = keeperReachFor(gk.stats.positioning);
+  const speed = length(gk.vel);
+  if (speed < DIVING_SPEED) return full * GK_STAND_REACH_MULT;
+  const along = dot(sub(ball.pos, gk.pos), scale(gk.vel, 1 / speed));
+  return along >= -LEG_TRAIL ? full : GK_BODY_BLOCK_DIST;
 }
 
 /** Phần người thủ môn chạm bóng. */
@@ -226,11 +264,19 @@ export function resolveSave(
     const vx =
       attackSign(gk.team, half) * Math.max(PARRY_MIN_VX, Math.abs(ball.vel.x) * LEG_KEEP_VX);
     const vy = (side * 2 - 1) * LEG_SIDE_RANGE;
-    return { outcome: 'parry', ball: { ...ball, vel: vec2(vx, vy), vz: LEG_VZ }, rng: r2 };
+    return {
+      outcome: 'parry',
+      ball: { pos: ball.pos, z: ball.z, vel: vec2(vx, vy), vz: LEG_VZ },
+      rng: r2,
+    };
   }
   const [side, r2] = nextFloat(r1);
   const vx =
     attackSign(gk.team, half) * Math.max(PARRY_MIN_VX, Math.abs(ball.vel.x) * PARRY_KEEP_VX);
   const vy = (ball.pos.y >= gk.pos.y ? 1 : -1) * (PARRY_SIDE_MIN + side * PARRY_SIDE_RANGE);
-  return { outcome: 'parry', ball: { ...ball, vel: vec2(vx, vy), vz: PARRY_VZ }, rng: r2 };
+  return {
+    outcome: 'parry',
+    ball: { pos: ball.pos, z: ball.z, vel: vec2(vx, vy), vz: PARRY_VZ },
+    rng: r2,
+  };
 }

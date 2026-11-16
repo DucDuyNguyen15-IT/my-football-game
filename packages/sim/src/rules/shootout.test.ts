@@ -4,6 +4,7 @@ import { createMatch, step } from '../match';
 import { nextFloat, seedRng } from '../rng';
 import { TICK_RATE } from '../tick';
 import { NO_INPUT, type MatchState, type PlayerInput } from '../types';
+import { PENALTY_RUNUP_TICKS } from './setPieceAim';
 import { nextShooter, shooterFor, shootoutWinner, type ShootoutTally } from './shootout';
 
 const T = true;
@@ -165,7 +166,10 @@ describe('luân lưu trong trận', () => {
     expect(s.restart).not.toBeNull();
     const D: PlayerInput = { ...NO_INPUT, shoot: true };
     for (let i = 0; i < 20; i++) s = step(s, D);
+    // Nhả D thì lấy đà (`PENALTY_RUNUP_TICKS`) rồi bóng mới đi.
     s = step(s, NO_INPUT);
+    expect(s.restart?.penaltyRunUp).toBeDefined();
+    for (let i = 0; i < PENALTY_RUNUP_TICKS; i++) s = step(s, NO_INPUT);
     expect(s.restart).toBeNull();
     expect(s.phase).toBe('shootout');
     // Lượt kết thúc trong vài giây và chuyển sang đội khách.

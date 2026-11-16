@@ -17,6 +17,7 @@ import {
   diveStep,
   diveTarget,
   keeperContact,
+  keeperReach,
   penaltyGuess,
   resolveSave,
 } from './ai/goalkeeper';
@@ -32,7 +33,9 @@ import {
   PASS_FULL_CHARGE_TICKS,
   type PassKind,
 } from './actions/pass';
-import { attackSign, shootBall, shotPower, shotTarget } from './actions/shoot';
+import { attackSign, finesseShot, shootBall, shotPower, shotTarget } from './actions/shoot';
+import { keeperClaim, tryHeader } from './actions/header';
+import { tryScissor } from './actions/volley';
 import {
   isFromBehind,
   pokeBall,
@@ -71,6 +74,19 @@ import {
   WHISTLE_PENALTY_WAIT_TICKS,
   WHISTLE_SHOT_WAIT_TICKS,
 } from './rules/limits';
+import {
+  AIMED_RESTARTS,
+  aimTarget,
+  CONTACT_RESTARTS,
+  kickWithContact,
+  moveContact,
+  movePenaltyAim,
+  PENALTY_RUNUP_TICKS,
+  penaltyShot,
+  restartAim,
+  restartContact,
+  turnAim,
+} from './rules/setPieceAim';
 import { autoSubstitute } from './rules/substitution';
 import { nextShooter, SHOOTOUT_KICK_TICKS, shooterFor, shootoutWinner } from './rules/shootout';
 import {
@@ -102,12 +118,13 @@ import {
 import {
   AI_STAND_TACKLE_COOLDOWN_TICKS,
   CONTAIN_DIST,
-  GK_BODY_BLOCK_DIST,
   GK_REACH_HEIGHT,
   KEEPER_WINDUP_TICKS,
-  keeperReachFor,
   keeperReactionTicks,
   keeperSaveChance,
+  miscontrolChance,
+  MISCONTROL_KEEP_VEL,
+  MISCONTROL_SPEED_RANGE,
   CONTAIN_STEER_WEIGHT,
   PENALTY_ERROR_MULT,
   lobRangeFor,
@@ -159,6 +176,8 @@ function spawnTeam(team: MatchTeamSetup, side: TeamSide): PlayerState[] {
       slot: p.slot,
       position: pitchPosition(team, p),
       stats: p.stats,
+      foot: p.foot ?? 'right',
+      ...(p.weakFoot === undefined ? {} : { weakFoot: p.weakFoot }),
       // Vị trí thật do kickoffPlayers đặt.
       pos: ZERO,
       vel: ZERO,
@@ -346,6 +365,8 @@ function sanitizeInput(input: PlayerInput): PlayerInput {
     switch: !!input.switch,
     through: !!input.through,
     modifier: !!input.modifier,
+    finesse: !!input.finesse,
+    adjust: !!input.adjust,
   };
 }
 
@@ -414,9 +435,14 @@ export const THROW_RELEASE_HEIGHT = 1.5;
 export const THROW_RELEASE_VZ = 2;
 
 /** Chọc khe bấm nhanh: bóng tới trước người nhận chừng này mét theo hướng tấn công (task 5.16). */
-export const THROUGH_LEAD = 6;
+export const THROUGH_LEAD = 4;
 /** Chọc khe đầy thanh lực: bóng tới trước người nhận chừng này mét (task 5.23). */
-export const THROUGH_LEAD_MAX = 15;
+export const THROUGH_LEAD_MAX = 9;
+/**
+ * Chọc khe chỉ dùng phần này của lực để tăng tốc độ bóng lúc tới nơi (chuyền thường dùng đủ): đầy
+ * lực thì bóng tới chân ~8 m/s thay vì 12 m/s — người chơi thấy chọc khe căng quá, ảo (16/11/2026).
+ */
+export const THROUGH_ARRIVAL_POWER_MULT = 1 / 3;
 
 /**
  * Người chơi chọc khe (W / Q+W): như `kickPass` nhưng đích là khoảng trống phía trước người nhận theo
@@ -446,7 +472,8 @@ function throughPass(
     point: to,
     untilTick: tick + travelTicks + RECEIVE_GRACE_TICKS,
   };
-  return { ...passBall(passer, from, to, kind, rng, PASS_ASSIST_ERROR_MULT, power), receiver };
+  const passPow = power * THROUGH_ARRIVAL_POWER_MULT;
+  return { ...passBall(passer, from, to, kind, rng, PASS_ASSIST_ERROR_MULT, passPow), receiver };
 }
 
 /** Người nhận đường chuyền của AI (chạy đón bóng như đường chuyền của người chơi). */
@@ -858,23 +885,49 @@ function stepDeadBall(
     kickPass(state.players, taker, restart.spot, dir, kind, state.rng, tick);
   // Phạt đền có hệ số sai số riêng (không theo mức độ khó); đá phạt sút như bóng sống.
   const penalty = restart.type === 'penalty';
+  // Đá phạt, phạt góc, phát bóng của người chơi: mũi tên trái/phải xoay hướng ngắm (camera sau lưng
+  // người đá), giữ Shift thì dời điểm chạm bóng (`rules/setPieceAim.ts`).
+  const takerFar = length(sub(taker.pos, restart.spot)) > DRIBBLE_OFFSET + RESTART_SETTLE_DIST;
+  const aimed = humanRestart && AIMED_RESTARTS.has(restart.type);
+  const adjusting = aimed && input.adjust && CONTACT_RESTARTS.has(restart.type);
+  // Người đá chưa tới bóng thì chưa xoay (giữ hướng mặc định để đi đúng chỗ).
+  const turn = adjusting || takerFar ? 0 : input.move.x;
+  const setAim = aimed ? turnAim(restartAim(restart, state.half), turn) : null;
+  const contact = adjusting ? moveContact(restartContact(restart), input.move) : restart.contact;
+  // Đá phạt, phạt góc của người chơi: bóng đi theo điểm chạm đã chọn.
+  const touch = <K extends { ball: BallState; rng: RngState }>(k: K): K =>
+    humanRestart && CONTACT_RESTARTS.has(restart.type)
+      ? { ...k, ...kickWithContact(k.ball, contact, taker.stats.shooting, k.rng) }
+      : k;
   const humanShot = (chargeTicks: number) => ({
     ...shootBall(
       taker,
       restart.spot,
-      shotTarget(goalSign, input.move.y),
+      setAim ? aimTarget(restart.spot, setAim, goalSign) : shotTarget(goalSign, input.move.y),
       shotPower(chargeTicks),
       state.rng,
-      penalty ? PENALTY_ERROR_MULT : 1,
     ),
     shot: true,
   });
+  // Phạt đền của người chơi: nhả D thì lấy đà, trong lúc lấy đà mũi tên dời vòng ngắm.
+  const runUp = humanRestart && penalty ? restart.penaltyRunUp : undefined;
+  let penaltyRunUp = runUp && { ...runUp, y: movePenaltyAim(runUp.y, input.move.x, goalSign) };
+  const release = (chargeTicks: number) => {
+    if (penalty) {
+      penaltyRunUp = {
+        power: shotPower(chargeTicks),
+        y: 0,
+        releaseTick: tick + PENALTY_RUNUP_TICKS,
+      };
+      return null;
+    }
+    return touch(humanShot(chargeTicks));
+  };
 
   // Mọi người đã được đặt vào vị trí lúc bóng chết (luật 2). Ai rời chỗ sau đó (người chơi chạy vào
   // khoảng cách cấm, bị chen) thì tự đi về; chưa xong thì chưa thực hiện được.
   // Phạt đền: hướng bấm chỉ dùng để nhắm lúc sút, người sút luôn quay mặt về khung thành.
-  const humanAim = humanRestart && restart.type !== 'penalty' ? input.move : ZERO;
-  const takerFar = length(sub(taker.pos, restart.spot)) > DRIBBLE_OFFSET + RESTART_SETTLE_DIST;
+  const humanAim = setAim ?? (humanRestart && restart.type !== 'penalty' ? input.move : ZERO);
   // Người thực hiện vừa đi tới bóng thì quay mặt về hướng thực hiện mặc định.
   const aim =
     length(humanAim) > 0 ? humanAim : takerFar ? restartFacing(restart, state.half) : ZERO;
@@ -893,28 +946,63 @@ function stepDeadBall(
   } | null = null;
   let { rng, windup } = state;
   let shotChargeTicks = 0;
+  let passCharge: MatchState['passCharge'] = null;
   // Phát bóng: thủ môn lấy đà rồi bóng mới đi.
   const goalKick = restart.type === 'goal_kick';
+  // Chuyền bóng chết như bóng sống: bấm S/A bắt đầu nạp lực, giữ thì lực tăng, nhả mới đá.
+  const releasePass = (charge: NonNullable<MatchState['passCharge']>) => {
+    const dir = setAim ?? (length(input.move) > 0 ? input.move : charge.dir);
+    const power = passPower(charge.ticks);
+    if (goalKick) {
+      windup = startWindup(taker.id, tick, 'kick', {
+        type: 'assisted',
+        kind: charge.kind,
+        dir,
+        power,
+      });
+      return null;
+    }
+    return touch({
+      ...kickPass(state.players, taker, restart.spot, dir, charge.kind, state.rng, tick, power),
+      shot: false,
+    });
+  };
+  const charging = state.passCharge;
   if (windup) {
     if (tick >= windup.releaseTick) {
       kicked = releaseWindup(state, state.players, windup, restart.spot, rng, tick);
       windup = null;
     }
+  } else if (penaltyRunUp) {
+    if (tick >= penaltyRunUp.releaseTick) {
+      const { y, power } = penaltyRunUp;
+      kicked = { ...penaltyShot(taker, restart.spot, goalSign, y, power, state.rng), shot: true };
+    }
   } else if (targets.size > 0) {
     // Còn người đang đi về vị trí.
   } else if (expired && state.shotChargeTicks > 0) {
-    kicked = humanShot(state.shotChargeTicks);
+    kicked = release(state.shotChargeTicks);
+  } else if (expired && charging) {
+    kicked = releasePass(charging);
   } else if (humanRestart && !expired) {
-    if (canPass && (pressed('pass') || pressed('lob'))) {
-      const dir = length(input.move) > 0 ? input.move : taker.facing;
+    if (charging && input[charging.kind === 'ground' ? 'pass' : 'lob']) {
+      passCharge = {
+        ...charging,
+        ticks: Math.min(PASS_FULL_CHARGE_TICKS, charging.ticks + 1),
+        dir: length(input.move) > 0 ? input.move : charging.dir,
+      };
+    } else if (charging) {
+      kicked = releasePass(charging);
+    } else if (canPass && (pressed('pass') || pressed('lob'))) {
+      const dir = setAim ?? (length(input.move) > 0 ? input.move : taker.facing);
       const kind = pressed('pass') ? 'ground' : 'lob';
-      if (goalKick)
-        windup = startWindup(taker.id, tick, 'kick', { type: 'assisted', kind, dir, power: 0 });
+      // Giao bóng, ném biên (camera TV) vẫn bấm là đá.
+      if (aimed) passCharge = { kind, ticks: 1, dir, through: false };
       else kicked = { ...pass(kind, dir), shot: false };
     } else if (canShoot && input.shoot && (state.shotChargeTicks > 0 || pressed('shoot'))) {
       shotChargeTicks = state.shotChargeTicks + 1;
     } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
-      kicked = humanShot(state.shotChargeTicks);
+      kicked = release(state.shotChargeTicks);
     }
   } else if (expired || cpuRestartDue(restart, tick)) {
     const decided = decideRestartKick(restart, state.players, state.half, state.rng);
@@ -1005,11 +1093,16 @@ function stepDeadBall(
     tick,
     rng,
     windup,
+    restart: setAim
+      ? { ...restart, aim: setAim, contact }
+      : penaltyRunUp
+        ? { ...restart, penaltyRunUp }
+        : restart,
     players,
     controlledId,
     ai,
     shotChargeTicks,
-    passCharge: null,
+    passCharge,
     stoppage: { ...state.stoppage, overrunTicks: state.stoppage.overrunTicks + overrun },
     input,
   };
@@ -1192,9 +1285,11 @@ function stepPlay(
       // Chỉ nạp lực khi bấm nút sút lúc đang có bóng: giữ nút từ lúc chưa có bóng không thành sút.
       shotChargeTicks += 1;
     } else if (releasedShot) {
-      const target = shotTarget(attackSign(me.team, state.half), input.move.y);
+      const sign = attackSign(me.team, state.half);
       const power = shotPower(shotChargeTicks);
-      ({ ball, rng } = shootBall(asKicker(me), ball.pos, target, power, rng));
+      ({ ball, rng } = input.finesse
+        ? finesseShot(asKicker(me), ball.pos, sign, power, rng)
+        : shootBall(asKicker(me), ball.pos, shotTarget(sign, input.move.y), power, rng));
       ballOwnerId = null;
       kickLock = lock(me.id);
       shotChargeTicks = 0;
@@ -1403,8 +1498,7 @@ function stepPlay(
   const keeper = shot && players.find((p) => p.position === 'GK' && p.team !== shot.team);
   if (keeper && ballOwnerId === null && ball.z <= GK_REACH_HEIGHT) {
     const ready = reacted(keeper);
-    const reach = ready ? keeperReachFor(keeper.stats.positioning) : GK_BODY_BLOCK_DIST;
-    if (length(sub(ball.pos, keeper.pos)) <= reach) {
+    if (length(sub(ball.pos, keeper.pos)) <= keeperReach(keeper, ball, ready)) {
       const [roll, afterRoll] = nextFloat(rng);
       rng = afterRoll;
       lastShot = null;
@@ -1493,12 +1587,85 @@ function stepPlay(
   if (!owner) {
     if (kickLock && tick >= kickLock.untilTick) kickLock = null;
     const down = (p: PlayerState) => tackleRecovery[p.id] !== undefined;
-    const capturer = findCapturer(
-      players.filter((p) => !down(p)),
+    // Vừa có cú đánh đầu / móc bóng: chờ hết khoá rồi mới ai đó chạm bóng bổng tiếp, không thì
+    // hai người sát bóng đánh đầu qua lại mỗi tick (review Fable V1).
+    const aerialLocked = kickLock?.touch !== undefined;
+    // Bóng bổng ngang hông–vai sát cầu thủ tấn công giỏi trong vòng cấm: có thể móc bóng.
+    const volley = tryScissor(
+      players,
+      state.players,
       ball,
-      kickLock?.playerId ?? null,
+      state.ball,
+      state.half,
+      (p) => !aerialLocked && p.id !== kickLock?.playerId && !down(p) && p.position !== 'GK',
+      rng,
     );
-    const captured = capturer === null ? undefined : players.find((p) => p.id === capturer);
+    rng = volley.rng;
+    if (volley.kicker) {
+      const k = volley.kicker;
+      return {
+        ...played,
+        rng,
+        backPass: null,
+        ball: volley.ball,
+        kickLock: { ...lock(k.id), touch: 'scissor' },
+        passReceiver: null,
+        lastTouchTeam: k.team,
+        shots: addShot(shots, k.team),
+        lastShot: shotFrom(true, k.team, tick),
+      };
+    }
+    const up = players.filter((p) => !down(p));
+    // Bóng bổng quá tầm chân: thủ môn trong vòng cấm nhà bắt dính, không thì đánh đầu.
+    // Cú sút thì đã xét cản phá ở 3b (bắt / đẩy / bị đánh bại), không bắt lại ở đây.
+    const claim = lastShot
+      ? null
+      : keeperClaim(up, ball, state.half, kickLock?.playerId ?? null, backPass);
+    const header = claim
+      ? null
+      : tryHeader(
+          up,
+          ball,
+          state.half,
+          (p) => !aerialLocked && p.id !== kickLock?.playerId,
+          (p) => (p.id === human && length(input.move) > 0 ? input.move : null),
+          rng,
+        );
+    if (header) {
+      const h = header.header;
+      return {
+        ...played,
+        rng: header.rng,
+        backPass: null,
+        ball: header.ball,
+        kickLock: { ...lock(h.id), touch: 'header' },
+        passReceiver: null,
+        lastTouchTeam: h.team,
+        shots: header.shot ? addShot(shots, h.team) : shots,
+        lastShot: shotFrom(header.shot, h.team, tick),
+      };
+    }
+    const capturer = claim ? claim.id : findCapturer(up, ball, kickLock?.playerId ?? null);
+    let captured = capturer === null ? undefined : players.find((p) => p.id === capturer);
+    // Bóng lao nhanh có thể chạm chân bật ra thay vì dính (chỉ gieo khi đủ nhanh để bóng chậm
+    // không làm lệch chuỗi ngẫu nhiên). Thủ môn bắt bằng tay thì không.
+    const relVel = captured ? sub(ball.vel, captured.vel) : null;
+    if (!claim && captured && relVel && length(relVel) > MISCONTROL_SPEED_RANGE[0]) {
+      const [roll, afterRoll] = nextFloat(rng);
+      rng = afterRoll;
+      if (roll < miscontrolChance(captured.stats.dribbling, length(relVel))) {
+        ball = {
+          pos: ball.pos,
+          z: ball.z,
+          vz: ball.vz,
+          vel: add(captured.vel, scale(relVel, MISCONTROL_KEEP_VEL)),
+        };
+        kickLock = lock(captured.id);
+        lastTouchTeam = captured.team;
+        lastShot = null;
+        captured = undefined;
+      }
+    }
     if (captured) {
       const dribbled = dribbleBall(captured);
       // Khống chế bóng sát vạch khi quay mặt ra ngoài: bóng dính chân đã nằm ngoài vạch → bóng chết
@@ -1517,6 +1684,7 @@ function stepPlay(
 
   return {
     ...played,
+    rng,
     backPass,
     ball,
     ballOwnerId,

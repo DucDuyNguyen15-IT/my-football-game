@@ -1,16 +1,19 @@
 import { describe, expect, it } from 'vitest';
 import { cpuEasyTeam, starterLikeTeam } from '../fixtures/demoTeams';
 import { createMatch } from '../match';
-import { length, sub, vec2 } from '../math/vec2';
+import { dot, length, sub, vec2 } from '../math/vec2';
 import { CENTER_CIRCLE_RADIUS, HALF_LENGTH, HALF_WIDTH } from '../pitch';
 import type { PlayerState } from '../types';
 import {
   decideRestart,
   GOAL_KICK_DIST,
+  kickingFoot,
   kickoffPlayers,
   RESTART_CLEARANCE,
   setupRestart,
+  TAKER_SIDE_OFFSET,
 } from './restarts';
+import { rightOf } from './setPieceAim';
 
 describe('decideRestart — bóng ra ngoài', () => {
   it('qua vạch biên dọc → ném biên cho đội không chạm bóng cuối, tại điểm bóng ra', () => {
@@ -94,6 +97,40 @@ describe('setupRestart', () => {
     expect(length(sub(byId(players, 'away-P1').pos, spot))).toBeGreaterThanOrEqual(
       RESTART_CLEARANCE - 1e-9,
     );
+  });
+
+  it('đá phạt: thuận phải đứng bên trái bóng, thuận trái bên phải (nhìn từ sau lưng)', () => {
+    const spot = vec2(30, -5);
+    const side = (foot: 'right' | 'left' | 'both') => {
+      const s = match();
+      const plan = { type: 'free_kick' as const, team: 'home' as const, spot };
+      const withFoot = s.players.map((p) => (p.team === 'home' ? { ...p, foot } : p));
+      const { players, restart } = setupRestart(withFoot, plan, 1, 0);
+      const taker = byId(players, restart.takerId);
+      // > 0: người đá ở bên phải đường bóng.
+      return dot(sub(taker.pos, spot), rightOf(taker.facing));
+    };
+    expect(side('right')).toBeCloseTo(-TAKER_SIDE_OFFSET);
+    expect(side('left')).toBeCloseTo(TAKER_SIDE_OFFSET);
+    // Hai chân, bóng ở y < 0 = nửa trái khi đội nhà hiệp 1 tấn công về +x → đá như thuận trái.
+    expect(side('both')).toBeCloseTo(TAKER_SIDE_OFFSET);
+  });
+
+  it('kickingFoot: hai chân theo nửa sân nhìn về khung thành đối thủ', () => {
+    expect(kickingFoot('both', vec2(20, 6), 1)).toBe('right');
+    expect(kickingFoot('both', vec2(20, -6), 1)).toBe('left');
+    expect(kickingFoot('both', vec2(-20, 6), -1)).toBe('left');
+    expect(kickingFoot('left', vec2(20, 6), 1)).toBe('left');
+    expect(kickingFoot(undefined, vec2(20, -6), 1)).toBe('right');
+  });
+
+  it('ném biên không lệch theo chân', () => {
+    const s = match();
+    const plan = decideRestart({ line: 'touch', point: vec2(10, HALF_WIDTH) }, 'home', 1);
+    const lefties = s.players.map((p) => ({ ...p, foot: 'left' as const }));
+    const { players, restart } = setupRestart(lefties, plan, 1, 0);
+    const taker = byId(players, restart.takerId);
+    expect(Math.abs(dot(sub(taker.pos, plan.spot), rightOf(taker.facing)))).toBeLessThan(1e-9);
   });
 });
 
