@@ -521,7 +521,6 @@ const OUTCOME_LABEL = { win: 'Thắng', draw: 'Hoà', loss: 'Thua' } as const;
 const SHOOTOUT_LABEL = { win: 'Thắng luân lưu', loss: 'Thua luân lưu' } as const;
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Dễ', hard: 'Khó' };
 
-/** Trạng thái nộp kết quả lên server (thưởng do server tính). */
 /**
  * Kết quả chưa nộp xong (hoặc còn gửi lại được): rời màn kết quả rồi vào trận mới sẽ làm server huỷ
  * trận này, mất thưởng.
@@ -532,6 +531,7 @@ export const isUnsavedResult = (reward: RewardStatus): boolean =>
 export const UNSAVED_LEAVE_MESSAGE =
   'Kết quả trận chưa lưu xong. Rời đi bây giờ có thể mất thưởng trận này. Vẫn rời đi?';
 
+/** Trạng thái nộp kết quả lên server (thưởng do server tính). */
 export type RewardStatus =
   | { kind: 'pending' }
   | { kind: 'done'; reward: number; balance: number }
