@@ -45,6 +45,17 @@ export function useClaimMission() {
 }
 
 /**
+ * Lần gọi lại (qua nửa đêm, quay lại tab) trả rỗng thì giữ danh sách cũ: bảng thông báo đang mở
+ * không tự biến mất khi chưa đọc (đã đóng thì vẫn đóng — AppLayout so theo tham chiếu).
+ */
+export function keepUnreadClaims(
+  prev: ExpiredClaimResult | undefined,
+  next: ExpiredClaimResult,
+): ExpiredClaimResult {
+  return next.items.length === 0 && prev ? prev : next;
+}
+
+/**
  * Mỗi lần mở app (đã đăng nhập): server tự nhận nhiệm vụ ngày cũ đã xong mà quên nhận
  * (POST /missions/expired/claim) và trả đúng một lần danh sách để hiện bảng thông báo. Dùng query
  * `staleTime: Infinity` thay vì mutation trong effect để không gọi trùng (StrictMode, remount).
@@ -52,15 +63,16 @@ export function useClaimMission() {
 export function useExpiredMissionClaims(userId: string | undefined) {
   const qc = useQueryClient();
   // Khoá theo người chơi: đổi tài khoản trong cùng tab không thấy thông báo của người trước.
+  const queryKey = ['missions', 'expired-claim', userId];
   return useQuery({
-    queryKey: ['missions', 'expired-claim', userId],
+    queryKey,
     queryFn: async () => {
       const r = await apiFetch('/missions/expired/claim', ExpiredClaimResult, { method: 'POST' });
       if (r.items.length > 0) {
         qc.setQueryData<Me | null>(meKey, (me) => (me ? { ...me, coins: r.balance } : me));
         void qc.invalidateQueries({ queryKey: missionsKey });
       }
-      return r;
+      return keepUnreadClaims(qc.getQueryData<ExpiredClaimResult>(queryKey), r);
     },
     enabled: Boolean(userId),
     // Cũ khi qua 00:00 GMT+7 → tab mở qua đêm gọi lại khi người chơi quay lại tab (server idempotent).

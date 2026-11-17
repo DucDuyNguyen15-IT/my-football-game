@@ -28,6 +28,13 @@ export function describeAuthError(err: unknown): AuthNotice {
         title: 'Thao tác quá nhanh',
         text: 'Bạn gửi quá nhiều yêu cầu. Đợi khoảng 1 phút rồi thử lại.',
       };
+    case 'reauth_required':
+      // Xoá tài khoản chỉ Google: phiên đăng nhập quá 10 phút.
+      return {
+        tone: 'warning',
+        title: 'Cần đăng nhập lại',
+        text: 'Vì an toàn, hãy đăng xuất rồi đăng nhập lại bằng Google, sau đó xoá tài khoản trong vòng 10 phút.',
+      };
     case 'network_error':
       return { tone: 'danger', text: 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.' };
     case 'bad_response':

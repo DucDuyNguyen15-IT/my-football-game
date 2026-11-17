@@ -8,6 +8,7 @@ import {
   GraphicsPanel,
   PauseMenu,
   ResultScreen,
+  isUnsavedResult,
   SubstitutionPanel,
   type PauseSubs,
   type RewardStatus,
@@ -251,6 +252,15 @@ describe('Scoreboard khi luân lưu', () => {
     expect(html.match(/class="dot miss"/g)).toHaveLength(1);
     expect(html.match(/class="dot"/g)).toHaveLength(7);
     expect(html).toContain('Lượt 2/5 · Khách sút');
+  });
+});
+
+describe('isUnsavedResult', () => {
+  it('đang nộp hoặc lỗi còn gửi lại được → chưa lưu; đã nộp hoặc bị từ chối hẳn → không chặn rời màn', () => {
+    expect(isUnsavedResult({ kind: 'pending' })).toBe(true);
+    expect(isUnsavedResult({ kind: 'error', message: 'x', retryable: true })).toBe(true);
+    expect(isUnsavedResult({ kind: 'error', message: 'x', retryable: false })).toBe(false);
+    expect(isUnsavedResult({ kind: 'done', reward: 50, balance: 150 })).toBe(false);
   });
 });
 

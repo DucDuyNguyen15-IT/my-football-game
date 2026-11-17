@@ -1,8 +1,9 @@
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { afterAll, beforeEach, describe, expect, it } from 'vitest';
 import { ApiError, MeResponse } from '@pitch/shared';
 import { analyticsEvents, sessions, users } from '../db/schema';
-import { hashToken, SESSION_TTL_MS } from '../services/auth';
+import { seedCards } from '../db/seed';
+import { anonymizeUser, assertLoginUnchanged, hashToken, SESSION_TTL_MS } from '../services/auth';
 import { createTestApp, createUser, resetTestData, testDb } from '../../test/helpers';
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -212,6 +213,86 @@ describe('DELETE /me (xoá tài khoản = ẩn danh hoá)', () => {
     expect((await del(sid, { username: 'Tester_1' })).statusCode).toBe(204);
     const [after] = await testDb().select().from(users);
     expect(after!.googleSub).toBeNull();
+  });
+
+  it('không có cookie phiên → 401, tài khoản còn nguyên', async () => {
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/api/v1/me',
+      payload: { username: 'Tester_1', password: 'dung-mat-khau' },
+      headers: { 'content-type': 'application/json' },
+    });
+    expect(res.statusCode).toBe(401);
+    expect((await login({ username: 'tester_1', password: 'dung-mat-khau' })).statusCode).toBe(200);
+  });
+
+  it('sai mật khẩu 5 lần ở DELETE /me → khoá chung với đăng nhập (429 login_locked)', async () => {
+    const sid = await loginOk();
+    for (let i = 0; i < 5; i++) {
+      expect((await del(sid, { username: 'tester_1', password: 'sai-mat-khau' })).statusCode).toBe(
+        403,
+      );
+    }
+    const res = await del(sid, { username: 'tester_1', password: 'dung-mat-khau' });
+    expect(res.statusCode).toBe(429);
+    expect(ApiError.parse(res.json()).error.code).toBe('login_locked');
+    expect(res.headers['retry-after']).toBeDefined();
+    const again = await login({ username: 'tester_1', password: 'dung-mat-khau' });
+    expect(again.statusCode).toBe(429);
+    expect((await me(sid)).statusCode).toBe(200);
+  });
+
+  it('xoá xong đăng ký lại đúng tên cũ → 201, tài khoản mới sạch (id khác, không thừa hưởng xu)', async () => {
+    await seedCards(testDb());
+    const sid = await loginOk();
+    const [old] = await testDb().select().from(users);
+    await testDb().update(users).set({ coins: 999 }).where(eq(users.id, old!.id));
+    expect((await del(sid, { username: 'tester_1', password: 'dung-mat-khau' })).statusCode).toBe(
+      204,
+    );
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/register',
+      payload: { username: 'Tester_1', password: 'mat-khau-moi-1', acceptTerms: true },
+      headers: { 'content-type': 'application/json' },
+    });
+    expect(res.statusCode).toBe(201);
+    const fresh = MeResponse.parse(res.json()).data;
+    expect(fresh).toMatchObject({ username: 'Tester_1', coins: 0 });
+    expect(fresh.id).not.toBe(String(old!.id));
+    // Mật khẩu cũ không vào được tài khoản mới.
+    expect((await login({ username: 'tester_1', password: 'dung-mat-khau' })).statusCode).toBe(401);
+  });
+});
+
+describe('đăng nhập song song với xoá tài khoản / lỗi cấp phiên (review main-b T1, T8)', () => {
+  it('assertLoginUnchanged: user chưa đổi thì qua; đã ẩn danh hoá sau lúc đọc thì từ chối', async () => {
+    const [stale] = await testDb().select().from(users);
+    await testDb().transaction((tx) => assertLoginUnchanged(tx, stale!));
+    await anonymizeUser(testDb(), stale!.id);
+    await expect(
+      testDb().transaction((tx) => assertLoginUnchanged(tx, stale!)),
+    ).rejects.toMatchObject({ code: 'invalid_credentials', status: 401 });
+  });
+
+  it('mật khẩu đúng ở lượt thứ 5 nhưng cấp phiên lỗi → không để lại khoá 15 phút', async () => {
+    for (let i = 0; i < 4; i++) {
+      expect((await login({ username: 'tester_1', password: 'sai-mat-khau' })).statusCode).toBe(
+        401,
+      );
+    }
+    // Giả lập DB lỗi giữa transaction cấp phiên: bảng analytics tạm không có.
+    await testDb().execute(sql`alter table analytics_events rename to analytics_events_off`);
+    try {
+      const res = await login({ username: 'tester_1', password: 'dung-mat-khau' });
+      expect(res.statusCode).toBe(500);
+    } finally {
+      await testDb().execute(sql`alter table analytics_events_off rename to analytics_events`);
+    }
+    expect(await testDb().select().from(sessions)).toHaveLength(0);
+    const [u] = await testDb().select().from(users);
+    expect(u).toMatchObject({ lockedUntil: null, failedLoginCount: 0 });
+    expect((await login({ username: 'tester_1', password: 'dung-mat-khau' })).statusCode).toBe(200);
   });
 });
 

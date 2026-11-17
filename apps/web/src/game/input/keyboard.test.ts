@@ -3,8 +3,10 @@ import { NO_INPUT } from '@pitch/sim';
 import {
   CONTROL_KEYS,
   NO_KEYS,
+  actionKeysOnly,
   createBlindGuard,
   createTapLatch,
+  isActionKey,
   keyForCode,
   keysToInput,
   type KeyState,
@@ -139,5 +141,21 @@ describe('createBlindGuard (phím bấm lúc màn che không vào sim)', () => {
       lob: true,
       through: true,
     });
+  });
+});
+
+describe('actionKeysOnly / isActionKey', () => {
+  it('giữ nút hành động đang giữ, nhả phím di chuyển và phím phụ', () => {
+    expect(
+      actionKeysOnly(keys({ pass: true, shoot: true, left: true, sprint: true, adjust: true })),
+    ).toEqual(keys({ pass: true, shoot: true }));
+    expect(actionKeysOnly(keys({ up: true, modifier: true }))).toEqual(NO_KEYS);
+  });
+
+  it('chỉ S/A/D/W là nút hành động', () => {
+    expect((['pass', 'lob', 'shoot', 'through'] as const).every(isActionKey)).toBe(true);
+    expect((['up', 'sprint', 'modifier', 'finesse', 'adjust'] as const).some(isActionKey)).toBe(
+      false,
+    );
   });
 });

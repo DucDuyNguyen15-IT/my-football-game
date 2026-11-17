@@ -14,6 +14,7 @@ import { AppError } from '../plugins/errors';
 import { track } from '../services/analytics';
 import {
   anonymizeUser,
+  assertLoginUnchanged,
   burnPasswordCheck,
   clearLoginFailures,
   createAccount,
@@ -106,11 +107,19 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
     if (!(await verifyPassword(user.passwordHash, password))) {
       throw new AppError('invalid_credentials', 401, 'Sai tên đăng nhập hoặc mật khẩu');
     }
-    const session = await app.db.transaction(async (tx) => {
-      await clearLoginFailures(tx, user.id);
-      await track(tx, user.id, 'login', { method: 'password' }, now);
-      return rotateSession(tx, req, user, now);
-    });
+    const session = await app.db
+      .transaction(async (tx) => {
+        await assertLoginUnchanged(tx, user);
+        await clearLoginFailures(tx, user.id);
+        await track(tx, user.id, 'login', { method: 'password' }, now);
+        return rotateSession(tx, req, user, now);
+      })
+      .catch(async (err: unknown) => {
+        // Mật khẩu đúng mà cấp phiên lỗi (DB chập chờn): hoàn lượt đã giữ, kẻo lượt thứ 5 đúng vẫn
+        // để lại khoá 15' (review main-b T8). Hoàn không được thì thôi, vẫn báo lỗi gốc.
+        if (!(err instanceof AppError)) await clearLoginFailures(app.db, user.id).catch(() => {});
+        throw err;
+      });
     setSessionCookie(reply, session.token, session.expiresAt);
     return { data: await meWithRewards(app, user) };
   });
@@ -156,6 +165,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
       }
     }
     const session = await app.db.transaction(async (tx) => {
+      await assertLoginUnchanged(tx, user);
       if (!created) await track(tx, user.id, 'login', { method: 'google' }, now);
       return rotateSession(tx, req, user, now);
     });

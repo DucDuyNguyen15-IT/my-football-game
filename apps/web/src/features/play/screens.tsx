@@ -2,7 +2,7 @@
  * Các màn của luồng trận (docs/design/screens/match*.html, pause.html, result*.html): HUD phụ (gợi ý
  * phím, nghỉ giữa hiệp), menu tạm dừng, kết quả.
  */
-import { useState, type CSSProperties } from 'react';
+import { useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Link } from 'react-router';
 import { HALF_TIME_MAX_TICKS, TICK_RATE } from '@pitch/sim';
 import type { Difficulty, MissionProgress, Position, SquadSlot } from '@pitch/shared';
@@ -521,6 +521,16 @@ const OUTCOME_LABEL = { win: 'Thắng', draw: 'Hoà', loss: 'Thua' } as const;
 const SHOOTOUT_LABEL = { win: 'Thắng luân lưu', loss: 'Thua luân lưu' } as const;
 const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Dễ', hard: 'Khó' };
 
+/**
+ * Kết quả chưa nộp xong (hoặc còn gửi lại được): rời màn kết quả rồi vào trận mới sẽ làm server huỷ
+ * trận này, mất thưởng.
+ */
+export const isUnsavedResult = (reward: RewardStatus): boolean =>
+  reward.kind === 'pending' || (reward.kind === 'error' && reward.retryable);
+
+export const UNSAVED_LEAVE_MESSAGE =
+  'Kết quả trận chưa lưu xong. Rời đi bây giờ có thể mất thưởng trận này. Vẫn rời đi?';
+
 /** Trạng thái nộp kết quả lên server (thưởng do server tính). */
 export type RewardStatus =
   | { kind: 'pending' }
@@ -680,8 +690,12 @@ export function ResultScreen({
     hud.bookings.filter((b) => b.team === team && b.card === card).length;
   const headline = shootout ? SHOOTOUT_LABEL[shootout] : OUTCOME_LABEL[outcome];
   const level = DIFFICULTY_LABEL[difficulty];
-  // Chưa nộp xong (hoặc còn gửi lại được): vào trận mới sẽ làm server huỷ trận này.
-  const unsaved = reward.kind === 'pending' || (reward.kind === 'error' && reward.retryable);
+  const unsaved = isUnsavedResult(reward);
+  // autoFocus không ăn vì lúc mount nút còn khoá: focus khi nút bật lại để Enter là đá tiếp.
+  const rematchRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    if (!unsaved) rematchRef.current?.focus();
+  }, [unsaved]);
   return (
     <main className="night-bg result" aria-labelledby="result-title">
       <div className="result__main">
@@ -755,27 +769,14 @@ export function ResultScreen({
           <button
             type="button"
             className="btn btn--primary btn--lg"
-            autoFocus
+            ref={rematchRef}
             disabled={unsaved}
             onClick={onRematch}
           >
             Đá tiếp
           </button>
-          {/* Rời đi rồi vào trận khác cũng làm server huỷ trận này (review Fable main-a V1): hỏi trước. */}
-          <Link
-            to="/"
-            className="btn btn--secondary btn--lg"
-            onClick={(e) => {
-              if (
-                unsaved &&
-                !window.confirm(
-                  'Kết quả trận chưa lưu xong. Rời đi bây giờ có thể mất thưởng trận này. Vẫn rời đi?',
-                )
-              ) {
-                e.preventDefault();
-              }
-            }}
-          >
+          {/* Rời đi lúc chưa lưu xong: PlayPage (`useLeaveGuard`) hỏi trước cho mọi lối rời màn. */}
+          <Link to="/" className="btn btn--secondary btn--lg">
             Về trang chủ
           </Link>
         </div>

@@ -11,6 +11,12 @@ describe('describeAuthError', () => {
     expect(limited).toMatchObject({ tone: 'warning', title: 'Thao tác quá nhanh' });
   });
 
+  it('reauth_required (xoá tài khoản chỉ Google, phiên cũ) → cảnh báo hướng dẫn đăng nhập lại', () => {
+    const notice = describeAuthError(new ApiClientError('reauth_required', 403, 'x'));
+    expect(notice).toMatchObject({ tone: 'warning', title: 'Cần đăng nhập lại' });
+    expect(notice.text).toMatch(/đăng nhập lại bằng Google/);
+  });
+
   it('lỗi thường dùng message của server; validation lấy chi tiết đầu tiên', () => {
     expect(describeAuthError(new ApiClientError('invalid_credentials', 401, 'Sai'))).toEqual({
       tone: 'danger',

@@ -17,8 +17,10 @@ import type { GraphicsSettings, MatchBridge } from '../bridge';
 import {
   CONTROL_KEYS,
   NO_KEYS,
+  actionKeysOnly,
   createBlindGuard,
   createTapLatch,
+  isActionKey,
   keyForCode,
   keysToInput,
   type KeyState,
@@ -193,9 +195,12 @@ export class MatchRenderer {
   private readonly ballTarget = new THREE.Vector3();
 
   private held: KeyState = { ...NO_KEYS };
+  /** Nút hành động nhả lúc tạm dừng/mất focus khi đang nạp lực: vẫn coi là giữ tới khi bấm lại. */
+  private ghostHold = false;
   private readonly taps = createTapLatch();
   private readonly blindGuard = createBlindGuard();
   private readonly resizeObserver: ResizeObserver;
+  private dprQuery: MediaQueryList | null = null;
   private debug: { el: HTMLElement; frames: number; at: number } | null = null;
   /** Đo FPS cả trận khi mở `/play?perf=1` (task 8.3); null khi chơi thường. */
   private perf: FrameStats | null = null;
@@ -294,6 +299,7 @@ export class MatchRenderer {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
+    this.watchDpr();
     if (perfEnabled(window.location.search)) {
       this.perf = new FrameStats();
       this.transitionPerf = new FrameStats();
@@ -442,6 +448,7 @@ export class MatchRenderer {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
+    this.dprQuery?.removeEventListener('change', this.onDprChange);
     this.resizeObserver.disconnect();
     this.postFx.dispose();
     this.countdown.dispose();
@@ -583,9 +590,13 @@ export class MatchRenderer {
   }
 
   private readonly onKeyDown = (e: KeyboardEvent): void => {
-    // Tạm dừng: để mũi tên điều khiển menu (nhóm radio thay người), không chặn.
-    if (this.bridge?.isPaused()) return;
     const name = keyForCode(e.code);
+    // Tạm dừng: để mũi tên điều khiển menu (nhóm radio thay người), không chặn. Phím di chuyển vẫn
+    // ghi là đang giữ (trình duyệt chỉ lặp phím bấm sau cùng) để "Tiếp tục" không phải bấm lại.
+    if (this.bridge?.isPaused()) {
+      if (name && MOVE_KEYS.has(name)) this.held = { ...this.held, [name]: true };
+      return;
+    }
     if (this.replay || this.pendingReplay) {
       // Đang phát lại (hoặc đang vào phát lại): S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
       if (e.code === CONTROL_KEYS.pass) this.skipReplay = true;
@@ -602,18 +613,30 @@ export class MatchRenderer {
     e.preventDefault();
     if (!e.repeat) this.taps.press(name);
     this.held = { ...this.held, [name]: true };
+    if (isActionKey(name)) this.ghostHold = false;
   };
 
   private readonly onKeyUp = (e: KeyboardEvent): void => {
     const name = keyForCode(e.code);
     if (!name) return;
+    // Đang nạp lực (S/A/D) mà nhả phím trong menu tạm dừng: không tính là nhả, kẻo mở lại là bóng đi.
+    if (this.bridge?.isPaused() && isActionKey(name) && this.isCharging()) {
+      this.ghostHold = true;
+      return;
+    }
     this.held = { ...this.held, [name]: false };
     this.blindGuard.release(name);
   };
 
+  private isCharging(): boolean {
+    return this.curr.passCharge !== null || this.curr.shotChargeTicks > 0;
+  }
+
   /** Mất focus (Alt+Tab) thì trình duyệt không gửi keyup — coi như nhả hết phím. */
   private readonly onBlur = (): void => {
-    this.held = { ...NO_KEYS };
+    // Đang nạp lực thì giữ nút hành động (mất focus cũng tự tạm dừng; lý do như ở onKeyUp).
+    this.ghostHold = this.isCharging();
+    this.held = this.ghostHold ? actionKeysOnly(this.held) : { ...NO_KEYS };
     this.taps.consume();
     this.blindGuard.clear();
   };
@@ -704,6 +727,11 @@ export class MatchRenderer {
       if (ticked) {
         this.taps.consume();
         this.bridge?.onState(this.curr);
+      }
+      // Lượt nạp lực đã hết (hết giờ tự đá, mất bóng) mà phím "giữ hộ" chưa được bấm lại: nhả.
+      if (this.ghostHold && !this.isCharging()) {
+        this.ghostHold = false;
+        this.held = { ...this.held, pass: false, lob: false, shoot: false, through: false };
       }
     }
     this.advanceCutHold(activeDt);
@@ -1087,6 +1115,21 @@ export class MatchRenderer {
     );
     return true;
   }
+
+  /**
+   * Kéo cửa sổ sang màn hình khác DPR mà kích thước CSS không đổi thì ResizeObserver không báo:
+   * nghe media query `resolution` của DPR hiện tại, đổi thì đặt lại pixel ratio và nghe mức mới.
+   */
+  private watchDpr(): void {
+    this.dprQuery?.removeEventListener('change', this.onDprChange);
+    this.dprQuery = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+    this.dprQuery.addEventListener('change', this.onDprChange);
+  }
+
+  private readonly onDprChange = (): void => {
+    this.watchDpr();
+    this.resize();
+  };
 
   private resize(): void {
     const w = this.parent.clientWidth;

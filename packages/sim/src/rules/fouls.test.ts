@@ -104,7 +104,15 @@ describe('decideCards', () => {
     let seed = 1;
     while (decideCards(roughRed, home, victim, 1, [], seedRng(seed)).cards[0] !== 'red') seed++;
     expect(decideCards(roughRed, gk, victim, 1, [], seedRng(seed)).cards).toEqual(['yellow']);
-    expect(decideCards({ fromBehind: false, rough: false }, gk, victim, 1, [], seedRng(9)).cards).toEqual([]);
+    expect(
+      decideCards({ fromBehind: false, rough: false }, gk, victim, 1, [], seedRng(9)).cards,
+    ).toEqual([]);
+    // Đã có vàng + xoạc thô bạo ra đỏ trực tiếp: vẫn không rút thẻ, PRNG tiến như cầu thủ ngoài sân.
+    const outfield = decideCards(roughRed, home, victim, 1, [], seedRng(seed));
+    const bookedRough = decideCards(roughRed, gk, victim, 1, booked, seedRng(seed));
+    expect(bookedRough.cards).toEqual([]);
+    expect(bookedRough.rng).toEqual(outfield.rng);
+    expect(isSentOff(booked, gk.id)).toBe(false);
   });
   it('xa khung thành hoặc quay lưng về khung thành thì không coi là đối mặt', () => {
     expect(isFacingGoal(at(away, 10, 0, vec2(-1, 0)), 1)).toBe(false);
