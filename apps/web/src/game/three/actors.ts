@@ -15,7 +15,7 @@ export const BALL_DRAW_RADIUS = 0.13;
 const BODY_H = 1.25;
 const LEG_H = 0.55;
 const CHARGE_BAR_W = 1.5;
-const CHARGE_BAR_H = 0.22;
+const CHARGE_BAR_H = 0.1;
 
 const NUMBER_FONT = '700 44px "Space Grotesk", "Arial Narrow", sans-serif';
 
@@ -173,11 +173,11 @@ export class ActorKit {
     const group = new THREE.Group();
     // Viền tối + nền sáng: thấy rõ cả trên cỏ tối lẫn khán đài sáng (góc máy sau lưng).
     const border = new THREE.Mesh(
-      new THREE.PlaneGeometry(CHARGE_BAR_W + 0.14, CHARGE_BAR_H + 0.14),
+      new THREE.PlaneGeometry(CHARGE_BAR_W + 0.08, CHARGE_BAR_H + 0.08),
       new THREE.MeshBasicMaterial({ color: COLORS.bg, transparent: true, depthTest: false }),
     );
     const bg = new THREE.Mesh(
-      new THREE.PlaneGeometry(CHARGE_BAR_W + 0.06, CHARGE_BAR_H + 0.06),
+      new THREE.PlaneGeometry(CHARGE_BAR_W + 0.03, CHARGE_BAR_H + 0.03),
       new THREE.MeshBasicMaterial({
         color: 0xe6e9ee,
         transparent: true,
