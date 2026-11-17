@@ -156,9 +156,29 @@ export function kickingFoot(
   return spot.y * goalSign < 0 ? 'left' : 'right';
 }
 
+/** Pha lấy đà phạt đền (1,6 s): người sút chạy từ PENALTY_STANDOFF tới bóng. */
+export const PENALTY_RUNUP_TICKS = Math.round(1.6 * TICK_RATE);
+/** Người sút phạt đền đứng lùi sau bóng chừng này mét để lấy đà. */
+export const PENALTY_STANDOFF = 2.6;
+
+/** Khoảng cách người sút phạt đền tới bóng ở `tick`: lùi xa lúc chờ, rút dần về sát bóng khi lấy đà. */
+function penaltyGap(restart: Restart, tick: number | undefined): number {
+  const run = restart.penaltyRunUp;
+  if (!run || tick === undefined) return PENALTY_STANDOFF;
+  const left = Math.min(1, Math.max(0, (run.releaseTick - tick) / PENALTY_RUNUP_TICKS));
+  return DRIBBLE_OFFSET + (PENALTY_STANDOFF - DRIBBLE_OFFSET) * left;
+}
+
 /** Chỗ người đá đứng: sau bóng; tình huống đá bằng chân thì lệch sang phía ngược chân đá. */
-function takerSpot(p: PlayerState, restart: Restart, facing: Vec2, goalSign: 1 | -1): Vec2 {
-  const behind = sub(restart.spot, scale(facing, DRIBBLE_OFFSET));
+function takerSpot(
+  p: PlayerState,
+  restart: Restart,
+  facing: Vec2,
+  goalSign: 1 | -1,
+  tick?: number,
+): Vec2 {
+  const gap = restart.type === 'penalty' ? penaltyGap(restart, tick) : DRIBBLE_OFFSET;
+  const behind = sub(restart.spot, scale(facing, gap));
   if (!FOOTED_RESTARTS.has(restart.type)) return behind;
   // Thuận phải đứng bên trái bóng và ngược lại.
   const side = kickingFoot(p.foot, restart.spot, goalSign) === 'right' ? -1 : 1;
@@ -174,13 +194,22 @@ export function holdRestart(
   restart: Restart,
   half: 1 | 2,
   aim: Vec2 = ZERO,
+  /** Tick hiện tại: có thì người sút phạt đền đang lấy đà được đặt theo tiến độ chạy đà. */
+  tick?: number,
 ): PlayerState[] {
   const clearance = restart.type === 'kickoff' ? CENTER_CIRCLE_RADIUS : RESTART_CLEARANCE;
   const goalSide = attackSign(restart.team, half);
   return players.map((p) => {
     if (p.id === restart.takerId) {
       const facing = length(aim) > 0 ? normalize(aim) : p.facing;
-      return { ...p, facing, pos: takerSpot(p, restart, facing, goalSide), vel: ZERO };
+      const pos = takerSpot(p, restart, facing, goalSide, tick);
+      // Đang chạy đà: vận tốc thật để phần hiển thị chạy clip chạy thay vì trượt.
+      const running =
+        restart.penaltyRunUp && tick !== undefined && tick < restart.penaltyRunUp.releaseTick;
+      const vel = running
+        ? scale(facing, (PENALTY_STANDOFF - DRIBBLE_OFFSET) / (PENALTY_RUNUP_TICKS / TICK_RATE))
+        : ZERO;
+      return { ...p, facing, pos, vel };
     }
     if (restart.type === 'penalty') return holdPenalty(p, restart, goalSide);
     if (p.team === restart.team) return p;
@@ -261,8 +290,9 @@ export function restartTargets(
   restart: Restart,
   half: 1 | 2,
   aim: Vec2 = ZERO,
+  tick?: number,
 ): Map<string, Vec2> {
-  const held = holdRestart(players, restart, half, aim);
+  const held = holdRestart(players, restart, half, aim, tick);
   const targets = new Map<string, Vec2>();
   players.forEach((p, i) => {
     const to = held[i]!.pos;

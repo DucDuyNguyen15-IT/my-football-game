@@ -16,6 +16,8 @@ import {
   FOUL_HOLD_TICKS,
   GOAL_HOLD_TICKS,
   OUT_HOLD_TICKS,
+  PENALTY_RUNUP_TICKS,
+  PENALTY_STANDOFF,
   RESTART_REVEAL_TICKS,
   SHOOTOUT_HOLD_TICKS,
 } from './rules/restarts';
@@ -350,8 +352,9 @@ describe('còi hết hiệp chờ phạt đền / cú sút xong (B1-07)', () => 
     expect(s.phase).toBe('half_time');
   });
 
-  it('không có phạt đền hay cú sút: thổi còi đúng giờ như cũ', () => {
-    const s = step(atHalfEnd(setPiece('free_kick', 'away')), NO_INPUT);
+  it('đá phạt giữa sân, không có cú sút: thổi còi đúng giờ (đồng hồ chậm nên trễ tối đa 1 tick)', () => {
+    let s = step(atHalfEnd(setPiece('free_kick', 'away')), NO_INPUT);
+    if (s.phase === 'dead_ball') s = step(s, NO_INPUT);
     expect(s.phase).toBe('half_time');
   });
 });
@@ -376,25 +379,28 @@ describe('hạn 15 s cho mọi tình huống cố định, tính từ lúc chuy�
     ['throw_in', vec2(5, HALF_WIDTH - 0.5), vec2(0, 10)],
     ['corner', vec2(HALF_LENGTH - 0.5, 10), vec2(10, 0)],
     ['goal_kick', vec2(-HALF_LENGTH + 0.5, 10), vec2(-10, 0)],
-  ] as const)('%s của người chơi: hạn = tick bóng chết + giữ hình 0,6 s + mở màn + 15 s; hết hạn máy làm hộ', (type, pos, vel) => {
-    let s = untilDead(pos, vel);
-    const r = s.restart!;
-    expect(r).toMatchObject({ type, team: 'home' });
-    expect(r.readyTick).toBe(r.startTick + OUT_HOLD_TICKS + RESTART_REVEAL_TICKS);
-    s = step(s, NO_INPUT);
-    const deadlineTick = r.readyTick + SET_PIECE_MAX_TICKS;
-    expect(s.actionDeadline).toEqual({ kind: type, playerId: r.takerId, deadlineTick });
-    // Tới sát hạn vẫn chờ người chơi (trước đây các tình huống này chờ vô hạn).
-    s = run(s, deadlineTick - s.tick - 1);
-    expect(s.restart).not.toBeNull();
-    expect(s.windup).toBeNull();
-    // Hết hạn: máy thực hiện hộ (phát bóng thì thủ môn lấy đà rồi bóng mới đi).
-    s = run(s, 1 + (type === 'goal_kick' ? KEEPER_WINDUP_TICKS : 0));
-    expect(s.restart).toBeNull();
-    expect(s.phase).toBe('play');
-    expect(length(s.ball.vel)).toBeGreaterThan(3);
-    expect(s.actionDeadline).toBeNull();
-  });
+  ] as const)(
+    '%s của người chơi: hạn = tick bóng chết + giữ hình 0,6 s + mở màn + 15 s; hết hạn máy làm hộ',
+    (type, pos, vel) => {
+      let s = untilDead(pos, vel);
+      const r = s.restart!;
+      expect(r).toMatchObject({ type, team: 'home' });
+      expect(r.readyTick).toBe(r.startTick + OUT_HOLD_TICKS + RESTART_REVEAL_TICKS);
+      s = step(s, NO_INPUT);
+      const deadlineTick = r.readyTick + SET_PIECE_MAX_TICKS;
+      expect(s.actionDeadline).toEqual({ kind: type, playerId: r.takerId, deadlineTick });
+      // Tới sát hạn vẫn chờ người chơi (trước đây các tình huống này chờ vô hạn).
+      s = run(s, deadlineTick - s.tick - 1);
+      expect(s.restart).not.toBeNull();
+      expect(s.windup).toBeNull();
+      // Hết hạn: máy thực hiện hộ (phát bóng thì thủ môn lấy đà rồi bóng mới đi).
+      s = run(s, 1 + (type === 'goal_kick' ? KEEPER_WINDUP_TICKS : 0));
+      expect(s.restart).toBeNull();
+      expect(s.phase).toBe('play');
+      expect(length(s.ball.vel)).toBeGreaterThan(3);
+      expect(s.actionDeadline).toBeNull();
+    },
+  );
 
   it('giao bóng của người chơi: đầu trận hạn = mở màn + 15 s, hết hạn máy giao bóng hộ', () => {
     let s = step(createMatch(setup), NO_INPUT);
@@ -430,5 +436,99 @@ describe('hạn 15 s cho mọi tình huống cố định, tính từ lúc chuy�
     expect(FOUL_HOLD_TICKS).toBe(1.25 * TICK_RATE);
     expect(OUT_HOLD_TICKS).toBe(0.6 * TICK_RATE);
     expect(SHOOTOUT_HOLD_TICKS).toBe(TICK_RATE);
+  });
+});
+
+describe('tình huống cố định: đồng hồ chậm, lấy đà phạt đền, chờ hết pha tấn công', () => {
+  it('chờ thực hiện đá phạt: đồng hồ trận chạy nửa tốc độ', () => {
+    const s0 = setPiece('free_kick', 'away');
+    const s = run(s0, 20);
+    expect(s.halfTick - s0.halfTick).toBe(10);
+  });
+
+  it('máy đá phạt đền: đứng lùi lấy đà, chạy vào bóng trong PENALTY_RUNUP_TICKS rồi mới sút', () => {
+    let s = setPiece('penalty', 'away');
+    const gap = (x: MatchState) => {
+      const t = x.players.find((p) => p.id === x.restart!.takerId)!;
+      return length(sub(t.pos, x.restart!.spot));
+    };
+    for (let i = 0; i < 20 * TICK_RATE && !s.restart?.penaltyRunUp; i++) s = step(s, NO_INPUT);
+    const run0 = s.restart!.penaltyRunUp!;
+    expect(gap(s)).toBeGreaterThan(PENALTY_STANDOFF - 0.3);
+    let ticks = 0;
+    let moving = false;
+    while (s.restart) {
+      const g = gap(s);
+      s = step(s, NO_INPUT);
+      if (s.restart) moving ||= gap(s) < g;
+      ticks++;
+    }
+    expect(moving).toBe(true);
+    expect(s.tick).toBe(run0.releaseTick);
+    expect(ticks).toBeLessThanOrEqual(PENALTY_RUNUP_TICKS);
+    expect(PENALTY_RUNUP_TICKS).toBeGreaterThan(TICK_RATE);
+  });
+
+  it('đá phạt gần khung thành vừa đá đi thì bắt đầu theo dõi pha tấn công', () => {
+    const base = setPiece('free_kick', 'away');
+    const spot = vec2(-(HALF_LENGTH - 15), 0);
+    let s: MatchState = {
+      ...base,
+      ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
+      restart: { ...base.restart!, spot },
+    };
+    for (let i = 0; i < 20 * TICK_RATE && s.restart; i++) s = step(s, NO_INPUT);
+    expect(s.restart).toBeNull();
+    expect(s.setPieceThreat?.team).toBe('away');
+  });
+
+  /** Hết giờ, bóng đang tranh chấp trong vòng cấm đội khách sau phạt góc của đội nhà. */
+  function scramble(): MatchState {
+    const s0 = createMatch(setup);
+    return atHalfEnd({
+      ...s0,
+      phase: 'play',
+      ballDead: false,
+      restart: null,
+      ai: null,
+      ball: { pos: vec2(HALF_LENGTH - 9, 4), vel: vec2(0, 0.5), z: 0, vz: 0 },
+      ballOwnerId: null,
+      lastTouchTeam: 'home',
+      setPieceThreat: { team: 'home', untilTick: s0.tick + 10 * TICK_RATE },
+    });
+  }
+
+  it('bóng còn tranh chấp gần khung thành: chưa thổi còi hết hiệp', () => {
+    expect(run(scramble(), 5).phase).toBe('play');
+  });
+
+  it('đội phòng ngự phá bóng ra xa: thổi còi', () => {
+    const s = scramble();
+    const cleared = step(
+      { ...s, ball: { ...s.ball, pos: vec2(5, 0), vel: vec2(-20, 0) } },
+      NO_INPUT,
+    );
+    expect(cleared.phase).toBe('half_time');
+  });
+
+  it('đội phòng ngự giành bóng: thổi còi', () => {
+    const s = scramble();
+    const defender = s.players.find((p) => p.team === 'away' && p.position !== 'GK')!;
+    const players = s.players.map((p) =>
+      p.id === defender.id ? { ...p, pos: vec2(HALF_LENGTH - 10, 4), vel: ZERO } : p,
+    );
+    const won = {
+      ...s,
+      players,
+      ballOwnerId: defender.id,
+      ball: dribbleBall(players.find((p) => p.id === defender.id)!),
+    };
+    expect(step(won, NO_INPUT).phase).toBe('half_time');
+  });
+
+  it('pha tấn công kéo dài: quá hạn thì vẫn thổi còi', () => {
+    const s = scramble();
+    const due = run({ ...s, setPieceThreat: { team: 'home', untilTick: s.tick + 3 } }, 6);
+    expect(due.phase).toBe('half_time');
   });
 });

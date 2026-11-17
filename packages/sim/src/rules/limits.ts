@@ -23,3 +23,7 @@ export const WHISTLE_SHOT_WAIT_TICKS = 3 * TICK_RATE;
  * hình + chuyển cảnh (~1,6 s) cộng hạn 15 s của người chơi; quá nữa (không thể xảy ra trong luồng thường) thì thổi còi, bỏ quả phạt đền.
  */
 export const WHISTLE_PENALTY_WAIT_TICKS = 20 * TICK_RATE;
+/** Hết giờ khi đang có pha tấn công từ phạt góc / đá phạt gần khung thành: chờ tối đa 15 s từ lúc đá. */
+export const WHISTLE_SET_PIECE_WAIT_TICKS = 15 * TICK_RATE;
+/** Đá phạt cách khung thành không quá chừng này mét (và pha bóng sau đó trong tầm này) thì tính là nguy hiểm. */
+export const SET_PIECE_THREAT_DIST = 20;

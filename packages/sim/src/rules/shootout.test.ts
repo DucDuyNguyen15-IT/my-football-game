@@ -5,6 +5,7 @@ import { nextFloat, seedRng } from '../rng';
 import { TICK_RATE } from '../tick';
 import { NO_INPUT, type MatchState, type PlayerInput } from '../types';
 import { PENALTY_RUNUP_TICKS } from './setPieceAim';
+import { PENALTY_STANDOFF } from './restarts';
 import { nextShooter, shooterFor, shootoutWinner, type ShootoutTally } from './shootout';
 
 const T = true;
@@ -137,11 +138,13 @@ describe('luân lưu trong trận', () => {
         if (kicks(s) === kicks(prev)) continue;
         const kicked = prev.shootout!.kicking;
         if (s.shootout![kicked].at(-1)) scoredKicks++;
-        // Người sút lượt kế đứng ngay sau bóng (luật 2), không đi bộ tới.
+        // Người sút lượt kế đứng sẵn chỗ lấy đà sau bóng (luật 2), không đi bộ tới.
         const taker = s.players.find((p) => p.id === s.restart?.takerId);
         if (taker) {
           const { spot } = s.restart!;
-          expect(Math.hypot(taker.pos.x - spot.x, taker.pos.y - spot.y)).toBeLessThan(1);
+          expect(Math.hypot(taker.pos.x - spot.x, taker.pos.y - spot.y)).toBeLessThan(
+            PENALTY_STANDOFF + 0.5,
+          );
         }
         // Người đứng chờ ngoài vòng cấm (không phải người sút, thủ môn) ở nguyên chỗ.
         for (const p of s.players) {

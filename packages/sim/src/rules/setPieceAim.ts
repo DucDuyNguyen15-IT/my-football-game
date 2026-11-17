@@ -113,7 +113,8 @@ export function contactKick(contact: Vec2): ContactKick {
     spinTop: 0 + contact.y * CONTACT_SPIN,
     vzMult: contact.y > 0 ? 1 - contact.y : 1 - contact.y * CONTACT_LIFT,
     // Nửa trên giảm theo y² để 10h30 vẫn bổng nhẹ (còn cong), 12h mới sệt hẳn.
-    liftVz: CONTACT_LIFT_VZ * Math.max(0, off - (contact.y > 0 ? contact.y * contact.y : contact.y / 2)),
+    liftVz:
+      CONTACT_LIFT_VZ * Math.max(0, off - (contact.y > 0 ? contact.y * contact.y : contact.y / 2)),
     speedMult: 1 - off * CONTACT_SLOW,
   };
 }
@@ -124,8 +125,7 @@ export function contactKick(contact: Vec2): ContactKick {
  * trong vòng; vòng to hơn khi sút quá lực, chỉ số Sút thấp, hoặc mệt.
  */
 
-/** Pha lấy đà phạt đền (0,8 s). */
-export const PENALTY_RUNUP_TICKS = Math.round(0.8 / TICK_DT);
+export { PENALTY_RUNUP_TICKS } from './restarts';
 /** Tốc độ dời tâm vòng ngắm (m/s) khi giữ mũi tên. */
 export const PENALTY_AIM_SPEED = 4;
 /** Tâm vòng ngắm không ra xa hơn chừng này mét khỏi giữa khung thành. */

@@ -72,6 +72,8 @@ import {
   KEEPER_HOLD_MAX_TICKS,
   SET_PIECE_MAX_TICKS,
   WHISTLE_PENALTY_WAIT_TICKS,
+  WHISTLE_SET_PIECE_WAIT_TICKS,
+  SET_PIECE_THREAT_DIST,
   WHISTLE_SHOT_WAIT_TICKS,
 } from './rules/limits';
 import {
@@ -139,6 +141,8 @@ import {
   type PassReceiver,
   type PlayerInput,
   type PlayerState,
+  type Restart,
+  type RestartType,
   type TeamSide,
   type Windup,
   type WindupKick,
@@ -336,6 +340,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     actionDeadline: null,
     halfTimeEndTick: null,
     shotInFlight: null,
+    setPieceThreat: null,
     shootout: null,
     ballOwnerId: null,
     ownerSinceTick: 0,
@@ -721,26 +726,67 @@ function advance(state: MatchState, rawInput: PlayerInput): MatchState {
   const played = state.restart
     ? stepDeadBall(state, input, pressed, tick)
     : stepPlay(state, input, pressed, tick);
-  const next = runClock(trackShot(state.shotInFlight, played));
+  const next = runClock(trackSetPiece(state, trackShot(state.shotInFlight, played)));
   if (!next.ballDead || state.ballDead) return next;
   // Bóng vừa chết: đội máy (và đội người chơi khi tự đá) thay cầu thủ kiệt sức.
   const cpu = autoSubstitute(next, other(HUMAN_TEAM));
   return next.autopilot ? autoSubstitute(cpu, HUMAN_TEAM) : cpu;
 }
 
+/** Phạt góc, hoặc đá phạt trong SET_PIECE_THREAT_DIST tính từ khung thành bị tấn công. */
+const dangerousSetPiece = (r: Restart, half: 1 | 2): boolean =>
+  r.type === 'corner' || (r.type === 'free_kick' && nearGoal(r.spot, r.team, half));
+const nearGoal = (pos: Vec2, team: TeamSide, half: 1 | 2): boolean =>
+  length(sub(pos, vec2(attackSign(team, half) * HALF_LENGTH, 0))) <= SET_PIECE_THREAT_DIST;
+
 /**
- * Hết giờ mà chưa được thổi còi: đang chờ đá phạt đền, hoặc cú sút đang bay chưa phân định (PRD §5).
- * Cả hai đều có trần thời gian nên hiệp luôn kết thúc.
+ * Pha tấn công từ tình huống cố định nguy hiểm sau tick này: bắt đầu lúc bóng vừa được đá đi, hết
+ * khi bóng chết, đội phòng ngự giữ bóng, bóng ra xa khung thành hoặc quá WHISTLE_SET_PIECE_WAIT_TICKS.
+ */
+function trackSetPiece(prev: MatchState, s: MatchState): MatchState {
+  const r = prev.restart;
+  let threat = s.setPieceThreat;
+  if (r && !s.restart && dangerousSetPiece(r, s.half)) {
+    threat = { team: r.team, untilTick: s.tick + WHISTLE_SET_PIECE_WAIT_TICKS };
+  } else if (threat) {
+    const owner = s.players.find((p) => p.id === s.ballOwnerId);
+    const over =
+      s.ballDead ||
+      s.tick >= threat.untilTick ||
+      owner?.team === other(threat.team) ||
+      !nearGoal(s.ball.pos, threat.team, s.half);
+    if (over) threat = null;
+  }
+  return threat === s.setPieceThreat ? s : { ...s, setPieceThreat: threat };
+}
+
+/**
+ * Hết giờ mà chưa được thổi còi: đang chờ đá phạt đền / phạt góc / đá phạt gần khung thành, cú sút
+ * đang bay chưa phân định (PRD §5), hoặc pha tấn công từ tình huống cố định chưa xong. Tất cả đều có
+ * trần thời gian nên hiệp luôn kết thúc.
  */
 const whistleHeld = (s: MatchState): boolean =>
   s.shotInFlight !== null ||
-  (s.restart?.type === 'penalty' && s.tick - s.restart.startTick < WHISTLE_PENALTY_WAIT_TICKS);
+  s.setPieceThreat !== null ||
+  (s.restart !== null &&
+    (s.restart.type === 'penalty' || dangerousSetPiece(s.restart, s.half)) &&
+    s.tick - s.restart.startTick < WHISTLE_PENALTY_WAIT_TICKS);
+
+/** Đang chờ thực hiện tình huống cố định: đồng hồ chạy nửa tốc độ. */
+const SLOW_CLOCK_RESTARTS: ReadonlySet<RestartType> = new Set([
+  'free_kick',
+  'corner',
+  'penalty',
+  'throw_in',
+]);
 
 /**
  * Đồng hồ chạy thêm một tick; hết hiệp thì sang nghỉ giữa hiệp, hết trận, hoặc luân lưu nếu hoà
  * sau hiệp 2. Hết giờ lúc chờ phạt đền / cú sút đang bay: đồng hồ đứng ở tick cuối tới khi xong.
  */
 function runClock(state: MatchState): MatchState {
+  const slow = state.restart !== null && SLOW_CLOCK_RESTARTS.has(state.restart.type);
+  if (slow && state.tick % 2 === 1) return state;
   const halfTick = state.halfTick + 1;
   const clock = advanceClock(halfTick, state.halfLengthSec, state.stoppage, state.addedMinutes);
   if (!clock.halfOver) return { ...state, halfTick, addedMinutes: clock.addedMinutes };
@@ -766,6 +812,7 @@ function whistle(state: MatchState, phase: 'half_time' | 'full_time'): MatchStat
     backPass: null,
     lastShot: null,
     shotInFlight: null,
+    setPieceThreat: null,
     halfTimeEndTick: phase === 'half_time' ? state.tick + HALF_TIME_MAX_TICKS : null,
     ball: restingBall(state.ball.pos),
   };
@@ -910,8 +957,12 @@ function stepDeadBall(
     shot: true,
   });
   // Phạt đền của người chơi: nhả D thì lấy đà, trong lúc lấy đà mũi tên dời vòng ngắm.
-  const runUp = humanRestart && penalty ? restart.penaltyRunUp : undefined;
-  let penaltyRunUp = runUp && { ...runUp, y: movePenaltyAim(runUp.y, input.move.x, goalSign) };
+  // Máy đá phạt đền cũng lấy đà (y, power bỏ qua: lúc bóng đi máy tự chọn cú sút).
+  const runUp = penalty ? restart.penaltyRunUp : undefined;
+  let penaltyRunUp =
+    runUp && humanRestart
+      ? { ...runUp, y: movePenaltyAim(runUp.y, input.move.x, goalSign) }
+      : runUp;
   const release = (chargeTicks: number) => {
     if (penalty) {
       penaltyRunUp = {
@@ -936,7 +987,7 @@ function stepDeadBall(
   const expired = humanRestart && tick >= restart.readyTick + SET_PIECE_MAX_TICKS;
   // Đã vào vị trí hay chưa xét theo hướng đang quay mặt: tới bóng rồi thì hướng bấm chỉ xoay người.
   // Đi quá lâu (bị chen) thì tick này đặt luôn mọi người vào vị trí, tick sau mới thực hiện.
-  const targets = restartTargets(state.players, restart, state.half, takerFar ? aim : ZERO);
+  const targets = restartTargets(state.players, restart, state.half, takerFar ? aim : ZERO, tick);
 
   let kicked: {
     ball: BallState;
@@ -968,13 +1019,29 @@ function stepDeadBall(
     });
   };
   const charging = state.passCharge;
+  const cpuKick = () => {
+    const decided = decideRestartKick(restart, state.players, state.half, state.rng);
+    if (decided.action.type !== 'dribble' && goalKick) {
+      windup = startWindup(taker.id, tick, 'kick', decided.action);
+      rng = decided.rng;
+    } else if (decided.action.type !== 'dribble') {
+      const ai = aiProfile(state, restart.team);
+      const profile = penalty ? { ...ai, shotErrorMult: PENALTY_ERROR_MULT } : ai;
+      kicked = {
+        ...performKick(taker, restart.spot, decided.action, decided.rng, profile),
+        // Máy đá hộ người chơi: người chơi cầm luôn người nhận như khi tự chuyền.
+        receiver: humanRestart ? aiReceiver(decided.action, restart.spot, tick) : null,
+      };
+    }
+  };
   if (windup) {
     if (tick >= windup.releaseTick) {
       kicked = releaseWindup(state, state.players, windup, restart.spot, rng, tick);
       windup = null;
     }
   } else if (penaltyRunUp) {
-    if (tick >= penaltyRunUp.releaseTick) {
+    if (tick >= penaltyRunUp.releaseTick && !humanRestart) cpuKick();
+    else if (tick >= penaltyRunUp.releaseTick) {
       const { y, power } = penaltyRunUp;
       kicked = { ...penaltyShot(taker, restart.spot, goalSign, y, power, state.rng), shot: true };
     }
@@ -1004,20 +1071,10 @@ function stepDeadBall(
     } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
       kicked = release(state.shotChargeTicks);
     }
+  } else if (penalty && !humanRestart && cpuRestartDue(restart, tick)) {
+    penaltyRunUp = { power: 0, y: 0, releaseTick: tick + PENALTY_RUNUP_TICKS };
   } else if (expired || cpuRestartDue(restart, tick)) {
-    const decided = decideRestartKick(restart, state.players, state.half, state.rng);
-    if (decided.action.type !== 'dribble' && goalKick) {
-      windup = startWindup(taker.id, tick, 'kick', decided.action);
-      rng = decided.rng;
-    } else if (decided.action.type !== 'dribble') {
-      const ai = aiProfile(state, restart.team);
-      const profile = penalty ? { ...ai, shotErrorMult: PENALTY_ERROR_MULT } : ai;
-      kicked = {
-        ...performKick(taker, restart.spot, decided.action, decided.rng, profile),
-        // Máy đá hộ người chơi: người chơi cầm luôn người nhận như khi tự chuyền.
-        receiver: humanRestart ? aiReceiver(decided.action, restart.spot, tick) : null,
-      };
-    }
+    cpuKick();
   }
 
   if (kicked) {
@@ -1043,7 +1100,7 @@ function stepDeadBall(
       rng: kicked.rng,
       ball,
       // Người vừa tới sát chỗ ở tick trước: đứng đúng vị trí lúc bóng đi.
-      players: holdRestart(state.players, restart, state.half),
+      players: holdRestart(state.players, restart, state.half, ZERO, tick),
       ballOwnerId: null,
       ownerSinceTick: tick,
       // Người chơi chuyền bóng chết: đổi ngay sang người nhận, người nhận tự chạy đón (5.17).
@@ -1085,7 +1142,7 @@ function stepDeadBall(
     }),
   );
   // Ai đã tới chỗ thì giữ đúng vị trí (người thực hiện sau bóng, đối phương ngoài khoảng cách).
-  const held = holdRestart(moved, restart, state.half, aim);
+  const held = holdRestart(moved, restart, state.half, aim, tick);
   const players = moved.map((p, i) => (targets.has(p.id) && !timedOut ? p : held[i]!));
   const overrun = tick - restart.startTick > RESTART_GRACE_TICKS ? 1 : 0;
   return {

@@ -297,6 +297,11 @@ export interface MatchState {
    * bị đánh bại. null khi không có.
    */
   shotInFlight: { team: TeamSide; tick: number } | null;
+  /**
+   * Pha tấn công từ phạt góc / đá phạt gần khung thành đang diễn ra: còi hết hiệp chờ tới khi đội
+   * phòng ngự giành bóng, bóng ra xa khung thành, bóng chết hoặc tới `untilTick`. null khi không có.
+   */
+  setPieceThreat: { team: TeamSide; untilTick: number } | null;
   /** Luân lưu khi hoà sau 2 hiệp; null nếu không có. Giữ lại sau khi hết trận cho màn kết quả. */
   shootout: Shootout | null;
   /** Cầu thủ đang dẫn bóng (bóng dính chân), null khi bóng tự do. */
