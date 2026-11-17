@@ -49,7 +49,7 @@ pnpm dev                                             # web http://localhost:5173
 
 Không có `.env` thì server dùng giá trị dev khớp `docker-compose.dev.yml`. Các biến môi trường khác (đăng nhập Google, …) xem [.env.example](.env.example).
 
-**Model 3D:** file model không nằm trong repo (xem [Nguồn tài nguyên](#nguồn-tài-nguyên)); thiếu file thì game tự vẽ cầu thủ, bóng, khung thành bằng hình khối. Nếu có file gốc trong `assets-src/` thì chạy `pnpm assets` để dựng `apps/web/public/models/*.glb`.
+**Model 3D:** file model không nằm trong repo (xem [Nguồn tài nguyên](#nguồn-tài-nguyên)); thiếu file thì game tự vẽ cầu thủ, bóng, khung thành bằng hình khối. Nếu có file gốc trong `assets-src/` thì chạy `pnpm assets` để dựng `apps/web/public/models/*.glb`. Bản production (`docker compose up -d --build`) đóng các file `.glb` đang có trên máy build vào image.
 
 ## Kiểm thử
 
