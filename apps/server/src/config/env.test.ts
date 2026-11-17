@@ -21,13 +21,27 @@ describe('loadEnv', () => {
     expect(() => loadEnv({ NODE_ENV: 'production' })).toThrow(/DATABASE_URL[\s\S]*SESSION_SECRET/);
   });
 
+  it('production dùng SESSION_SECRET mẫu của .env.example → lỗi; dev vẫn dùng được', () => {
+    const sample = 'dev-only-session-secret-change-me-please';
+    expect(() =>
+      loadEnv({
+        NODE_ENV: 'production',
+        DATABASE_URL: 'postgres://pitch:pitch@localhost:5432/pitch',
+        SESSION_SECRET: sample,
+      }),
+    ).toThrow(/SESSION_SECRET/);
+    expect(loadEnv({ SESSION_SECRET: sample }).sessionSecret).toBe(sample);
+  });
+
   it('MATCH_MIN_DURATION_SEC: production < 360 → lỗi; mọi môi trường ≥ MATCH_MAX_AGE_SEC → lỗi', () => {
     const prod = {
       NODE_ENV: 'production',
       DATABASE_URL: 'postgres://pitch:pitch@localhost:5432/pitch',
       SESSION_SECRET: 'a-very-long-production-session-secret-32chars',
     };
-    expect(() => loadEnv({ ...prod, MATCH_MIN_DURATION_SEC: '0' })).toThrow(/MATCH_MIN_DURATION_SEC/);
+    expect(() => loadEnv({ ...prod, MATCH_MIN_DURATION_SEC: '0' })).toThrow(
+      /MATCH_MIN_DURATION_SEC/,
+    );
     expect(loadEnv({ ...prod, MATCH_MIN_DURATION_SEC: '400' }).matchMinDurationSec).toBe(400);
     expect(loadEnv({ MATCH_MIN_DURATION_SEC: '0' }).matchMinDurationSec).toBe(0);
     expect(() => loadEnv({ MATCH_MIN_DURATION_SEC: '7200' })).toThrow(/MATCH_MIN_DURATION_SEC/);

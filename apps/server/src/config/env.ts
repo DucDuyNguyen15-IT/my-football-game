@@ -45,6 +45,14 @@ const EnvSchema = z
       if (!env[key])
         ctx.addIssue({ code: 'custom', path: [key], message: 'bắt buộc ở production' });
     }
+    // `cp .env.example .env` rồi quên đổi: giá trị mẫu ai cũng biết, không được dùng ở production.
+    if (env.SESSION_SECRET === DEV_SESSION_SECRET) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['SESSION_SECRET'],
+        message: 'đang là giá trị mẫu của .env.example, hãy đổi thành chuỗi ngẫu nhiên',
+      });
+    }
     // Chốt thời lượng là lớp chống nộp trận giả duy nhất (SEC-07): production không được hạ dưới mặc định.
     if (env.MATCH_MIN_DURATION_SEC < MATCH_MIN_DURATION_SEC) {
       ctx.addIssue({

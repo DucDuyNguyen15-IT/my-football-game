@@ -68,6 +68,22 @@ export async function anonymizeUser(db: Db, userId: number): Promise<void> {
   });
 }
 
+/**
+ * Gọi đầu transaction cấp phiên: khoá dòng user và kiểm cách đăng nhập chưa đổi kể từ lúc đọc
+ * `user`. Chặn khe "xoá tài khoản xong trong lúc đăng nhập đang kiểm mật khẩu" (review main-b T1):
+ * không cấp phiên vào tài khoản đã ẩn danh hoá, không ghi analytics sau khi đã xoá.
+ */
+export async function assertLoginUnchanged(tx: Tx, user: UserRow): Promise<void> {
+  const [now] = await tx
+    .select({ passwordHash: users.passwordHash, googleSub: users.googleSub })
+    .from(users)
+    .where(eq(users.id, user.id))
+    .for('update');
+  if (!now || now.passwordHash !== user.passwordHash || now.googleSub !== user.googleSub) {
+    throw new AppError('invalid_credentials', 401, 'Tài khoản vừa thay đổi, hãy đăng nhập lại');
+  }
+}
+
 let dummyHash: Promise<string> | null = null;
 /** So với hash giả khi không có user để thời gian phản hồi không lộ tên đăng nhập có tồn tại. */
 export async function burnPasswordCheck(password: string): Promise<void> {
