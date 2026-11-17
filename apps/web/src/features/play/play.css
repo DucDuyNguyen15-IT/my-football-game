@@ -492,9 +492,13 @@
     opacity: 0.35;
   }
 }
+/* Giữa dưới, thế chỗ gợi ý phím: phía trên là cột tỉ số + dải sự kiện cao không cố định nên hay đè. */
+body:has(.replay-tag) .hud-keys {
+  visibility: hidden;
+}
 .replay-tag {
   position: fixed;
-  top: 76px;
+  bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
   z-index: var(--z-overlay);
