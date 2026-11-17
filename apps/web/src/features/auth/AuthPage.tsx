@@ -173,7 +173,7 @@ export function AuthPage() {
               onSubmit={(name) => {
                 setJustRegistered(true);
                 google.mutate(
-                  // Nút "Vào sân" ghi rõ tạo tài khoản là đồng ý Điều khoản + Chính sách.
+                  // Bước này chỉ gửi được khi đã tick ô đồng ý Điều khoản + Chính sách.
                   { idToken: googleStep.idToken, username: name, acceptTerms: true },
                   {
                     onError: () => {
@@ -432,6 +432,8 @@ function GoogleUsernameStep({
   const giftText = useGiftText();
   const [name, setName] = useState(suggested);
   const [localError, setLocalError] = useState<string | null>(null);
+  const [agreed, setAgreed] = useState(false);
+  const [consentError, setConsentError] = useState(false);
   const serverField = fieldErrorOf(error);
   const notice = error && !serverField ? describeAuthError(error) : null;
 
@@ -443,6 +445,10 @@ function GoogleUsernameStep({
       return;
     }
     setLocalError(null);
+    if (!agreed) {
+      setConsentError(true);
+      return;
+    }
     onSubmit(parsed.data);
   };
 
@@ -475,6 +481,29 @@ function GoogleUsernameStep({
           />
         )}
       </Field>
+      {/* Ô đồng ý như đăng ký thường (review setpiece F2). */}
+      <label className="consent">
+        <input
+          type="checkbox"
+          checked={agreed}
+          aria-invalid={consentError && !agreed}
+          onChange={(e) => {
+            setAgreed(e.target.checked);
+            setConsentError(false);
+          }}
+        />
+        <span>
+          Tôi đồng ý <Link to="/terms">Điều khoản sử dụng</Link> và{' '}
+          <Link to="/privacy">Chính sách bảo mật</Link> (dữ liệu tài khoản và dữ liệu chơi chỉ dùng
+          để chạy game).
+        </span>
+      </label>
+      {consentError && !agreed && (
+        <p className="field__error" role="alert">
+          <WarnIcon />
+          Cần đồng ý Điều khoản và Chính sách để tạo tài khoản.
+        </p>
+      )}
       {notice && <Notice notice={notice} />}
       <div className="auth__actions">
         <button
@@ -486,10 +515,6 @@ function GoogleUsernameStep({
           <span className="btn__label">Vào sân &amp; nhận quà</span>
         </button>
         <span className="muted auth__foot">{giftText} đang chờ</span>
-        <span className="muted auth__foot">
-          Tạo tài khoản nghĩa là bạn đồng ý <Link to="/terms">Điều khoản</Link> và{' '}
-          <Link to="/privacy">Chính sách bảo mật</Link>.
-        </span>
         <button
           type="button"
           className="btn btn--ghost btn--block"

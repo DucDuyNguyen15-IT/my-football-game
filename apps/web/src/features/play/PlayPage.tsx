@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useNavigate, useSearchParams } from 'react-router';
+import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty, StartedMatch } from '@pitch/shared';
 import type { MatchSetup, MatchState } from '@pitch/sim';
 import { ApiClientError } from '../../api/client';
@@ -41,6 +41,8 @@ import {
   PauseMenu,
   ResultScreen,
   ShootoutHint,
+  UNSAVED_LEAVE_MESSAGE,
+  isUnsavedResult,
   type RewardStatus,
 } from './screens';
 import '../../styles/tokens.css';
@@ -182,6 +184,25 @@ interface MatchResultViewProps {
 const SUBMIT_FAILED = 'Chưa gửi được kết quả lên máy chủ.';
 
 /**
+ * Hỏi trước khi rời màn lúc `active`: link/Back trong ứng dụng (`useBlocker`) và đóng tab, tải lại,
+ * Back ra ngoài trang (`beforeunload` — trình duyệt hiện câu hỏi mặc định của nó).
+ */
+function useLeaveGuard(active: boolean, message: string): void {
+  const blocker = useBlocker(active);
+  useEffect(() => {
+    if (blocker.state !== 'blocked') return;
+    if (window.confirm(message)) blocker.proceed();
+    else blocker.reset();
+  }, [blocker, message]);
+  useEffect(() => {
+    if (!active) return;
+    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [active]);
+}
+
+/**
  * Màn kết quả + nộp tỉ số lên server một lần khi mở. Lỗi mạng/5xx: hook tự thử lại, rồi cho bấm
  * "Gửi lại" — luôn cùng token nên server không cộng xu hai lần.
  */
@@ -217,6 +238,7 @@ function MatchResultView({ difficulty, match, hud, onRematch }: MatchResultViewP
   } else if (isPending && retried) {
     reward = { kind: 'error', message: SUBMIT_FAILED, retryable: true, retrying: true };
   }
+  useLeaveGuard(isUnsavedResult(reward), UNSAVED_LEAVE_MESSAGE);
   return (
     <ResultScreen
       hud={hud}
