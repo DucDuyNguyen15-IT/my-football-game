@@ -12,6 +12,7 @@ import { useEconomy, usePlayerCards, useUpgradeCard } from '../../api/player-car
 import { CardView } from '../../components/card/CardView';
 import { RARITY_INFO } from '../../components/card/rarity';
 import { HoldButton } from '../../components/HoldButton';
+import { prefersReducedMotion } from '../shop/reveal';
 import {
   materialCandidates,
   materialGrid,
@@ -82,7 +83,15 @@ export function UpgradePage() {
   const me = useMe();
   const upgrader = useUpgradeCard();
   const [picking, setPicking] = useState(false);
+  const [forging, setForging] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => {
+      mounted.current = false;
+    };
+  }, []);
 
   if (list.isPending || catalog.isPending || economy.isPending) {
     return (
@@ -140,17 +149,34 @@ export function UpgradePage() {
   };
 
   async function run() {
-    if (!target || !material || !preview) return;
+    if (!target || !material || !preview || forging) return;
     const fromLevel = target.pc.level;
-    const res = await upgrader.upgrade(target.pc.id, material.pc.id).catch(() => null);
-    if (!res) return;
-    // Nguyên liệu đã mất → bỏ chọn; giữ thẻ được ép để ép tiếp.
-    select(target.pc.id, null);
-    setOutcome({ res, card: target.card, fromLevel });
+    setForging(true);
+    const beat = prefersReducedMotion()
+      ? Promise.resolve()
+      : new Promise<void>((resolve) => setTimeout(resolve, 240));
+    try {
+      const [res] = await Promise.all([
+        upgrader.upgrade(target.pc.id, material.pc.id).catch(() => null),
+        beat,
+      ]);
+      if (!mounted.current || !res) return;
+      // Nguyên liệu đã mất → bỏ chọn; giữ thẻ được ép để ép tiếp.
+      select(target.pc.id, null);
+      setOutcome({ res, card: target.card, fromLevel });
+    } finally {
+      if (mounted.current) setForging(false);
+    }
   }
 
   const canRun =
-    !!target && !!material && !!preview && short === 0 && !upgrader.isPending && !!me.data;
+    !!target &&
+    !!material &&
+    !!preview &&
+    short === 0 &&
+    !upgrader.isPending &&
+    !forging &&
+    !!me.data;
   const hold =
     target && material ? needsHoldConfirm(target.card, material.card, material.pc) : false;
   const rarityLabel = target ? RARITY_INFO[target.card.rarity].label : '';
@@ -170,7 +196,7 @@ export function UpgradePage() {
     <div
       className="upg"
       onKeyDown={(e) => {
-        if (e.key === 'Escape' && picking && target && !outcome) setPicking(false);
+        if (e.key === 'Escape' && picking && target && !outcome && !forging) setPicking(false);
       }}
     >
       <header className="upg__head">
@@ -185,7 +211,10 @@ export function UpgradePage() {
       </header>
 
       <div className="upg__layout">
-        <section className="panel upg__target" aria-label="Thẻ cần ép">
+        <section
+          className={`panel upg__target${forging ? ' is-forging' : ''}`}
+          aria-label="Thẻ cần ép"
+        >
           <span className="label">Thẻ cần ép</span>
           {target ? (
             <>
@@ -296,7 +325,7 @@ export function UpgradePage() {
               material={material}
               hold={hold}
               canRun={canRun}
-              pending={upgrader.isPending}
+              pending={upgrader.isPending || forging}
               short={short}
               error={upgrader.error ? upgradeErrorMessage(upgrader.error) : null}
               onRun={() => void run()}

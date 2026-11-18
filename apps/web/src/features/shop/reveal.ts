@@ -18,6 +18,7 @@ export const REVEAL_TIMING: Record<Rarity, { charge: number; flip: number; burst
 /** Vàng+ có viền mặt sau phát sáng trước khi lật. */
 export const hintsRarity = (r: Rarity) => r === 'gold' || r === 'legend';
 
+const EASE_IN = 'cubic-bezier(.55,0,1,.45)';
 const EASE_OUT = 'cubic-bezier(.22,1,.36,1)';
 const EASE_IN_OUT = 'cubic-bezier(.65,0,.35,1)';
 const EASE_SNAP = 'cubic-bezier(.34,1.56,.64,1)';
@@ -113,6 +114,17 @@ export class PackRevealer {
     const rect = pack.getBoundingClientRect();
     if (this.reduced) return rect;
     try {
+      // Lấy đà (anticipation): nén nhẹ trước khi rung và xé gói.
+      await this.run(
+        pack,
+        [
+          { transform: 'none' },
+          { transform: 'scaleX(1.04) scaleY(0.94)', offset: 0.5 },
+          { transform: 'scaleX(0.97) scaleY(1.03)', offset: 0.85 },
+          { transform: 'none' },
+        ],
+        { duration: 160, easing: EASE_IN_OUT },
+      );
       await this.run(
         pack,
         [
@@ -143,7 +155,7 @@ export class PackRevealer {
               { transform: 'none', opacity: 1 },
               { transform: 'translateY(60px) scale(.9)', opacity: 0 },
             ],
-            { duration: 420, easing: 'ease-in', fill: 'forwards' },
+            { duration: 420, easing: EASE_IN, fill: 'forwards' },
           ),
         label &&
           this.run(label, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }),
@@ -366,9 +378,20 @@ export class PackRevealer {
       kf.push({ transform: 'translateY(-10px)' });
       await this.run(shaker, kf, {
         duration: isLegend ? T.charge - 520 : T.charge,
-        easing: 'ease-in',
+        easing: EASE_IN,
         fill: 'forwards',
       });
+    } else {
+      // Lấy đà nhẹ (anticipation + squash) cho thẻ Đồng/Bạc trước khi lật.
+      await this.run(
+        shaker,
+        [
+          { transform: 'none' },
+          { transform: 'scaleX(1.04) scaleY(0.95)', offset: 0.55 },
+          { transform: 'scaleX(0.98) scaleY(1.03)' },
+        ],
+        { duration: 150, easing: EASE_IN_OUT },
+      );
     }
     slot.classList.remove('hint');
     // 2) Lật
@@ -382,19 +405,27 @@ export class PackRevealer {
       { duration: T.flip, easing: EASE_IN_OUT },
     );
     flipper.classList.add('flipped');
-    // 3) Bùng nổ
+    // 3) Bùng nổ + nén bật nhẹ (squash & stretch)
     const after: Promise<void>[] = [
       this.run(
         shaker,
-        [{ transform: T.charge ? 'translateY(-10px)' : 'scale(1.05)' }, { transform: 'none' }],
-        { duration: 260, easing: EASE_SNAP },
+        [
+          {
+            transform: T.charge
+              ? 'translateY(-10px) scaleX(1.04) scaleY(0.96)'
+              : 'scaleX(1.05) scaleY(0.95)',
+          },
+          { transform: 'scaleX(0.98) scaleY(1.02)', offset: 0.55 },
+          { transform: 'none' },
+        ],
+        { duration: 280, easing: EASE_SNAP },
       ),
     ];
     if (sheen && rarity !== 'bronze') {
       after.push(
         this.run(sheen, [{ transform: 'translateX(-130%)' }, { transform: 'translateX(130%)' }], {
           duration: isLegend ? 900 : 600,
-          easing: 'ease-in-out',
+          easing: EASE_IN_OUT,
         }),
       );
     }

@@ -514,7 +514,7 @@ body:has(.replay-tag) .hud-keys {
   height: 9px;
   border-radius: 50%;
   background: #ff6b6b;
-  animation: replay-pulse 1s ease-in-out infinite;
+  animation: replay-pulse 1s var(--ease-in-out) infinite;
 }
 .replay-tag__text {
   color: var(--r-gold-hi);
@@ -538,7 +538,7 @@ body:has(.replay-tag) .hud-keys {
   border-color: #ff6b6b;
   color: var(--c-card-ink);
   pointer-events: none;
-  animation: foul-call-in 0.18s ease-out;
+  animation: foul-call-in var(--dur-fast) var(--ease-out);
 }
 .foul-call[hidden] {
   display: none;
@@ -548,7 +548,7 @@ body:has(.replay-tag) .hud-keys {
   height: 9px;
   border-radius: 50%;
   background: #ff6b6b;
-  animation: replay-pulse 0.5s ease-in-out infinite;
+  animation: replay-pulse 0.5s var(--ease-in-out) infinite;
 }
 /* Menu tạm dừng đang mở: chấm còi / chấm phát lại đứng yên như trận. */
 body:has(.scrim.pause) .foul-call__whistle,
@@ -1148,16 +1148,7 @@ body:has(.scrim.pause) .replay-tag__dot {
   border: 3px solid var(--r-gold-base);
   outline: 1px solid var(--r-gold-hi);
   outline-offset: -7px;
-  clip-path: polygon(
-    29% 0%,
-    71% 0%,
-    100% 29%,
-    100% 71%,
-    71% 100%,
-    29% 100%,
-    0% 71%,
-    0% 29%
-  );
+  clip-path: polygon(29% 0%, 71% 0%, 100% 29%, 100% 71%, 71% 100%, 29% 100%, 0% 71%, 0% 29%);
   box-shadow: 0 12px 32px rgb(0 0 0 / 0.65);
   opacity: var(--stinger-label-opacity, 0);
   transform: translate(-50%, -50%) scale(var(--stinger-label-scale, 1));
@@ -1195,11 +1186,7 @@ body:has(.scrim.pause) .replay-tag__dot {
   gap: 4px;
   contain: strict;
   backface-visibility: hidden;
-  background: linear-gradient(
-    180deg,
-    rgb(11 33 24 / 0.96) 0%,
-    rgb(6 17 13 / 0.98) 100%
-  );
+  background: linear-gradient(180deg, rgb(11 33 24 / 0.96) 0%, rgb(6 17 13 / 0.98) 100%);
   border: 1.5px solid var(--r-gold-base);
   outline: 1px solid rgb(255 229 143 / 0.42);
   outline-offset: -5px;
@@ -1255,4 +1242,3 @@ body:has(.scrim.pause) .replay-tag__dot {
   font-variant-numeric: tabular-nums;
   text-shadow: 0 2px 4px rgb(0 0 0 / 0.75);
 }
-

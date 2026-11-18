@@ -53,8 +53,23 @@
   gap: var(--sp-3);
   text-align: center;
   background:
-    radial-gradient(90% 60% at 50% 0%, rgb(184 134 11 / 0.08), transparent 65%),
-    var(--c-surface-1);
+    radial-gradient(90% 60% at 50% 0%, rgb(184 134 11 / 0.08), transparent 65%), var(--c-surface-1);
+}
+@keyframes upg-forge-pulse {
+  0% {
+    transform: scale(1);
+  }
+  45% {
+    transform: scale(0.96);
+    filter: brightness(1.06);
+  }
+  100% {
+    transform: scale(1.03);
+    filter: drop-shadow(0 0 14px var(--c-gold-leaf));
+  }
+}
+.upg__target.is-forging .card {
+  animation: upg-forge-pulse 240ms var(--ease-in-out) forwards;
 }
 .upg__levels {
   display: inline-flex;
@@ -230,6 +245,48 @@
 }
 
 /* Hộp thoại kết quả ép thẻ */
+@keyframes upg-dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes upg-card-win {
+  0% {
+    transform: scale(0.86);
+  }
+  55% {
+    transform: scale(1.06, 0.96);
+  }
+  80% {
+    transform: scale(0.98, 1.03);
+  }
+  100% {
+    transform: none;
+  }
+}
+@keyframes upg-card-lose {
+  0%,
+  100% {
+    transform: none;
+  }
+  18% {
+    transform: translateX(-8px) rotate(-2deg);
+  }
+  36% {
+    transform: translateX(7px) rotate(2deg);
+  }
+  54% {
+    transform: translateX(-5px) rotate(-1deg);
+  }
+  72% {
+    transform: translateX(4px) rotate(1deg);
+  }
+}
 @keyframes upg-ring-burst {
   from {
     transform: scale(0.7);
@@ -255,6 +312,7 @@
   justify-items: center;
   gap: var(--sp-3);
   text-align: center;
+  animation: upg-dialog-in var(--dur-base) var(--ease-snap);
 }
 .upg-result::backdrop {
   background: var(--c-scrim);
@@ -262,14 +320,12 @@
 .upg-result--win {
   border-color: var(--c-accent);
   background:
-    radial-gradient(85% 55% at 50% 0%, rgb(10 104 71 / 0.12), transparent 65%),
-    var(--c-surface-1);
+    radial-gradient(85% 55% at 50% 0%, rgb(10 104 71 / 0.12), transparent 65%), var(--c-surface-1);
 }
 .upg-result--lose {
   border-color: var(--c-danger);
   background:
-    radial-gradient(85% 55% at 50% 0%, rgb(181 31 31 / 0.09), transparent 65%),
-    var(--c-surface-1);
+    radial-gradient(85% 55% at 50% 0%, rgb(181 31 31 / 0.09), transparent 65%), var(--c-surface-1);
 }
 .upg-result__stage {
   position: relative;
@@ -288,6 +344,13 @@
 .upg-result__card {
   position: relative;
   z-index: 1;
+}
+.upg-result--win .upg-result__card {
+  animation: upg-card-win 520ms var(--ease-snap);
+}
+.upg-result--lose .upg-result__card {
+  animation: upg-card-lose 420ms var(--ease-out);
+  filter: saturate(0.85);
 }
 .upg-result__title {
   margin: 0;
@@ -331,7 +394,11 @@
 
 @media (prefers-reduced-motion: reduce) {
   .upg-pick,
-  .upg-result__ring {
+  .upg-result,
+  .upg-result__ring,
+  .upg-result--win .upg-result__card,
+  .upg-result--lose .upg-result__card,
+  .upg__target.is-forging .card {
     transition: none;
     animation: none;
   }

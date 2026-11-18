@@ -224,6 +224,16 @@
 }
 
 /* Thanh chọn bán hàng loạt nổi dưới chân trang */
+@keyframes coll-bar-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, 12px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%);
+  }
+}
 .coll__bar {
   position: fixed;
   left: 50%;
@@ -243,6 +253,7 @@
   border-radius: var(--radius-lg);
   box-shadow: var(--shadow-2);
   max-width: calc(100vw - 32px);
+  animation: coll-bar-in var(--dur-base) var(--ease-snap);
 }
 
 /* Hộp thoại xác nhận bán */
@@ -273,5 +284,8 @@
 @media (prefers-reduced-motion: reduce) {
   .coll-item {
     transition: none;
+  }
+  .coll__bar {
+    animation: none;
   }
 }

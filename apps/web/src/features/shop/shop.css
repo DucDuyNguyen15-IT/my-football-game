@@ -335,7 +335,7 @@
   background: none;
   cursor: pointer;
   color: var(--c-card-ink);
-  animation: pack-idle 3.6s ease-in-out infinite;
+  animation: pack-idle 3.6s var(--ease-in-out) infinite;
   transition: transform var(--dur-fast) var(--ease-out);
 }
 .pack:hover {

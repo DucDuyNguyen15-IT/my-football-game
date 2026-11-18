@@ -244,7 +244,7 @@ a {
   font-size: calc(var(--fs-sm) * 1.15);
   color: var(--c-card-ink);
   text-shadow: 0 1px 6px rgb(0 0 0 / 0.95);
-  animation: intro-blink 2s ease-in-out infinite;
+  animation: intro-blink 2s var(--ease-in-out) infinite;
 }
 @keyframes intro-blink {
   0%,
@@ -267,7 +267,7 @@ a {
 }
 @media (prefers-reduced-motion: reduce) {
   .intro__logo {
-    animation: intro-fade 200ms linear forwards;
+    animation: intro-fade 200ms var(--ease-out) forwards;
   }
   .intro__mark::after {
     animation: none;
