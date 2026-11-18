@@ -144,6 +144,8 @@
 }
 .coll__close {
   justify-self: end;
+  min-width: 44px;
+  min-height: 44px;
 }
 .coll__who {
   --card-w-lg: 156px;

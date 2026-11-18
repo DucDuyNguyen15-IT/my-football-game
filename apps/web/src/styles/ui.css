@@ -101,7 +101,7 @@
   align-items: center;
   justify-content: center;
   gap: var(--sp-2);
-  height: 40px;
+  min-height: 44px;
   padding: 0 var(--sp-5);
   border: 1px solid transparent;
   border-radius: var(--radius-md);
@@ -113,7 +113,6 @@
   text-decoration: none;
   white-space: nowrap;
   cursor: pointer;
-  overflow: hidden;
   transition:
     background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
@@ -185,9 +184,16 @@
   letter-spacing: 0.08em;
 }
 .btn--sm {
-  height: 32px;
+  min-height: 36px;
+  height: 36px;
+  min-width: 44px;
   padding: 0 var(--sp-3);
   font-size: var(--fs-xs);
+}
+.btn--sm::before {
+  content: '';
+  position: absolute;
+  inset: -4px 0;
 }
 .btn--block {
   width: 100%;
@@ -225,6 +231,9 @@
   opacity: 0.8;
 }
 /* Nút giữ để xác nhận — `.hold` do <HoldButton> luôn gắn (B4-04: trước chỉ có khi thêm btn--hold) */
+.hold {
+  overflow: hidden;
+}
 .hold .hold__fill {
   position: absolute;
   inset: 0;
@@ -408,11 +417,14 @@
 
 /* ---------- Chip lọc, tab, segmented ---------- */
 .chip {
+  position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
+  min-width: 44px;
   height: 32px;
-  padding: 0 12px;
+  padding: 0 14px;
   border: 1px solid var(--c-line-control);
   border-radius: 999px;
   background: var(--c-surface-1);
@@ -425,6 +437,11 @@
     background-color var(--dur-fast) var(--ease-out),
     border-color var(--dur-fast) var(--ease-out),
     color var(--dur-fast) var(--ease-out);
+}
+.chip::after {
+  content: '';
+  position: absolute;
+  inset: -6px 0;
 }
 .chip:hover {
   color: var(--c-text);
@@ -443,7 +460,12 @@
 }
 .tab {
   position: relative;
-  padding: 10px 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 10px 4px;
   background: none;
   border: 0;
   color: var(--c-text-muted);
@@ -471,7 +493,8 @@
   border-radius: var(--radius-md);
 }
 .seg__opt {
-  height: 34px;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0 14px;
   border: 0;
   border-radius: var(--radius-sm);
@@ -615,6 +638,7 @@
 .logo {
   display: inline-flex;
   align-items: center;
+  min-height: 44px;
   gap: 10px;
   font-family: var(--font-display);
   font-weight: 700;
@@ -671,6 +695,9 @@
   position: relative;
   display: inline-flex;
   align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
   padding: 0 var(--sp-3);
   color: var(--c-text-muted);
   text-decoration: none;
@@ -709,8 +736,10 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  height: 34px;
-  padding: 0 10px 0 4px;
+  min-width: 44px;
+  min-height: 44px;
+  height: 44px;
+  padding: 0 10px 0 8px;
   border: 1px solid var(--c-line);
   border-radius: var(--radius-md);
   background: var(--c-bg);
@@ -783,8 +812,12 @@
 }
 .field__btn {
   position: absolute;
-  right: 6px;
-  height: 32px;
+  right: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  height: 44px;
   padding: 0 10px;
   border: 0;
   border-radius: var(--radius-sm);

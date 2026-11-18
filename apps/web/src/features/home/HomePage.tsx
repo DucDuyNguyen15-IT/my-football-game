@@ -186,7 +186,14 @@ export function HomePage() {
           <Link to="/shop" className="panel home__tile">
             <span className="label">Hộp thẻ của bạn</span>
             <span className="display home__tile-big">
-              {box ? `${box.total}/${box.size} phiếu` : 'Đang tải…'}
+              {box ? (
+                `${box.total}/${box.size} phiếu`
+              ) : (
+                <>
+                  <span className="skel skel--line home__tile-skel" aria-hidden="true" />
+                  <span className="sr-only">Đang tải…</span>
+                </>
+              )}
             </span>
             <span className="muted">
               {box
@@ -197,14 +204,28 @@ export function HomePage() {
           <Link to="/collection" className="panel home__tile">
             <span className="label">Kho thẻ</span>
             <span className="display home__tile-big">
-              {list.data ? `${list.data.length} thẻ` : 'Đang tải…'}
+              {list.data ? (
+                `${list.data.length} thẻ`
+              ) : (
+                <>
+                  <span className="skel skel--line home__tile-skel" aria-hidden="true" />
+                  <span className="sr-only">Đang tải…</span>
+                </>
+              )}
             </span>
             <span className="muted">Xem, bán, ép thẻ →</span>
           </Link>
           <Link to="/upgrade" className="panel home__tile">
             <span className="label">Ép thẻ</span>
             <span className="display home__tile-big">
-              {maxLevel ? `+1 → +${maxLevel}` : 'Đang tải…'}
+              {maxLevel ? (
+                `+1 → +${maxLevel}`
+              ) : (
+                <>
+                  <span className="skel skel--line home__tile-skel" aria-hidden="true" />
+                  <span className="sr-only">Đang tải…</span>
+                </>
+              )}
             </span>
             <span className="muted">Biết trước tỉ lệ thành công →</span>
           </Link>

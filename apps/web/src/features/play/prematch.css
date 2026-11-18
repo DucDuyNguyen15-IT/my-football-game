@@ -239,9 +239,14 @@
   font-size: var(--fs-sm);
 }
 .vs__link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
   background: none;
   border: none;
-  padding: 0;
+  padding: 8px 10px;
   color: var(--r-gold-hi);
   font-weight: 600;
   text-decoration: underline;

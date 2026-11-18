@@ -4,11 +4,35 @@ import { useLogout, useMe } from '../api/auth';
 import { useExpiredMissionClaims } from '../api/missions';
 import { ExpiredMissionsNotice } from '../features/missions/ExpiredMissionsNotice';
 
+function AuthSkeleton() {
+  return (
+    <div className="shell" aria-busy="true">
+      <span className="sr-only" role="status">
+        Đang tải…
+      </span>
+      <header className="topbar">
+        <div className="skel" style={{ width: 92, height: 26 }} />
+        <div className="skel" style={{ width: 260, height: 20 }} />
+        <div className="topbar__right">
+          <div className="skel" style={{ width: 96, height: 34 }} />
+        </div>
+      </header>
+      <main className="page">
+        <div className="panel" style={{ display: 'grid', gap: 16 }}>
+          <div className="skel skel--line" style={{ width: '35%', height: 24 }} />
+          <div className="skel skel--line" style={{ width: '65%' }} />
+          <div className="skel skel--line" style={{ width: '50%' }} />
+        </div>
+      </main>
+    </div>
+  );
+}
+
 /** Chặn route khi chưa đăng nhập: chuyển về /login, nhớ trang định vào để quay lại sau. */
 export function RequireAuth() {
   const me = useMe();
   const location = useLocation();
-  if (me.isPending) return <p className="screen-msg">Đang tải…</p>;
+  if (me.isPending) return <AuthSkeleton />;
   if (me.isError) {
     return (
       <div className="screen-msg" role="alert">
@@ -71,11 +95,12 @@ export function Topbar() {
           </Link>
           <button
             type="button"
-            className="btn btn--ghost btn--sm"
+            className={`btn btn--ghost btn--sm${logout.isPending ? ' is-loading' : ''}`}
             disabled={logout.isPending}
+            aria-busy={logout.isPending || undefined}
             onClick={() => logout.mutate()}
           >
-            Đăng xuất
+            <span className="btn__label">Đăng xuất</span>
           </button>
         </div>
       )}

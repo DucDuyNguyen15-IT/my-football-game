@@ -78,11 +78,11 @@ export function AccountPage() {
         )}
         <button
           type="submit"
-          className="btn btn--danger"
+          className={`btn btn--danger${remove.isPending ? ' is-loading' : ''}`}
           disabled={!matches || remove.isPending}
           aria-busy={remove.isPending || undefined}
         >
-          Xoá vĩnh viễn tài khoản
+          <span className="btn__label">Xoá vĩnh viễn tài khoản</span>
         </button>
       </form>
     </div>

@@ -434,8 +434,10 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
               type="button"
               className="btn btn--secondary"
               disabled={missing.length > 0 || saver.isPending}
+              aria-busy={saver.isPending || undefined}
               onClick={playEasyNow}
             >
+              {saver.isPending && <span className="spinner" aria-hidden="true" />}
               Đá với máy – Dễ
             </button>
           )}

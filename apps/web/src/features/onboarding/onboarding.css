@@ -123,11 +123,12 @@
   display: flex;
   gap: 10px;
   align-items: center;
+  min-height: 44px;
   font-size: var(--fs-sm);
   color: var(--c-card-ink);
   background: none;
   border: 0;
-  padding: 0;
+  padding: 6px 4px;
   text-align: left;
   cursor: pointer;
 }

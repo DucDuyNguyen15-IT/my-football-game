@@ -776,6 +776,7 @@ body:has(.scrim.pause) .replay-tag__dot {
 }
 .subs__item {
   min-width: 0;
+  min-height: 44px;
   display: flex;
   align-items: center;
   gap: var(--sp-3);

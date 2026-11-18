@@ -277,6 +277,7 @@ function MatchStarting({ error, onRetry, onBack }: MatchStartingProps) {
   if (!error) {
     return (
       <section className="play-screen" aria-busy="true">
+        <span className="spinner" aria-hidden="true" />
         <p className="h1 play-screen__title" role="status">
           Đang chuẩn bị trận…
         </p>

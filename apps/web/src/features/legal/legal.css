@@ -11,6 +11,12 @@
   margin-bottom: 24px;
   font-size: var(--fs-sm);
 }
+.legal__nav a,
+.legal-links a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+}
 .legal__body {
   max-width: 72ch;
   margin: 0 auto;
@@ -50,9 +56,12 @@
 .consent {
   display: flex;
   gap: 8px;
-  align-items: flex-start;
+  align-items: center;
+  min-height: 44px;
+  padding: 4px 0;
   font-size: var(--fs-sm);
   line-height: 1.45;
+  cursor: pointer;
 }
 .consent input {
   margin-top: 3px;

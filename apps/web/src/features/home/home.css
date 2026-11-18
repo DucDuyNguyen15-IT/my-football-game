@@ -212,6 +212,12 @@
   text-transform: uppercase;
   color: var(--c-text);
 }
+.home__tile-skel {
+  display: inline-block;
+  width: 120px;
+  height: 20px;
+  vertical-align: middle;
+}
 
 /* Màn hẹp (1024px / 860px): xếp chồng, ẩn sân minh hoạ */
 @media (max-width: 1080px) {
