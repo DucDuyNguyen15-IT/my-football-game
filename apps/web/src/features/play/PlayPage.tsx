@@ -36,7 +36,7 @@ import {
   ShootoutPanel,
   type ShownEvent,
 } from './MatchHud';
-import { PreMatch, Versus } from './PreMatch';
+import { isTouchOnly, NeedKeyboard, PreMatch, Versus } from './PreMatch';
 import {
   HalfTimeStrip,
   KeyHints,
@@ -105,7 +105,9 @@ export function PlayPage() {
     paramDiff === 'hard' || paramDiff === 'easy'
       ? paramDiff
       : loadSavedDifficulty(typeof window !== 'undefined' ? window.localStorage : null);
-  const autoStart = Boolean(dev.autopilot) || isOnboarding;
+  // Tính một lần khi mở trang; autopilot (E2E) vẫn chạy được trên mọi máy.
+  const [needKeyboard] = useState(() => !dev.autopilot && isTouchOnly());
+  const autoStart = !needKeyboard && (Boolean(dev.autopilot) || isOnboarding);
   const [stage, setStage] = useState<Stage>(() =>
     autoStart ? { kind: 'starting', difficulty: requestedDifficulty } : { kind: 'select' },
   );
@@ -134,6 +136,8 @@ export function PlayPage() {
     autoStarted.current = true;
     start(stage.difficulty);
   }, [stage, start]);
+
+  if (needKeyboard) return <NeedKeyboard />;
 
   return (
     <div className="play-root">

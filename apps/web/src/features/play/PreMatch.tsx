@@ -80,6 +80,43 @@ const LEVELS: ReadonlyArray<{ value: Difficulty; label: string; desc: string }> 
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Dễ', hard: 'Khó' };
 
 /** Bước 1/2 — chọn độ khó. */
+/** Máy chỉ có cảm ứng (điện thoại/máy tính bảng): trận 3D điều khiển bằng bàn phím nên không đá được (PRD: MVP chỉ bàn phím PC). */
+export function isTouchOnly(): boolean {
+  return (
+    typeof window !== 'undefined' &&
+    typeof window.matchMedia === 'function' &&
+    window.matchMedia('(pointer: coarse) and (hover: none)').matches
+  );
+}
+
+/** Thay màn chọn độ khó trên máy chỉ có cảm ứng. */
+export function NeedKeyboard() {
+  return (
+    <div className="pm-shell">
+      <Topbar />
+      <main className="pm" aria-labelledby="pm-title">
+        <div className="panel empty" role="status">
+          <h1 id="pm-title" className="h2 empty__title">
+            Đá trận cần máy tính có bàn phím
+          </h1>
+          <p className="empty__body">
+            Trận đấu 3D điều khiển bằng bàn phím. Trên điện thoại bạn vẫn mở gói, ép thẻ, xếp đội và
+            nhận thưởng nhiệm vụ như bình thường.
+          </p>
+          <div className="pm__crumbs">
+            <Link to="/shop" className="btn btn--primary">
+              Mở gói thẻ
+            </Link>
+            <Link to="/squad" className="btn btn--secondary">
+              Xếp đội
+            </Link>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
+}
+
 export function PreMatch({
   initialDifficulty = 'easy',
   onContinue,
