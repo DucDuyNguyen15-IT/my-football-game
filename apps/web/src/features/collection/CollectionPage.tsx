@@ -145,7 +145,8 @@ export function CollectionPage() {
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Item[] | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
+  // Bọc object để bán 2 lần cùng nội dung vẫn là state mới → hẹn giờ tắt chạy lại từ đầu.
+  const [notice, setNotice] = useState<{ text: string } | null>(null);
   // Thông báo nổi ở góc nên tự tắt sau vài giây.
   useEffect(() => {
     if (!notice) return;
@@ -258,7 +259,7 @@ export function CollectionPage() {
     selling.current = false;
     setConfirming(null);
     if (!gained) return;
-    setNotice(`Đã bán ${ids.length} thẻ, nhận ${fmt(gained.coinsGained)} xu.`);
+    setNotice({ text: `Đã bán ${ids.length} thẻ, nhận ${fmt(gained.coinsGained)} xu.` });
     setSelected((s) => new Set([...s].filter((id) => !ids.includes(id))));
     if (detailId && ids.includes(detailId)) setDetailId(null);
   }
@@ -402,7 +403,12 @@ export function CollectionPage() {
             type="button"
             className={`btn btn--sm btn--secondary coll__sell${selecting ? ' is-on' : ''}`}
             aria-pressed={selecting}
-            onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
+            onClick={() => {
+              if (selecting) return stopSelecting();
+              // Đóng chi tiết để thanh bán ở đáy không đè lên bảng chi tiết (điện thoại)
+              setDetailId(null);
+              setSelecting(true);
+            }}
           >
             {selecting ? 'Xong' : 'Chọn để bán'}
           </button>
@@ -413,7 +419,7 @@ export function CollectionPage() {
             <span className="toast__icon" aria-hidden="true">
               ✓
             </span>
-            <span>{notice}</span>
+            <span>{notice.text}</span>
           </p>
         )}
         {seller.error && !confirming && (
