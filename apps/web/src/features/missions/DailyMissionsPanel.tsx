@@ -10,7 +10,7 @@ export interface DailyMissionsPanelProps {
   onRetry?: () => void;
   claimingCode?: string | null;
   errorMessage?: string | null;
-  onClaim?: (code: string) => void;
+  onClaim?: (code: string, sourceEl?: HTMLElement | null) => void;
   showResetNote?: boolean;
 }
 
@@ -79,7 +79,7 @@ export function DailyMissionsPanel({
                     className={`btn btn--primary btn--sm${claiming ? ' is-loading' : ''}`}
                     disabled={claiming || claimingCode !== null || !onClaim}
                     aria-busy={claiming || undefined}
-                    onClick={() => onClaim?.(m.code)}
+                    onClick={(e) => onClaim?.(m.code, e.currentTarget)}
                   >
                     <span className="btn__label">
                       Nhận{' '}

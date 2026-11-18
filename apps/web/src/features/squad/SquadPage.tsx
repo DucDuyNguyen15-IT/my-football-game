@@ -32,6 +32,7 @@ import { usePlayerCards } from '../../api/player-cards';
 import { useSaveSquad, useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
 import { ChalkPitch } from '../../components/ChalkPitch';
+import { CountUp } from '../../components/CountUp';
 import { POSITION_NAME } from '../../components/card/rarity';
 import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import {
@@ -415,7 +416,7 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
           <span className="sq__rating">
             <span className="label">OVR đội</span>
             <span className="display num sq__ovr" aria-live="polite">
-              {evaluation.teamRating}
+              <CountUp value={evaluation.teamRating} durationMs={260} />
             </span>
           </span>
           <button

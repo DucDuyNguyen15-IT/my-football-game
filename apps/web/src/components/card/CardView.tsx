@@ -1,6 +1,8 @@
+import { useRef, type PointerEvent } from 'react';
 import { computeOvr, type Card, type PlayerStats } from '@pitch/shared';
 import { Avatar } from './Avatar';
 import { POSITION_NAME, RARITY_INFO, shortCardName, splitName, statsFor } from './rarity';
+import { canHoverTilt, computeCardTilt } from './tilt';
 import './card.css';
 
 export type CardSize = 'lg' | 'md' | 'sm' | 'xs';
@@ -19,6 +21,8 @@ export interface CardViewProps {
   inSquad?: boolean;
   selected?: boolean;
   dim?: boolean;
+  /** Nghiêng 3D nhẹ theo con trỏ trên thiết bị có hover (nguyên tắc 11). */
+  tilt?: boolean;
 }
 
 /** Mô tả đọc cho trình đọc màn hình, VD "Vàng, Rafinho Duarte, Tiền đạo, OVR 81". */
@@ -43,16 +47,41 @@ export function CardView({
   inSquad,
   selected,
   dim,
+  tilt,
 }: CardViewProps) {
+  const ref = useRef<HTMLDivElement>(null);
   const shown = stats ?? card.stats;
   const ovr = stats ? computeOvr(card.position, stats) : card.ovr;
   const info = RARITY_INFO[card.rarity];
   const [last, first] = splitName(card.name);
+
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
+    if (!tilt || !canHoverTilt()) return;
+    const el = ref.current;
+    if (!el) return;
+    const { rx, ry } = computeCardTilt(e.clientX, e.clientY, el.getBoundingClientRect());
+    el.classList.add('is-tilting');
+    el.style.setProperty('--tilt-x', `${rx}deg`);
+    el.style.setProperty('--tilt-y', `${ry}deg`);
+  };
+
+  const resetTilt = () => {
+    const el = ref.current;
+    if (!el) return;
+    el.classList.remove('is-tilting');
+    el.style.removeProperty('--tilt-x');
+    el.style.removeProperty('--tilt-y');
+  };
+
   return (
     <div
-      className={`card card--${size} r-${card.rarity}${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}`}
+      ref={ref}
+      className={`card card--${size} r-${card.rarity}${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}${tilt ? ' card--tilt' : ''}`}
       role="img"
       aria-label={cardLabel(card, ovr, level)}
+      onPointerMove={tilt ? onPointerMove : undefined}
+      onPointerLeave={tilt ? resetTilt : undefined}
+      onPointerCancel={tilt ? resetTilt : undefined}
     >
       <div className="card__body">
         <div className="card__ovr">{ovr}</div>

@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react';
+import { useRef } from 'react';
 import { Link } from 'react-router';
 import { computeOvr, STARTER_SLOTS, type Card, type PlayerCard } from '@pitch/shared';
 import { useMe } from '../../api/auth';
@@ -11,6 +12,7 @@ import { useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
 import { RARITY_INFO } from '../../components/card/rarity';
 import { ChalkPitch } from '../../components/ChalkPitch';
+import { flyCoinsArc } from '../missions/coinArc';
 import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
 import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import { slotLayout } from '../squad/squad';
@@ -25,6 +27,7 @@ export function HomePage() {
   const packs = usePacks();
   const missions = useTodayMissions();
   const claim = useClaimMission();
+  const claimSourceRef = useRef<HTMLElement | null>(null);
   const maxLevel = useEconomy().data?.upgrade.maxLevel;
   if (!me) return null;
 
@@ -169,7 +172,18 @@ export function HomePage() {
                   : 'Không nhận được thưởng nhiệm vụ.'
                 : null
             }
-            onClaim={(code) => claim.mutate(code)}
+            onClaim={(code, sourceEl) => {
+              claimSourceRef.current = sourceEl ?? null;
+              claim.mutate(code, {
+                onSuccess: () => {
+                  flyCoinsArc(claimSourceRef.current);
+                  claimSourceRef.current = null;
+                },
+                onError: () => {
+                  claimSourceRef.current = null;
+                },
+              });
+            }}
           />
           {me.freePack5Credits > 0 && (
             <Link

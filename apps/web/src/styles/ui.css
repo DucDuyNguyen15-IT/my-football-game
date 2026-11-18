@@ -291,6 +291,19 @@
 .coin--short {
   color: var(--c-danger);
 }
+.coin-arc {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 35%, var(--r-gold-hi), var(--r-gold-base));
+  border: 1px solid var(--c-coin);
+  box-shadow: 0 2px 6px rgb(20 24 22 / 0.25);
+  pointer-events: none;
+  z-index: var(--z-toast);
+}
 
 /* ---------- Chip độ hiếm, badge vị trí, tag ---------- */
 .r-bronze {

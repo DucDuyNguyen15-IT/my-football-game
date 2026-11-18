@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
 import { useExpiredMissionClaims } from '../api/missions';
+import { CountUp } from '../components/CountUp';
 import { ExpiredMissionsNotice } from '../features/missions/ExpiredMissionsNotice';
 
 function AuthSkeleton() {
@@ -84,7 +85,7 @@ export function Topbar() {
           <span className="wallet">
             <span className="coin coin--sm" aria-label={`${me.coins} xu`}>
               <span className="coin__icon" aria-hidden="true" />
-              {me.coins.toLocaleString('vi-VN')}
+              <CountUp value={me.coins} />
             </span>
           </span>
           <Link to="/account" className="user" aria-label={`Tài khoản ${me.username}`}>

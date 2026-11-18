@@ -221,6 +221,7 @@ export function PackOpening({
                                   level={pc.level}
                                   isNew={isNew}
                                   isDuplicate={isDup}
+                                  tilt={isOpen}
                                 />
                               ) : (
                                 <p className="muted">Thẻ #{pc.cardId}</p>

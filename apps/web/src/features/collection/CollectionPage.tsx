@@ -418,6 +418,7 @@ export function CollectionPage() {
                       inSquad={pc.inSquad}
                       selected={isSel}
                       dim={locked}
+                      tilt={!locked}
                     />
                   </button>
                 </li>
@@ -525,7 +526,7 @@ function CardDetail({ item, maxLevel, price, selling, onSell, onClose }: CardDet
         ✕
       </button>
       <div className="coll__who">
-        <CardView card={card} size="lg" level={pc.level} stats={stats} />
+        <CardView card={card} size="lg" level={pc.level} stats={stats} tilt />
         <div className="coll__who-info">
           <span className="label">{POSITION_NAME[card.position]}</span>
           <h2 className="h2 coll__name">{card.name}</h2>
