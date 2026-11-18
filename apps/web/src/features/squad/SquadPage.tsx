@@ -165,6 +165,12 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   const [selected, setSelected] = useState<SquadSlot | null>(null);
   const [dragging, setDragging] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
+  // Thông báo thành công nổi ở góc nên tự tắt; cảnh báo/lỗi giữ đến thao tác kế.
+  useEffect(() => {
+    if (notice?.tone !== 'success') return;
+    const t = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [filter, setFilter] = useState<Filter>('role');
   const [showAllWarns, setShowAllWarns] = useState(false);
   const saver = useSaveSquad();

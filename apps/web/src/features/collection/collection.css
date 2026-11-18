@@ -53,6 +53,10 @@
   align-items: center;
   gap: var(--sp-2) var(--sp-4);
 }
+/* Luôn sát phải, kể cả khi hàng bộ lọc xuống dòng */
+.coll__sell {
+  margin-left: auto;
+}
 .chips {
   display: inline-flex;
   flex-wrap: wrap;
@@ -80,8 +84,14 @@
 .chip[aria-pressed='true'] .coll__dot {
   color: #9fd0ff;
 }
+/* Nổi ở góc dưới, không đẩy lưới thẻ (thanh bán đã đóng khi thông báo hiện) */
 .coll__toast {
   margin: 0;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: var(--z-toast);
+  max-width: calc(100vw - 32px);
 }
 
 /* Lưới thẻ */
@@ -134,7 +144,7 @@
 .panel.coll__detail,
 .coll__detail {
   position: sticky;
-  top: 76px;
+  bottom: 24px;
   display: grid;
   gap: var(--sp-4);
 }
@@ -142,7 +152,11 @@
   margin: 0;
   font-size: var(--fs-sm);
 }
+/* Nút đóng chồng lên góc phải hàng đầu, không chiếm một hàng trống riêng */
 .coll__close {
+  position: relative;
+  z-index: 1;
+  margin-bottom: calc(-44px - var(--sp-4));
   justify-self: end;
   min-width: 44px;
   min-height: 44px;
@@ -284,11 +298,37 @@
   }
 }
 
+/* Điện thoại: chi tiết thẻ là bảng trượt từ đáy, không nằm cuối danh sách dài */
+@media (max-width: 720px) {
+  .coll:not(.has-detail) .coll__detail {
+    display: none;
+  }
+  .coll.has-detail .panel.coll__detail {
+    position: fixed;
+    /* Phủ mờ phần trang phía sau; vẫn bấm được thẻ khác để đổi chi tiết */
+    box-shadow:
+      0 -12px 32px rgb(20 24 22 / 0.28),
+      0 0 0 100vmax rgb(20 24 22 / 0.35);
+    inset: auto 0 0 0;
+    z-index: var(--z-overlay);
+    max-height: 78vh;
+    overflow-y: auto;
+    border-radius: 16px 16px 0 0;
+    animation: coll-sheet-in 280ms var(--ease-out);
+  }
+}
+@keyframes coll-sheet-in {
+  from {
+    transform: translateY(100%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .coll-item {
     transition: none;
   }
-  .coll__bar {
+  .coll__bar,
+  .coll.has-detail .panel.coll__detail {
     animation: none;
   }
 }

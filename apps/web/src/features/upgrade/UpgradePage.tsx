@@ -300,7 +300,7 @@ export function UpgradePage() {
               {upgradableTargets.length > 0 && maxedCount > 0 && (
                 <button
                   type="button"
-                  className="btn btn--ghost btn--sm upg__more"
+                  className="chip chip--more upg__more"
                   aria-expanded={showMaxed}
                   onClick={() => setShowMaxed((v) => !v)}
                 >
@@ -332,7 +332,7 @@ export function UpgradePage() {
               {openMaterials.length > 0 && lockedMaterials.length > 0 && (
                 <button
                   type="button"
-                  className="btn btn--ghost btn--sm upg__more"
+                  className="chip chip--more upg__more"
                   aria-expanded={showLocked}
                   onClick={() => setShowLocked((v) => !v)}
                 >

@@ -146,6 +146,12 @@ export function CollectionPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Item[] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  // Thông báo nổi ở góc nên tự tắt sau vài giây.
+  useEffect(() => {
+    if (!notice) return;
+    const t = setTimeout(() => setNotice(null), 4000);
+    return () => clearTimeout(t);
+  }, [notice]);
   const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   const items = useMemo<Item[]>(
@@ -374,7 +380,7 @@ export function CollectionPage() {
               {!filter.rarity && !filter.squad && (
                 <button
                   type="button"
-                  className="btn btn--ghost btn--sm"
+                  className="chip chip--more"
                   aria-expanded="true"
                   onClick={() => setShowMoreFilters(false)}
                 >
@@ -385,17 +391,16 @@ export function CollectionPage() {
           ) : (
             <button
               type="button"
-              className="btn btn--ghost btn--sm"
+              className="chip chip--more"
               aria-expanded="false"
               onClick={() => setShowMoreFilters(true)}
             >
-              Thêm bộ lọc
+              + Độ hiếm, đội hình
             </button>
           )}
-          <span className="coll__spacer" />
           <button
             type="button"
-            className={`btn btn--sm ${selecting ? 'btn--secondary' : 'btn--ghost'}`}
+            className={`btn btn--sm btn--secondary coll__sell${selecting ? ' is-on' : ''}`}
             aria-pressed={selecting}
             onClick={() => (selecting ? stopSelecting() : setSelecting(true))}
           >
@@ -566,7 +571,7 @@ function CardDetail({ item, maxLevel, price, selling, onSell, onClose }: CardDet
               {card.position}
             </span>
           </div>
-          {pc.inSquad && <span className="tag tag--info">● Đang trong đội hình</span>}
+          {pc.inSquad && <span className="tag tag--info">● Trong đội hình</span>}
         </div>
       </div>
 

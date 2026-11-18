@@ -429,6 +429,10 @@
 }
 
 /* ---------- Chip lọc, tab, segmented ---------- */
+/* Chip mở/gập nhóm lựa chọn phụ: viền đứt để khác chip lọc thật */
+.chip.chip--more {
+  border-style: dashed;
+}
 .chip {
   position: relative;
   display: inline-flex;
@@ -1481,6 +1485,19 @@
   }
   .user {
     padding-right: 4px;
+  }
+  /* Logo + ví + tài khoản + đăng xuất vừa một hàng ở 375px, menu là hàng 2 */
+  .topbar__right {
+    gap: var(--sp-2);
+  }
+  .topbar__right .btn--sm {
+    padding-inline: 8px;
+  }
+}
+@media (max-width: 420px) {
+  .topbar .logo {
+    font-size: var(--fs-lg);
+    gap: 6px;
   }
 }
 

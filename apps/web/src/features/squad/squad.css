@@ -235,8 +235,14 @@
   min-width: 0;
   --card-w-sm: 76px;
 }
+/* Nổi ở góc dưới, không che nút CTA trên cùng, không đẩy bảng Dự bị xuống (tránh nhảy bố cục) */
 .sq__toast {
   margin: 0;
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: var(--z-toast);
+  max-width: calc(100vw - 32px);
 }
 .sq__panel {
   display: grid;
