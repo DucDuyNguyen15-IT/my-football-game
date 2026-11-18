@@ -166,6 +166,7 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   const [dragging, setDragging] = useState<string | null>(null);
   const [notice, setNotice] = useState<Notice | null>(null);
   const [filter, setFilter] = useState<Filter>('role');
+  const [showAllWarns, setShowAllWarns] = useState(false);
   const saver = useSaveSquad();
   const skipLeaveGuardRef = useRef(false);
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
@@ -309,6 +310,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
   const missing = evaluation.warnings.filter((w) => w.code !== 'misposition');
   // Server từ chối lưu đội hình có ô GK không phải thủ môn.
   const gkInvalid = evaluation.warnings.some((w) => w.code === 'gk_not_keeper');
+  const mispositioned = evaluation.warnings.filter((w) => w.code === 'misposition' && w.slot);
+  const visibleMispositioned = showAllWarns ? mispositioned : mispositioned.slice(0, 2);
   const dragItem = dragging ? items.get(dragging) : undefined;
 
   function autoFillBest() {
@@ -468,18 +471,29 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
                 </span>
               </div>
             )}
-            {evaluation.warnings
-              .filter((w) => w.code === 'misposition' && w.slot)
-              .map((w) => (
-                <MispositionBanner
-                  key={w.slot}
-                  item={itemAt(w.slot!)}
-                  role={slotRole(draft.formation, w.slot!)}
-                  base={itemAt(w.slot!)?.pc.effectiveStats}
-                  stats={evaluation.effective[w.slot!]}
-                  fallback={w.message}
-                />
-              ))}
+            {visibleMispositioned.map((w) => (
+              <MispositionBanner
+                key={w.slot}
+                item={itemAt(w.slot!)}
+                role={slotRole(draft.formation, w.slot!)}
+                base={itemAt(w.slot!)?.pc.effectiveStats}
+                stats={evaluation.effective[w.slot!]}
+                fallback={w.message}
+              />
+            ))}
+            {mispositioned.length > 2 && (
+              <button
+                type="button"
+                className="btn btn--ghost btn--sm"
+                style={{ justifySelf: 'start' }}
+                aria-expanded={showAllWarns}
+                onClick={() => setShowAllWarns((v) => !v)}
+              >
+                {showAllWarns
+                  ? 'Thu gọn cảnh báo vị trí'
+                  : `Xem thêm ${mispositioned.length - 2} cảnh báo vị trí`}
+              </button>
+            )}
             {notice && (
               <div className={`toast toast--${notice.tone} sq__toast`} role="status">
                 <span className="toast__icon" aria-hidden="true">

@@ -31,12 +31,15 @@ import {
 import { fmt } from '../../components/format';
 const POSITION_NAME = { GK: 'Thủ môn', DF: 'Hậu vệ', MF: 'Tiền vệ', FW: 'Tiền đạo' } as const;
 
-const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
+const CONTROLS_BASIC: ReadonlyArray<readonly [string, string, string]> = [
   ['Mũi tên', 'Di chuyển', 'Di chuyển'],
   ['E (giữ)', 'Chạy nước rút', 'Chạy nước rút'],
   ['S', 'Chuyền sệt', 'Đổi cầu thủ'],
   ['A', 'Chuyền bổng', 'Xoạc'],
   ['D (giữ)', 'Sút (giữ để tăng lực)', 'Áp sát / tắc bóng'],
+];
+
+const CONTROLS_ADVANCED: ReadonlyArray<readonly [string, string, string]> = [
   ['W', 'Chọc khe', '—'],
   ['Q + W', 'Chọc khe bổng', '—'],
   ['Z + D', 'Sút xoáy vào góc xa', '—'],
@@ -45,6 +48,16 @@ const CONTROLS: ReadonlyArray<readonly [string, string, string]> = [
 ];
 
 export function ControlsTable() {
+  const renderRows = (rows: ReadonlyArray<readonly [string, string, string]>) =>
+    rows.map(([key, attack, defend]) => (
+      <tr key={key}>
+        <th scope="row">
+          <kbd className="kbd">{key}</kbd>
+        </th>
+        <td>{attack}</td>
+        <td>{defend}</td>
+      </tr>
+    ));
   return (
     <table className="table">
       <thead>
@@ -55,15 +68,20 @@ export function ControlsTable() {
         </tr>
       </thead>
       <tbody>
-        {CONTROLS.map(([key, attack, defend]) => (
-          <tr key={key}>
-            <th scope="row">
-              <kbd className="kbd">{key}</kbd>
-            </th>
-            <td>{attack}</td>
-            <td>{defend}</td>
-          </tr>
-        ))}
+        <tr>
+          <th colSpan={3} scope="colgroup" className="label">
+            Cơ bản
+          </th>
+        </tr>
+        {renderRows(CONTROLS_BASIC)}
+      </tbody>
+      <tbody>
+        <tr>
+          <th colSpan={3} scope="colgroup" className="label">
+            Nâng cao &amp; tình huống
+          </th>
+        </tr>
+        {renderRows(CONTROLS_ADVANCED)}
       </tbody>
     </table>
   );
@@ -502,11 +520,12 @@ export function PauseMenu({
               <button
                 type="button"
                 className="btn btn--secondary"
+                autoFocus
                 onClick={() => setView('graphics')}
               >
                 Không, đá tiếp
               </button>
-              <button type="button" className="btn btn--danger" autoFocus onClick={onQuit}>
+              <button type="button" className="btn btn--danger" onClick={onQuit}>
                 Bỏ trận
               </button>
             </div>

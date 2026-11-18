@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ApiClientError } from '../../api/client';
-import { describeAuthError, fieldErrorOf } from './authErrors';
+import { describeAuthError, fieldErrorOf, parseAuthForm, parseGoogleUsername } from './authErrors';
 
 describe('describeAuthError', () => {
   it('login_locked và rate_limited là cảnh báo riêng, có tiêu đề', () => {
@@ -42,5 +42,54 @@ describe('fieldErrorOf', () => {
     ]);
     expect(fieldErrorOf(v)).toEqual({ field: 'password', text: 'Ngắn' });
     expect(fieldErrorOf(new ApiClientError('login_locked', 429, 'x'))).toBeNull();
+  });
+});
+
+describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () => {
+  it('tự trim khoảng trắng thừa ở tên đăng nhập và email trước khi kiểm tra', () => {
+    const login = parseAuthForm({
+      mode: 'login',
+      username: '  alice_01  ',
+      password: 'secret',
+      email: '',
+      agreed: false,
+    });
+    expect(login).toMatchObject({ ok: true, data: { username: 'alice_01', password: 'secret' } });
+
+    const reg = parseAuthForm({
+      mode: 'register',
+      username: '  bob_99  ',
+      password: 'password123',
+      email: '  bob@vidu.vn  ',
+      agreed: true,
+    });
+    expect(reg).toMatchObject({
+      ok: true,
+      data: { username: 'bob_99', email: 'bob@vidu.vn', acceptTerms: true },
+    });
+
+    expect(parseGoogleUsername('  g_user  ')).toEqual({ ok: true, value: 'g_user' });
+  });
+
+  it('thông báo lỗi tiếng Việt rõ cách sửa cho mật khẩu trống và email sai định dạng', () => {
+    const emptyPw = parseAuthForm({
+      mode: 'login',
+      username: 'alice',
+      password: '',
+      email: '',
+      agreed: false,
+    });
+    expect(emptyPw.ok).toBe(false);
+    if (!emptyPw.ok) expect(emptyPw.errors.password).toMatch(/Nhập mật khẩu/);
+
+    const badEmail = parseAuthForm({
+      mode: 'register',
+      username: 'alice',
+      password: 'password123',
+      email: 'sai-email',
+      agreed: true,
+    });
+    expect(badEmail.ok).toBe(false);
+    if (!badEmail.ok) expect(badEmail.errors.email).toMatch(/ví dụ:/);
   });
 });

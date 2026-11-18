@@ -146,6 +146,7 @@ export function CollectionPage() {
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Item[] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [showMoreFilters, setShowMoreFilters] = useState(false);
 
   const items = useMemo<Item[]>(
     () =>
@@ -339,35 +340,58 @@ export function CollectionPage() {
             value={filter.position}
             onChange={(position) => update({ position })}
           />
-          <ChipGroup
-            label="Độ hiếm"
-            all={false}
-            options={Rarity.options.map((r) => ({
-              value: r,
-              label: (
-                <>
-                  <span className={`r-${r} coll__pips`} aria-hidden="true">
-                    {'◆'.repeat(RARITY_INFO[r].pips)}
-                  </span>
-                  {RARITY_INFO[r].label}
-                </>
-              ),
-              title: RARITY_INFO[r].label,
-            }))}
-            value={filter.rarity}
-            onChange={(rarity) => update({ rarity })}
-          />
-          <button
-            type="button"
-            className="chip"
-            aria-pressed={filter.squad}
-            onClick={() => update({ squad: !filter.squad })}
-          >
-            <span className="coll__dot" aria-hidden="true">
-              ●
-            </span>
-            Trong đội hình
-          </button>
+          {showMoreFilters || filter.rarity || filter.squad ? (
+            <>
+              <ChipGroup
+                label="Độ hiếm"
+                all={false}
+                options={Rarity.options.map((r) => ({
+                  value: r,
+                  label: (
+                    <>
+                      <span className={`r-${r} coll__pips`} aria-hidden="true">
+                        {'◆'.repeat(RARITY_INFO[r].pips)}
+                      </span>
+                      {RARITY_INFO[r].label}
+                    </>
+                  ),
+                  title: RARITY_INFO[r].label,
+                }))}
+                value={filter.rarity}
+                onChange={(rarity) => update({ rarity })}
+              />
+              <button
+                type="button"
+                className="chip"
+                aria-pressed={filter.squad}
+                onClick={() => update({ squad: !filter.squad })}
+              >
+                <span className="coll__dot" aria-hidden="true">
+                  ●
+                </span>
+                Trong đội hình
+              </button>
+              {!filter.rarity && !filter.squad && (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm"
+                  aria-expanded="true"
+                  onClick={() => setShowMoreFilters(false)}
+                >
+                  Ẩn bớt
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              type="button"
+              className="btn btn--ghost btn--sm"
+              aria-expanded="false"
+              onClick={() => setShowMoreFilters(true)}
+            >
+              Thêm bộ lọc
+            </button>
+          )}
           <span className="coll__spacer" />
           <button
             type="button"

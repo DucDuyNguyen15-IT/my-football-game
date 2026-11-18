@@ -213,10 +213,13 @@
 .coll__actions-row {
   display: flex;
   flex-wrap: wrap;
-  gap: var(--sp-2);
+  gap: var(--sp-4);
 }
 .coll__actions-row > * {
   flex: 1 1 120px;
+}
+.coll__actions-row > .btn--primary {
+  flex: 1.4 1 140px;
 }
 .coll__reason {
   font-size: var(--fs-xs);

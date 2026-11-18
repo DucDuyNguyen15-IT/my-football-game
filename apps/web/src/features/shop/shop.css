@@ -295,6 +295,7 @@
 .stage__lines {
   position: absolute;
   inset: 0;
+  z-index: 0;
   width: 100%;
   height: 100%;
   fill: none;
@@ -305,7 +306,6 @@
 }
 .stage__inner {
   position: relative;
-  z-index: 2;
   width: 100%;
   display: grid;
   place-items: center;
@@ -590,6 +590,9 @@
 }
 .reveal-scrim.on {
   opacity: 1;
+}
+.reveal-scrim.is-gold {
+  background: rgb(8 20 14 / 0.46);
 }
 
 /* Thanh điều khiển & tóm tắt dưới sân mở gói */

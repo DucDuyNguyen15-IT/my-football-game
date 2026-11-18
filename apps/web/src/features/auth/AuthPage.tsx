@@ -4,16 +4,22 @@
  */
 import { useCallback, useId, useState, type FormEvent, type ReactNode } from 'react';
 import { Link, Navigate, useLocation, useSearchParams } from 'react-router';
-import { LoginRequest, RegisterRequest, Username } from '@pitch/shared';
+import { LoginRequest, RegisterRequest } from '@pitch/shared';
 import { useAuthConfig, useGoogleSignIn, useLogin, useMe, useRegister } from '../../api/auth';
 import { useEconomy } from '../../api/player-cards';
-import { describeAuthError, fieldErrorOf, type AuthField, type AuthNotice } from './authErrors';
+import {
+  describeAuthError,
+  fieldErrorOf,
+  parseAuthForm,
+  parseGoogleUsername,
+  type AuthNotice,
+  type FieldErrors,
+} from './authErrors';
 import { GoogleButton } from './GoogleButton';
 import './auth.css';
 import '../legal/legal.css';
 
 type Mode = 'login' | 'register';
-type FieldErrors = Partial<Record<AuthField, string>>;
 
 /** Quà tân thủ đọc từ server (`/config/economy`, B4-11); đang tải thì chỉ ghi chung. */
 function useGiftText(): string {
@@ -107,24 +113,12 @@ export function AuthPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const parsed =
-      mode === 'login'
-        ? LoginRequest.safeParse({ username, password })
-        : RegisterRequest.safeParse({
-            username,
-            password,
-            ...(email.trim() && { email: email.trim() }),
-            acceptTerms: agreed,
-          });
-    if (!parsed.success) {
-      const errs: FieldErrors = {};
-      for (const issue of parsed.error.issues) {
-        const f = issue.path[0];
-        if (f === 'email' && !errs.email) errs.email = 'Email chưa đúng định dạng.';
-        else if ((f === 'username' || f === 'password') && !errs[f]) errs[f] = issue.message;
-        else if (f === 'acceptTerms') setConsentError(true);
-      }
-      setLocalErrors(errs);
+    const res = parseAuthForm({ mode, username, password, email, agreed });
+    if (res.trimmedUsername !== username) setUsername(res.trimmedUsername);
+    if (res.trimmedEmail !== email) setEmail(res.trimmedEmail);
+    if (!res.ok) {
+      setLocalErrors(res.errors);
+      if (res.consentError) setConsentError(true);
       return;
     }
     setLocalErrors({});
@@ -136,9 +130,9 @@ export function AuthPage() {
     setJustRegistered(mode === 'register');
     const onError = () => setJustRegistered(false);
     // Đăng ký có thêm `acceptTerms` nên hai mutation khác kiểu body.
-    // shortcut: ép kiểu vì `parsed` gộp hai safeParse; nhánh register luôn qua RegisterRequest ở trên.
-    if (mode === 'register') register.mutate(parsed.data as RegisterRequest, { onError });
-    else login.mutate(parsed.data, { onError });
+    // shortcut: ép kiểu vì `res.data` gộp hai safeParse; nhánh register luôn qua RegisterRequest ở trên.
+    if (mode === 'register') register.mutate(res.data as RegisterRequest, { onError });
+    else login.mutate(res.data as LoginRequest, { onError });
   };
 
   const switchMode = (m: Mode) => {
@@ -225,7 +219,8 @@ export function AuthPage() {
                       placeholder={isRegister ? '3–20 ký tự: chữ, số, dấu gạch dưới' : undefined}
                       value={username}
                       onChange={(e) => setUsername(e.target.value)}
-                      maxLength={20}
+                      onBlur={() => setUsername((v) => v.trim())}
+                      maxLength={32}
                       required
                       autoFocus
                     />
@@ -269,6 +264,7 @@ export function AuthPage() {
                         placeholder="ban@vidu.vn"
                         value={email}
                         onChange={(e) => setEmail(e.target.value)}
+                        onBlur={() => setEmail((v) => v.trim())}
                         maxLength={254}
                       />
                     )}
@@ -439,17 +435,19 @@ function GoogleUsernameStep({
 
   const submit = (e: FormEvent) => {
     e.preventDefault();
-    const parsed = Username.safeParse(name);
-    if (!parsed.success) {
-      setLocalError(parsed.error.issues[0]?.message ?? 'Tên không hợp lệ');
+    const res = parseGoogleUsername(name);
+    if (!res.ok) {
+      setName(res.trimmed);
+      setLocalError(res.error);
       return;
     }
+    setName(res.value);
     setLocalError(null);
     if (!agreed) {
       setConsentError(true);
       return;
     }
-    onSubmit(parsed.data);
+    onSubmit(res.value);
   };
 
   return (
@@ -475,7 +473,8 @@ function GoogleUsernameStep({
             spellCheck={false}
             value={name}
             onChange={(e) => setName(e.target.value)}
-            maxLength={20}
+            onBlur={() => setName((v) => v.trim())}
+            maxLength={32}
             required
             autoFocus
           />

@@ -101,6 +101,9 @@
   display: grid;
   gap: var(--sp-4);
 }
+.upg__more {
+  justify-self: start;
+}
 .upg__grid {
   list-style: none;
   margin: 0;

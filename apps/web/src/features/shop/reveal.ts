@@ -331,14 +331,20 @@ export class PackRevealer {
     const { mover, shaker, flipper, aura, sheen } = els;
     const T = REVEAL_TIMING[rarity];
     const isLegend = rarity === 'legend';
+    const isGold = rarity === 'gold';
     slot.classList.add('top');
     let toCenter = 'none';
+    if (isGold) {
+      this.opts.scrim.current?.classList.remove('is-gold');
+      this.opts.scrim.current?.classList.add('on', 'is-gold');
+    }
     if (isLegend) {
       const st = this.opts.stage.current?.getBoundingClientRect();
       const r = slot.getBoundingClientRect();
       if (st) {
         toCenter = `translate(${st.left + st.width / 2 - (r.left + r.width / 2)}px, ${st.top + st.height / 2 - (r.top + r.height / 2)}px) scale(1.3)`;
       }
+      this.opts.scrim.current?.classList.remove('is-gold');
       this.opts.scrim.current?.classList.add('on');
       const rays = document.createElement('div');
       rays.className = 'reveal-rays';
@@ -435,9 +441,12 @@ export class PackRevealer {
     await Promise.all(after);
     shaker.getAnimations().forEach((a) => a.cancel());
     aura.getAnimations().forEach((a) => a.cancel());
+    if (isGold) {
+      this.opts.scrim.current?.classList.remove('on', 'is-gold');
+    }
     if (isLegend) {
       await this.wait(500);
-      this.opts.scrim.current?.classList.remove('on');
+      this.opts.scrim.current?.classList.remove('on', 'is-gold');
       await this.run(mover, [{ transform: toCenter }, { transform: 'none' }], {
         duration: 480,
         easing: EASE_IN_OUT,
@@ -453,7 +462,7 @@ export class PackRevealer {
     this.skip = true;
     this.queue.length = 0;
     this.flushActive();
-    this.opts.scrim.current?.classList.remove('on');
+    this.opts.scrim.current?.classList.remove('on', 'is-gold');
     this.row?.querySelectorAll('.reveal-slot').forEach((s) => s.classList.remove('top'));
     await new Promise((r) => setTimeout(r, 30));
     const rest = this.revealed.flatMap((v, i) => (v ? [] : [i]));
@@ -477,6 +486,6 @@ export class PackRevealer {
     for (const done of [...this.waits]) done();
     this.anims.forEach((a) => a.cancel());
     this.anims.clear();
-    this.opts.scrim.current?.classList.remove('on');
+    this.opts.scrim.current?.classList.remove('on', 'is-gold');
   }
 }

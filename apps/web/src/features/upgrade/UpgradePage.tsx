@@ -84,6 +84,8 @@ export function UpgradePage() {
   const upgrader = useUpgradeCard();
   const [picking, setPicking] = useState(false);
   const [forging, setForging] = useState(false);
+  const [showLocked, setShowLocked] = useState(false);
+  const [showMaxed, setShowMaxed] = useState(false);
   const [outcome, setOutcome] = useState<Outcome | null>(null);
   const mounted = useRef(true);
   useEffect(() => {
@@ -184,6 +186,10 @@ export function UpgradePage() {
   const materialPicks: PickItem[] = target
     ? materialGrid(target, materials, items, rarityLabel)
     : [];
+  const openMaterials = materialPicks.filter((it) => it.tone !== 'lock');
+  const lockedMaterials = materialPicks.filter((it) => it.tone === 'lock');
+  const shownMaterials = openMaterials.length > 0 && !showLocked ? openMaterials : materialPicks;
+
   const targetGrid: PickItem[] = items.map((it) =>
     it.pc.level >= cfg.maxLevel
       ? { ...it, tone: 'plain', note: 'Đã tối đa' }
@@ -191,6 +197,9 @@ export function UpgradePage() {
         ? { ...it, tone: 'warn', note: `May mắn ${it.pc.luck}%` }
         : { ...it, tone: 'plain', note: `+${it.pc.level} → +${it.pc.level + 1}` },
   );
+  const upgradableTargets = targetGrid.filter((it) => it.pc.level < cfg.maxLevel);
+  const maxedCount = targetGrid.length - upgradableTargets.length;
+  const shownTargets = upgradableTargets.length > 0 && !showMaxed ? upgradableTargets : targetGrid;
 
   return (
     <div
@@ -268,44 +277,71 @@ export function UpgradePage() {
             </span>
           </h2>
           {choosingTarget ? (
-            <PickGrid
-              items={targetGrid}
-              activeId={target?.pc.id}
-              label="Thẻ trong kho"
-              empty={
-                <div className="empty">
-                  <h3 className="empty__title">Kho còn trống</h3>
-                  <p className="empty__body">Mở gói ở Cửa hàng để có thẻ đầu tiên.</p>
-                  <Link className="btn btn--primary" to="/shop">
-                    Tới cửa hàng
-                  </Link>
-                </div>
-              }
-              onPick={(it) => {
-                select(it.pc.id, null);
-                setPicking(false);
-              }}
-            />
+            <>
+              <PickGrid
+                items={shownTargets}
+                activeId={target?.pc.id}
+                label="Thẻ trong kho"
+                empty={
+                  <div className="empty">
+                    <h3 className="empty__title">Kho còn trống</h3>
+                    <p className="empty__body">Mở gói ở Cửa hàng để có thẻ đầu tiên.</p>
+                    <Link className="btn btn--primary" to="/shop">
+                      Tới cửa hàng
+                    </Link>
+                  </div>
+                }
+                onPick={(it) => {
+                  select(it.pc.id, null);
+                  setPicking(false);
+                  setShowLocked(false);
+                }}
+              />
+              {upgradableTargets.length > 0 && maxedCount > 0 && (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm upg__more"
+                  aria-expanded={showMaxed}
+                  onClick={() => setShowMaxed((v) => !v)}
+                >
+                  {showMaxed ? 'Ẩn thẻ đã tối đa' : `Thêm · ${maxedCount} thẻ đã tối đa`}
+                </button>
+              )}
+            </>
           ) : !preview ? (
             <p className="muted">Thẻ đã đạt +{cfg.maxLevel} — không ép thêm được.</p>
           ) : (
-            <PickGrid
-              items={materialPicks}
-              activeId={material?.pc.id}
-              label="Nguyên liệu"
-              empty={
-                <div className="empty">
-                  <h3 className="empty__title">Chưa có nguyên liệu</h3>
-                  <p className="empty__body">
-                    Cần 1 thẻ {rarityLabel} trở lên không nằm trong đội hình.
-                  </p>
-                  <Link className="btn btn--secondary" to="/shop">
-                    Tới cửa hàng
-                  </Link>
-                </div>
-              }
-              onPick={(it) => select(target!.pc.id, it.pc.id)}
-            />
+            <>
+              <PickGrid
+                items={shownMaterials}
+                activeId={material?.pc.id}
+                label="Nguyên liệu"
+                empty={
+                  <div className="empty">
+                    <h3 className="empty__title">Chưa có nguyên liệu</h3>
+                    <p className="empty__body">
+                      Cần 1 thẻ {rarityLabel} trở lên không nằm trong đội hình.
+                    </p>
+                    <Link className="btn btn--secondary" to="/shop">
+                      Tới cửa hàng
+                    </Link>
+                  </div>
+                }
+                onPick={(it) => select(target!.pc.id, it.pc.id)}
+              />
+              {openMaterials.length > 0 && lockedMaterials.length > 0 && (
+                <button
+                  type="button"
+                  className="btn btn--ghost btn--sm upg__more"
+                  aria-expanded={showLocked}
+                  onClick={() => setShowLocked((v) => !v)}
+                >
+                  {showLocked
+                    ? 'Ẩn thẻ không đủ điều kiện'
+                    : `Thêm · ${lockedMaterials.length} thẻ bị khoá`}
+                </button>
+              )}
+            </>
           )}
         </section>
 

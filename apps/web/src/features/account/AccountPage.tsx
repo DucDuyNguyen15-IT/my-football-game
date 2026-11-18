@@ -34,9 +34,9 @@ export function AccountPage() {
 
       <h2 className="h3">Xoá tài khoản</h2>
       <p>
-        Xoá ngay tên đăng nhập, mật khẩu, email, liên kết Google, mọi phiên đăng nhập và sự kiện phân
-        tích. Thẻ, trận và sổ giao dịch xu được giữ lại nhưng không còn gắn với bạn. <b>Không khôi phục
-        được.</b>
+        Xoá ngay tên đăng nhập, mật khẩu, email, liên kết Google, mọi phiên đăng nhập và sự kiện
+        phân tích. Thẻ, trận và sổ giao dịch xu được giữ lại nhưng không còn gắn với bạn.{' '}
+        <b>Không khôi phục được.</b>
       </p>
       <form className="account__form" onSubmit={submit} noValidate>
         <div className="field">
@@ -53,6 +53,11 @@ export function AccountPage() {
             onChange={(e) => setConfirmName(e.target.value)}
             maxLength={40}
           />
+          {confirmName.trim().length > 0 && !matches && (
+            <p className="field__hint">
+              Gõ đúng “{me.username}” (không phân biệt hoa thường) để mở khoá nút xoá.
+            </p>
+          )}
         </div>
         <div className="field">
           <label className="field__label" htmlFor={pwId}>

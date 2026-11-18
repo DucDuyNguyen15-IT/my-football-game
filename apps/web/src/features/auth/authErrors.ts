@@ -1,3 +1,4 @@
+import { LoginRequest, RegisterRequest, Username } from '@pitch/shared';
 import { ApiClientError } from '../../api/client';
 
 /** Thông báo lỗi ở màn đăng nhập: `warning` cho lỗi tạm thời (khoá, rate limit), `danger` còn lại. */
@@ -56,4 +57,75 @@ export function fieldErrorOf(err: unknown): { field: AuthField; text: string } |
     (x) => x.field === 'username' || x.field === 'password' || x.field === 'email',
   );
   return d ? { field: d.field as AuthField, text: d.message } : null;
+}
+
+export type FieldErrors = Partial<Record<AuthField, string>>;
+
+/** Chuẩn hoá + kiểm tra dữ liệu form đăng nhập/đăng ký phía client (nguyên tắc 18: Postel). */
+export function parseAuthForm(input: {
+  mode: 'login' | 'register';
+  username: string;
+  password: string;
+  email: string;
+  agreed: boolean;
+}):
+  | {
+      ok: true;
+      data: LoginRequest | RegisterRequest;
+      trimmedUsername: string;
+      trimmedEmail: string;
+    }
+  | {
+      ok: false;
+      errors: FieldErrors;
+      consentError: boolean;
+      trimmedUsername: string;
+      trimmedEmail: string;
+    } {
+  const trimmedUsername = input.username.trim();
+  const trimmedEmail = input.email.trim();
+  const parsed =
+    input.mode === 'login'
+      ? LoginRequest.safeParse({ username: trimmedUsername, password: input.password })
+      : RegisterRequest.safeParse({
+          username: trimmedUsername,
+          password: input.password,
+          ...(trimmedEmail && { email: trimmedEmail }),
+          acceptTerms: input.agreed,
+        });
+  if (parsed.success) {
+    return { ok: true, data: parsed.data, trimmedUsername, trimmedEmail };
+  }
+  const errors: FieldErrors = {};
+  let consentError = false;
+  for (const issue of parsed.error.issues) {
+    const f = issue.path[0];
+    if (f === 'email' && !errors.email) {
+      errors.email = 'Email chưa đúng định dạng (ví dụ: ten@vidu.vn).';
+    } else if (f === 'password' && !errors.password) {
+      errors.password =
+        input.mode === 'login' && input.password.length === 0
+          ? 'Nhập mật khẩu để đăng nhập.'
+          : issue.message;
+    } else if (f === 'username' && !errors.username) {
+      errors.username = issue.message;
+    } else if (f === 'acceptTerms') {
+      consentError = true;
+    }
+  }
+  return { ok: false, errors, consentError, trimmedUsername, trimmedEmail };
+}
+
+/** Chuẩn hoá + kiểm tra tên đăng nhập Google lần đầu. */
+export function parseGoogleUsername(
+  raw: string,
+): { ok: true; value: string } | { ok: false; error: string; trimmed: string } {
+  const trimmed = raw.trim();
+  const parsed = Username.safeParse(trimmed);
+  if (parsed.success) return { ok: true, value: parsed.data };
+  return {
+    ok: false,
+    error: parsed.error.issues[0]?.message ?? 'Tên đăng nhập 3–20 ký tự: chữ, số, dấu gạch dưới.',
+    trimmed,
+  };
 }
