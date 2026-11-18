@@ -41,6 +41,48 @@ export function writeFilter(f: CollectionFilter): URLSearchParams {
   return p;
 }
 
+const FILTER_KEY = 'mfg.collection.filter';
+
+/** Lưu bộ lọc/sắp xếp (trừ từ khoá tìm kiếm tạm thời) vào localStorage, bọc try/catch. */
+export function saveFilter(storage: Storage | null, f: CollectionFilter): void {
+  if (!storage) return;
+  try {
+    storage.setItem(
+      FILTER_KEY,
+      JSON.stringify({
+        position: f.position ?? null,
+        rarity: f.rarity ?? null,
+        sort: f.sort,
+        squad: f.squad,
+      }),
+    );
+  } catch {
+    /* localStorage bị chặn hoặc đầy — bỏ qua */
+  }
+}
+
+/** Đọc bộ lọc/sắp xếp lần trước từ localStorage; trả `null` nếu chưa có hoặc lỗi. */
+export function loadSavedFilter(storage: Storage | null): Partial<CollectionFilter> | null {
+  if (!storage) return null;
+  try {
+    const raw = storage.getItem(FILTER_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Record<string, unknown>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    const pos = Position.safeParse(parsed.position);
+    const rarity = Rarity.safeParse(parsed.rarity);
+    const sort = PlayerCardSort.safeParse(parsed.sort);
+    return {
+      position: pos.success ? pos.data : undefined,
+      rarity: rarity.success ? rarity.data : undefined,
+      sort: sort.success ? sort.data : '-ovr',
+      squad: parsed.squad === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
 /** Bỏ dấu + chữ thường để "nguyen" khớp "Nguyễn". */
 const fold = (s: string) =>
   s.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/g, 'd').replace(/Đ/g, 'D').toLowerCase();

@@ -5,10 +5,12 @@ import {
   canSwap,
   formatClock,
   hudEvents,
+  loadSavedDifficulty,
   matchOutcome,
   readDevOptions,
   resultBody,
   sameHud,
+  saveDifficulty,
   stoppageMinutes,
   shootoutOutcome,
   shootoutScore,
@@ -91,7 +93,14 @@ describe('hudEvents', () => {
       toHudSnapshot({
         ...s,
         phase: 'dead_ball',
-        restart: { type, team: 'home', spot: { x: 0, y: 0 }, takerId: 'home-P5', startTick: 1, readyTick: 1 },
+        restart: {
+          type,
+          team: 'home',
+          spot: { x: 0, y: 0 },
+          takerId: 'home-P5',
+          startTick: 1,
+          readyTick: 1,
+        },
       });
     expect(hudEvents(before, restart('penalty'))).toEqual([
       { kind: 'foul', team: 'home', text: "0' Phạt đền · Nhà" },
@@ -294,5 +303,33 @@ describe('bù giờ trên HUD', () => {
     expect(before.stoppage).toBeNull();
     expect(after.stoppage).toBe(2);
     expect(sameHud(before, after)).toBe(false);
+  });
+});
+
+describe('nhớ độ khó lần trước (nguyên tắc 20)', () => {
+  it('lưu và đọc lại độ khó, mặc định easy khi chưa có hoặc localStorage lỗi', () => {
+    const map = new Map<string, string>();
+    const store = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => void map.set(k, v),
+    } as unknown as Storage;
+
+    expect(loadSavedDifficulty(store)).toBe('easy');
+    saveDifficulty(store, 'hard');
+    expect(loadSavedDifficulty(store)).toBe('hard');
+    saveDifficulty(store, 'easy');
+    expect(loadSavedDifficulty(store)).toBe('easy');
+
+    const broken = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+    } as unknown as Storage;
+    expect(() => saveDifficulty(broken, 'hard')).not.toThrow();
+    expect(loadSavedDifficulty(broken)).toBe('easy');
+    expect(loadSavedDifficulty(null)).toBe('easy');
   });
 });

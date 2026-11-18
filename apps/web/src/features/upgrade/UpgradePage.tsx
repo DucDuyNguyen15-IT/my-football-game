@@ -167,7 +167,12 @@ export function UpgradePage() {
   );
 
   return (
-    <div className="upg">
+    <div
+      className="upg"
+      onKeyDown={(e) => {
+        if (e.key === 'Escape' && picking && target && !outcome) setPicking(false);
+      }}
+    >
       <header className="upg__head">
         <Link to="/collection" className="btn btn--ghost btn--sm">
           <BackIcon />

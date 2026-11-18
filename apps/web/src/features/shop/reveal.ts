@@ -38,9 +38,11 @@ interface RevealerOptions {
 
 export class PackRevealer {
   private readonly anims = new Set<Animation>();
+  private readonly waits = new Set<() => void>();
   private readonly revealed: boolean[];
   private readonly queue: number[] = [];
   private skip = false;
+  private skipStep = false;
   private busy = true;
   private disposed = false;
   private row: HTMLElement | null = null;
@@ -60,7 +62,7 @@ export class PackRevealer {
   ): Promise<void> {
     const { force, ...opts } = o;
     const duration = Number(opts.duration ?? 0);
-    if ((this.skip && !force) || duration <= 0) opts.duration = 1;
+    if (((this.skip || this.skipStep) && !force) || duration <= 0) opts.duration = 1;
     const a = el.animate(keyframes, { fill: 'none', ...opts });
     this.anims.add(a);
     return a.finished.then(
@@ -70,80 +72,121 @@ export class PackRevealer {
   }
 
   private wait(ms: number): Promise<void> {
-    return new Promise((r) => setTimeout(r, this.skip ? 0 : ms));
+    if (this.skip || this.skipStep || ms <= 0) return Promise.resolve();
+    return new Promise((resolve) => {
+      const done = () => {
+        clearTimeout(id);
+        this.waits.delete(done);
+        resolve();
+      };
+      const id = setTimeout(done, ms);
+      this.waits.add(done);
+    });
+  }
+
+  private flushActive() {
+    for (const done of [...this.waits]) done();
+    for (const a of [...this.anims]) {
+      try {
+        a.finish();
+      } catch {
+        /* đã xong */
+      }
+    }
+  }
+
+  isBusy(): boolean {
+    return this.busy;
+  }
+
+  /** Tua nhanh hiệu ứng hiện tại (xé gói, dàn thẻ hoặc lật thẻ đang chạy) khi bấm / Space / Enter. */
+  skipCurrent(): void {
+    if (this.disposed) return;
+    this.skipStep = true;
+    this.flushActive();
   }
 
   /** Rung + xé đôi gói. Gọi trước khi React đổi sang hàng thẻ. */
   async tear(pack: HTMLElement): Promise<DOMRect> {
+    this.skipStep = false;
     pack.style.animation = 'none';
     const rect = pack.getBoundingClientRect();
     if (this.reduced) return rect;
-    await this.run(
-      pack,
-      [
-        { transform: 'none' },
-        { transform: 'translateX(-4px) rotate(-2deg)' },
-        { transform: 'translateX(4px) rotate(2deg)' },
-        { transform: 'none' },
-      ],
-      { duration: 260, iterations: 2 },
-    );
-    const top = pack.querySelector('.pack__top');
-    const bot = pack.querySelector('.pack__bot');
-    const label = pack.querySelector('.pack__label');
-    await Promise.all([
-      top &&
-        this.run(
-          top,
-          [
-            { transform: 'none', opacity: 1 },
-            { transform: 'translate(-20px,-90px) rotate(-14deg)', opacity: 0 },
-          ],
-          { duration: 420, easing: EASE_OUT, fill: 'forwards' },
-        ),
-      bot &&
-        this.run(
-          bot,
-          [
-            { transform: 'none', opacity: 1 },
-            { transform: 'translateY(60px) scale(.9)', opacity: 0 },
-          ],
-          { duration: 420, easing: 'ease-in', fill: 'forwards' },
-        ),
-      label &&
-        this.run(label, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }),
-    ]);
-    return rect;
+    try {
+      await this.run(
+        pack,
+        [
+          { transform: 'none' },
+          { transform: 'translateX(-4px) rotate(-2deg)' },
+          { transform: 'translateX(4px) rotate(2deg)' },
+          { transform: 'none' },
+        ],
+        { duration: 260, iterations: 2 },
+      );
+      const top = pack.querySelector('.pack__top');
+      const bot = pack.querySelector('.pack__bot');
+      const label = pack.querySelector('.pack__label');
+      await Promise.all([
+        top &&
+          this.run(
+            top,
+            [
+              { transform: 'none', opacity: 1 },
+              { transform: 'translate(-20px,-90px) rotate(-14deg)', opacity: 0 },
+            ],
+            { duration: 420, easing: EASE_OUT, fill: 'forwards' },
+          ),
+        bot &&
+          this.run(
+            bot,
+            [
+              { transform: 'none', opacity: 1 },
+              { transform: 'translateY(60px) scale(.9)', opacity: 0 },
+            ],
+            { duration: 420, easing: 'ease-in', fill: 'forwards' },
+          ),
+        label &&
+          this.run(label, [{ opacity: 1 }, { opacity: 0 }], { duration: 160, fill: 'forwards' }),
+      ]);
+      return rect;
+    } finally {
+      this.skipStep = false;
+    }
   }
 
   /** Thẻ úp bay từ chỗ gói ra hàng, cách nhau 80ms. */
   async layout(row: HTMLElement, from: DOMRect | null): Promise<void> {
     this.row = row;
+    this.skipStep = false;
     const slots = [...row.querySelectorAll<HTMLElement>('.reveal-slot')];
     const cx = from ? from.left + from.width / 2 : 0;
     const cy = from ? from.top + from.height / 2 : 0;
-    await Promise.all(
-      slots.map((s, i) => {
-        if (this.reduced || !from) {
-          return this.run(s, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: i * 40 });
-        }
-        const r = s.getBoundingClientRect();
-        const dx = cx - (r.left + r.width / 2);
-        const dy = cy - (r.top + r.height / 2);
-        return this.run(
-          s,
-          [
-            {
-              transform: `translate(${dx}px,${dy}px) scale(.55) rotate(${(i - (slots.length - 1) / 2) * 6}deg)`,
-              opacity: 0,
-            },
-            { opacity: 1, offset: 0.25 },
-            { transform: 'none', opacity: 1 },
-          ],
-          { duration: 520, delay: i * 80, easing: EASE_SNAP, fill: 'backwards' },
-        );
-      }),
-    );
+    try {
+      await Promise.all(
+        slots.map((s, i) => {
+          if (this.reduced || !from) {
+            return this.run(s, [{ opacity: 0 }, { opacity: 1 }], { duration: 200, delay: i * 40 });
+          }
+          const r = s.getBoundingClientRect();
+          const dx = cx - (r.left + r.width / 2);
+          const dy = cy - (r.top + r.height / 2);
+          return this.run(
+            s,
+            [
+              {
+                transform: `translate(${dx}px,${dy}px) scale(.55) rotate(${(i - (slots.length - 1) / 2) * 6}deg)`,
+                opacity: 0,
+              },
+              { opacity: 1, offset: 0.25 },
+              { transform: 'none', opacity: 1 },
+            ],
+            { duration: 520, delay: i * 80, easing: EASE_SNAP, fill: 'backwards' },
+          );
+        }),
+      );
+    } finally {
+      this.skipStep = false;
+    }
     if (this.disposed) return;
     this.busy = false;
     const queued = this.queue.shift();
@@ -244,7 +287,11 @@ export class PackRevealer {
       });
       flipper.classList.add('flipped');
     } else {
-      await this.dramaticFlip(slot, rarity, { mover, shaker, flipper, aura, sheen });
+      try {
+        await this.dramaticFlip(slot, rarity, { mover, shaker, flipper, aura, sheen });
+      } finally {
+        this.skipStep = false;
+      }
     }
 
     if (this.disposed) return;
@@ -374,13 +421,7 @@ export class PackRevealer {
     if (this.disposed) return;
     this.skip = true;
     this.queue.length = 0;
-    this.anims.forEach((a) => {
-      try {
-        a.finish();
-      } catch {
-        /* đã xong */
-      }
-    });
+    this.flushActive();
     this.opts.scrim.current?.classList.remove('on');
     this.row?.querySelectorAll('.reveal-slot').forEach((s) => s.classList.remove('top'));
     await new Promise((r) => setTimeout(r, 30));
@@ -402,6 +443,7 @@ export class PackRevealer {
 
   dispose() {
     this.disposed = true;
+    for (const done of [...this.waits]) done();
     this.anims.forEach((a) => a.cancel());
     this.anims.clear();
     this.opts.scrim.current?.classList.remove('on');

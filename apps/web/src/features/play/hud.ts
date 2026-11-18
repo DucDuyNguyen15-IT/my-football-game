@@ -5,6 +5,7 @@
 import {
   computeOvr,
   type Card,
+  type Difficulty,
   type MatchPlayerSetup,
   type PlayerStats,
   type Position,
@@ -357,3 +358,25 @@ export function subOptions(
 /** Thủ môn chỉ đổi thủ môn, cầu thủ ngoài sân chỉ đổi cầu thủ ngoài sân (luật trong sim). */
 export const canSwap = (out: Position, incoming: Position): boolean =>
   (out === 'GK') === (incoming === 'GK');
+
+const DIFFICULTY_KEY = 'mfg.play.difficulty';
+
+/** Lưu độ khó lần trước vào localStorage, bọc try/catch (nguyên tắc 20). */
+export function saveDifficulty(storage: Storage | null, d: Difficulty): void {
+  if (!storage) return;
+  try {
+    storage.setItem(DIFFICULTY_KEY, d);
+  } catch {
+    /* localStorage bị chặn hoặc đầy — bỏ qua */
+  }
+}
+
+/** Đọc độ khó lần trước từ localStorage; mặc định `'easy'` nếu chưa có hoặc không hợp lệ. */
+export function loadSavedDifficulty(storage: Storage | null): Difficulty {
+  if (!storage) return 'easy';
+  try {
+    return storage.getItem(DIFFICULTY_KEY) === 'hard' ? 'hard' : 'easy';
+  } catch {
+    return 'easy';
+  }
+}

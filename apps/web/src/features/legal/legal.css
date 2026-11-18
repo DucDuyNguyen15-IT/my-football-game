@@ -31,8 +31,11 @@
 .legal__body li + li {
   margin-top: 6px;
 }
-.legal a {
+.legal a,
+.legal__body a {
   color: var(--c-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .account__form {
   display: grid;
@@ -52,6 +55,8 @@
 .legal-links a,
 .consent a {
   color: var(--c-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .consent {
   display: flex;

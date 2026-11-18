@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import type { Card, Rarity } from '@pitch/shared';
 import {
   isValuableSale,
+  loadSavedFilter,
   matchesQuery,
   newCardIds,
   readFilter,
   saleTotal,
+  saveFilter,
   writeFilter,
 } from './collection';
 
@@ -101,5 +103,55 @@ describe('nhãn MỚI khi mở gói', () => {
       { id: '13', cardId: '3' },
     ];
     expect([...newCardIds(opened, new Set(['1']))]).toEqual(['11', '13']);
+  });
+});
+
+describe('nhớ bộ lọc trong localStorage (nguyên tắc 20)', () => {
+  it('lưu và khôi phục bộ lọc hợp lệ, bỏ qua từ khoá tìm kiếm tạm', () => {
+    const map = new Map<string, string>();
+    const store = {
+      getItem: (k: string) => map.get(k) ?? null,
+      setItem: (k: string, v: string) => void map.set(k, v),
+    } as unknown as Storage;
+
+    expect(loadSavedFilter(store)).toBeNull();
+    saveFilter(store, { position: 'FW', rarity: 'gold', sort: '-acquired', q: 'duc', squad: true });
+    expect(loadSavedFilter(store)).toEqual({
+      position: 'FW',
+      rarity: 'gold',
+      sort: '-acquired',
+      squad: true,
+    });
+  });
+
+  it('localStorage lỗi hoặc JSON hỏng → trả null, không ném lỗi', () => {
+    const broken = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+    } as unknown as Storage;
+    expect(() => saveFilter(broken, { sort: '-ovr', q: '', squad: false })).not.toThrow();
+    expect(loadSavedFilter(broken)).toBeNull();
+    expect(loadSavedFilter(null)).toBeNull();
+
+    const corrupt = {
+      getItem: () => '{bad-json',
+      setItem: () => {},
+    } as unknown as Storage;
+    expect(loadSavedFilter(corrupt)).toBeNull();
+
+    const weird = {
+      getItem: () => JSON.stringify({ position: 'XX', rarity: 'mythic', sort: 'bad', squad: '1' }),
+      setItem: () => {},
+    } as unknown as Storage;
+    expect(loadSavedFilter(weird)).toEqual({
+      position: undefined,
+      rarity: undefined,
+      sort: '-ovr',
+      squad: false,
+    });
   });
 });

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Position, Rarity, type Card, type PlayerCard, type PlayerCardSort } from '@pitch/shared';
 import { useMe } from '../../api/auth';
@@ -10,9 +10,11 @@ import { POSITION_NAME, RARITY_INFO, statsFor } from '../../components/card/rari
 import { HoldButton } from '../../components/HoldButton';
 import {
   isValuableSale,
+  loadSavedFilter,
   matchesQuery,
   readFilter,
   saleTotal,
+  saveFilter,
   writeFilter,
   type CollectionFilter,
 } from './collection';
@@ -104,9 +106,28 @@ function CollectionSkeleton() {
   );
 }
 
+const safeStorage = (): Storage | null => {
+  try {
+    return typeof window !== 'undefined' ? window.localStorage : null;
+  } catch {
+    return null;
+  }
+};
+
 /** Kho thẻ (docs/design/screens/collection*.html): lưới thẻ + bộ lọc trên URL, panel chi tiết, bán. */
 export function CollectionPage() {
   const [params, setParams] = useSearchParams();
+  const restored = useRef(false);
+  useEffect(() => {
+    if (restored.current) return;
+    restored.current = true;
+    if (params.toString()) return;
+    const saved = loadSavedFilter(safeStorage());
+    if (!saved) return;
+    const next = writeFilter({ ...readFilter(params), ...saved });
+    if (next.toString()) setParams(next, { replace: true });
+  }, [params, setParams]);
+
   const filter = readFilter(params);
   const me = useMe().data;
   const list = usePlayerCards({
@@ -119,11 +140,64 @@ export function CollectionPage() {
   const seller = useSellCards();
   // Bấm đôi "Bán": lần 2 gửi lại thẻ đã bán → not_found (B4-09).
   const selling = useRef(false);
+  const searchRef = useRef<HTMLInputElement>(null);
   const [selecting, setSelecting] = useState(false);
   const [selected, setSelected] = useState<ReadonlySet<string>>(new Set());
   const [detailId, setDetailId] = useState<string | null>(null);
   const [confirming, setConfirming] = useState<Item[] | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+
+  const items = useMemo<Item[]>(
+    () =>
+      list.data && catalog.data
+        ? list.data.flatMap((pc) => {
+            const card = catalog.data.get(pc.cardId);
+            return card && matchesQuery(card, filter.q) && (!filter.squad || pc.inSquad)
+              ? [{ pc, card }]
+              : [];
+          })
+        : [],
+    [list.data, catalog.data, filter.q, filter.squad],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (confirming) return;
+      const target = e.target as HTMLElement | null;
+      const inField =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        target instanceof HTMLSelectElement;
+
+      if (e.key === '/' && !inField && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        searchRef.current?.focus();
+        searchRef.current?.select();
+        return;
+      }
+      if (e.key === 'Escape') {
+        if (detailId) {
+          setDetailId(null);
+        } else if (selecting) {
+          setSelecting(false);
+          setSelected(new Set());
+        }
+        return;
+      }
+      if (!inField && detailId && (e.key === 'ArrowLeft' || e.key === 'ArrowRight')) {
+        const idx = items.findIndex((it) => it.pc.id === detailId);
+        if (idx < 0) return;
+        const nextIdx = e.key === 'ArrowRight' ? idx + 1 : idx - 1;
+        const next = items[nextIdx];
+        if (next) {
+          e.preventDefault();
+          setDetailId(next.pc.id);
+        }
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [confirming, detailId, selecting, items]);
 
   if (list.isPending || catalog.isPending || economy.isPending) return <CollectionSkeleton />;
   if (list.isError || catalog.isError || economy.isError) {
@@ -148,18 +222,14 @@ export function CollectionPage() {
 
   const prices = economy.data.cardSalePrice;
   const maxLevel = economy.data.upgrade.maxLevel;
-  const items: Item[] = list.data.flatMap((pc) => {
-    const card = catalog.data.get(pc.cardId);
-    return card && matchesQuery(card, filter.q) && (!filter.squad || pc.inSquad)
-      ? [{ pc, card }]
-      : [];
-  });
   const chosen = items.filter((it) => selected.has(it.pc.id));
   const detail = items.find((it) => it.pc.id === detailId) ?? null;
   const filtered = !!(filter.position || filter.rarity || filter.q || filter.squad);
 
   const update = (patch: Partial<CollectionFilter>) => {
-    setParams(writeFilter({ ...filter, ...patch }), { replace: true });
+    const next = { ...filter, ...patch };
+    saveFilter(safeStorage(), next);
+    setParams(writeFilter(next), { replace: true });
     setSelected(new Set());
   };
   const toggle = (id: string) =>
@@ -234,9 +304,10 @@ export function CollectionPage() {
             <span className="sr-only">Tìm tên cầu thủ</span>
             <SearchIcon />
             <input
+              ref={searchRef}
               type="search"
               className="input"
-              placeholder="Tìm tên cầu thủ…"
+              placeholder="Tìm tên cầu thủ… (/)"
               value={filter.q}
               onChange={(e) => update({ q: e.target.value })}
             />
@@ -643,7 +714,13 @@ function SellDialog({ batch, total, valuable, pending, onConfirm, onCancel }: Se
         </div>
       )}
       <div className="dialog__actions">
-        <button type="button" className="btn btn--secondary" disabled={pending} onClick={onCancel}>
+        <button
+          type="button"
+          className="btn btn--secondary"
+          autoFocus
+          disabled={pending}
+          onClick={onCancel}
+        >
           Huỷ
         </button>
         {valuable ? (

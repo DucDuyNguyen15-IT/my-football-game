@@ -15,9 +15,11 @@ import { MatchTutorialOverlay } from '../onboarding/MatchTutorialOverlay';
 import { markTutorialSeen, readTutorialSeen, resetTutorialSeen } from '../onboarding/onboarding';
 import {
   hudEvents,
+  loadSavedDifficulty,
   readDevOptions,
   resultBody,
   sameHud,
+  saveDifficulty,
   subOptions,
   toHudSnapshot,
   type SubOptions,
@@ -98,7 +100,11 @@ export function PlayPage() {
       ? readDevOptions(params.toString(), import.meta.env)
       : {};
   const isOnboarding = params.get('onboarding') === '1';
-  const requestedDifficulty: Difficulty = params.get('difficulty') === 'hard' ? 'hard' : 'easy';
+  const paramDiff = params.get('difficulty');
+  const requestedDifficulty: Difficulty =
+    paramDiff === 'hard' || paramDiff === 'easy'
+      ? paramDiff
+      : loadSavedDifficulty(typeof window !== 'undefined' ? window.localStorage : null);
   const autoStart = Boolean(dev.autopilot) || isOnboarding;
   const [stage, setStage] = useState<Stage>(() =>
     autoStart ? { kind: 'starting', difficulty: requestedDifficulty } : { kind: 'select' },
@@ -107,6 +113,7 @@ export function PlayPage() {
   const autopilot = dev.autopilot ?? false;
   const start = useCallback(
     (difficulty: Difficulty) => {
+      saveDifficulty(typeof window !== 'undefined' ? window.localStorage : null, difficulty);
       setStage({ kind: 'starting', difficulty });
       mutate(difficulty, {
         onSuccess: (match) =>

@@ -78,13 +78,17 @@ export function PackOpening({
   }, [phase, rv]);
 
   async function tear() {
-    if (phase !== 'pack' || tearing.current || !packRef.current) return;
+    if (phase !== 'pack' || !packRef.current) return;
+    if (tearing.current) {
+      rv.skipCurrent();
+      return;
+    }
     tearing.current = true;
     packRect.current = await rv.tear(packRef.current);
     setPhase('reveal');
   }
 
-  // Bàn phím (DESIGN.md §6.3): Space/Enter xé gói hoặc lật thẻ kế; Esc lật hết.
+  // Bàn phím (DESIGN.md §6.3): Space/Enter xé gói, tua nhanh hiệu ứng đang chạy hoặc lật thẻ kế; Esc lật hết.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
@@ -92,10 +96,26 @@ export function PackOpening({
         return;
       }
       if (e.key !== ' ' && e.key !== 'Enter') return;
-      if (e.target instanceof HTMLButtonElement) return; // nút tự xử lý Space/Enter
-      e.preventDefault();
-      if (phase === 'pack') void tear();
-      else if (phase === 'reveal') {
+      if (phase === 'pack') {
+        if (e.target instanceof HTMLButtonElement && !tearing.current) return;
+        e.preventDefault();
+        void tear();
+        return;
+      }
+      if (phase === 'reveal') {
+        if (rv.isBusy()) {
+          if (
+            e.target instanceof HTMLButtonElement &&
+            !e.target.classList.contains('reveal-back')
+          ) {
+            return;
+          }
+          e.preventDefault();
+          rv.skipCurrent();
+          return;
+        }
+        if (e.target instanceof HTMLButtonElement) return; // nút tự xử lý Space/Enter
+        e.preventDefault();
         const i = rv.nextHidden();
         if (i >= 0) void rv.reveal(i);
       }
@@ -120,7 +140,15 @@ export function PackOpening({
         </span>
       </div>
 
-      <section className="stage" ref={stageRef} aria-label="Mở gói">
+      <section
+        className="stage"
+        ref={stageRef}
+        aria-label="Mở gói"
+        onClick={() => {
+          if (phase === 'pack' && tearing.current) rv.skipCurrent();
+          else if (phase === 'reveal' && rv.isBusy()) rv.skipCurrent();
+        }}
+      >
         <svg
           className="stage__lines"
           viewBox="0 0 1280 500"
@@ -177,7 +205,11 @@ export function PackOpening({
                               type="button"
                               className="reveal-face reveal-back"
                               aria-label={`Lật thẻ ${i + 1}`}
-                              onClick={() => void rv.reveal(i)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (rv.isBusy()) rv.skipCurrent();
+                                void rv.reveal(i);
+                              }}
                             >
                               <span className="reveal-mark">MFG</span>
                             </button>
@@ -216,8 +248,8 @@ export function PackOpening({
         {phase === 'reveal' && (
           <>
             <span className="muted opening__hint">
-              Bấm thẻ hoặc <span className="kbd">Space</span> để lật ·{' '}
-              <span className="kbd">Esc</span> bỏ qua hiệu ứng
+              Bấm thẻ hoặc <span className="kbd">Space</span> để lật / tua nhanh ·{' '}
+              <span className="kbd">Esc</span> lật tất cả
             </span>
             <button
               type="button"
@@ -257,7 +289,9 @@ export function PackOpening({
 function BoxStrip({ box, onDetails }: { box: PackBox; onDetails: () => void }) {
   return (
     <div className="box-strip">
-      <span className="label num">Hộp còn {box.total}/{box.size}</span>
+      <span className="label num">
+        Hộp còn {box.total}/{box.size}
+      </span>
       {RARITY_ORDER.map((r) => (
         <span key={r} className={`box-strip__item r-${r}`}>
           <b>
