@@ -144,7 +144,7 @@
 .panel.coll__detail,
 .coll__detail {
   position: sticky;
-  bottom: 24px;
+  top: 76px;
   display: grid;
   gap: var(--sp-4);
 }
