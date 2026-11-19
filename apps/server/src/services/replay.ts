@@ -1,4 +1,5 @@
 // Chạy lại trận trong worker thread (SEC-07, ADR-0011): không chặn event loop, có timeout.
+import { availableParallelism } from 'node:os';
 import { Worker } from 'node:worker_threads';
 import type { MatchSetup, ReplayResult } from '@pitch/sim';
 import type { ReplayJob, ReplayReply } from '../replay-worker';
@@ -22,8 +23,17 @@ const workerUrl = new URL(
 // Đường tuyệt đối tới tsx của server: `--import tsx` trần tìm theo cwd nên hỏng khi chạy test từ gốc repo.
 const tsxLoader = new URL('../../node_modules/tsx/dist/esm/index.mjs', import.meta.url).href;
 
+/** Trần worker chạy cùng lúc: mỗi worker ~30 MB + 1 nhân; nộp dồn dập (log sai liên tục) không làm cạn RAM/CPU. */
+export const MAX_CONCURRENT_REPLAYS = Math.max(1, availableParallelism() - 1);
+let running = 0;
+
 export const runReplayInWorker: ReplayRunner = (setup, inputLog) =>
   new Promise((resolve) => {
+    if (running >= MAX_CONCURRENT_REPLAYS) {
+      resolve({ ok: false, reason: 'failed', message: 'Máy chủ đang bận kiểm trận' });
+      return;
+    }
+    running++;
     const worker = new Worker(workerUrl, {
       workerData: { setup, inputLog } satisfies ReplayJob,
       ...(fromSource && { execArgv: ['--import', tsxLoader] }),
@@ -32,6 +42,7 @@ export const runReplayInWorker: ReplayRunner = (setup, inputLog) =>
     const finish = (outcome: ReplayOutcome) => {
       if (settled) return;
       settled = true;
+      running--;
       clearTimeout(timer);
       void worker.terminate();
       resolve(outcome);
