@@ -47,6 +47,7 @@ test('luồng chính: đăng ký → mở gói → xếp đội → đá trận 
     );
     await page.getByLabel('Tên đăng nhập').fill(username);
     await page.getByLabel('Mật khẩu', { exact: true }).fill(password);
+    await page.getByLabel('Nhập lại mật khẩu', { exact: true }).fill(password);
     // Chưa tick đồng ý Điều khoản + Chính sách → không tạo tài khoản.
     await page.getByRole('button', { name: 'Tạo tài khoản & nhận quà' }).click();
     await expect(page.getByText('Cần đồng ý Điều khoản và Chính sách')).toBeVisible();

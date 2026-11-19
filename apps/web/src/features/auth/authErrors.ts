@@ -9,7 +9,7 @@ export interface AuthNotice {
 }
 
 /** Ô nhập có lỗi riêng (lỗi `validation_error` của server có `details[].field`). */
-export type AuthField = 'username' | 'password' | 'email';
+export type AuthField = 'username' | 'password' | 'confirmPassword' | 'email';
 
 /** Đổi lỗi API thành thông báo cho người chơi; `login_locked` và `rate_limited` có lời riêng. */
 export function describeAuthError(err: unknown): AuthNotice {
@@ -66,6 +66,7 @@ export function parseAuthForm(input: {
   mode: 'login' | 'register';
   username: string;
   password: string;
+  confirmPassword?: string;
   email: string;
   agreed: boolean;
 }):
@@ -93,25 +94,37 @@ export function parseAuthForm(input: {
           ...(trimmedEmail && { email: trimmedEmail }),
           acceptTerms: input.agreed,
         });
-  if (parsed.success) {
-    return { ok: true, data: parsed.data, trimmedUsername, trimmedEmail };
-  }
   const errors: FieldErrors = {};
   let consentError = false;
-  for (const issue of parsed.error.issues) {
-    const f = issue.path[0];
-    if (f === 'email' && !errors.email) {
-      errors.email = 'Email chưa đúng định dạng (ví dụ: ten@vidu.vn).';
-    } else if (f === 'password' && !errors.password) {
-      errors.password =
-        input.mode === 'login' && input.password.length === 0
-          ? 'Nhập mật khẩu để đăng nhập.'
-          : issue.message;
-    } else if (f === 'username' && !errors.username) {
-      errors.username = issue.message;
-    } else if (f === 'acceptTerms') {
-      consentError = true;
+  if (!parsed.success) {
+    for (const issue of parsed.error.issues) {
+      const f = issue.path[0];
+      if (f === 'email' && !errors.email) {
+        errors.email = 'Email chưa đúng định dạng (ví dụ: ten@vidu.vn).';
+      } else if (f === 'password' && !errors.password) {
+        errors.password =
+          input.mode === 'login' && input.password.length === 0
+            ? 'Nhập mật khẩu để đăng nhập.'
+            : issue.message;
+      } else if (f === 'username' && !errors.username) {
+        errors.username = issue.message;
+      } else if (f === 'acceptTerms') {
+        consentError = true;
+      }
     }
+  }
+  if (
+    input.mode === 'register' &&
+    input.confirmPassword !== undefined &&
+    input.confirmPassword !== input.password
+  ) {
+    errors.confirmPassword =
+      input.confirmPassword.length === 0
+        ? 'Nhập lại mật khẩu để xác nhận.'
+        : 'Mật khẩu nhập lại chưa khớp.';
+  }
+  if (parsed.success && !errors.confirmPassword) {
+    return { ok: true, data: parsed.data, trimmedUsername, trimmedEmail };
   }
   return { ok: false, errors, consentError, trimmedUsername, trimmedEmail };
 }

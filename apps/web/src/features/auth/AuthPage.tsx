@@ -16,6 +16,8 @@ import {
   type FieldErrors,
 } from './authErrors';
 import { GoogleButton } from './GoogleButton';
+import { evaluatePasswordStrength, isPasswordAcceptable } from './passwordStrength';
+import { PasswordStrengthMeter } from './PasswordStrengthMeter';
 import './auth.css';
 import '../legal/legal.css';
 
@@ -63,8 +65,12 @@ export function AuthPage() {
   );
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [email, setEmail] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [confirmTouched, setConfirmTouched] = useState(false);
+  const strengthId = useId();
   /** Đồng ý Điều khoản + Chính sách khi đăng ký (NĐ 13/2023). */
   const [agreed, setAgreed] = useState(false);
   const [consentError, setConsentError] = useState(false);
@@ -113,7 +119,14 @@ export function AuthPage() {
 
   const onSubmit = (e: FormEvent) => {
     e.preventDefault();
-    const res = parseAuthForm({ mode, username, password, email, agreed });
+    const res = parseAuthForm({
+      mode,
+      username,
+      password,
+      ...(mode === 'register' ? { confirmPassword } : {}),
+      email,
+      agreed,
+    });
     if (res.trimmedUsername !== username) setUsername(res.trimmedUsername);
     if (res.trimmedEmail !== email) setEmail(res.trimmedEmail);
     if (!res.ok) {
@@ -138,6 +151,8 @@ export function AuthPage() {
   const switchMode = (m: Mode) => {
     setMode(m);
     setLocalErrors({});
+    setConfirmPassword('');
+    setConfirmTouched(false);
     setJustRegistered(false);
     login.reset();
     register.reset();
@@ -146,12 +161,28 @@ export function AuthPage() {
 
   const serverError = active.error ?? (googleStep ? null : google.error);
   const serverField = fieldErrorOf(serverError);
+  const isRegister = mode === 'register';
+  const strength = evaluatePasswordStrength(password, username);
+  const passwordTooWeak = isRegister && password.length > 0 && !isPasswordAcceptable(strength);
+  const liveMismatchError =
+    isRegister &&
+    confirmPassword !== password &&
+    (confirmPassword.length > 0 || (confirmTouched && password.length > 0))
+      ? confirmPassword.length === 0
+        ? 'Nhập lại mật khẩu để xác nhận.'
+        : 'Mật khẩu nhập lại chưa khớp.'
+      : undefined;
+  const registerBlocked =
+    isRegister &&
+    ((password.length > 0 && (passwordTooWeak || confirmPassword !== password)) ||
+      (confirmPassword.length > 0 && confirmPassword !== password));
+
   const fieldErrors: FieldErrors = {
     ...(serverField ? { [serverField.field]: serverField.text } : {}),
     ...localErrors,
+    ...(liveMismatchError ? { confirmPassword: liveMismatchError } : {}),
   };
   const notice = serverError && !serverField ? describeAuthError(serverError) : null;
-  const isRegister = mode === 'register';
 
   return (
     <main className="auth">
@@ -203,6 +234,19 @@ export function AuthPage() {
                 ))}
               </div>
 
+              {googleClientId && (
+                <>
+                  <GoogleButton
+                    clientId={googleClientId}
+                    onCredential={onGoogleCredential}
+                    busy={google.isPending}
+                  />
+                  <p className="auth__or">
+                    <span>Hoặc</span>
+                  </p>
+                </>
+              )}
+
               <form id="auth-form" className="auth__form" onSubmit={onSubmit} noValidate>
                 <Field
                   label="Tên đăng nhập"
@@ -226,7 +270,11 @@ export function AuthPage() {
                     />
                   )}
                 </Field>
-                <Field label="Mật khẩu" error={fieldErrors.password}>
+                <Field
+                  label="Mật khẩu"
+                  error={fieldErrors.password}
+                  extraDescribedBy={isRegister ? strengthId : undefined}
+                >
                   {(props) => (
                     <span className="field__box">
                       <input
@@ -253,6 +301,41 @@ export function AuthPage() {
                     </span>
                   )}
                 </Field>
+                {isRegister && <PasswordStrengthMeter id={strengthId} strength={strength} />}
+                {isRegister && (
+                  <Field label="Nhập lại mật khẩu" error={fieldErrors.confirmPassword}>
+                    {(props) => (
+                      <span className="field__box">
+                        <input
+                          {...props}
+                          className="input auth__password"
+                          type={showConfirmPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          placeholder="Nhập giống mật khẩu ở trên"
+                          value={confirmPassword}
+                          onChange={(e) => setConfirmPassword(e.target.value)}
+                          onBlur={() => setConfirmTouched(true)}
+                          maxLength={72}
+                          required
+                        />
+                        <button
+                          type="button"
+                          className="field__btn"
+                          aria-pressed={showConfirmPassword}
+                          aria-controls={props.id}
+                          aria-label={
+                            showConfirmPassword
+                              ? 'Ẩn mật khẩu nhập lại'
+                              : 'Hiện mật khẩu nhập lại'
+                          }
+                          onClick={() => setShowConfirmPassword((v) => !v)}
+                        >
+                          <EyeIcon off={showConfirmPassword} />
+                        </button>
+                      </span>
+                    )}
+                  </Field>
+                )}
                 {isRegister && (
                   <Field label="Email" optional error={fieldErrors.email}>
                     {(props) => (
@@ -302,26 +385,13 @@ export function AuthPage() {
                   type="submit"
                   className={`btn btn--primary btn--lg btn--block${active.isPending ? ' is-loading' : ''}`}
                   aria-busy={active.isPending || undefined}
-                  disabled={busy}
+                  disabled={busy || registerBlocked}
                 >
                   <span className="btn__label">
                     {isRegister ? 'Tạo tài khoản & nhận quà' : 'Đăng nhập'}
                   </span>
                 </button>
               </form>
-
-              {googleClientId && (
-                <>
-                  <p className="auth__or">
-                    <span>Hoặc</span>
-                  </p>
-                  <GoogleButton
-                    clientId={googleClientId}
-                    onCredential={onGoogleCredential}
-                    busy={google.isPending}
-                  />
-                </>
-              )}
               <p className="muted auth__foot">
                 Không có giao dịch tiền thật. Xu chỉ kiếm được khi chơi.
               </p>
@@ -362,12 +432,14 @@ function Field({
   optional,
   hint,
   error,
+  extraDescribedBy,
   children,
 }: {
   label: string;
   optional?: boolean;
   hint?: string | undefined;
   error?: string | undefined;
+  extraDescribedBy?: string | undefined;
   children: (props: {
     id: string;
     'aria-invalid': boolean;
@@ -375,7 +447,8 @@ function Field({
   }) => ReactNode;
 }) {
   const id = useId();
-  const describedBy = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
+  const baseDescribed = error ? `${id}-err` : hint ? `${id}-hint` : undefined;
+  const describedBy = [baseDescribed, extraDescribedBy].filter(Boolean).join(' ') || undefined;
   return (
     <div className="field">
       <label className="field__label" htmlFor={id}>

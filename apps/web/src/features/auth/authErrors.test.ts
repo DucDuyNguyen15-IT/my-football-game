@@ -86,10 +86,22 @@ describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () =>
       mode: 'register',
       username: 'alice',
       password: 'password123',
+      confirmPassword: 'password123',
       email: 'sai-email',
       agreed: true,
     });
     expect(badEmail.ok).toBe(false);
     if (!badEmail.ok) expect(badEmail.errors.email).toMatch(/ví dụ:/);
+
+    const mismatch = parseAuthForm({
+      mode: 'register',
+      username: 'alice',
+      password: 'password123',
+      confirmPassword: 'password999',
+      email: '',
+      agreed: true,
+    });
+    expect(mismatch.ok).toBe(false);
+    if (!mismatch.ok) expect(mismatch.errors.confirmPassword).toMatch(/chưa khớp/);
   });
 });

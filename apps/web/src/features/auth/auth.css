@@ -179,6 +179,122 @@
 .auth__password {
   padding-right: 52px;
 }
+
+/* ---------- Thanh đo độ mạnh mật khẩu kiểu thể lực / lực sút 4 bậc độ hiếm ---------- */
+.pw-meter {
+  display: grid;
+  gap: 6px;
+  padding: 10px 12px;
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+  background: var(--c-surface-2);
+}
+.pw-meter__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+.pw-meter__label {
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--c-text-muted);
+}
+.pw-meter__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--base);
+  background: var(--lo);
+  color: var(--hi);
+  font-family: var(--font-display);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  transition:
+    border-color var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out);
+}
+.pw-meter.is-empty .pw-meter__badge {
+  border-color: var(--c-line-strong);
+  background: var(--c-surface-1);
+  color: var(--c-text-muted);
+}
+.pw-meter__pips {
+  font-size: 9px;
+  letter-spacing: 1px;
+}
+.pw-meter__bar {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 4px;
+  height: 8px;
+  padding: 1px;
+  border-radius: 999px;
+  background: var(--c-surface-3);
+}
+.pw-meter__seg {
+  position: relative;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--c-line);
+  transform: scaleX(0.96);
+  opacity: 0.45;
+  transition:
+    transform var(--dur-base) var(--ease-snap),
+    opacity var(--dur-fast) var(--ease-out),
+    background-color var(--dur-fast) var(--ease-out);
+}
+.pw-meter__seg.is-on {
+  opacity: 1;
+  transform: scaleX(1);
+  background: linear-gradient(90deg, var(--base), var(--hi));
+  box-shadow: 0 0 6px color-mix(in srgb, var(--base) 55%, transparent);
+}
+.pw-meter.r-legend .pw-meter__seg.is-on::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    110deg,
+    transparent 20%,
+    rgb(255 255 255 / 0.55) 50%,
+    transparent 80%
+  );
+  animation: pw-sheen 2.4s var(--ease-in-out) infinite;
+}
+@keyframes pw-sheen {
+  0%,
+  55% {
+    transform: translateX(-110%);
+  }
+  100% {
+    transform: translateX(110%);
+  }
+}
+.pw-meter__hint {
+  margin: 0;
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+  line-height: 1.35;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pw-meter__badge,
+  .pw-meter__seg {
+    transition: none;
+  }
+  .pw-meter.r-legend .pw-meter__seg.is-on::after {
+    animation: none;
+    display: none;
+  }
+}
 .field__btn:hover,
 .field__btn[aria-pressed='true'] {
   color: var(--c-text);
