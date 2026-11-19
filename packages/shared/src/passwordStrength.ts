@@ -1,4 +1,4 @@
-import type { Rarity } from '@pitch/shared';
+import type { Rarity } from './domain';
 
 export type PasswordHintKey =
   | 'empty'

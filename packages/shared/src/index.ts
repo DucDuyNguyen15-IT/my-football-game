@@ -15,3 +15,4 @@ export * from './api/player-cards';
 export * from './match';
 export * from './squad';
 export * from './api/squad';
+export * from './passwordStrength';

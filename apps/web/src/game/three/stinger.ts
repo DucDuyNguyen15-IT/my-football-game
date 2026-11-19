@@ -825,6 +825,7 @@ export class MatchStinger {
     root.setAttribute('aria-hidden', 'true');
     root.style.opacity = '0';
 
+    // innerHTML an toàn: chỉ chèn chuỗi hằng từ từ điển, không có dữ liệu người dùng.
     root.innerHTML =
       '<div class="stinger-2d">' +
       '<div class="stinger-2d__wing stinger-2d__wing--left"></div>' +

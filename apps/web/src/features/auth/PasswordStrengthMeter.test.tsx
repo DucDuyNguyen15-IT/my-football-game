@@ -1,6 +1,6 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
-import { evaluatePasswordStrength } from './passwordStrength';
+import { evaluatePasswordStrength } from '@pitch/shared';
 import { PasswordStrengthMeter } from './PasswordStrengthMeter';
 
 describe('<PasswordStrengthMeter>', () => {

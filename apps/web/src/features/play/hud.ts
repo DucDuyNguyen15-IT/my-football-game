@@ -211,9 +211,6 @@ export function shootoutOutcome(hud: HudSnapshot): 'win' | 'loss' | null {
   return winner === 'home' ? 'win' : 'loss';
 }
 
-export const TEAM_LABEL: Record<TeamSide, string> = { home: 'Nhà', away: 'Khách' };
-export const CARD_LABEL = { yellow: 'Thẻ vàng', red: 'Thẻ đỏ' } as const;
-
 export function teamLabel(team: TeamSide, locale: Locale = getActiveLocale()): string {
   return formatMessage(locale, team === 'home' ? 'hud.home' : 'hud.away');
 }

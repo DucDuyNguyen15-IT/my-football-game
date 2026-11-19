@@ -15,15 +15,7 @@ import './admin.css';
 
 /** Chuyển `YYYY-MM-DD` thành ngày theo locale (`DD/MM/YYYY` ở vi, `MM/DD/YYYY` ở en). */
 export function formatCohortDay(iso: string, locale: Locale = getActiveLocale()): string {
-  const parts = iso.split('-');
-  if (parts.length === 3) {
-    if (locale === 'vi') {
-      const [y, m, d] = parts;
-      return `${d}/${m}/${y}`;
-    }
-    return formatDateFull(iso, locale);
-  }
-  return iso;
+  return formatDateFull(iso, locale);
 }
 
 /** Tính trung bình có trọng số theo `registered` của các cohort có giá trị khác `null`. */
@@ -202,9 +194,7 @@ export function AdminRetentionView({
           <span>
             {error instanceof ApiClientError
               ? errorMessageFor(error, locale, 'admin.loadError')
-              : error instanceof Error
-                ? error.message
-                : t('admin.loadError')}
+              : t('admin.loadError')}
           </span>
           {onRetry ? (
             <button type="button" className="btn btn--secondary btn--sm" onClick={onRetry}>

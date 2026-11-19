@@ -16,7 +16,7 @@ import {
   type FieldErrors,
 } from './authErrors';
 import { GoogleButton } from './GoogleButton';
-import { evaluatePasswordStrength, isPasswordAcceptable } from './passwordStrength';
+import { evaluatePasswordStrength, isPasswordAcceptable } from '@pitch/shared';
 import { PasswordStrengthMeter } from './PasswordStrengthMeter';
 import { useI18n } from '../../i18n/I18nContext';
 import { LanguageSwitcher } from '../../i18n/LanguageSwitcher';
@@ -250,6 +250,7 @@ export function AuthPage() {
                     clientId={googleClientId}
                     onCredential={onGoogleCredential}
                     busy={google.isPending}
+                    text={isRegister ? 'signup_with' : 'signin_with'}
                   />
                   <p className="auth__or">
                     <span>{t('auth.or')}</span>

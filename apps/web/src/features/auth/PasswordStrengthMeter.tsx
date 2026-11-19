@@ -1,7 +1,7 @@
 import type { Rarity } from '@pitch/shared';
 import { useI18n } from '../../i18n/I18nContext';
 import type { TranslationKey } from '../../i18n/vi';
-import type { PasswordHintKey, PasswordStrength } from './passwordStrength';
+import type { PasswordHintKey, PasswordStrength } from '@pitch/shared';
 
 const RANK_KEYS: Record<Rarity, TranslationKey> = {
   bronze: 'pw.rank.bronze',
@@ -39,12 +39,10 @@ export function PasswordStrengthMeter({ id, strength }: PasswordStrengthMeterPro
     <div
       id={id}
       className={`pw-meter r-${strength.tier}${isEmpty ? ' is-empty' : ''}`}
-      aria-live="polite"
-      aria-atomic="true"
     >
       <div className="pw-meter__head">
         <span className="pw-meter__label">{t('pw.label')}</span>
-        <span className="pw-meter__badge">
+        <span className="pw-meter__badge" aria-live="polite" aria-atomic="true">
           <span className="pw-meter__pips" aria-hidden="true">
             {isEmpty ? '◇◇◇◇' : '◆'.repeat(strength.level)}
           </span>

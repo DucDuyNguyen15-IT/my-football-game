@@ -16,14 +16,6 @@ const RARITY_PIPS: Record<Rarity, number> = {
   legend: 4,
 };
 
-/** Nhãn + số hạt ◆ theo độ hiếm (DESIGN.md §3.2 — không chỉ dựa vào màu). */
-export const RARITY_INFO: Record<Rarity, { label: string; pips: number }> = {
-  bronze: { label: 'Đồng', pips: 1 },
-  silver: { label: 'Bạc', pips: 2 },
-  gold: { label: 'Vàng', pips: 3 },
-  legend: { label: 'Huyền thoại', pips: 4 },
-};
-
 export function rarityLabel(rarity: Rarity, locale: Locale = getActiveLocale()): string {
   return formatMessage(locale, RARITY_KEYS[rarity]);
 }
@@ -40,13 +32,6 @@ const POSITION_KEYS: Record<Position, TranslationKey> = {
   DF: 'pos.DF',
   MF: 'pos.MF',
   FW: 'pos.FW',
-};
-
-export const POSITION_NAME: Record<Position, string> = {
-  GK: 'Thủ môn',
-  DF: 'Hậu vệ',
-  MF: 'Tiền vệ',
-  FW: 'Tiền đạo',
 };
 
 export function positionName(position: Position, locale: Locale = getActiveLocale()): string {
@@ -74,32 +59,17 @@ const STAT_KEYS: Record<StatKey, { abbr: TranslationKey; name: TranslationKey }>
 };
 
 /** Chỉ số hiện trên thẻ (DESIGN.md §4): 6 chỉ số cầu thủ ngoài sân, 5 chỉ số thủ môn. */
-export const OUTFIELD_STATS: readonly StatLabel[] = [
-  { key: 'pace', abbr: 'PAC', name: 'Tốc độ' },
-  { key: 'shooting', abbr: 'SHO', name: 'Sút' },
-  { key: 'passing', abbr: 'PAS', name: 'Chuyền' },
-  { key: 'dribbling', abbr: 'DRI', name: 'Rê bóng' },
-  { key: 'defending', abbr: 'DEF', name: 'Phòng ngự' },
-  { key: 'stamina', abbr: 'STA', name: 'Thể lực' },
-];
-export const GK_STATS: readonly StatLabel[] = [
-  { key: 'reflexes', abbr: 'REF', name: 'Phản xạ' },
-  { key: 'handling', abbr: 'HAN', name: 'Bắt bóng' },
-  { key: 'positioning', abbr: 'POS', name: 'Vị trí' },
-  { key: 'kicking', abbr: 'KIC', name: 'Phát bóng' },
-  { key: 'stamina', abbr: 'STA', name: 'Thể lực' },
-];
-
-export const statsFor = (position: Position) => (position === 'GK' ? GK_STATS : OUTFIELD_STATS);
+const OUTFIELD_STATS: readonly StatKey[] = ['pace', 'shooting', 'passing', 'dribbling', 'defending', 'stamina'];
+const GK_STATS: readonly StatKey[] = ['reflexes', 'handling', 'positioning', 'kicking', 'stamina'];
 
 export function localizedStatsFor(
   position: Position,
   locale: Locale = getActiveLocale(),
 ): readonly StatLabel[] {
-  return statsFor(position).map((s) => ({
-    key: s.key,
-    abbr: formatMessage(locale, STAT_KEYS[s.key].abbr),
-    name: formatMessage(locale, STAT_KEYS[s.key].name),
+  return (position === 'GK' ? GK_STATS : OUTFIELD_STATS).map((key) => ({
+    key,
+    abbr: formatMessage(locale, STAT_KEYS[key].abbr),
+    name: formatMessage(locale, STAT_KEYS[key].name),
   }));
 }
 

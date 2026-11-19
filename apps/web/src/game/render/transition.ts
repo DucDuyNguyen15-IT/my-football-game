@@ -94,20 +94,6 @@ export const OUT_OF_BOUNDS_DELAY_SEC = OUT_HOLD_TICKS / TICK_RATE;
 /** Luân lưu: xem bóng rung lưới / pha cản phá của lượt vừa sút trước khi sang lượt kế (giây). */
 export const SHOOTOUT_RESULT_DELAY_SEC = SHOOTOUT_HOLD_TICKS / TICK_RATE;
 
-export const TRANSITION_LABELS: Record<TransitionKind, string> = {
-  goal_kick: 'PHÁT BÓNG',
-  corner: 'PHẠT GÓC',
-  throw_in: 'NÉM BIÊN',
-  free_kick: 'ĐÁ PHẠT',
-  penalty: 'PHẠT ĐỀN',
-  replay_in: 'XEM LẠI',
-  replay_out: 'GIAO BÓNG',
-  kickoff: 'GIAO BÓNG',
-  second_half: 'GIAO BÓNG',
-  shootout: 'LUÂN LƯU',
-  shootout_turn: 'LƯỢT',
-};
-
 const DURATION_3D: Record<TransitionKind, number> = {
   goal_kick: 0.78,
   corner: 0.78,

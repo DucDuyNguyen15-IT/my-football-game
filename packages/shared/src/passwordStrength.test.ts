@@ -89,3 +89,16 @@ describe('evaluatePasswordStrength', () => {
     expect(res.hint).toBe('repeatOrSeq');
   });
 });
+
+describe('RegisterRequest dùng chung luật độ mạnh (server chặn mật khẩu Yếu)', () => {
+  const base = { username: 'user_a', acceptTerms: true as const };
+  it('từ chối mật khẩu Yếu dù đủ 8 ký tự', async () => {
+    const { RegisterRequest } = await import('./api/auth');
+    for (const password of ['12345678', 'abcdefgh', 'user_a12'])
+      expect(RegisterRequest.safeParse({ ...base, password }).success).toBe(false);
+  });
+  it('nhận mật khẩu từ Trung bình trở lên', async () => {
+    const { RegisterRequest } = await import('./api/auth');
+    expect(RegisterRequest.safeParse({ ...base, password: 'keoxanh7' }).success).toBe(true);
+  });
+});

@@ -8,13 +8,15 @@ interface Props {
   onCredential: (idToken: string) => void;
   /** Đang chờ server: khoá nút (GIS vẽ nút trong iframe nên chỉ chặn được bằng lớp phủ). */
   busy?: boolean;
+  /** Chữ GIS: "Đăng nhập bằng Google" / "Đăng ký bằng Google" (ngắn hơn continue_with). */
+  text?: 'signin_with' | 'signup_with';
 }
 
 /** Độ rộng tối đa GIS cho phép. */
 const GSI_MAX_WIDTH = 400;
 
 /** Nút "Tiếp tục với Google" do GIS vẽ (ADR-0010); tải script lỗi thì báo nhẹ, không chặn form. */
-export function GoogleButton({ clientId, onCredential, busy = false }: Props) {
+export function GoogleButton({ clientId, onCredential, busy = false, text = 'signin_with' }: Props) {
   const { locale, t } = useI18n();
   const slot = useRef<HTMLDivElement>(null);
   const callback = useRef(onCredential);
@@ -40,9 +42,10 @@ export function GoogleButton({ clientId, onCredential, busy = false }: Props) {
         });
         gsi.renderButton(el, {
           type: 'standard',
-          theme: 'filled_black',
+          // outline: logo G không bị nhốt trong ô trắng sát mép như filled_black (trông bí).
+          theme: 'outline',
           size: 'large',
-          text: 'continue_with',
+          text,
           shape: 'rectangular',
           logo_alignment: 'center',
           width: Math.min(GSI_MAX_WIDTH, Math.max(200, Math.floor(el.clientWidth))),
@@ -57,7 +60,7 @@ export function GoogleButton({ clientId, onCredential, busy = false }: Props) {
     return () => {
       alive = false;
     };
-  }, [clientId, locale]);
+  }, [clientId, locale, text]);
 
   return (
     <div className={`gbtn${busy ? ' is-busy' : ''}`} aria-busy={busy || state === 'loading'}>

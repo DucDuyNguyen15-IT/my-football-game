@@ -42,14 +42,15 @@ export function describeAuthError(err: unknown, locale: Locale = getActiveLocale
         return { tone: 'danger', text: formatMessage(locale, 'auth.usernameInvalid') };
       }
       if (detail?.field === 'password') {
-        return { tone: 'danger', text: formatMessage(locale, 'auth.passwordMinLength') };
+        return { tone: 'danger', text: formatMessage(locale, 'auth.passwordWeak') };
       }
       if (detail?.field === 'email') {
         return { tone: 'danger', text: formatMessage(locale, 'auth.emailInvalid') };
       }
       return {
         tone: 'danger',
-        text: detail?.message ?? formatMessage(locale, 'err.validation_error'),
+        // Không dùng message server (tiếng Việt) để khỏi lọt sang bản EN.
+        text: formatMessage(locale, 'err.validation_error'),
       };
     }
     default:
@@ -75,12 +76,9 @@ export function fieldErrorOf(
     return { field: 'username', text: formatMessage(locale, 'auth.usernameInvalid') };
   }
   if (d.field === 'password') {
-    return { field: 'password', text: formatMessage(locale, 'auth.passwordMinLength') };
+    return { field: 'password', text: formatMessage(locale, 'auth.passwordWeak') };
   }
-  if (d.field === 'email') {
-    return { field: 'email', text: formatMessage(locale, 'auth.emailInvalid') };
-  }
-  return { field: d.field as AuthField, text: d.message };
+  return { field: 'email', text: formatMessage(locale, 'auth.emailInvalid') };
 }
 
 export type FieldErrors = Partial<Record<AuthField, string>>;
@@ -131,7 +129,9 @@ export function parseAuthForm(input: {
         errors.password =
           input.mode === 'login' && input.password.length === 0
             ? formatMessage(locale, 'auth.passwordRequiredLogin')
-            : formatMessage(locale, 'auth.passwordMinLength');
+            : input.mode === 'register' && input.password.length >= 8
+              ? formatMessage(locale, 'auth.passwordWeak')
+              : formatMessage(locale, 'auth.passwordMinLength');
       } else if (f === 'username' && !errors.username) {
         errors.username = formatMessage(locale, 'auth.usernameInvalid');
       } else if (f === 'acceptTerms') {

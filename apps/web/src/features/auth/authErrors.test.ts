@@ -51,7 +51,7 @@ describe('fieldErrorOf', () => {
     const v = new ApiClientError('validation_error', 400, 'x', [
       { field: 'password', message: 'Ngắn' },
     ]);
-    expect(fieldErrorOf(v)).toEqual({ field: 'password', text: 'Mật khẩu ít nhất 8 ký tự.' });
+    expect(fieldErrorOf(v)).toEqual({ field: 'password', text: 'Mật khẩu chưa đủ mạnh: cần ít nhất 8 ký tự và từ mức Trung bình trở lên.' });
     expect(fieldErrorOf(new ApiClientError('login_locked', 429, 'x'))).toBeNull();
   });
 });
@@ -70,7 +70,7 @@ describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () =>
     const reg = parseAuthForm({
       mode: 'register',
       username: '  bob_99  ',
-      password: 'password123',
+      password: 'Bongda2024!xyz',
       email: '  bob@vidu.vn  ',
       agreed: true,
     });
@@ -96,8 +96,8 @@ describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () =>
     const badEmail = parseAuthForm({
       mode: 'register',
       username: 'alice',
-      password: 'password123',
-      confirmPassword: 'password123',
+      password: 'Bongda2024!xyz',
+      confirmPassword: 'Bongda2024!xyz',
       email: 'sai-email',
       agreed: true,
     });
@@ -107,7 +107,7 @@ describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () =>
     const mismatch = parseAuthForm({
       mode: 'register',
       username: 'alice',
-      password: 'password123',
+      password: 'Bongda2024!xyz',
       confirmPassword: 'password999',
       email: '',
       agreed: true,
@@ -115,5 +115,13 @@ describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () =>
     });
     expect(mismatch.ok).toBe(false);
     if (!mismatch.ok) expect(mismatch.errors.confirmPassword).toBe('Passwords do not match.');
+  });
+
+  it('đăng ký: mật khẩu Yếu đủ 8 ký tự báo "chưa đủ mạnh", ngắn hơn 8 báo độ dài', () => {
+    const base = { mode: 'register' as const, username: 'alice', email: '', agreed: true };
+    const weak = parseAuthForm({ ...base, password: 'password123', confirmPassword: 'password123' });
+    expect(!weak.ok && weak.errors.password).toMatch(/chưa đủ mạnh/);
+    const short = parseAuthForm({ ...base, password: 'Ab1!', confirmPassword: 'Ab1!' });
+    expect(!short.ok && short.errors.password).toBe('Mật khẩu ít nhất 8 ký tự.');
   });
 });

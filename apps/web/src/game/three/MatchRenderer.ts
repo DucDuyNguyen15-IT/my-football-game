@@ -46,7 +46,7 @@ import {
   type PenaltyRing,
 } from '../render/view';
 import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
-import { getActiveLocale, t } from '../../i18n/i18n';
+import { t } from '../../i18n/i18n';
 import {
   REPLAY_AFTER_TICKS,
   ReplayBuffer,
@@ -579,17 +579,24 @@ export class MatchRenderer {
       this.parent.appendChild(el);
       this.foulCall = el;
     }
-    const locale = getActiveLocale();
-    const bookedPrefix = locale === 'en' ? ' · #' : ' · SỐ ';
-    const card = foul.card
-      ? `<span class="foul-call__card foul-call__card--${foul.card}" aria-hidden="true"></span>` +
-        `<span class="foul-call__who">${foul.card === 'red' ? t('hud.cardRedUpper') : t('hud.cardYellowUpper')}` +
-        `${foul.bookedNumber !== null ? `${bookedPrefix}${foul.bookedNumber}` : ''}</span>`
-      : '';
-    el.innerHTML =
-      '<span class="foul-call__whistle" aria-hidden="true"></span>' +
-      `<span class="display foul-call__text">${spec.kind === 'penalty' ? t('hud.foulPenalty') : t('hud.foul')}</span>` +
-      card;
+    // Dựng bằng textContent (không innerHTML) vì có số áo từ dữ liệu trận.
+    const span = (cls: string, text?: string): HTMLSpanElement => {
+      const s = document.createElement('span');
+      s.className = cls;
+      if (text === undefined) s.setAttribute('aria-hidden', 'true');
+      else s.textContent = text;
+      return s;
+    };
+    el.replaceChildren(
+      span('foul-call__whistle'),
+      span('display foul-call__text', spec.kind === 'penalty' ? t('hud.foulPenalty') : t('hud.foul')),
+    );
+    if (foul.card) {
+      const label = foul.card === 'red' ? t('hud.cardRedUpper') : t('hud.cardYellowUpper');
+      const num =
+        foul.bookedNumber !== null ? t('hud.bookedNum', { num: foul.bookedNumber }) : '';
+      el.append(span(`foul-call__card foul-call__card--${foul.card}`), span('foul-call__who', label + num));
+    }
     el.hidden = false;
   }
 
@@ -901,6 +908,7 @@ export class MatchRenderer {
     const el = document.createElement('div');
     el.className = 'hud-panel replay-tag';
     el.setAttribute('role', 'status');
+    // innerHTML an toàn: chỉ chèn chuỗi hằng từ từ điển, không có dữ liệu người dùng.
     el.innerHTML =
       '<span class="replay-tag__dot" aria-hidden="true"></span>' +
       `<span class="display replay-tag__text">${t('hud.replayTag')}</span>` +
