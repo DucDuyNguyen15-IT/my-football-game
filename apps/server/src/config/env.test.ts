@@ -17,6 +17,22 @@ describe('loadEnv', () => {
     expect(env.enableDevRoutes).toBe(true);
   });
 
+  it('REPLAY_TEST_*: dev đọc được, production cấm (client không được tự chỉnh trận replay)', () => {
+    const dev = loadEnv({ REPLAY_TEST_HALF_LENGTH_SEC: '10', REPLAY_TEST_AUTOPILOT: '1' });
+    expect(dev.replayTestHalfLengthSec).toBe(10);
+    expect(dev.replayTestAutopilot).toBe(true);
+    expect(loadEnv({}).replayTestHalfLengthSec).toBeUndefined();
+    const prod = {
+      NODE_ENV: 'production',
+      DATABASE_URL: 'postgres://pitch:pitch@localhost:5432/pitch',
+      SESSION_SECRET: 'x'.repeat(40),
+    };
+    expect(() => loadEnv({ ...prod, REPLAY_TEST_AUTOPILOT: '1' })).toThrow(/REPLAY_TEST_AUTOPILOT/);
+    expect(() => loadEnv({ ...prod, REPLAY_TEST_HALF_LENGTH_SEC: '10' })).toThrow(
+      /REPLAY_TEST_HALF_LENGTH_SEC/,
+    );
+  });
+
   it('production thiếu DATABASE_URL / SESSION_SECRET → lỗi nêu tên biến', () => {
     expect(() => loadEnv({ NODE_ENV: 'production' })).toThrow(/DATABASE_URL[\s\S]*SESSION_SECRET/);
   });

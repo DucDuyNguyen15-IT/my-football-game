@@ -9,7 +9,14 @@ import {
   type MeResponse,
 } from '@pitch/shared';
 import type { Db, Tx } from '../db/client';
-import { clearSessionCookie, requireAuth, SESSION_COOKIE, setSessionCookie } from '../plugins/auth';
+import {
+  clearSessionCookie,
+  DEVICE_COOKIE,
+  requireAuth,
+  SESSION_COOKIE,
+  setDeviceCookie,
+  setSessionCookie,
+} from '../plugins/auth';
 import { AppError } from '../plugins/errors';
 import { track } from '../services/analytics';
 import {
@@ -26,6 +33,7 @@ import {
   purgeExpiredSessions,
   registerUser,
   sessionCreatedAt,
+  isTrustedDevice,
   reserveLoginAttempt,
   toMe,
   verifyPassword,
@@ -80,6 +88,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
     const user = await registerUser(app.db, input, now);
     const session = await rotateSession(app.db, req, user, now);
     setSessionCookie(reply, session.token, session.expiresAt);
+    setDeviceCookie(reply, user.id);
     reply.code(201);
     return { data: await meWithRewards(app, user) };
   });
@@ -99,7 +108,9 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
     }
     // Giữ lượt (kiểm khoá + đếm) dưới khoá dòng trước khi kiểm mật khẩu — đang khoá thì từ chối kể cả
     // mật khẩu đúng (PRD §8), và request song song không vượt được 5 lần (A-1).
-    const lockedMs = await reserveLoginAttempt(app.db, user.id, now);
+    // Cookie `did` hợp lệ của đúng user → bộ đếm riêng, người lạ gõ sai không khoá được (SEC-13a).
+    const trusted = isTrustedDevice(app.sessionSecret, req.cookies[DEVICE_COOKIE], user.id);
+    const lockedMs = await reserveLoginAttempt(app.db, user.id, now, trusted);
     if (lockedMs > 0) {
       reply.header('retry-after', String(Math.ceil(lockedMs / 1000)));
       throw new AppError('login_locked', 429, 'Đăng nhập sai quá nhiều lần, thử lại sau 15 phút');
@@ -121,6 +132,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
         throw err;
       });
     setSessionCookie(reply, session.token, session.expiresAt);
+    setDeviceCookie(reply, user.id);
     return { data: await meWithRewards(app, user) };
   });
 
@@ -170,6 +182,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
       return rotateSession(tx, req, user, now);
     });
     setSessionCookie(reply, session.token, session.expiresAt);
+    setDeviceCookie(reply, user.id);
     if (created) reply.code(201);
     return { data: { status: 'signed_in', me: await meWithRewards(app, user) } };
   });

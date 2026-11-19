@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { NO_INPUT } from '@pitch/sim';
+import { decodeInput, encodeInput, NO_INPUT } from '@pitch/sim';
 import {
   CONTROL_KEYS,
   NO_KEYS,
@@ -157,5 +157,16 @@ describe('actionKeysOnly / isActionKey', () => {
     expect((['up', 'sprint', 'modifier', 'finesse', 'adjust'] as const).some(isActionKey)).toBe(
       false,
     );
+  });
+});
+
+describe('keysToInput ↔ log replay', () => {
+  it('mọi tổ hợp phím đều ghi được vào log và giải mã lại đúng từng bit (server dựng lại y hệt)', () => {
+    for (let mask = 0; mask < 1 << 12; mask++) {
+      const names = Object.keys(NO_KEYS) as (keyof KeyState)[];
+      const held = Object.fromEntries(names.map((n, i) => [n, (mask & (1 << i)) !== 0]));
+      const input = keysToInput(keys(held));
+      expect(decodeInput(encodeInput(input))).toEqual(input);
+    }
   });
 });

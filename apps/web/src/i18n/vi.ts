@@ -50,7 +50,8 @@ export const vi = {
     'Vì an toàn, hãy đăng xuất rồi đăng nhập lại bằng Google, sau đó xoá tài khoản trong vòng 10 phút.',
   'err.insufficient_coins': 'Không đủ xu để thực hiện thao tác này.',
   'err.card_in_squad': 'Thẻ đang nằm trong đội hình — hãy gỡ khỏi đội trước.',
-  'err.invalid_material': 'Nguyên liệu không hợp lệ (phải cùng độ hiếm trở lên và khác thẻ được ép).',
+  'err.invalid_material':
+    'Nguyên liệu không hợp lệ (phải cùng độ hiếm trở lên và khác thẻ được ép).',
   'err.max_level': 'Thẻ đã đạt cấp tối đa.',
   'err.invalid_squad': 'Đội hình chưa hợp lệ.',
   'err.match_token_invalid': 'Phiên trận đấu không hợp lệ hoặc đã kết thúc.',
@@ -206,16 +207,18 @@ export const vi = {
   'legal.privacyDataGoogleNote': '(chỉ khi bạn chọn):',
   'legal.privacyDataGoogle': 'mã định danh tài khoản Google và email Google.',
   'legal.privacyDataPlayLabel': 'Dữ liệu chơi:',
-  'legal.privacyDataPlay': 'xu, thẻ, đội hình, kết quả trận, nhiệm vụ, lịch sử mở gói và giao dịch xu.',
+  'legal.privacyDataPlay':
+    'xu, thẻ, đội hình, kết quả trận, nhiệm vụ, lịch sử mở gói và giao dịch xu.',
   'legal.privacyDataAnalyticsLabel': 'Sự kiện phân tích nội bộ:',
   'legal.privacyDataAnalytics':
     'các mốc như đăng nhập, mở gói, đá trận, để biết người chơi có quay lại không. Không gửi cho công cụ phân tích bên ngoài.',
   'legal.privacyDataLogsLabel': 'Nhật ký máy chủ:',
   'legal.privacyDataLogs': 'địa chỉ IP và thời điểm truy cập, dùng để chống spam, dò mật khẩu.',
   'legal.privacyCookieTitle': 'Cookie và lưu trữ trên trình duyệt',
-  'legal.privacyCookieBody1': 'Game chỉ dùng một cookie tên',
-  'legal.privacyCookieBody2':
-    'để giữ đăng nhập (tối đa 30 ngày). Không có cookie quảng cáo hay theo dõi. Cài đặt đồ hoạ, giao diện và ngôn ngữ được lưu ngay trên trình duyệt của bạn, không gửi lên máy chủ.',
+  'legal.privacyCookieBody1': 'Game dùng hai cookie:',
+  'legal.privacyCookieBody2': 'để giữ đăng nhập (tối đa 90 ngày) và',
+  'legal.privacyCookieBody3':
+    'để nhận ra trình duyệt bạn đã đăng nhập thành công, giúp người lạ gõ sai mật khẩu không khoá được tài khoản của bạn (1 năm). Không có cookie quảng cáo hay theo dõi. Cài đặt đồ hoạ, giao diện và ngôn ngữ được lưu ngay trên trình duyệt của bạn, không gửi lên máy chủ.',
   'legal.privacyPurposeTitle': 'Mục đích',
   'legal.privacyPurposeBody':
     'Cho bạn đăng nhập, lưu tiến trình chơi, chống gian lận (xu và tỉ lệ mở thẻ do máy chủ quyết định) và cải thiện game. Dữ liệu không được bán, không dùng để quảng cáo.',
@@ -236,7 +239,8 @@ export const vi = {
   'legal.privacyMinorsBody':
     'Nếu bạn dưới 16 tuổi, hãy hỏi ý cha mẹ hoặc người giám hộ trước khi tạo tài khoản.',
   'legal.termsTitle': 'Điều khoản sử dụng',
-  'legal.termsIntro1': 'Khi tạo tài khoản hoặc chơi MFG, bạn đồng ý với các điều khoản dưới đây và với',
+  'legal.termsIntro1':
+    'Khi tạo tài khoản hoặc chơi MFG, bạn đồng ý với các điều khoản dưới đây và với',
   'legal.termsFreeTitle': 'Game miễn phí, không có tiền thật',
   'legal.termsFree1': 'Game miễn phí. Không có giao dịch tiền thật và không bán vật phẩm.',
   'legal.termsFree2':
@@ -248,10 +252,12 @@ export const vi = {
   'legal.termsAssetsTitle': 'Nguồn tài nguyên',
   'legal.termsAssetsBall': 'Bóng: “Football” của BSlegt (Sketchfab), giấy phép',
   'legal.termsAssetsEdited': 'đã chỉnh sửa (nén, chuẩn hoá toạ độ).',
-  'legal.termsAssetsGoal': 'Khung thành: “Football Net” của Bryan Okafor - Ogu (Sketchfab), giấy phép',
+  'legal.termsAssetsGoal':
+    'Khung thành: “Football Net” của Bryan Okafor - Ogu (Sketchfab), giấy phép',
   'legal.termsAssetsMixamo': 'Nhân vật và hoạt ảnh cầu thủ: Adobe Mixamo.',
   'legal.termsRulesTitle': 'Không được làm',
-  'legal.termsRules1': 'Gian lận: sửa game trên trình duyệt, gửi kết quả trận giả, dùng công cụ tự động.',
+  'legal.termsRules1':
+    'Gian lận: sửa game trên trình duyệt, gửi kết quả trận giả, dùng công cụ tự động.',
   'legal.termsRules2': 'Lập nhiều tài khoản để gom quà tân thủ, khai thác lỗi thay vì báo lỗi.',
   'legal.termsRules3': 'Tấn công, dò mật khẩu hoặc làm quá tải máy chủ.',
   'legal.termsRules4': 'Đặt tên đăng nhập xúc phạm, mạo danh người khác.',
@@ -405,7 +411,8 @@ export const vi = {
   'box.rowAria': '{rarity}: còn {left} phiếu, lần bốc kế {odds}',
   'box.emptyTitle': 'Đã bốc hết {size} phiếu',
   'box.emptyBody': 'Lần mở tiếp theo tự làm mới hộp: {comp}.',
-  'box.note': 'Tỉ lệ = số phiếu còn / tổng còn. Hết {size} phiếu thì hộp tự làm mới (đang dùng hộp thứ {cycle}).',
+  'box.note':
+    'Tỉ lệ = số phiếu còn / tổng còn. Hết {size} phiếu thì hộp tự làm mới (đang dùng hộp thứ {cycle}).',
   'pack.backToShop': '← Cửa hàng',
   'pack.revealedCount': 'Đã lật {revealed}/{total}',
   'pack.stageAria': 'Mở gói',
@@ -598,7 +605,8 @@ export const vi = {
   'upg.baseLabel': 'Cơ bản +{level}: {rate}%',
   'upg.luckLabel': 'May mắn tích luỹ: +{luck}% ({fails} lần trượt)',
   'upg.feeLabel': 'Phí ép',
-  'upg.selectMatNote': 'Chọn 1 thẻ nguyên liệu để ép. Nguyên liệu sẽ mất dù thành công hay thất bại.',
+  'upg.selectMatNote':
+    'Chọn 1 thẻ nguyên liệu để ép. Nguyên liệu sẽ mất dù thành công hay thất bại.',
   'upg.valuableMatTitle': 'Nguyên liệu quý:',
   'upg.valuableMatHint': 'Giữ nút 1 giây để xác nhận.',
   'upg.failKeepNote': 'Thất bại: giữ cấp +{level}, may mắn +{luckPerFail}%.',

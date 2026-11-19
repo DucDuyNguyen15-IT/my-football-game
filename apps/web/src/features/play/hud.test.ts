@@ -262,8 +262,9 @@ describe('luân lưu trên HUD', () => {
 
   it('body nộp kết quả: tỉ số chính + số bàn luân lưu, giữ nguyên token', () => {
     const hud = withShootout([true, true, false, true], [false, true, false, false]);
-    expect(resultBody('tok', hud)).toEqual({
+    expect(resultBody('tok', hud, 'LOG')).toEqual({
       token: 'tok',
+      inputLog: 'LOG',
       homeGoals: hud.score.home,
       awayGoals: hud.score.away,
       shootout: { home: 3, away: 1 },
@@ -274,7 +275,12 @@ describe('luân lưu trên HUD', () => {
 describe('resultBody', () => {
   it('không có luân lưu → không gửi `shootout`', () => {
     const hud = { ...toHudSnapshot(match()), score: { home: 2, away: 1 } };
-    expect(resultBody('abc', hud)).toEqual({ token: 'abc', homeGoals: 2, awayGoals: 1 });
+    expect(resultBody('abc', hud, 'LOG')).toEqual({
+      token: 'abc',
+      inputLog: 'LOG',
+      homeGoals: 2,
+      awayGoals: 1,
+    });
   });
 });
 

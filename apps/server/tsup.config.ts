@@ -6,6 +6,8 @@ export default defineConfig({
   // ledger-check: đối soát sổ cái trên DB production (`node dist/ledger-check.js`, chỉ đọc).
   entry: {
     server: 'src/server.ts',
+    // Worker chạy lại trận (SEC-07): `new Worker('./replay-worker.js')` cạnh server.js.
+    'replay-worker': 'src/replay-worker.ts',
     migrate: 'scripts/migrate.ts',
     seed: 'scripts/seed.ts',
     'ledger-check': 'scripts/ledger-check.ts',

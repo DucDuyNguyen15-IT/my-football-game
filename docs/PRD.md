@@ -282,7 +282,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - Người chơi **"quay lại ngày N"** = có ít nhất 1 sự kiện bất kỳ vào ngày thứ N (GMT+7) sau ngày đăng ký.
 
 **Tiêu chí chấp nhận F8, F13**
-- [x] Đăng ký → đăng nhập → đăng xuất hoạt động. Sai mật khẩu 5 lần trong 15 phút thì tạm khoá đăng nhập 15 phút.
+- [x] Đăng ký → đăng nhập → đăng xuất hoạt động. Sai mật khẩu 5 lần trong 15 phút thì tạm khoá đăng nhập 15 phút với thiết bị lạ; thiết bị đã đăng nhập thành công trước đó (cookie `did`) có giới hạn riêng, nên người lạ gõ sai không khoá được chủ tài khoản.
 - [x] Mọi API thay đổi dữ liệu đều yêu cầu đăng nhập và chỉ tác động lên tài khoản của chính người gọi.
 - [x] Có một truy vấn hoặc trang admin đơn giản cho ra D7 retention theo nhóm ngày đăng ký.
 
@@ -322,7 +322,7 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 |---|---|---|
 | Ôm phạm vi B (thể lực, thay người, thẻ phạt, luân lưu) không kịp 3–4 tháng khi làm một mình | Cao | Làm theo thứ tự Must → Should. Thể lực/thay người/luân lưu làm sau khi trận cơ bản đã vui. Có thể lùi F10 (ép thẻ) và F12 (nhiệm vụ) nếu trễ |
 | AI 7v7 khó cân bằng, trận nhàm | Cao | Prototype AI sớm; dùng test mô phỏng AI-vs-AI để chỉnh tham số |
-| Gian lận kết quả trận vs máy (trận chạy ở client) | Trung bình | Match token, thời lượng tối thiểu, giới hạn 15 trận/ngày (trần ~1.950 xu/ngày). Về sau: client gửi log input, server mô phỏng lại để xác minh |
+| Gian lận kết quả trận vs máy (trận chạy ở client) | Thấp | Client gửi log input theo tick; server chạy lại sim (worker thread) và tự tính tỉ số (ADR-0011, 19/11/2026), cộng match token, thời lượng tối thiểu, giới hạn 15 trận/ngày. Còn lại: bot/macro điều khiển input hợp lệ |
 | Lạm phát xu | Thấp–TB | Có trần thu nhập/ngày, có sink (ép thẻ); theo dõi tổng xu toàn server |
 | Tên hư cấu không đủ "quen" với fan | Trung bình | Biệt danh lối chơi, tên đúng chất quốc tịch; kiểm tra lại trong playtest |
 
@@ -332,7 +332,7 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 - [ ] Phím điều khiển chi tiết. Chốt ở Giai đoạn 4 sau khi thử prototype.
 - [x] Ảnh đại diện thẻ: avatar vector sinh từ `avatar_seed` (DESIGN.md §4).
 - [ ] OVR đội máy (~60 / ~78) và độ trễ phản ứng AI cần cân chỉnh qua playtest.
-- [ ] Có cần xác minh trận bằng log input ngay trong MVP không, hay chấp nhận rủi ro gian lận cho tới khi có PvP?
+- [x] Xác minh trận bằng log input: **làm ngay trong MVP** — server chạy lại sim từ seed + đội đã lưu + log input (chốt 2026-11-19, ADR-0011). PvP để sau.
 - [ ] Hosting và chi phí vận hành khi phát hành thật. Chốt ở ADR hosting.
 - [ ] Chính sách quyền riêng tư/điều khoản khi thu thập analytics lúc phát hành.
 

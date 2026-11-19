@@ -246,6 +246,7 @@ export class MatchRenderer {
     private avatarSeeds?: ReadonlyMap<string, string>,
   ) {
     this.curr = createMatch(setup);
+    bridge?.recorder?.reset();
     this.prev = this.curr;
 
     this.renderer = new THREE.WebGLRenderer({
@@ -356,7 +357,11 @@ export class MatchRenderer {
     if (commands.length === 0) return;
     for (const c of commands) {
       const r = substitute(this.curr, 'home', c.outId, c.benchSlot);
-      if (r.ok) this.curr = r.state;
+      if (r.ok) {
+        // Log ghi tick áp dụng = tick của state ngay trước khi thay (server thay trước `step` của tick đó).
+        this.bridge?.recorder?.sub(this.curr.tick, c.outId, c.benchSlot);
+        this.curr = r.state;
+      }
     }
     // Người vào đứng đúng chỗ người ra: không nội suy từ tick trước.
     this.prev = this.curr;
@@ -709,6 +714,7 @@ export class MatchRenderer {
       let ticked = false;
       while (this.accumulator >= TICK_DT) {
         this.prev = this.curr;
+        if (this.prev.phase !== 'full_time') this.bridge?.recorder?.tick(input);
         this.curr = step(this.curr, input);
         this.accumulator -= TICK_DT;
         ticked = true;

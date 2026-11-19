@@ -130,6 +130,7 @@ erDiagram
 | failed_login_count | smallint | NOT NULL DEFAULT 0 |
 | failed_login_window_start | timestamptz | NULL |
 | locked_until | timestamptz | NULL — khoá 15 phút sau 5 lần sai (PRD §8) |
+| trusted_failed_count / trusted_failed_window_start / trusted_locked_until | smallint / timestamptz / timestamptz | Bộ đếm + khoá riêng cho request mang cookie thiết bị quen `did` hợp lệ của đúng user (SEC-13a); cùng luật 5 lần/15' |
 | is_admin | boolean | NOT NULL DEFAULT false |
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 
@@ -292,7 +293,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 - **Contract:** mỗi endpoint có schema Zod request/response trong `packages/shared/src/api/<nhóm>.ts`. Server validate request bằng schema đó và có test kiểm response bằng `schema.parse`; web parse response bằng cùng schema. Đổi API = sửa schema trước (quy trình `contract-first`).
 - Thành công: `{ "data": … }`. Lỗi: `{ "error": { "code", "message", "details?" } }` (`ApiError` trong `@pitch/shared`).
 - ID trong JSON là **chuỗi số** (DB `bigint`).
-- Xác thực: cookie `sid` — `HttpOnly; Secure; SameSite=Lax; Path=/`, hạn 30 ngày, gia hạn trượt. Mọi request đổi dữ liệu phải có `Content-Type: application/json` (chặn form CSRF đơn giản) và kiểm `Origin` khớp host. Endpoint không cần dữ liệu (logout, claim) vẫn gửi body `{}` — `apiFetch` của web luôn làm vậy.
+- Xác thực: cookie `sid` — `HttpOnly; Secure; SameSite=Lax; Path=/`, hạn 30 ngày, gia hạn trượt. Cookie `did` (thiết bị quen, SEC-13a): `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`, 1 năm, giá trị `userId.nonce.HMAC-SHA256(SESSION_SECRET)`, đặt sau đăng nhập/đăng ký; đăng nhập mật khẩu mang `did` hợp lệ của đúng user dùng bộ đếm khoá riêng. Mọi request đổi dữ liệu phải có `Content-Type: application/json` (chặn form CSRF đơn giản) và kiểm `Origin` khớp host. Endpoint không cần dữ liệu (logout, claim) vẫn gửi body `{}` — `apiFetch` của web luôn làm vậy.
 - Endpoint gây tốn xu/thẻ nhận header **`Idempotency-Key: <uuid>`** (bắt buộc).
 - Rate limit (`@fastify/rate-limit`): 100 req/phút/người dùng; `/auth/*` 10 req/phút/IP.
 - Không phân trang trong MVP: kho thẻ một người dự kiến < 500 dòng. Thêm cursor (`?cursor=&limit=`) khi vượt ngưỡng — thay đổi không phá vỡ.
@@ -398,8 +399,9 @@ sequenceDiagram
 ### 5.2 Trận đấu vs máy (match token)
 
 1. `POST /matches`: khoá `users`, đếm trận có thưởng hôm nay (GMT+7) → `reward_eligible`; sinh token 32 byte, lưu `token_hash`, `seed`, `squad_snapshot`; sinh đội máy theo độ khó (OVR ~60 / ~78, từ `cards`).
-2. Client chạy `sim` với `home`, `away`, `seed`; Three.js render.
+2. Client chạy `sim` với `home`, `away`, `seed` (dựng bằng `buildMatchSetup` dùng chung với server); Three.js render. `InputRecorder` ghi input THEO TICK + lượt thay người (`packages/sim/src/replay.ts`, ADR-0011).
 3. `POST /matches/:id/result`: khoá `users` rồi `matches … FOR UPDATE`; nếu `status = finished` và token khớp → trả lại kết quả đã lưu (client retry khi mất response); kiểm `status = started`, `hash(token) = token_hash`, `now - started_at ≥ 6 phút` (cấu hình được cho test), tỉ số ≤ 20, `shootout` chỉ có khi hoà; tính `outcome` + `reward` (`domain/rewards.ts`), đếm lại trần 15 trận theo `reward_day` = ngày GMT+7 của **lúc nộp** trong cùng transaction; cập nhật xu + ledger + nhiệm vụ + analytics; `status = finished`.
+   **Xác minh (SEC-07):** body có `inputLog` (base64url). Server kiểm token/hạn/thời lượng trong một transaction ngắn, rồi chạy `replayMatch` trong `worker_threads` (timeout 5 s, ngoài transaction), tỉ số/luân lưu = kết quả replay; số client báo lệch, log hỏng, chưa tới `full_time` hoặc log dài hơn thời gian thực đã trôi → 422 `match_token_invalid` + analytics `match_replay_mismatch`. Sau đó mở transaction khoá `users` → `matches`, kiểm lại trạng thái (nộp đồng thời/lại vẫn chỉ cộng một lần) rồi cộng thưởng theo tỉ số replay.
 4. Trận bỏ dở không nộp → `expired` sau 2 giờ (dọn lười khi người chơi bắt đầu trận mới).
 
 ### 5.3 Ép thẻ, bán thẻ

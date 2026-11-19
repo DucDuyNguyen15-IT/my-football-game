@@ -61,7 +61,8 @@ export function PrivacyPage() {
 
       <h2 className="h3">{t('legal.privacyCookieTitle')}</h2>
       <p>
-        {t('legal.privacyCookieBody1')} <code>sid</code> {t('legal.privacyCookieBody2')}
+        {t('legal.privacyCookieBody1')} <code>sid</code> {t('legal.privacyCookieBody2')}{' '}
+        <code>did</code> {t('legal.privacyCookieBody3')}
       </p>
 
       <h2 className="h3">{t('legal.privacyPurposeTitle')}</h2>

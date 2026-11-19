@@ -218,9 +218,10 @@ export const en: Record<TranslationKey, string> = {
   'legal.privacyDataLogs':
     'IP address and access timestamps used to prevent spam and password brute-forcing.',
   'legal.privacyCookieTitle': 'Cookies & browser storage',
-  'legal.privacyCookieBody1': 'The game uses a single session cookie named',
-  'legal.privacyCookieBody2':
-    'to keep you signed in (up to 30 days). There are no advertising or tracking cookies. Graphics, theme, and language settings are stored locally in your browser and never sent to the server.',
+  'legal.privacyCookieBody1': 'The game uses two cookies:',
+  'legal.privacyCookieBody2': 'keeps you signed in (up to 90 days), and',
+  'legal.privacyCookieBody3':
+    'recognises a browser you have signed in from before, so strangers typing wrong passwords cannot lock your account (1 year). There are no advertising or tracking cookies. Graphics, theme, and language settings are stored locally in your browser and never sent to the server.',
   'legal.privacyPurposeTitle': 'Purpose',
   'legal.privacyPurposeBody':
     'To let you log in, save game progress, prevent cheating (coins and pack odds are decided server-side), and improve the game. Data is never sold or used for advertising.',

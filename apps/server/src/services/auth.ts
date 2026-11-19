@@ -1,4 +1,4 @@
-import { createHash, randomBytes } from 'node:crypto';
+import { createHash, createHmac, randomBytes, timingSafeEqual } from 'node:crypto';
 import argon2 from 'argon2';
 import { and, eq, gt, lte, sql } from 'drizzle-orm';
 import type { Me } from '@pitch/shared';
@@ -63,6 +63,9 @@ export async function anonymizeUser(db: Db, userId: number): Promise<void> {
         failedLoginCount: 0,
         failedLoginWindowStart: null,
         lockedUntil: null,
+        trustedFailedCount: 0,
+        trustedFailedWindowStart: null,
+        trustedLockedUntil: null,
       })
       .where(eq(users.id, userId));
     await tx.delete(analyticsEvents).where(eq(analyticsEvents.userId, userId));
@@ -177,9 +180,48 @@ export const LOGIN_MAX_FAILURES = 5;
 export const LOGIN_FAILURE_WINDOW_MS = 15 * 60 * 1000;
 export const LOGIN_LOCK_MS = 15 * 60 * 1000;
 
-/** Số ms còn bị khoá đăng nhập (0 = không khoá). */
-export function loginLockRemainingMs(user: UserRow, now: Date): number {
-  return user.lockedUntil ? Math.max(0, user.lockedUntil.getTime() - now.getTime()) : 0;
+/**
+ * Cookie thiết bị quen `did` (OWASP device cookie, SEC-13a): `userId.nonce.HMAC` tự ký, không cần
+ * bảng. Đặt sau khi đăng nhập/đăng ký thành công. Không thu hồi riêng được (đổi `SESSION_SECRET`
+ * thì vô hiệu hết); tài khoản đã xoá thì không còn đăng nhập được nên cookie cũ vô nghĩa.
+ */
+export const DEVICE_COOKIE_MAX_AGE_S = 365 * 24 * 60 * 60;
+
+function deviceSig(secret: string, payload: string): Buffer {
+  return createHmac('sha256', secret).update(`device:${payload}`).digest();
+}
+
+export function makeDeviceToken(secret: string, userId: number): string {
+  const payload = `${userId}.${randomBytes(16).toString('base64url')}`;
+  return `${payload}.${deviceSig(secret, payload).toString('base64url')}`;
+}
+
+/** `true` nếu `token` là cookie thiết bị hợp lệ do server ký cho đúng `userId` này. */
+export function isTrustedDevice(
+  secret: string,
+  token: string | undefined,
+  userId: number,
+): boolean {
+  const parts = token?.split('.');
+  if (parts?.length !== 3 || parts[0] !== String(userId)) return false;
+  const given = Buffer.from(parts[2]!, 'base64url');
+  const want = deviceSig(secret, `${parts[0]}.${parts[1]}`);
+  return given.length === want.length && timingSafeEqual(given, want);
+}
+
+/** Cột bộ đếm/khoá của nhánh người lạ hoặc nhánh thiết bị quen (cùng logic, khác cột). */
+function loginCols(trusted: boolean) {
+  return trusted
+    ? ({
+        count: 'trustedFailedCount',
+        start: 'trustedFailedWindowStart',
+        locked: 'trustedLockedUntil',
+      } as const)
+    : ({
+        count: 'failedLoginCount',
+        start: 'failedLoginWindowStart',
+        locked: 'lockedUntil',
+      } as const);
 }
 
 /**
@@ -187,38 +229,52 @@ export function loginLockRemainingMs(user: UserRow, now: Date): number {
  * khoá; không thì đếm lượt này như một lần sai (đăng nhập đúng sẽ xoá bộ đếm). Vì đếm trước khi chạy
  * argon2 nên request song song cũng chỉ được kiểm tối đa 5 lần/15', và không lọt request nào sau khi
  * đã khoá. Lần đầu ngoài cửa sổ 15' mở cửa sổ mới; đủ 5 lần → đặt `locked_until`, xoá bộ đếm.
+ * `trusted` (SEC-13a): request mang cookie `did` hợp lệ của đúng user dùng bộ đếm/khoá RIÊNG, nên
+ * người lạ gõ sai không khoá được chủ tài khoản đang ở thiết bị quen; thiết bị quen vẫn bị giới
+ * hạn 5 lần/15' như cũ.
  */
-export async function reserveLoginAttempt(db: Db, userId: number, now: Date): Promise<number> {
+export async function reserveLoginAttempt(
+  db: Db,
+  userId: number,
+  now: Date,
+  trusted = false,
+): Promise<number> {
+  const c = loginCols(trusted);
   return db.transaction(async (tx) => {
     const [u] = await tx.select().from(users).where(eq(users.id, userId)).for('update');
     if (!u) return 0;
-    const lockedMs = loginLockRemainingMs(u, now);
+    const lockedUntil = u[c.locked];
+    const lockedMs = lockedUntil ? Math.max(0, lockedUntil.getTime() - now.getTime()) : 0;
     if (lockedMs > 0) return lockedMs;
+    const winStart = u[c.start];
     const inWindow =
-      u.failedLoginWindowStart !== null &&
-      now.getTime() - u.failedLoginWindowStart.getTime() < LOGIN_FAILURE_WINDOW_MS;
-    const count = inWindow ? u.failedLoginCount + 1 : 1;
+      winStart !== null && now.getTime() - winStart.getTime() < LOGIN_FAILURE_WINDOW_MS;
+    const count = inWindow ? u[c.count] + 1 : 1;
     const patch =
       count >= LOGIN_MAX_FAILURES
         ? {
-            failedLoginCount: 0,
-            failedLoginWindowStart: null,
-            lockedUntil: new Date(now.getTime() + LOGIN_LOCK_MS),
+            [c.count]: 0,
+            [c.start]: null,
+            [c.locked]: new Date(now.getTime() + LOGIN_LOCK_MS),
           }
-        : {
-            failedLoginCount: count,
-            failedLoginWindowStart: inWindow ? u.failedLoginWindowStart : now,
-          };
+        : { [c.count]: count, [c.start]: inWindow ? winStart : now };
     await tx.update(users).set(patch).where(eq(users.id, userId));
     return 0;
   });
 }
 
-/** Đăng nhập đúng → xoá bộ đếm/khoá (lượt vừa giữ ở {@link reserveLoginAttempt} cũng được xoá). */
+/** Đăng nhập đúng → xoá bộ đếm/khoá của cả hai nhánh (lượt vừa giữ ở {@link reserveLoginAttempt} cũng được xoá). */
 export async function clearLoginFailures(db: Db | Tx, userId: number): Promise<void> {
   await db
     .update(users)
-    .set({ failedLoginCount: 0, failedLoginWindowStart: null, lockedUntil: null })
+    .set({
+      failedLoginCount: 0,
+      failedLoginWindowStart: null,
+      lockedUntil: null,
+      trustedFailedCount: 0,
+      trustedFailedWindowStart: null,
+      trustedLockedUntil: null,
+    })
     .where(eq(users.id, userId));
 }
 

@@ -1,10 +1,18 @@
 import cookie from '@fastify/cookie';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { recordSessionSeen } from '../services/analytics';
-import { renewSession, resolveSession, type UserRow } from '../services/auth';
+import {
+  DEVICE_COOKIE_MAX_AGE_S,
+  makeDeviceToken,
+  renewSession,
+  resolveSession,
+  type UserRow,
+} from '../services/auth';
 import { AppError } from './errors';
 
 export const SESSION_COOKIE = 'sid';
+/** Cookie thiết bị quen (SEC-13a), chỉ gửi tới `/api/v1/auth`. */
+export const DEVICE_COOKIE = 'did';
 
 declare module 'fastify' {
   interface FastifyRequest {
@@ -14,6 +22,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     /** Cookie phiên có cờ `Secure` (bật ở production — ARCHITECTURE §4.1). */
     secureCookies: boolean;
+    /** Khoá ký cookie thiết bị quen `did`. */
+    sessionSecret: string;
   }
 }
 
@@ -23,6 +33,15 @@ const cookieOpts = (reply: FastifyReply) =>
 
 export function setSessionCookie(reply: FastifyReply, token: string, expiresAt: Date): void {
   reply.setCookie(SESSION_COOKIE, token, { ...cookieOpts(reply), expires: expiresAt });
+}
+
+/** Đánh dấu trình duyệt này là thiết bị quen của `userId` (gọi sau đăng nhập/đăng ký thành công). */
+export function setDeviceCookie(reply: FastifyReply, userId: number): void {
+  reply.setCookie(DEVICE_COOKIE, makeDeviceToken(reply.server.sessionSecret, userId), {
+    ...cookieOpts(reply),
+    path: '/api/v1/auth',
+    maxAge: DEVICE_COOKIE_MAX_AGE_S,
+  });
 }
 
 export function clearSessionCookie(reply: FastifyReply): void {

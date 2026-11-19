@@ -12,6 +12,7 @@ export type AnalyticsEventName =
   | 'session_seen'
   | 'match_start'
   | 'match_end'
+  | 'match_replay_mismatch'
   | 'pack_open'
   | 'upgrade'
   | 'mission_claim';

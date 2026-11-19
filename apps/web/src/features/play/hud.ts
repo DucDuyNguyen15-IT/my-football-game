@@ -186,15 +186,17 @@ export function shootoutScore(s: { home: boolean[]; away: boolean[] }): Score {
 }
 
 /**
- * Body nộp kết quả cuối trận (POST /matches/:id/result). Chỉ báo tỉ số; thưởng/kết quả do server
- * quyết định.
+ * Body nộp kết quả cuối trận (POST /matches/:id/result): tỉ số để đối chiếu + log input để server
+ * chạy lại trận; thưởng/kết quả do server quyết định.
  */
 export function resultBody(
   token: string,
   hud: Pick<HudSnapshot, 'score' | 'shootout'>,
+  inputLog: string,
 ): SubmitMatchResultRequest {
   return {
     token,
+    inputLog,
     homeGoals: hud.score.home,
     awayGoals: hud.score.away,
     ...(hud.shootout && { shootout: shootoutScore(hud.shootout) }),

@@ -1,9 +1,11 @@
 // Trận vs máy (ARCHITECTURE §4.3 #15–16, §5.2): bắt đầu trận (match token) + nộp kết quả & thưởng.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
 import { and, count, eq, gt } from 'drizzle-orm';
+import { buildMatchSetup, TICK_RATE, type MatchSetup } from '@pitch/sim';
 import {
   SquadSlot,
   type Difficulty,
+  type MatchTeamSetup,
   type MatchResult,
   type StartedMatch,
   type SubmitMatchResultRequest,
@@ -17,6 +19,7 @@ import { cryptoRng, type Rng } from '../domain/rng';
 import { AppError } from '../plugins/errors';
 import type { CardCatalog } from './cards';
 import { track } from './analytics';
+import type { ReplayRunner } from './replay';
 import { applyMissionEvent, ensureTodayMissions } from './missions';
 import { applyCoinDelta, lockUser } from './wallet';
 
@@ -122,13 +125,7 @@ export async function startMatch(
         startedAt: now,
       })
       .returning({ id: matches.id });
-    await track(
-      tx,
-      userId,
-      'match_start',
-      { matchId: match!.id, difficulty, rewardEligible },
-      now,
-    );
+    await track(tx, userId, 'match_start', { matchId: match!.id, difficulty, rewardEligible }, now);
     return { matchId: String(match!.id), token, seed, rewardEligible, home: home.team, away };
   });
 }
@@ -141,59 +138,131 @@ export interface SubmitResultInput extends SubmitMatchResultRequest {
   minDurationSec: number;
 }
 
+/** Tham số chạy lại trận: runner (worker thread) + tham số dev chỉ có ở test/E2E, không phải client gửi. */
+export interface ReplayOptions {
+  run: ReplayRunner;
+  dev?: { halfLengthSec?: number | undefined; autopilot?: boolean | undefined };
+}
+
+/** Dung sai lệch giờ: tick của log không được nhiều hơn thời gian thực đã trôi từ lúc phát token. */
+const REPLAY_CLOCK_SLACK_MS = 5000;
+
 const rejected = (message: string) => new AppError('match_token_invalid', 422, message);
 
+type MatchRow = typeof matches.$inferSelect;
+type Precheck = { done: MatchResult } | { match: MatchRow; elapsedMs: number };
+
 /**
- * POST /matches/:id/result (ARCHITECTURE §5.2 bước 3), một transaction: khoá `users` rồi `matches`
- * FOR UPDATE. Trận đã xong + đúng token → trả lại kết quả cũ (client retry, không cộng lần 2). Kiểm
- * token, thời lượng tối thiểu, tỉ số hợp lý; đếm lại trần thưởng theo ngày GMT+7 **lúc nộp**; cộng xu
- * + ledger `match_reward`; `status = finished`. Trận không thuộc người gọi → 404.
+ * Kiểm token/trạng thái/hạn/thời lượng với `matches` khoá FOR UPDATE. Trận đã xong + đúng token →
+ * trả kết quả cũ (client retry, không cộng lần 2). Gọi hai lần: trước replay (bỏ nhanh nộp sai) và
+ * trong transaction cộng thưởng (trạng thái có thể đã đổi trong lúc replay).
  */
-export async function submitMatchResult(db: Db, input: SubmitResultInput): Promise<MatchResult> {
+async function precheck(tx: Tx, input: SubmitResultInput): Promise<Precheck & { coins: number }> {
   const { userId, matchId, now, token } = input;
+  const user = await lockUser(tx, userId);
+  const [match] = await tx
+    .select()
+    .from(matches)
+    .where(and(eq(matches.id, matchId), eq(matches.userId, userId)))
+    .for('update');
+  if (!match) throw new AppError('not_found', 404, 'Không tìm thấy trận');
+  if (!tokenMatches(token, match.tokenHash)) throw rejected('Match token không hợp lệ');
+
+  if (match.status === 'finished' && match.outcome) {
+    // Nộp lại sau nửa đêm: trả nhiệm vụ của hôm nay, không phải ngày đá trận (B3-07).
+    const missions = await ensureTodayMissions(tx, userId, gameDay(now));
+    return {
+      done: { outcome: match.outcome, reward: match.reward, balance: user.coins, missions },
+      coins: user.coins,
+    };
+  }
+  if (match.status !== 'started') throw rejected('Trận đã hết hạn');
+  const elapsedMs = now.getTime() - match.startedAt.getTime();
+  if (elapsedMs > MATCH_MAX_AGE_SEC * 1000) throw rejected('Trận đã hết hạn');
+  if (elapsedMs < input.minDurationSec * 1000) {
+    throw rejected('Trận kết thúc quá sớm — kết quả không được ghi nhận');
+  }
+  return { match, elapsedMs, coins: user.coins };
+}
+
+/** Dựng lại `MatchSetup` từ dòng `matches` bằng cùng hàm với web; `dev` chỉ do cấu hình server (test/E2E). */
+function setupFromRow(match: MatchRow, dev: ReplayOptions['dev']): MatchSetup {
+  const snap = match.squadSnapshot as { home: MatchTeamSetup; away: MatchTeamSetup };
+  return buildMatchSetup(
+    { seed: match.seed, difficulty: match.difficulty, home: snap.home, away: snap.away },
+    dev,
+  );
+}
+
+/**
+ * POST /matches/:id/result (ARCHITECTURE §5.2 bước 3, SEC-07): tỉ số do SERVER tính bằng cách chạy lại
+ * sim từ seed + đội đã lưu + `inputLog` (worker thread, ngoài mọi transaction); số client báo chỉ để
+ * đối chiếu — lệch, log hỏng hoặc trận chưa tới `full_time` → 422 `match_token_invalid` + analytics
+ * `match_replay_mismatch`. Thứ tự: (1) kiểm token/hạn/thời lượng; (2) replay; (3) transaction khoá
+ * `users` rồi `matches`, kiểm lại trạng thái, đếm lại trần thưởng ngày GMT+7 **lúc nộp**, cộng xu +
+ * ledger `match_reward`, `status = finished`. Trận không thuộc người gọi → 404.
+ */
+export async function submitMatchResult(
+  db: Db,
+  input: SubmitResultInput,
+  replay: ReplayOptions,
+): Promise<MatchResult> {
+  const { userId, matchId, now } = input;
+  const pre = await db.transaction((tx) => precheck(tx, input));
+  if ('done' in pre) return pre.done;
+
+  const outcome = await replay.run(setupFromRow(pre.match, replay.dev), input.inputLog);
+  if (!outcome.ok && outcome.reason === 'failed') {
+    throw new AppError('internal_error', 503, 'Chưa kiểm tra được trận, thử lại sau');
+  }
+  const mismatch = async (why: string): Promise<never> => {
+    await track(db, userId, 'match_replay_mismatch', { matchId, why }, now);
+    throw rejected('Kết quả không khớp với diễn biến trận — không được ghi nhận');
+  };
+  if (!outcome.ok) return mismatch(outcome.message);
+  const r = outcome.result;
+  if (r.phase !== 'full_time') return mismatch('Log chưa tới hết trận');
+  if (
+    r.score.home !== input.homeGoals ||
+    r.score.away !== input.awayGoals ||
+    r.shootout?.home !== input.shootout?.home ||
+    r.shootout?.away !== input.shootout?.away
+  ) {
+    return mismatch(
+      `Tỉ số báo ${input.homeGoals}-${input.awayGoals} khác replay ${r.score.home}-${r.score.away}`,
+    );
+  }
+  // Tạm dừng chỉ làm trận ngắn đi so với giờ thực, không bao giờ dài hơn.
+  if ((r.ticks / TICK_RATE) * 1000 > pre.elapsedMs + REPLAY_CLOCK_SLACK_MS) {
+    throw rejected('Trận kết thúc quá sớm — kết quả không được ghi nhận');
+  }
+  const judged = judgeMatchResult({
+    homeGoals: r.score.home,
+    awayGoals: r.score.away,
+    shootout: r.shootout,
+  });
+  if (!judged.ok) throw rejected(judged.reason);
+
   return db.transaction(async (tx) => {
-    const user = await lockUser(tx, userId);
-    const [match] = await tx
-      .select()
-      .from(matches)
-      .where(and(eq(matches.id, matchId), eq(matches.userId, userId)))
-      .for('update');
-    if (!match) throw new AppError('not_found', 404, 'Không tìm thấy trận');
-    if (!tokenMatches(token, match.tokenHash)) throw rejected('Match token không hợp lệ');
-
-    if (match.status === 'finished' && match.outcome) {
-      // Nộp lại sau nửa đêm: trả nhiệm vụ của hôm nay, không phải ngày đá trận (B3-07).
-      const missions = await ensureTodayMissions(tx, userId, gameDay(now));
-      return { outcome: match.outcome, reward: match.reward, balance: user.coins, missions };
-    }
-    if (match.status !== 'started') throw rejected('Trận đã hết hạn');
-    const elapsedMs = now.getTime() - match.startedAt.getTime();
-    if (elapsedMs > MATCH_MAX_AGE_SEC * 1000) {
-      throw rejected('Trận đã hết hạn');
-    }
-    if (elapsedMs < input.minDurationSec * 1000) {
-      throw rejected('Trận kết thúc quá sớm — kết quả không được ghi nhận');
-    }
-    const judged = judgeMatchResult(input);
-    if (!judged.ok) throw rejected(judged.reason);
-
+    const again = await precheck(tx, input);
+    if ('done' in again) return again.done;
     const day = gameDay(now);
     const reward = matchReward(
-      match.difficulty,
+      again.match.difficulty,
       judged.outcome,
       await countRewardedMatches(tx, userId, day),
     );
     const balance =
       reward > 0
         ? await applyCoinDelta(tx, userId, reward, 'match_reward', { type: 'match', id: matchId })
-        : user.coins;
+        : again.coins;
     await tx
       .update(matches)
       .set({
         status: 'finished',
         finishedAt: now,
-        homeGoals: input.homeGoals,
-        awayGoals: input.awayGoals,
+        homeGoals: r.score.home,
+        awayGoals: r.score.away,
         outcome: judged.outcome,
         reward,
         rewardDay: day,
@@ -201,10 +270,10 @@ export async function submitMatchResult(db: Db, input: SubmitResultInput): Promi
       .where(eq(matches.id, matchId));
     const missions = await applyMissionEvent(tx, userId, day, {
       type: 'match_finished',
-      difficulty: match.difficulty,
+      difficulty: again.match.difficulty,
       outcome: judged.outcome,
-      homeGoals: input.homeGoals,
-      awayGoals: input.awayGoals,
+      homeGoals: r.score.home,
+      awayGoals: r.score.away,
     });
     await track(
       tx,
@@ -212,10 +281,10 @@ export async function submitMatchResult(db: Db, input: SubmitResultInput): Promi
       'match_end',
       {
         matchId,
-        difficulty: match.difficulty,
+        difficulty: again.match.difficulty,
         outcome: judged.outcome,
-        homeGoals: input.homeGoals,
-        awayGoals: input.awayGoals,
+        homeGoals: r.score.home,
+        awayGoals: r.score.away,
         reward,
       },
       now,
