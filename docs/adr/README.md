@@ -14,3 +14,4 @@
 | [0008](0008-card-reveal-css-waapi.md) | Animation lật thẻ bằng CSS 3D + Web Animations API | accepted | 2026-10-10 |
 | [0009](0009-threejs-3d-match-render.md) | Three.js render trận 3D (thay ADR-0002) | accepted | 2026-10-14 |
 | [0010](0010-google-sign-in.md) | Đăng nhập Google bằng Google Identity Services, server tự giữ phiên | accepted | 2026-10-28 |
+| [0011](0011-server-replay-verification.md) | Server xác minh trận vs máy bằng replay log input | accepted | 2026-11-19 |

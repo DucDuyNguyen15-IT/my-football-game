@@ -398,8 +398,9 @@ sequenceDiagram
 ### 5.2 Trận đấu vs máy (match token)
 
 1. `POST /matches`: khoá `users`, đếm trận có thưởng hôm nay (GMT+7) → `reward_eligible`; sinh token 32 byte, lưu `token_hash`, `seed`, `squad_snapshot`; sinh đội máy theo độ khó (OVR ~60 / ~78, từ `cards`).
-2. Client chạy `sim` với `home`, `away`, `seed`; Three.js render.
+2. Client chạy `sim` với `home`, `away`, `seed` (dựng bằng `buildMatchSetup` dùng chung với server); Three.js render. `InputRecorder` ghi input THEO TICK + lượt thay người (`packages/sim/src/replay.ts`, ADR-0011).
 3. `POST /matches/:id/result`: khoá `users` rồi `matches … FOR UPDATE`; nếu `status = finished` và token khớp → trả lại kết quả đã lưu (client retry khi mất response); kiểm `status = started`, `hash(token) = token_hash`, `now - started_at ≥ 6 phút` (cấu hình được cho test), tỉ số ≤ 20, `shootout` chỉ có khi hoà; tính `outcome` + `reward` (`domain/rewards.ts`), đếm lại trần 15 trận theo `reward_day` = ngày GMT+7 của **lúc nộp** trong cùng transaction; cập nhật xu + ledger + nhiệm vụ + analytics; `status = finished`.
+   **Xác minh (SEC-07):** body có `inputLog` (base64url). Server kiểm token/hạn/thời lượng trong một transaction ngắn, rồi chạy `replayMatch` trong `worker_threads` (timeout 5 s, ngoài transaction), tỉ số/luân lưu = kết quả replay; số client báo lệch, log hỏng, chưa tới `full_time` hoặc log dài hơn thời gian thực đã trôi → 422 `match_token_invalid` + analytics `match_replay_mismatch`. Sau đó mở transaction khoá `users` → `matches`, kiểm lại trạng thái (nộp đồng thời/lại vẫn chỉ cộng một lần) rồi cộng thưởng theo tỉ số replay.
 4. Trận bỏ dở không nộp → `expired` sau 2 giờ (dọn lười khi người chơi bắt đầu trận mới).
 
 ### 5.3 Ép thẻ, bán thẻ
