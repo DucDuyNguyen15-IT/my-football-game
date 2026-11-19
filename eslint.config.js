@@ -60,6 +60,57 @@ export default tseslint.config(
     },
   },
   {
+    // ADR-0011: replay phải giống nhau trên mọi engine JS; chỉ + − × ÷, sqrt, abs, min, max, floor… mới
+    // được IEEE-754 bảo đảm. Hàm siêu việt dùng `math/det.ts`. Test được dùng thoải mái.
+    files: ['packages/sim/src/**/*.ts'],
+    ignores: ['**/*.test.ts', 'packages/sim/src/**/*.slow.test.ts'],
+    rules: {
+      'no-restricted-properties': [
+        'error',
+        {
+          object: 'Math',
+          property: 'random',
+          message: 'Dùng PRNG có seed của sim để giữ tính tất định.',
+        },
+        ...[
+          'sin',
+          'cos',
+          'tan',
+          'asin',
+          'acos',
+          'atan',
+          'atan2',
+          'sinh',
+          'cosh',
+          'tanh',
+          'asinh',
+          'acosh',
+          'atanh',
+          'log',
+          'log2',
+          'log10',
+          'log1p',
+          'exp',
+          'expm1',
+          'pow',
+          'cbrt',
+          'hypot',
+        ].map((property) => ({
+          object: 'Math',
+          property,
+          message: 'Kết quả khác nhau giữa các engine JS (phá replay): dùng math/det.ts hoặc sqrt.',
+        })),
+      ],
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: "BinaryExpression[operator='**']",
+          message: 'Toán tử ** có thể khác nhau giữa các engine JS: nhân tay.',
+        },
+      ],
+    },
+  },
+  {
     // PRD §6.3: random ở server cho gacha/ép thẻ phải là CSPRNG.
     files: ['apps/server/**/*.ts'],
     rules: {
