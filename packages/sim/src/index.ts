@@ -28,3 +28,5 @@ export * from './ai/team';
 export * from './ai/difficulty';
 export * from './ai/player';
 export * from './ai/goalkeeper';
+export * from './replay';
+export * from './fixtures/scriptedMatch';

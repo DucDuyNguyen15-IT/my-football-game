@@ -3,6 +3,7 @@ import { parseEnv } from 'node:util';
 import { buildApp } from './app';
 import { loadEnv } from './config/env';
 import { purgeExpiredSessions } from './services/auth';
+import { runReplayInWorker } from './services/replay';
 
 // Nạp `.env` ở gốc repo nếu có (VD `GOOGLE_CLIENT_ID`); biến đã đặt sẵn trong môi trường được ưu tiên.
 const envFile = new URL('../../../.env', import.meta.url);
@@ -21,6 +22,10 @@ const app = buildApp({
   trustProxy: env.trustProxy,
   matchMinDurationSec: env.matchMinDurationSec,
   googleClientId: env.googleClientId,
+  replay: {
+    run: runReplayInWorker,
+    dev: { halfLengthSec: env.replayTestHalfLengthSec, autopilot: env.replayTestAutopilot },
+  },
 });
 
 // Dọn phiên hết hạn mỗi giờ (đăng nhập cũng dọn); lỗi chỉ ghi log, không làm sập server.

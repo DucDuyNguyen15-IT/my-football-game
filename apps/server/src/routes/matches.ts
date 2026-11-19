@@ -9,9 +9,12 @@ import {
 } from '@pitch/shared';
 import { requireAuth } from '../plugins/auth';
 import { AppError } from '../plugins/errors';
-import { startMatch, submitMatchResult } from '../services/matches';
+import { startMatch, submitMatchResult, type ReplayOptions } from '../services/matches';
 
-export function registerMatchRoutes(app: FastifyInstance, opts: { minDurationSec: number }): void {
+export function registerMatchRoutes(
+  app: FastifyInstance,
+  opts: { minDurationSec: number; replay: ReplayOptions },
+): void {
   app.post('/api/v1/matches', { preHandler: requireAuth }, async (req, reply) => {
     const { difficulty } = StartMatchRequest.parse(req.body);
     const data = await startMatch(
@@ -36,13 +39,17 @@ export function registerMatchRoutes(app: FastifyInstance, opts: { minDurationSec
       if (!Number.isSafeInteger(matchId))
         throw new AppError('not_found', 404, 'Không tìm thấy trận');
       const body = SubmitMatchResultRequest.parse(req.body);
-      const data = await submitMatchResult(app.db, {
-        ...body,
-        userId: req.user!.id,
-        matchId,
-        now: app.clock.now(),
-        minDurationSec: opts.minDurationSec,
-      });
+      const data = await submitMatchResult(
+        app.db,
+        {
+          ...body,
+          userId: req.user!.id,
+          matchId,
+          now: app.clock.now(),
+          minDurationSec: opts.minDurationSec,
+        },
+        opts.replay,
+      );
       return { data };
     },
   );

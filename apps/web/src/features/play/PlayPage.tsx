@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty, StartedMatch } from '@pitch/shared';
-import type { MatchSetup, MatchState } from '@pitch/sim';
+import { buildMatchSetup, InputRecorder, type MatchSetup, type MatchState } from '@pitch/sim';
 import { ApiClientError } from '../../api/client';
 import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
@@ -83,7 +83,13 @@ type Stage =
   | { kind: 'versus'; difficulty: Difficulty; match: StartedMatch }
   /** `match.token` giữ lại để nộp kết quả. */
   | { kind: 'match'; difficulty: Difficulty; match: StartedMatch }
-  | { kind: 'result'; difficulty: Difficulty; match: StartedMatch; hud: HudSnapshot };
+  | {
+      kind: 'result';
+      difficulty: Difficulty;
+      match: StartedMatch;
+      hud: HudSnapshot;
+      inputLog: string;
+    };
 
 /**
  * `/play` — luồng một trận vs máy: chọn độ khó → server dựng trận (`POST /matches`: đội của mình từ
@@ -166,8 +172,14 @@ export function PlayPage() {
           match={stage.match}
           halfLengthSec={dev.halfLengthSec}
           autopilot={dev.autopilot ?? false}
-          onEnd={(hud) =>
-            setStage({ kind: 'result', difficulty: stage.difficulty, match: stage.match, hud })
+          onEnd={(hud, inputLog) =>
+            setStage({
+              kind: 'result',
+              difficulty: stage.difficulty,
+              match: stage.match,
+              hud,
+              inputLog,
+            })
           }
           onQuit={() => void navigate('/')}
         />
@@ -178,6 +190,7 @@ export function PlayPage() {
           difficulty={stage.difficulty}
           match={stage.match}
           hud={stage.hud}
+          inputLog={stage.inputLog}
           onRematch={() => start(stage.difficulty)}
         />
       )}
@@ -189,6 +202,7 @@ interface MatchResultViewProps {
   difficulty: Difficulty;
   match: StartedMatch;
   hud: HudSnapshot;
+  inputLog: string;
   onRematch: () => void;
 }
 
@@ -217,7 +231,7 @@ function useLeaveGuard(active: boolean, message: string): void {
  * Màn kết quả + nộp tỉ số lên server một lần khi mở. Lỗi mạng/5xx: hook tự thử lại, rồi cho bấm
  * "Gửi lại" — luôn cùng token nên server không cộng xu hai lần.
  */
-function MatchResultView({ difficulty, match, hud, onRematch }: MatchResultViewProps) {
+function MatchResultView({ difficulty, match, hud, inputLog, onRematch }: MatchResultViewProps) {
   const { mutate, data, error, isError, isPending } = useSubmitMatchResult();
   const me = useMe().data;
   const missionsQuery = useTodayMissions(Boolean(data));
@@ -225,8 +239,8 @@ function MatchResultView({ difficulty, match, hud, onRematch }: MatchResultViewP
   // Đã bấm "Gửi lại" (chỉ có với lỗi mạng/5xx) — khi chờ thì giữ khối lỗi, nút quay chờ.
   const [retried, setRetried] = useState(false);
   const vars = useMemo(
-    () => ({ matchId: match.matchId, body: resultBody(match.token, hud) }),
-    [match, hud],
+    () => ({ matchId: match.matchId, body: resultBody(match.token, hud, inputLog) }),
+    [match, hud, inputLog],
   );
   const submitted = useRef(false);
   useEffect(() => {
@@ -327,20 +341,13 @@ interface MatchViewProps {
   match: StartedMatch;
   halfLengthSec: number | undefined;
   autopilot: boolean;
-  onEnd: (hud: HudSnapshot) => void;
+  onEnd: (hud: HudSnapshot, inputLog: string) => void;
   onQuit: () => void;
 }
 
 function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit }: MatchViewProps) {
   const setup = useMemo<MatchSetup>(
-    () => ({
-      home: match.home,
-      away: match.away,
-      difficulty,
-      seed: match.seed,
-      ...(halfLengthSec !== undefined && { halfLengthSec }),
-      ...(autopilot && { autopilot }),
-    }),
+    () => buildMatchSetup({ ...match, difficulty }, { halfLengthSec, autopilot }),
     [difficulty, match, halfLengthSec, autopilot],
   );
 
@@ -435,7 +442,9 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
 
   const bridge = useMemo<MatchBridge>(() => {
     let nextId = 1;
+    const recorder = new InputRecorder();
     return {
+      recorder,
       isPaused: () => pausedRef.current,
       takeCommands: () => commands.current.splice(0),
       onState: (state) => {
@@ -462,7 +471,8 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
             later(GOAL_BANNER_MS, () => setGoalBanner((b) => (b === shown.id ? 0 : b)));
           }
         }
-        if (snap.phase === 'full_time') later(FULL_TIME_HOLD_MS, () => onEndRef.current(snap));
+        if (snap.phase === 'full_time')
+          later(FULL_TIME_HOLD_MS, () => onEndRef.current(snap, recorder.encode()));
       },
     };
   }, [later]);

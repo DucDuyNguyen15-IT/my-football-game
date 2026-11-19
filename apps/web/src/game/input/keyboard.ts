@@ -2,7 +2,7 @@
  * Map phím → `PlayerInput` (DESIGN.md §6.2, bộ phím kiểu FC Online).
  * Thuần, không phụ thuộc DOM/Three.js để test được trong Node; renderer gom sự kiện phím rồi gọi `keysToInput`.
  */
-import { NO_INPUT, type PlayerInput } from '@pitch/sim';
+import { dirMove, type PlayerInput } from '@pitch/sim';
 
 /** Phím đang giữ, theo tên chức năng. */
 export interface KeyState {
@@ -74,10 +74,9 @@ export function keyForCode(code: string): keyof KeyState | null {
 export function keysToInput(keys: KeyState): PlayerInput {
   const dx = Number(keys.right) - Number(keys.left);
   const dy = Number(keys.down) - Number(keys.up);
-  const len = Math.hypot(dx, dy);
-  const move = len > 0 ? { x: dx / len, y: dy / len } : NO_INPUT.move;
   return {
-    move,
+    // Vector chuẩn dùng chung với log replay (`dirMove`): server dựng lại đúng từng bit.
+    move: dirMove(dx, dy),
     pass: keys.pass,
     lob: keys.lob,
     shoot: keys.shoot,

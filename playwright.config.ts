@@ -70,6 +70,9 @@ export default defineConfig({
         HOST: '127.0.0.1',
         PORT: String(SERVER_PORT),
         MATCH_MIN_DURATION_SEC: '1',
+        // Server replay đúng trận `?half=10&autopilot=1` của web (SEC-07).
+        REPLAY_TEST_HALF_LENGTH_SEC: '10',
+        REPLAY_TEST_AUTOPILOT: '1',
         ENABLE_DEV_ROUTES: '0',
         // Không bật đăng nhập Google dù `.env` có Client ID (kịch bản chỉ dùng tên + mật khẩu).
         GOOGLE_CLIENT_ID: '',

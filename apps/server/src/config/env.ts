@@ -24,6 +24,9 @@ const EnvSchema = z
       .min(0)
       .max(MATCH_MAX_AGE_SEC - 1)
       .default(MATCH_MIN_DURATION_SEC),
+    // Chỉ cho E2E (trận `?half=10&autopilot=1`): server replay đúng tham số đó. Cấm ở production.
+    REPLAY_TEST_HALF_LENGTH_SEC: z.coerce.number().int().min(1).max(180).optional(),
+    REPLAY_TEST_AUTOPILOT: flag,
     ENABLE_DEV_ROUTES: flag,
     TRUST_PROXY: flag,
     /** OAuth Client ID (Web) của Google (ADR-0010); để trống = tắt đăng nhập Google. */
@@ -61,6 +64,11 @@ const EnvSchema = z
         message: `production tối thiểu ${MATCH_MIN_DURATION_SEC}`,
       });
     }
+    for (const key of ['REPLAY_TEST_HALF_LENGTH_SEC', 'REPLAY_TEST_AUTOPILOT'] as const) {
+      if (env[key]) {
+        ctx.addIssue({ code: 'custom', path: [key], message: 'không được bật ở production' });
+      }
+    }
     if (env.ENABLE_DEV_ROUTES) {
       ctx.addIssue({
         code: 'custom',
@@ -76,6 +84,8 @@ const EnvSchema = z
     port: env.PORT,
     host: env.HOST,
     matchMinDurationSec: env.MATCH_MIN_DURATION_SEC,
+    replayTestHalfLengthSec: env.REPLAY_TEST_HALF_LENGTH_SEC,
+    replayTestAutopilot: env.REPLAY_TEST_AUTOPILOT,
     enableDevRoutes: env.ENABLE_DEV_ROUTES,
     trustProxy: env.TRUST_PROXY,
     googleClientId: env.GOOGLE_CLIENT_ID ?? null,

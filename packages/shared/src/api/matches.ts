@@ -28,19 +28,32 @@ export type StartedMatch = z.infer<typeof StartedMatch>;
 export const StartMatchResponse = dataEnvelope(StartedMatch);
 export type StartMatchResponse = z.infer<typeof StartMatchResponse>;
 
+/** Độ dài tối đa `inputLog` (~42 KB nhị phân), dưới `BODY_LIMIT_BYTES` của server. */
+export const INPUT_LOG_MAX_CHARS = 56_000;
+
 /** Số bàn client báo lên. Trần hợp lý 20 (PRD §7) do server kiểm → 422 `match_token_invalid`. */
 const Goals = z.number().int().min(0).max(999);
 
 /**
  * POST /api/v1/matches/:id/result (ARCHITECTURE §4.3 #16, §5.2 bước 3). `shootout` = số bàn luân
  * lưu mỗi đội, chỉ hợp lệ khi tỉ số chính hoà và hai số khác nhau. Nộp lại cùng token cho trận đã
- * xong → trả kết quả cũ (client retry an toàn).
+ * xong → trả kết quả cũ (client retry an toàn). Tỉ số client báo chỉ để đối chiếu: server tự tính lại
+ * từ `inputLog`, lệch → 422 `match_token_invalid`.
  */
 export const SubmitMatchResultRequest = z.object({
   token: z.string().min(1).max(128),
   homeGoals: Goals,
   awayGoals: Goals,
   shootout: z.object({ home: Goals, away: Goals }).optional(),
+  /**
+   * Log input của cả trận (base64url, `@pitch/sim` `replay.ts`): server chạy lại sim để tự tính tỉ số
+   * (SEC-07). Trần ký tự nằm dưới giới hạn body 64 KiB của server.
+   */
+  inputLog: z
+    .string()
+    .min(1)
+    .max(INPUT_LOG_MAX_CHARS)
+    .regex(/^[A-Za-z0-9_-]+$/),
 });
 export type SubmitMatchResultRequest = z.infer<typeof SubmitMatchResultRequest>;
 

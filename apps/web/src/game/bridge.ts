@@ -1,5 +1,5 @@
 import type { SquadSlot } from '@pitch/shared';
-import type { MatchState } from '@pitch/sim';
+import type { InputRecorder, MatchState } from '@pitch/sim';
 
 /** Lệnh React gửi vào trận (renderer áp bằng hàm của sim, kể cả lúc tạm dừng). */
 export type MatchCommand = { type: 'substitute'; outId: string; benchSlot: SquadSlot };
@@ -11,6 +11,8 @@ export interface MatchBridge {
   onState(state: MatchState): void;
   /** Lấy (và xoá) các lệnh đang chờ; renderer gọi mỗi khung hình. */
   takeCommands?(): MatchCommand[];
+  /** Nơi renderer ghi input theo tick + thay người để nộp kèm kết quả (SEC-07); renderer tự `reset()` lúc dựng. */
+  recorder?: InputRecorder;
 }
 
 /** Mức đồ hoạ (ADR-0009): Thấp tắt bóng đổ thật, giảm độ phân giải cho máy yếu. */
