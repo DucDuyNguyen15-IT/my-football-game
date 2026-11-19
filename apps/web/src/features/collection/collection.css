@@ -82,7 +82,7 @@
 }
 .chip.is-on .coll__dot,
 .chip[aria-pressed='true'] .coll__dot {
-  color: #9fd0ff;
+  color: var(--c-accent-ink);
 }
 /* Nổi ở góc dưới, không đẩy lưới thẻ (thanh bán đã đóng khi thông báo hiện) */
 .coll__toast {

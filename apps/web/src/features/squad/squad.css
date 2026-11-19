@@ -74,7 +74,7 @@
   aspect-ratio: 100 / 132;
   min-height: 600px;
   background: var(--c-pitch-felt);
-  border: 2px solid var(--c-text);
+  border: 2px solid var(--c-pitch-border);
   outline: 1px solid var(--c-gold-leaf);
   outline-offset: -5px;
   border-radius: var(--radius-lg);
@@ -198,7 +198,7 @@
   padding: 1px 7px;
   border-radius: 2px;
   background: var(--c-surface-1);
-  border: 1px solid var(--c-text);
+  border: 1px solid var(--c-line-strong);
   color: var(--c-text);
   font-family: var(--font-display);
   font-weight: 700;
@@ -213,7 +213,7 @@
   gap: 3px;
   padding: 1px 7px;
   border-radius: 2px;
-  background: var(--c-danger);
+  background: #b51f1f;
   border: 1px solid #ffd5d5;
   color: var(--c-card-ink);
   font-family: var(--font-display);
@@ -259,7 +259,7 @@
 .sq__pool.is-over {
   border-color: var(--c-accent);
   background:
-    linear-gradient(180deg, rgb(10 104 71 / 0.07), transparent),
+    linear-gradient(180deg, var(--c-accent-soft), transparent),
     var(--c-surface-1);
 }
 .sq__pool .chips {

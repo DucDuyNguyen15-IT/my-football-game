@@ -2,6 +2,7 @@
 import { useId, useState, type FormEvent } from 'react';
 import { Link } from 'react-router';
 import { useDeleteAccount, useMe } from '../../api/auth';
+import { ThemeSwitcher } from '../../styles/ThemeSwitcher';
 import { describeAuthError } from '../auth/authErrors';
 import '../legal/legal.css';
 
@@ -31,6 +32,14 @@ export function AccountPage() {
       <p>
         <Link to="/privacy">Chính sách bảo mật</Link> · <Link to="/terms">Điều khoản sử dụng</Link>
       </p>
+
+      <h2 className="h3">Tuỳ chọn hiển thị</h2>
+      <div className="account__prefs">
+        <div className="account__pref-row">
+          <span className="field__label">Giao diện</span>
+          <ThemeSwitcher />
+        </div>
+      </div>
 
       <h2 className="h3">Xoá tài khoản</h2>
       <p>

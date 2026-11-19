@@ -18,6 +18,7 @@ import {
 import { GoogleButton } from './GoogleButton';
 import { evaluatePasswordStrength, isPasswordAcceptable } from './passwordStrength';
 import { PasswordStrengthMeter } from './PasswordStrengthMeter';
+import { ThemeSwitcher } from '../../styles/ThemeSwitcher';
 import './auth.css';
 import '../legal/legal.css';
 
@@ -189,6 +190,9 @@ export function AuthPage() {
       <AuthStage />
       <section className="auth__panel" aria-labelledby="auth-title">
         <div className="auth__box">
+          <div className="auth__prefs">
+            <ThemeSwitcher compact />
+          </div>
           {googleStep ? (
             <GoogleUsernameStep
               key={googleStep.idToken}

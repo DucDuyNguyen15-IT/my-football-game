@@ -87,11 +87,11 @@
 .pitch-bg {
   background: repeating-linear-gradient(90deg, var(--c-pitch-a) 0 10%, var(--c-pitch-b) 0 20%);
 }
-/* Nền ấn phẩm kem ngà ấm có ánh lục bảo nhẹ cho Hero & Result */
+/* Nền ấn phẩm kem ngà ấm / sa bàn tối có ánh lục bảo nhẹ cho Hero & Result */
 .night-bg {
   background:
-    radial-gradient(90% 70% at 18% 0%, rgb(10 104 71 / 0.07), transparent 55%),
-    linear-gradient(135deg, #faf8f3 0%, #f1ecdf 100%);
+    radial-gradient(90% 70% at 18% 0%, var(--c-accent-soft), transparent 55%),
+    linear-gradient(135deg, var(--c-surface-1) 0%, var(--c-bg) 100%);
 }
 
 /* ---------- Nút ---------- */
@@ -124,7 +124,7 @@
 }
 .btn--primary {
   background: var(--c-accent);
-  border-color: #06442e;
+  border-color: color-mix(in srgb, var(--c-accent) 72%, #000);
   color: var(--c-accent-ink);
   box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.18);
 }
@@ -132,7 +132,7 @@
   background: var(--c-accent-hover);
 }
 .btn--primary .coin {
-  color: var(--r-gold-hi);
+  color: var(--c-btn-coin);
 }
 .btn--secondary {
   background: var(--c-surface-1);
@@ -161,16 +161,16 @@
   color: var(--c-danger);
 }
 .btn--danger:hover:not(:disabled) {
-  background: rgb(181 31 31 / 0.08);
+  background: color-mix(in srgb, var(--c-danger) 12%, transparent);
 }
 .btn--coin {
   background: var(--c-coin);
-  border-color: #593600;
+  border-color: color-mix(in srgb, var(--c-coin) 75%, #000);
   color: var(--c-accent-ink);
   box-shadow: inset 0 -2px 0 rgb(0 0 0 / 0.22);
 }
 .btn--coin:hover:not(:disabled) {
-  background: #6b4100;
+  background: var(--c-coin-hover);
 }
 .btn--lg {
   height: 48px;
@@ -404,27 +404,27 @@
 }
 .tag--accent {
   background: var(--c-accent);
-  border-color: #06442e;
+  border-color: color-mix(in srgb, var(--c-accent) 72%, #000);
   color: var(--c-accent-ink);
 }
 .tag--warn {
-  background: rgb(158 69 6 / 0.12);
-  border-color: rgb(158 69 6 / 0.35);
+  background: color-mix(in srgb, var(--c-warning) 14%, transparent);
+  border-color: color-mix(in srgb, var(--c-warning) 38%, transparent);
   color: var(--c-warning);
 }
 .tag--danger {
-  background: rgb(181 31 31 / 0.1);
-  border-color: rgb(181 31 31 / 0.35);
+  background: color-mix(in srgb, var(--c-danger) 12%, transparent);
+  border-color: color-mix(in srgb, var(--c-danger) 38%, transparent);
   color: var(--c-danger);
 }
 .tag--info {
-  background: rgb(24 100 171 / 0.1);
-  border-color: rgb(24 100 171 / 0.35);
+  background: color-mix(in srgb, var(--c-info) 12%, transparent);
+  border-color: color-mix(in srgb, var(--c-info) 38%, transparent);
   color: var(--c-info);
 }
 .tag--success {
-  background: rgb(14 116 82 / 0.12);
-  border-color: rgb(14 116 82 / 0.35);
+  background: color-mix(in srgb, var(--c-success) 14%, transparent);
+  border-color: color-mix(in srgb, var(--c-success) 38%, transparent);
   color: var(--c-success);
 }
 
@@ -541,6 +541,12 @@
 .seg__opt.is-on {
   background: var(--c-accent);
   color: var(--c-accent-ink);
+}
+.seg--compact .seg__opt {
+  min-width: 36px;
+  min-height: 36px;
+  padding: 0 10px;
+  font-size: var(--fs-xs);
 }
 
 /* ---------- Panel ấn phẩm viền đôi + dấu + vàng đồng ---------- */
@@ -1105,19 +1111,19 @@
   border-radius: var(--radius-md);
   font-size: var(--fs-sm);
   font-weight: 500;
-  background: rgb(158 69 6 / 0.1);
+  background: color-mix(in srgb, var(--c-warning) 12%, transparent);
   color: var(--c-warning);
-  border: 1px solid rgb(158 69 6 / 0.38);
+  border: 1px solid color-mix(in srgb, var(--c-warning) 40%, transparent);
 }
 .banner--danger {
-  background: rgb(181 31 31 / 0.08);
+  background: color-mix(in srgb, var(--c-danger) 10%, transparent);
   color: var(--c-danger);
-  border-color: rgb(181 31 31 / 0.38);
+  border-color: color-mix(in srgb, var(--c-danger) 40%, transparent);
 }
 .banner--info {
-  background: rgb(24 100 171 / 0.08);
+  background: color-mix(in srgb, var(--c-info) 10%, transparent);
   color: var(--c-info);
-  border-color: rgb(24 100 171 / 0.38);
+  border-color: color-mix(in srgb, var(--c-info) 40%, transparent);
 }
 .banner b {
   color: var(--c-text);

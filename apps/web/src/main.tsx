@@ -15,6 +15,14 @@ import './styles/ui.css';
 import { meKey } from './api/auth';
 import { ApiClientError } from './api/client';
 import { router } from './app/router';
+import { applyThemeToDocument, readThemePreference } from './styles/theme';
+import { ThemeProvider } from './styles/ThemeContext';
+
+try {
+  applyThemeToDocument(document.documentElement, readThemePreference(window.localStorage));
+} catch {
+  // localStorage bị chặn → giữ mặc định theo hệ thống.
+}
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Thiếu #root trong index.html');
@@ -43,8 +51,10 @@ const queryClient: QueryClient = new QueryClient({
 
 createRoot(root).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <RouterProvider router={router} />
+      </QueryClientProvider>
+    </ThemeProvider>
   </StrictMode>,
 );

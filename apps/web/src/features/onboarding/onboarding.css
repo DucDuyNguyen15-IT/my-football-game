@@ -50,8 +50,8 @@
 }
 
 .ob-flow__step.is-done {
-  border-color: rgb(14 116 82 / 0.48);
-  background: rgb(14 116 82 / 0.08);
+  border-color: color-mix(in srgb, var(--c-success) 48%, transparent);
+  background: color-mix(in srgb, var(--c-success) 10%, transparent);
 }
 
 .ob-flow__step.is-current {
