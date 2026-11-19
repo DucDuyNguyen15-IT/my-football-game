@@ -64,8 +64,9 @@ export function PrivacyPage() {
 
       <h2 className="h3">Cookie và lưu trữ trên trình duyệt</h2>
       <p>
-        Game chỉ dùng một cookie tên <code>sid</code> để giữ đăng nhập (tối đa 30 ngày). Không có
-        cookie quảng cáo hay theo dõi. Cài đặt đồ hoạ được lưu ngay trên trình duyệt của bạn, không
+        Game dùng hai cookie: <code>sid</code> để giữ đăng nhập (tối đa 90 ngày) và <code>did</code>{' '}
+        để nhận ra trình duyệt bạn đã đăng nhập thành công, giúp người lạ gõ sai mật khẩu không khoá
+        được tài khoản của bạn (1 năm). Không có cookie quảng cáo hay theo dõi. Cài đặt đồ hoạ được lưu ngay trên trình duyệt của bạn, không
         gửi lên máy chủ.
       </p>
 
