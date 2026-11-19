@@ -68,6 +68,10 @@ export const users = pgTable(
     failedLoginCount: smallint('failed_login_count').notNull().default(0),
     failedLoginWindowStart: ts('failed_login_window_start'),
     lockedUntil: ts('locked_until'),
+    /** Bộ đếm/khoá riêng cho thiết bị quen (cookie `did`, SEC-13a), tách khỏi khoá của người lạ ở trên. */
+    trustedFailedCount: smallint('trusted_failed_count').notNull().default(0),
+    trustedFailedWindowStart: ts('trusted_failed_window_start'),
+    trustedLockedUntil: ts('trusted_locked_until'),
     isAdmin: boolean('is_admin').notNull().default(false),
     /** Lúc đồng ý Điều khoản + Chính sách khi tạo tài khoản (NĐ 13); `null` = tài khoản tạo trước khi có ô đồng ý. */
     termsAcceptedAt: ts('terms_accepted_at'),

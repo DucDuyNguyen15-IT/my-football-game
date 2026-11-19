@@ -282,7 +282,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 - Người chơi **"quay lại ngày N"** = có ít nhất 1 sự kiện bất kỳ vào ngày thứ N (GMT+7) sau ngày đăng ký.
 
 **Tiêu chí chấp nhận F8, F13**
-- [x] Đăng ký → đăng nhập → đăng xuất hoạt động. Sai mật khẩu 5 lần trong 15 phút thì tạm khoá đăng nhập 15 phút.
+- [x] Đăng ký → đăng nhập → đăng xuất hoạt động. Sai mật khẩu 5 lần trong 15 phút thì tạm khoá đăng nhập 15 phút với thiết bị lạ; thiết bị đã đăng nhập thành công trước đó (cookie `did`) có giới hạn riêng, nên người lạ gõ sai không khoá được chủ tài khoản.
 - [x] Mọi API thay đổi dữ liệu đều yêu cầu đăng nhập và chỉ tác động lên tài khoản của chính người gọi.
 - [x] Có một truy vấn hoặc trang admin đơn giản cho ra D7 retention theo nhóm ngày đăng ký.
 

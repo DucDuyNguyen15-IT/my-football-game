@@ -1,3 +1,4 @@
+import { randomBytes } from 'node:crypto';
 import Fastify, { type FastifyServerOptions, type RouteOptions } from 'fastify';
 import type { JWTVerifyGetKey } from 'jose';
 import type { HealthResponse } from '@pitch/shared';
@@ -44,6 +45,8 @@ export interface BuildAppOptions {
   rateLimit?: RateLimitConfig | false;
   /** Cookie phiên có `Secure`; mặc định bật, `server.ts` chỉ bật ở production. */
   secureCookies?: boolean;
+  /** Khoá ký cookie thiết bị quen `did`; mặc định ngẫu nhiên mỗi lần chạy (cookie mất hiệu lực khi khởi động lại). */
+  sessionSecret?: string;
   /** Tin `X-Forwarded-For` từ reverse proxy (Caddy) để rate limit đúng IP người dùng. */
   trustProxy?: boolean;
   /** Giây tối thiểu từ lúc phát match token tới lúc nộp kết quả; mặc định 360 (6 phút). */
@@ -80,6 +83,7 @@ export function buildApp(opts: BuildAppOptions = {}) {
   app.decorate('clock', opts.clock ?? systemClock);
   app.decorate('rng', opts.rng ?? cryptoRng);
   app.decorate('secureCookies', opts.secureCookies ?? true);
+  app.decorate('sessionSecret', opts.sessionSecret ?? randomBytes(32).toString('hex'));
   registerErrors(app);
   if (opts.db) registerDb(app, { db: opts.db });
   else if (opts.databaseUrl) registerDb(app, { url: opts.databaseUrl });

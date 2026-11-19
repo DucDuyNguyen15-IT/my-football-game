@@ -130,6 +130,7 @@ erDiagram
 | failed_login_count | smallint | NOT NULL DEFAULT 0 |
 | failed_login_window_start | timestamptz | NULL |
 | locked_until | timestamptz | NULL — khoá 15 phút sau 5 lần sai (PRD §8) |
+| trusted_failed_count / trusted_failed_window_start / trusted_locked_until | smallint / timestamptz / timestamptz | Bộ đếm + khoá riêng cho request mang cookie thiết bị quen `did` hợp lệ của đúng user (SEC-13a); cùng luật 5 lần/15' |
 | is_admin | boolean | NOT NULL DEFAULT false |
 | created_at | timestamptz | NOT NULL DEFAULT now() |
 
@@ -292,7 +293,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 - **Contract:** mỗi endpoint có schema Zod request/response trong `packages/shared/src/api/<nhóm>.ts`. Server validate request bằng schema đó và có test kiểm response bằng `schema.parse`; web parse response bằng cùng schema. Đổi API = sửa schema trước (quy trình `contract-first`).
 - Thành công: `{ "data": … }`. Lỗi: `{ "error": { "code", "message", "details?" } }` (`ApiError` trong `@pitch/shared`).
 - ID trong JSON là **chuỗi số** (DB `bigint`).
-- Xác thực: cookie `sid` — `HttpOnly; Secure; SameSite=Lax; Path=/`, hạn 30 ngày, gia hạn trượt. Mọi request đổi dữ liệu phải có `Content-Type: application/json` (chặn form CSRF đơn giản) và kiểm `Origin` khớp host. Endpoint không cần dữ liệu (logout, claim) vẫn gửi body `{}` — `apiFetch` của web luôn làm vậy.
+- Xác thực: cookie `sid` — `HttpOnly; Secure; SameSite=Lax; Path=/`, hạn 30 ngày, gia hạn trượt. Cookie `did` (thiết bị quen, SEC-13a): `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`, 1 năm, giá trị `userId.nonce.HMAC-SHA256(SESSION_SECRET)`, đặt sau đăng nhập/đăng ký; đăng nhập mật khẩu mang `did` hợp lệ của đúng user dùng bộ đếm khoá riêng. Mọi request đổi dữ liệu phải có `Content-Type: application/json` (chặn form CSRF đơn giản) và kiểm `Origin` khớp host. Endpoint không cần dữ liệu (logout, claim) vẫn gửi body `{}` — `apiFetch` của web luôn làm vậy.
 - Endpoint gây tốn xu/thẻ nhận header **`Idempotency-Key: <uuid>`** (bắt buộc).
 - Rate limit (`@fastify/rate-limit`): 100 req/phút/người dùng; `/auth/*` 10 req/phút/IP.
 - Không phân trang trong MVP: kho thẻ một người dự kiến < 500 dòng. Thêm cursor (`?cursor=&limit=`) khi vượt ngưỡng — thay đổi không phá vỡ.
