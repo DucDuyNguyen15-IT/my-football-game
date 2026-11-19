@@ -25,6 +25,8 @@ import { track } from './analytics';
 export const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 /** Chỉ gia hạn khi phiên đã dùng quá 1 ngày, tránh ghi DB ở mọi request. */
 export const SESSION_RENEW_AFTER_MS = 24 * 60 * 60 * 1000;
+/** Hạn tuyệt đối 90 ngày kể từ lúc đăng nhập: cookie bị lộ không sống mãi nhờ gia hạn trượt. */
+export const SESSION_MAX_AGE_MS = 90 * 24 * 60 * 60 * 1000;
 
 export type UserRow = typeof users.$inferSelect;
 
@@ -139,14 +141,17 @@ export async function resolveSession(
 ): Promise<{ user: UserRow; renewedUntil: Date | null } | null> {
   const id = hashToken(token);
   const [row] = await db
-    .select({ user: users, expiresAt: sessions.expiresAt })
+    .select({ user: users, expiresAt: sessions.expiresAt, createdAt: sessions.createdAt })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
     .where(and(eq(sessions.id, id), gt(sessions.expiresAt, now)));
   if (!row) return null;
   const age = SESSION_TTL_MS - (row.expiresAt.getTime() - now.getTime());
   if (age < SESSION_RENEW_AFTER_MS) return { user: row.user, renewedUntil: null };
-  const renewedUntil = new Date(now.getTime() + SESSION_TTL_MS);
+  const renewedUntil = new Date(
+    Math.min(now.getTime() + SESSION_TTL_MS, row.createdAt.getTime() + SESSION_MAX_AGE_MS),
+  );
+  if (renewedUntil <= row.expiresAt) return { user: row.user, renewedUntil: null };
   return { user: row.user, renewedUntil };
 }
 

@@ -114,6 +114,16 @@ describe('GET /me', () => {
     clock.advance(SESSION_TTL_MS - DAY);
     expect((await me(sid)).statusCode).toBe(200);
   });
+
+  it('dùng mỗi ngày vẫn hết hạn sau 90 ngày kể từ lúc đăng nhập (hạn tuyệt đối)', async () => {
+    const sid = await loginOk();
+    for (let d = 0; d < 89; d++) {
+      clock.advance(DAY);
+      expect((await me(sid)).statusCode).toBe(200);
+    }
+    clock.advance(DAY + 1000);
+    expect((await me(sid)).statusCode).toBe(401);
+  });
 });
 
 describe('POST /auth/logout', () => {
