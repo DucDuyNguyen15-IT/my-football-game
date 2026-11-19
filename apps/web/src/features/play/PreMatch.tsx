@@ -18,9 +18,9 @@ import { useEconomy } from '../../api/player-cards';
 import { useSquad } from '../../api/squad';
 import { Topbar } from '../../app/AppLayout';
 import { CardView } from '../../components/card/CardView';
+import { formatNumber, type TranslationKey } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import './prematch.css';
-
-import { fmt } from '../../components/format';
 
 const BackIcon = () => (
   <svg
@@ -56,26 +56,23 @@ const PlayIcon = () => (
 );
 
 function Coin({ value, sm }: { value: number; sm?: boolean }) {
+  const { locale, t } = useI18n();
   return (
     <span className={`coin${sm ? ' coin--sm' : ''}`}>
       <span className="coin__icon" aria-hidden="true" />
-      <span className="num">{fmt(value)}</span>
-      <span className="sr-only"> xu</span>
+      <span className="num">{formatNumber(value, locale)}</span>
+      <span className="sr-only"> {t('common.coin')}</span>
     </span>
   );
 }
 
-const LEVELS: ReadonlyArray<{ value: Difficulty; label: string; desc: string }> = [
-  {
-    value: 'easy',
-    label: 'Dễ',
-    desc: 'Máy phản ứng chậm, chuyền và sút hay sai. Hợp để làm quen phím.',
-  },
-  {
-    value: 'hard',
-    label: 'Khó',
-    desc: 'Máy phản ứng nhanh, pressing gắt, chuyền và sút chính xác hơn.',
-  },
+const LEVELS: ReadonlyArray<{
+  value: Difficulty;
+  labelKey: TranslationKey;
+  descKey: TranslationKey;
+}> = [
+  { value: 'easy', labelKey: 'pm.diff.easy', descKey: 'pm.diffDesc.easy' },
+  { value: 'hard', labelKey: 'pm.diff.hard', descKey: 'pm.diffDesc.hard' },
 ];
 export const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Dễ', hard: 'Khó' };
 
@@ -91,24 +88,22 @@ export function isTouchOnly(): boolean {
 
 /** Thay màn chọn độ khó trên máy chỉ có cảm ứng. */
 export function NeedKeyboard() {
+  const { t } = useI18n();
   return (
     <div className="pm-shell">
       <Topbar />
       <main className="pm" aria-labelledby="pm-title">
         <div className="panel empty" role="status">
           <h1 id="pm-title" className="h2 empty__title">
-            Đá trận cần máy tính có bàn phím
+            {t('play.needKeyboardTitle')}
           </h1>
-          <p className="empty__body">
-            Trận đấu 3D điều khiển bằng bàn phím. Trên điện thoại bạn vẫn mở gói, ép thẻ, xếp đội và
-            nhận thưởng nhiệm vụ như bình thường.
-          </p>
+          <p className="empty__body">{t('play.needKeyboardBody')}</p>
           <div className="pm__crumbs">
             <Link to="/shop" className="btn btn--primary">
-              Mở gói thẻ
+              {t('play.openPacksBtn')}
             </Link>
             <Link to="/squad" className="btn btn--secondary">
-              Xếp đội
+              {t('shop.toSquad')}
             </Link>
           </div>
         </div>
@@ -124,6 +119,7 @@ export function PreMatch({
   initialDifficulty?: Difficulty;
   onContinue: (d: Difficulty) => void;
 }) {
+  const { t } = useI18n();
   const me = useMe().data;
   const economy = useEconomy();
   const squad = useSquad().data;
@@ -138,28 +134,28 @@ export function PreMatch({
         <div className="pm__crumbs">
           <Link to="/" className="btn btn--ghost btn--sm">
             <BackIcon />
-            Trang chủ
+            {t('common.home')}
           </Link>
-          <span className="label">Bước 1/2</span>
+          <span className="label">{t('pm.step')}</span>
         </div>
         <h1 id="pm-title" className="h1 pm__title">
-          Chọn độ khó
+          {t('pm.title')}
         </h1>
         {capReached && (
           <div className="banner" role="alert">
             <WarnIcon />
             <span>
-              <b>Trận này không có thưởng.</b> Bạn đã đá đủ {me.rewardedMatchesLimit} trận có thưởng
-              hôm nay — vẫn đá được. Làm mới lúc 00:00 (giờ Việt Nam).
+              <b>{t('pm.capBannerBold')}</b>{' '}
+              {t('pm.capBannerText', { limit: me.rewardedMatchesLimit })}
             </span>
           </div>
         )}
-        <div className="pm__options" role="group" aria-label="Độ khó">
+        <div className="pm__options" role="group" aria-label={t('pm.diffGroupAria')}>
           {LEVELS.map((lv) => (
             <LevelOption
               key={lv.value}
-              label={lv.label}
-              desc={lv.desc}
+              label={t(lv.labelKey)}
+              desc={t(lv.descKey)}
               on={pick === lv.value}
               reward={economy.data?.matchReward[lv.value]}
               noReward={capReached}
@@ -172,11 +168,15 @@ export function PreMatch({
             <span className={capReached ? 'pm__cap' : undefined}>
               {capReached ? (
                 <>
-                  Trận có thưởng: {me.rewardedMatchesToday}/{me.rewardedMatchesLimit} đã dùng
+                  {t('pm.rewardedUsed', {
+                    today: me.rewardedMatchesToday,
+                    limit: me.rewardedMatchesLimit,
+                  })}
                 </>
               ) : (
                 <>
-                  Trận có thưởng còn <b className="num">{left}</b>/{me.rewardedMatchesLimit} hôm nay
+                  {t('pm.rewardedLeftBefore')} <b className="num">{left}</b>
+                  {t('pm.rewardedLeftAfter', { limit: me.rewardedMatchesLimit })}
                 </>
               )}
             </span>
@@ -184,7 +184,7 @@ export function PreMatch({
           <span className="pm__spacer" />
           {squad && (
             <span className="muted pm__team">
-              Đội: {squad.formation} · OVR {squad.teamRating}
+              {t('pm.teamMeta', { formation: squad.formation, rating: squad.teamRating })}
             </span>
           )}
           <button
@@ -193,7 +193,7 @@ export function PreMatch({
             autoFocus
             onClick={() => onContinue(pick)}
           >
-            Tiếp tục
+            {t('pm.continue')}
           </button>
         </div>
       </main>
@@ -216,6 +216,7 @@ function LevelOption({
   noReward: boolean;
   onPick: () => void;
 }) {
+  const { t } = useI18n();
   const v = (n: number) => (noReward ? 0 : n);
   return (
     <button
@@ -231,19 +232,19 @@ function LevelOption({
           <span className="pm-opt__rewards">
             {(
               [
-                ['Thắng', reward.win],
-                ['Hòa', reward.draw],
-                ['Thua', reward.loss],
+                [t('pm.win'), reward.win],
+                [t('pm.draw'), reward.draw],
+                [t('pm.loss'), reward.loss],
               ] as const
-            ).map(([t, n]) => (
-              <span key={t} className="pm-opt__reward">
-                <span className="label">{t}</span>
+            ).map(([labelText, n]) => (
+              <span key={labelText} className="pm-opt__reward">
+                <span className="label">{labelText}</span>
                 <Coin value={v(n)} />
               </span>
             ))}
           </span>
           <span className="muted pm-opt__shootout">
-            Luân lưu: thắng <Coin value={v(reward.shootout_win)} sm /> · thua{' '}
+            {t('pm.shootoutBefore')} <Coin value={v(reward.shootout_win)} sm /> {t('pm.shootoutMid')}{' '}
             <Coin value={v(reward.shootout_loss)} sm />
           </span>
         </>
@@ -275,22 +276,25 @@ export function Versus({
   onPlay: () => void;
   onBack: () => void;
 }) {
+  const { t } = useI18n();
   const me = useMe().data;
   const economy = useEconomy().data;
   const playRef = useRef<HTMLButtonElement>(null);
   useEffect(() => playRef.current?.focus(), []);
   const win = economy?.matchReward[difficulty].win;
+  const diffLabel = t(difficulty === 'hard' ? 'pm.diff.hard' : 'pm.diff.easy');
+  const homeName = me?.username ?? t('vs.you');
   return (
     <section className="vs" aria-labelledby="vs-title">
       <h1 id="vs-title" className="sr-only">
-        Đối đầu: {me?.username ?? 'Bạn'} gặp Máy, mức {DIFFICULTY_LABEL[difficulty]}
+        {t('vs.titleAria', { home: homeName, diff: diffLabel })}
       </h1>
       <div className="vs__sides">
-        <TeamSide side="home" name={me?.username ?? 'Bạn'} sub="Nhà · bạn" team={match.home} />
+        <TeamSide side="home" name={homeName} sub={t('vs.homeSub')} team={match.home} />
         <TeamSide
           side="away"
-          name="Máy"
-          sub={`Khách · mức ${DIFFICULTY_LABEL[difficulty]}`}
+          name={t('vs.awayName')}
+          sub={t('vs.awaySub', { diff: diffLabel })}
           team={match.away}
         />
       </div>
@@ -304,7 +308,7 @@ export function Versus({
       <div className="vs__back">
         <button type="button" className="btn btn--ghost btn--sm" onClick={onBack}>
           <BackIcon />
-          Quay lại
+          {t('common.back')}
         </button>
       </div>
       <div className="vs__foot">
@@ -312,30 +316,33 @@ export function Versus({
           <div className="banner" role="alert">
             <WarnIcon />
             <span>
-              <b>Trận này không có thưởng.</b> Đã đủ {me?.rewardedMatchesLimit ?? ''} trận có thưởng
-              hôm nay — vẫn đá được.
+              <b>{t('pm.capBannerBold')}</b>{' '}
+              {t('vs.capBannerText', { limit: me?.rewardedMatchesLimit ?? '' })}
             </span>
           </div>
         )}
         <button ref={playRef} type="button" className="btn btn--primary btn--xl" onClick={onPlay}>
           <PlayIcon />
-          Vào trận
+          {t('vs.playBtn')}
         </button>
         <span className="muted vs__meta">
           {match.rewardEligible && win !== undefined && (
             <>
-              Thắng <Coin value={win} sm />
+              {t('vs.winPrefix')} <Coin value={win} sm />
               {me && (
                 <>
                   {' '}
-                  · trận có thưởng {me.rewardedMatchesToday + 1}/{me.rewardedMatchesLimit}
+                  {t('vs.rewardedNum', {
+                    next: me.rewardedMatchesToday + 1,
+                    limit: me.rewardedMatchesLimit,
+                  })}
                 </>
               )}{' '}
               ·{' '}
             </>
           )}
           <button type="button" className="vs__link" onClick={onBack}>
-            Đổi độ khó
+            {t('vs.changeDiff')}
           </button>
         </span>
       </div>
@@ -354,6 +361,7 @@ function TeamSide({
   sub: string;
   team: MatchTeamSetup;
 }) {
+  const { t } = useI18n();
   const catalog = useCardCatalog().data;
   const starters = STARTER_SLOTS.map((s) => team.players.find((p) => p.slot === s)).filter(
     (p) => p !== undefined,
@@ -366,11 +374,11 @@ function TeamSide({
         {name}
       </h2>
       <div className="vs-side__ovr">
-        <span className="label">OVR TB</span>
+        <span className="label">{t('home.avgOvr')}</span>
         <span className="display num vs-side__num">{teamOvr(team)}</span>
         <span className="muted">{team.formation}</span>
       </div>
-      <ul className="vs-side__cards" aria-label={`Đội hình ${name}`}>
+      <ul className="vs-side__cards" aria-label={t('vs.lineupAria', { name })}>
         {starters.map((p) => {
           const card = p.cardId ? catalog?.get(p.cardId) : undefined;
           return (

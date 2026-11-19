@@ -4,12 +4,15 @@ import { useLogout, useMe } from '../api/auth';
 import { useExpiredMissionClaims } from '../api/missions';
 import { CountUp } from '../components/CountUp';
 import { ExpiredMissionsNotice } from '../features/missions/ExpiredMissionsNotice';
+import { formatNumber } from '../i18n/i18n';
+import { useI18n } from '../i18n/I18nContext';
 
 function AuthSkeleton() {
+  const { t } = useI18n();
   return (
     <div className="shell" aria-busy="true">
       <span className="sr-only" role="status">
-        Đang tải…
+        {t('common.loading')}
       </span>
       <header className="topbar">
         <div className="skel" style={{ width: 92, height: 26 }} />
@@ -33,13 +36,14 @@ function AuthSkeleton() {
 export function RequireAuth() {
   const me = useMe();
   const location = useLocation();
+  const { t } = useI18n();
   if (me.isPending) return <AuthSkeleton />;
   if (me.isError) {
     return (
       <div className="screen-msg" role="alert">
-        <p>Không kết nối được máy chủ.</p>
+        <p>{t('common.serverConnectError')}</p>
         <button type="button" className="btn btn--secondary" onClick={() => void me.refetch()}>
-          Thử lại
+          {t('common.retry')}
         </button>
       </div>
     );
@@ -52,23 +56,24 @@ export function RequireAuth() {
 }
 
 const NAV = [
-  { to: '/', label: 'Trang chủ', end: true },
-  { to: '/shop', label: 'Cửa hàng', end: false },
-  { to: '/collection', label: 'Kho thẻ', end: false },
-  { to: '/squad', label: 'Đội hình', end: false },
+  { to: '/', labelKey: 'nav.home', end: true },
+  { to: '/shop', labelKey: 'nav.shop', end: false },
+  { to: '/collection', labelKey: 'nav.collection', end: false },
+  { to: '/squad', labelKey: 'nav.squad', end: false },
 ] as const;
 
 /** Thanh trên 56px — logo · menu · ví xu · người chơi · đăng xuất (dùng cả ở màn trước trận). */
 export function Topbar() {
   const me = useMe().data;
   const logout = useLogout();
+  const { locale, t } = useI18n();
   return (
     <header className="topbar">
-      <Link to="/" className="logo" aria-label="MFG — trang chủ">
+      <Link to="/" className="logo" aria-label={t('nav.logoAria')}>
         <span className="logo__mark" aria-hidden="true" />
         MFG
       </Link>
-      <nav className="nav" aria-label="Menu chính">
+      <nav className="nav" aria-label={t('nav.aria')}>
         {NAV.map((n) => (
           <NavLink
             key={n.to}
@@ -76,19 +81,26 @@ export function Topbar() {
             end={n.end}
             className={({ isActive }) => `nav__link${isActive ? ' is-on' : ''}`}
           >
-            {n.label}
+            {t(n.labelKey)}
           </NavLink>
         ))}
       </nav>
       {me && (
         <div className="topbar__right">
           <span className="wallet">
-            <span className="coin coin--sm" aria-label={`${me.coins} xu`}>
+            <span
+              className="coin coin--sm"
+              aria-label={t('common.coinsLabel', { count: me.coins })}
+            >
               <span className="coin__icon" aria-hidden="true" />
-              <CountUp value={me.coins} />
+              <CountUp value={me.coins} format={(v) => formatNumber(v, locale)} />
             </span>
           </span>
-          <Link to="/account" className="user" aria-label={`Tài khoản ${me.username}`}>
+          <Link
+            to="/account"
+            className="user"
+            aria-label={t('nav.accountAria', { username: me.username })}
+          >
             <span className="user__dot" aria-hidden="true">
               {me.username.slice(0, 1).toUpperCase()}
             </span>
@@ -101,7 +113,7 @@ export function Topbar() {
             aria-busy={logout.isPending || undefined}
             onClick={() => logout.mutate()}
           >
-            <span className="btn__label">Đăng xuất</span>
+            <span className="btn__label">{t('nav.logout')}</span>
           </button>
         </div>
       )}

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import type { Card, OpenPackResult, PackBox } from '@pitch/shared';
 import { CardView, cardLabel } from '../../components/card/CardView';
-import { RARITY_INFO, RARITY_ORDER } from '../../components/card/rarity';
+import { RARITY_ORDER, rarityLabel, rarityPips } from '../../components/card/rarity';
+import { useI18n } from '../../i18n/I18nContext';
 import { formatOdds } from './BoxMeter';
 import { hintsRarity, PackRevealer } from './reveal';
 
@@ -33,6 +34,7 @@ export function PackOpening({
   summaryActions,
   newIds,
 }: PackOpeningProps) {
+  const { locale, t } = useI18n();
   const cards = result.cards.map((pc) => ({ pc, card: catalog.get(pc.cardId) }));
   const [phase, setPhase] = useState<Phase>('pack');
   const [announce, setAnnounce] = useState('');
@@ -43,6 +45,13 @@ export function PackOpening({
   const scrimRef = useRef<HTMLDivElement>(null);
   const packRect = useRef<DOMRect | null>(null);
   const tearing = useRef(false);
+  const localeRef = useRef(locale);
+  const tRef = useRef(t);
+  useEffect(() => {
+    localeRef.current = locale;
+    tRef.current = t;
+  }, [locale, t]);
+
   // Một revealer cho mỗi lần mở gói (ShopPage đổi `key` khi mở gói mới).
   const [rv] = useState(
     () =>
@@ -53,7 +62,14 @@ export function PackOpening({
         onRevealed: (i) => {
           setRevealed((prev) => new Set(prev).add(i));
           const c = cards[i];
-          if (c?.card) setAnnounce(`Thẻ ${i + 1}: ${cardLabel(c.card, undefined, c.pc.level)}`);
+          if (c?.card) {
+            setAnnounce(
+              tRef.current('pack.announce', {
+                index: i + 1,
+                label: cardLabel(c.card, undefined, c.pc.level, localeRef.current),
+              }),
+            );
+          }
         },
         onAllRevealed: () => setPhase('done'),
       }),
@@ -132,18 +148,20 @@ export function PackOpening({
     <div className="opening">
       <div className="opening__bar">
         <button type="button" className="btn btn--ghost btn--sm opening__back" onClick={onBack}>
-          ← Cửa hàng
+          {t('pack.backToShop')}
         </button>
         <h1 className="h2 opening__title">{title}</h1>
         <span className="label num opening__count">
-          {phase === 'pack' ? '' : `Đã lật ${revealedCount}/${cards.length}`}
+          {phase === 'pack'
+            ? ''
+            : t('pack.revealedCount', { revealed: revealedCount, total: cards.length })}
         </span>
       </div>
 
       <section
         className="stage"
         ref={stageRef}
-        aria-label="Mở gói"
+        aria-label={t('pack.stageAria')}
         onClick={() => {
           if (phase === 'pack' && tearing.current) rv.skipCurrent();
           else if (phase === 'reveal' && rv.isBusy()) rv.skipCurrent();
@@ -164,14 +182,14 @@ export function PackOpening({
               ref={packRef}
               type="button"
               className="pack"
-              aria-label={`Xé ${title.toLowerCase()}`}
+              aria-label={t('pack.tearAria', { title: title.toLowerCase() })}
               onClick={() => void tear()}
             >
               <span className="pack__half pack__top" />
               <span className="pack__half pack__bot" />
               <span className="pack__brand">MFG</span>
               <span className="pack__label">
-                <span className="pack__size">{cards.length} THẺ</span>
+                <span className="pack__size">{t('pack.sizeLabel', { count: cards.length })}</span>
                 <span className="pack__note">{packNote}</span>
               </span>
             </button>
@@ -187,13 +205,13 @@ export function PackOpening({
                 if (!isOpen) {
                   tag = hot ? (
                     <span className="label po-slot__hint">
-                      {rarity === 'legend' ? 'Sáng tím…' : 'Sáng vàng…'}
+                      {rarity === 'legend' ? t('pack.hintLegend') : t('pack.hintGold')}
                     </span>
                   ) : (
-                    <span className="label">Thẻ {i + 1}</span>
+                    <span className="label">{t('pack.slotLabel', { index: i + 1 })}</span>
                   );
-                } else if (isNew) tag = <span className="tag tag--accent">Mới</span>;
-                else if (isDup) tag = <span className="tag">Trùng</span>;
+                } else if (isNew) tag = <span className="tag tag--accent">{t('pack.tagNew')}</span>;
+                else if (isDup) tag = <span className="tag">{t('pack.tagDup')}</span>;
                 return (
                   <div key={pc.id} className="po-slot">
                     <div data-i={i} className={`reveal-slot r-${rarity}${hot ? ' hint' : ''}`}>
@@ -204,7 +222,7 @@ export function PackOpening({
                             <button
                               type="button"
                               className="reveal-face reveal-back"
-                              aria-label={`Lật thẻ ${i + 1}`}
+                              aria-label={t('pack.flipAria', { index: i + 1 })}
                               onClick={(e) => {
                                 e.stopPropagation();
                                 if (rv.isBusy()) rv.skipCurrent();
@@ -224,7 +242,9 @@ export function PackOpening({
                                   tilt={isOpen}
                                 />
                               ) : (
-                                <p className="muted">Thẻ #{pc.cardId}</p>
+                                <p className="muted">
+                                  {t('pack.unknownCard', { cardId: pc.cardId })}
+                                </p>
                               )}
                             </div>
                           </div>
@@ -243,32 +263,31 @@ export function PackOpening({
       <div className="opening__controls">
         {phase === 'pack' && (
           <span className="muted opening__hint">
-            Bấm vào gói hoặc <span className="kbd">Space</span> để xé
+            {t('pack.hintTearPrefix')} <span className="kbd">Space</span> {t('pack.hintTearSuffix')}
           </span>
         )}
         {phase === 'reveal' && (
           <>
             <span className="muted opening__hint">
-              Bấm thẻ hoặc <span className="kbd">Space</span> để lật / tua nhanh ·{' '}
-              <span className="kbd">Esc</span> lật tất cả
+              {t('pack.hintFlip1')} <span className="kbd">Space</span> {t('pack.hintFlip2')}{' '}
+              <span className="kbd">Esc</span> {t('pack.hintFlip3')}
             </span>
             <button
               type="button"
               className="btn btn--secondary"
               onClick={() => void rv.revealAll()}
             >
-              Lật tất cả
+              {t('pack.revealAll')}
             </button>
           </>
         )}
         {phase === 'done' && (
           <div className="opening__summary">
             <p className="h3 opening__summary-text" role="status">
-              Đã nhận {cards.length} thẻ
+              {t('pack.receivedCount', { count: cards.length })}
               {newIds && (
                 <span className="muted num">
-                  {' '}
-                  · {nNew} mới · {nDup} trùng
+                  {t('pack.receivedBreakdown', { newCount: nNew, dupCount: nDup })}
                 </span>
               )}
             </p>
@@ -288,23 +307,24 @@ export function PackOpening({
 
 /** Dải hộp phiếu gọn dưới màn mở gói (packopening.html). */
 function BoxStrip({ box, onDetails }: { box: PackBox; onDetails: () => void }) {
+  const { locale, t } = useI18n();
   return (
     <div className="box-strip">
       <span className="label num">
-        Hộp còn {box.total}/{box.size}
+        {t('pack.stripLeft', { total: box.total, size: box.size })}
       </span>
       {RARITY_ORDER.map((r) => (
         <span key={r} className={`box-strip__item r-${r}`}>
           <b>
-            <span aria-hidden="true">{'◆'.repeat(RARITY_INFO[r].pips)} </span>
-            {RARITY_INFO[r].label}
+            <span aria-hidden="true">{'◆'.repeat(rarityPips(r))} </span>
+            {rarityLabel(r, locale)}
           </b>
           <span className="display num box-strip__n">{box.left[r]}</span>
-          <span className="muted num">{formatOdds(box.nextOdds[r])}</span>
+          <span className="muted num">{formatOdds(box.nextOdds[r], locale)}</span>
         </span>
       ))}
       <button type="button" className="btn btn--ghost btn--sm box-strip__more" onClick={onDetails}>
-        Chi tiết hộp
+        {t('pack.stripDetails')}
       </button>
     </div>
   );

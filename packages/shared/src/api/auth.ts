@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { dataEnvelope } from './common';
 import { Me } from './me';
+import { evaluatePasswordStrength, isPasswordAcceptable } from '../passwordStrength';
 
 /** Tên đăng nhập 3–20 ký tự `[a-zA-Z0-9_]`; so trùng không phân biệt hoa thường (ARCHITECTURE §3.2). */
 export const Username = z
@@ -31,7 +32,12 @@ export const RegisterRequest = z.object({
   email: z.string().email().max(254).optional(),
   /** Đã tick ô đồng ý Điều khoản + Chính sách (NĐ 13) — server lưu thời điểm vào `users.terms_accepted_at`. */
   acceptTerms: z.literal(true),
-});
+})
+  // Cùng luật với thanh "Độ mạnh mật khẩu" trên web: gọi API thẳng cũng không lách được.
+  .refine((r) => isPasswordAcceptable(evaluatePasswordStrength(r.password, r.username)), {
+    path: ['password'],
+    message: 'Mật khẩu quá yếu',
+  });
 export type RegisterRequest = z.infer<typeof RegisterRequest>;
 
 /**

@@ -6,23 +6,21 @@ import { useCardCatalog } from '../../api/cards';
 import { ApiClientError } from '../../api/client';
 import { usePacks, useOpenPack } from '../../api/packs';
 import { usePlayerCards } from '../../api/player-cards';
+import { errorMessageFor, formatMessage, formatNumber, getActiveLocale, type Locale } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import { newCardIds } from '../collection/collection';
 import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import { BoxMeter, onlyBronzeLeft, WarnIcon } from './BoxMeter';
 import { PackOpening } from './PackOpening';
 import './shop.css';
 
-import { fmt } from '../../components/format';
-
-export function openErrorMessage(err: unknown): string {
+export function openErrorMessage(err: unknown, locale: Locale = getActiveLocale()): string {
   if (err instanceof ApiClientError) {
-    if (err.code === 'insufficient_coins') return 'Không đủ xu để mở gói này.';
-    if (err.code === 'network_error')
-      return 'Mất kết nối — bấm lại để thử tiếp (không bị trừ xu hai lần).';
-    if (err.code === 'idempotency_conflict') return 'Yêu cầu bị trùng, hãy thử lại.';
-    return err.message;
+    if (err.code === 'insufficient_coins') return formatMessage(locale, 'shop.errInsufficientCoins');
+    if (err.code === 'network_error') return formatMessage(locale, 'shop.errNetwork');
+    return errorMessageFor(err, locale, 'err.genericRetry');
   }
-  return 'Có lỗi xảy ra, hãy thử lại.';
+  return formatMessage(locale, 'err.genericRetry');
 }
 
 /** % rẻ hơn so với mua lẻ từng thẻ; 0 nếu không rẻ hơn hoặc thiếu giá gói 1. */
@@ -59,10 +57,11 @@ export function PackArt({ size, note, width }: { size: number; note: string; wid
 }
 
 function ShopSkeleton() {
+  const { t } = useI18n();
   return (
     <div className="shop" aria-busy="true">
       <span className="sr-only" role="status">
-        Đang tải cửa hàng…
+        {t('shop.loading')}
       </span>
       <div className="panel shop__box shop-skel">
         <div className="skel skel--line" style={{ width: '50%' }} />
@@ -92,6 +91,7 @@ function ShopSkeleton() {
 
 /** Cửa hàng (docs/design/screens/shop*.html): hộp phiếu bên trái, quà tân thủ + gói bên phải. */
 export function ShopPage() {
+  const { locale, t } = useI18n();
   const me = useMe().data;
   const packs = usePacks();
   const catalog = useCardCatalog();
@@ -111,8 +111,8 @@ export function ShopPage() {
 
   const head = (
     <div className="shop__head">
-      <h1 className="h1">Cửa hàng</h1>
-      <span className="muted">Mua bằng xu kiếm được trong trận. Không có nạp tiền thật.</span>
+      <h1 className="h1">{t('shop.title')}</h1>
+      <span className="muted">{t('shop.sub')}</span>
     </div>
   );
 
@@ -129,10 +129,8 @@ export function ShopPage() {
       <div className="shop-page">
         {head}
         <div className="panel empty" role="alert">
-          <h2 className="empty__title">Không tải được cửa hàng</h2>
-          <p className="empty__body">
-            Kiểm tra kết nối rồi thử lại. Xu của bạn không bị ảnh hưởng.
-          </p>
+          <h2 className="empty__title">{t('shop.loadErrorTitle')}</h2>
+          <p className="empty__body">{t('shop.loadErrorBody')}</p>
           <button
             type="button"
             className="btn btn--secondary"
@@ -141,7 +139,7 @@ export function ShopPage() {
               void catalog.refetch();
             }}
           >
-            Thử lại
+            {t('common.retry')}
           </button>
         </div>
       </div>
@@ -176,12 +174,14 @@ export function ShopPage() {
     p: PackInfo,
     payment: PackPayment,
     className = 'btn btn--coin',
-    verb = 'Mua',
+    again = false,
   ) => {
     const free = payment === 'free_credit';
     const short = free ? 0 : p.price - me.coins;
     const id = `${p.code}:${payment}`;
     const busy = buying === id;
+    const verb = again ? t('shop.openNextVerb') : t('shop.buyVerb');
+    const freeLabel = again ? t('shop.openNextFree') : t('shop.openFree');
     return (
       <div className="buy">
         <button
@@ -192,10 +192,16 @@ export function ShopPage() {
           onClick={() => void buy(p.code, payment)}
         >
           <span className="btn__label">
-            {free ? `${verb === 'Mua' ? 'Mở' : verb} miễn phí` : `${verb} · ${fmt(p.price)} xu`}
+            {free
+              ? freeLabel
+              : t('shop.buyPrice', { verb, price: formatNumber(p.price, locale) })}
           </span>
         </button>
-        {short > 0 && <span className="field__error">Thiếu {fmt(short)} xu</span>}
+        {short > 0 && (
+          <span className="field__error">
+            {t('shop.shortCoins', { short: formatNumber(short, locale) })}
+          </span>
+        )}
       </div>
     );
   };
@@ -206,8 +212,8 @@ export function ShopPage() {
         !
       </span>
       <div>
-        <b>Chưa mua được</b>
-        <span>{openErrorMessage(opener.error)}</span>
+        <b>{t('shop.buyErrorTitle')}</b>
+        <span>{openErrorMessage(opener.error, locale)}</span>
       </div>
     </div>
   );
@@ -220,8 +226,10 @@ export function ShopPage() {
         result={opened.result}
         catalog={catalog.data}
         newIds={opened.newIds}
-        title={`Gói ${opened.result.cards.length} thẻ`}
-        packNote={opened.payment === 'free_credit' ? 'Miễn phí · quà tân thủ' : 'Bấm để mở'}
+        title={t('shop.packTitle', { size: opened.result.cards.length })}
+        packNote={
+          opened.payment === 'free_credit' ? t('shop.packNoteFree') : t('shop.packNoteClick')
+        }
         onBack={() => {
           opener.reset();
           setOpened(null);
@@ -235,18 +243,18 @@ export function ShopPage() {
                 void navigate(opened.payment === 'free_credit' ? '/squad?onboarding=1' : squadDest)
               }
             >
-              Xếp đội
+              {t('shop.toSquad')}
             </button>
             {p &&
               (p.size === 5 && me.freePack5Credits > 0
-                ? buyButton(p, 'free_credit', 'btn btn--coin btn--lg', 'Mở tiếp')
-                : buyButton(p, 'coins', 'btn btn--coin btn--lg', 'Mở tiếp'))}
+                ? buyButton(p, 'free_credit', 'btn btn--coin btn--lg', true)
+                : buyButton(p, 'coins', 'btn btn--coin btn--lg', true))}
             <button
               type="button"
               className="btn btn--secondary btn--lg"
               onClick={() => void navigate('/collection')}
             >
-              Về kho
+              {t('shop.toCollection')}
             </button>
             {errorToast}
           </>
@@ -267,18 +275,18 @@ export function ShopPage() {
           {freePack && (
             <section className="panel--notch shop-free" aria-labelledby="free-title">
               <div className="panel__in shop-free__in">
-                <PackArt size={freePack.size} note="MIỄN PHÍ" width={96} />
+                <PackArt size={freePack.size} note={t('shop.freeBadge')} width={96} />
                 <div className="shop-pack__info">
                   <span className="label shop-free__label">
-                    Quà tân thủ · còn {me.freePack5Credits} gói
+                    {t('shop.freeKicker', { count: me.freePack5Credits })}
                   </span>
                   <h2 id="free-title" className="h2">
-                    Gói {freePack.size} thẻ miễn phí
+                    {t('shop.freeTitle', { size: freePack.size })}
                   </h2>
                   <p className="muted shop-pack__desc">
-                    Bốc từ chính hộp của bạn
+                    {t('shop.freeDescBase')}
                     {freePack.guaranteeAvailable && !onlyBronzeLeft(box)
-                      ? ', vẫn bảo đảm ≥ 1 thẻ Bạc.'
+                      ? t('shop.freeDescSilver')
                       : '.'}
                   </p>
                 </div>
@@ -296,27 +304,29 @@ export function ShopPage() {
                 className={`panel shop-pack${busy ? ' panel--raised' : ''}`}
                 aria-labelledby={`pack-${p.code}`}
               >
-                <PackArt size={p.size} note="THẺ" width={120} />
+                <PackArt size={p.size} note={t('shop.cardBadge')} width={120} />
                 <div className="shop-pack__info">
                   <div className="shop-pack__title">
                     <h2 id={`pack-${p.code}`} className="h2">
-                      Gói {p.size} thẻ
+                      {t('shop.packTitle', { size: p.size })}
                     </h2>
-                    {off > 0 && <span className="tag tag--accent">Rẻ {off}%</span>}
+                    {off > 0 && (
+                      <span className="tag tag--accent">{t('shop.discountTag', { pct: off })}</span>
+                    )}
                   </div>
                   <p className="muted shop-pack__desc">
                     {p.size > 1 ? (
                       <>
-                        Bốc {p.size} phiếu. <b>Bảo đảm ít nhất 1 thẻ Bạc trở lên</b> nếu hộp còn
-                        phiếu Bạc+.
+                        {t('shop.packMultiDescBefore', { size: p.size })}{' '}
+                        <b>{t('shop.packMultiDescBold')}</b> {t('shop.packMultiDescAfter')}
                       </>
                     ) : (
-                      'Bốc 1 phiếu từ hộp. Hợp khi cần thêm một thẻ để ép.'
+                      t('shop.packSingleDesc')
                     )}
                   </p>
                   {noGuarantee && (
                     <span className="tag tag--warn">
-                      <WarnIcon /> Lần này không bảo đảm Bạc
+                      <WarnIcon /> {t('shop.noSilverGuarantee')}
                     </span>
                   )}
                   {buyButton(p, 'coins')}

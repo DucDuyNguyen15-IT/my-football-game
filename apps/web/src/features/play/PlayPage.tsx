@@ -13,6 +13,8 @@ import { avatarSeedsForMatch } from '../../game/render/kit';
 import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
 import { MatchTutorialOverlay } from '../onboarding/MatchTutorialOverlay';
 import { markTutorialSeen, readTutorialSeen, resetTutorialSeen } from '../onboarding/onboarding';
+import { errorMessageFor } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import {
   hudEvents,
   loadSavedDifficulty,
@@ -43,7 +45,6 @@ import {
   PauseMenu,
   ResultScreen,
   ShootoutHint,
-  UNSAVED_LEAVE_MESSAGE,
   isUnsavedResult,
   type RewardStatus,
 } from './screens';
@@ -206,8 +207,6 @@ interface MatchResultViewProps {
   onRematch: () => void;
 }
 
-const SUBMIT_FAILED = 'Chưa gửi được kết quả lên máy chủ.';
-
 /**
  * Hỏi trước khi rời màn lúc `active`: link/Back trong ứng dụng (`useBlocker`) và đóng tab, tải lại,
  * Back ra ngoài trang (`beforeunload` — trình duyệt hiện câu hỏi mặc định của nó).
@@ -232,6 +231,7 @@ function useLeaveGuard(active: boolean, message: string): void {
  * "Gửi lại" — luôn cùng token nên server không cộng xu hai lần.
  */
 function MatchResultView({ difficulty, match, hud, inputLog, onRematch }: MatchResultViewProps) {
+  const { locale, t } = useI18n();
   const { mutate, data, error, isError, isPending } = useSubmitMatchResult();
   const me = useMe().data;
   const missionsQuery = useTodayMissions(Boolean(data));
@@ -256,14 +256,14 @@ function MatchResultView({ difficulty, match, hud, inputLog, onRematch }: MatchR
       kind: 'error',
       message:
         error instanceof ApiClientError && !isTransientError(error)
-          ? `Kết quả không được ghi nhận: ${error.message}`
-          : SUBMIT_FAILED,
+          ? t('play.submitRejected', { msg: errorMessageFor(error, locale) })
+          : t('play.submitFailed'),
       retryable: isTransientError(error),
     };
   } else if (isPending && retried) {
-    reward = { kind: 'error', message: SUBMIT_FAILED, retryable: true, retrying: true };
+    reward = { kind: 'error', message: t('play.submitFailed'), retryable: true, retrying: true };
   }
-  useLeaveGuard(isUnsavedResult(reward), UNSAVED_LEAVE_MESSAGE);
+  useLeaveGuard(isUnsavedResult(reward), t('play.unsavedLeave'));
   return (
     <ResultScreen
       hud={hud}
@@ -277,8 +277,8 @@ function MatchResultView({ difficulty, match, hud, inputLog, onRematch }: MatchR
       missionError={
         claimMission.error
           ? claimMission.error instanceof ApiClientError
-            ? claimMission.error.message
-            : 'Không nhận được thưởng nhiệm vụ.'
+            ? errorMessageFor(claimMission.error, locale)
+            : t('home.claimMissionError')
           : null
       }
       onClaimMission={(code) => claimMission.mutate(code)}
@@ -299,37 +299,40 @@ interface MatchStartingProps {
 
 /** Chờ server dựng trận; lỗi đội hình (`invalid_squad`) → dẫn sang màn đội hình. */
 function MatchStarting({ error, onRetry, onBack }: MatchStartingProps) {
+  const { locale, t } = useI18n();
   if (!error) {
     return (
       <section className="play-screen" aria-busy="true">
         <span className="spinner" aria-hidden="true" />
         <p className="h1 play-screen__title" role="status">
-          Đang chuẩn bị trận…
+          {t('play.preparing')}
         </p>
       </section>
     );
   }
   const squadIssue = error instanceof ApiClientError && error.code === 'invalid_squad';
   const message =
-    error instanceof ApiClientError ? error.message : 'Không bắt đầu được trận. Thử lại sau.';
+    error instanceof ApiClientError
+      ? errorMessageFor(error, locale, 'play.startErrorFallback')
+      : t('play.startErrorFallback');
   return (
     <section className="play-screen" aria-labelledby="start-error-title">
       <h1 id="start-error-title" className="h1 play-screen__title">
-        {squadIssue ? 'Đội hình chưa đủ' : 'Không vào được trận'}
+        {squadIssue ? t('play.squadErrorTitle') : t('play.startErrorTitle')}
       </h1>
       <p role="alert">{message}</p>
       <div className="play-screen__actions">
         {squadIssue ? (
           <Link to="/squad" className="btn btn--primary btn--lg" autoFocus>
-            Sửa đội hình
+            {t('home.editSquad')}
           </Link>
         ) : (
           <button type="button" className="btn btn--primary btn--lg" autoFocus onClick={onRetry}>
-            Thử lại
+            {t('common.retry')}
           </button>
         )}
         <button type="button" className="btn btn--secondary btn--lg" onClick={onBack}>
-          Chọn lại độ khó
+          {t('play.reselectDiff')}
         </button>
       </div>
     </section>
@@ -346,6 +349,11 @@ interface MatchViewProps {
 }
 
 function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit }: MatchViewProps) {
+  const { locale, t } = useI18n();
+  const localeRef = useRef(locale);
+  useEffect(() => {
+    localeRef.current = locale;
+  }, [locale]);
   const setup = useMemo<MatchSetup>(
     () => buildMatchSetup({ ...match, difficulty }, { halfLengthSec, autopilot }),
     [difficulty, match, halfLengthSec, autopilot],
@@ -462,7 +470,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
           setStoppageBoard(true);
           later(STOPPAGE_BOARD_MS, () => setStoppageBoard(false));
         }
-        for (const e of last ? hudEvents(last, snap) : []) {
+        for (const e of last ? hudEvents(last, snap, localeRef.current) : []) {
           const shown = { ...e, id: nextId++ };
           setEvents((list) => [...list, shown]);
           later(EVENT_SHOW_MS, () => setEvents((list) => list.filter((x) => x.id !== shown.id)));
@@ -497,7 +505,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
               className="btn btn--secondary btn--sm hud-pause"
               onClick={() => setPaused(true)}
             >
-              Esc · Tạm dừng
+              {t('play.pauseBtn')}
             </button>
           </div>
           <PlayerPanel controlled={autopilot ? null : hud.controlled} />
@@ -524,7 +532,7 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
       )}
       {goalBanner > 0 && (
         <div className="goal-banner" aria-hidden="true">
-          <span className="display goal-banner__text">VÀO!</span>
+          <span className="display goal-banner__text">{t('play.goalBanner')}</span>
         </div>
       )}
       {paused && (

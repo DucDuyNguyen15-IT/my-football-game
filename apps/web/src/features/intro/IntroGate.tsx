@@ -2,6 +2,7 @@
 import '@fontsource/anton/latin-400.css';
 import { useCallback, useEffect, useRef, useState, type CSSProperties } from 'react';
 import { Outlet, useLocation } from 'react-router';
+import { useI18n } from '../../i18n/I18nContext';
 import {
   introMode,
   LOGO_AT_SEC,
@@ -55,6 +56,7 @@ function IntroOverlay({
   onDone: () => void;
   onFallback: () => void;
 }) {
+  const { t } = useI18n();
   const host = useRef<HTMLDivElement>(null);
   const [leaving, setLeaving] = useState(false);
   // Bản 3D chờ nạp model rồi mới chạy đồng hồ: logo chỉ bắt đầu đếm trễ từ lúc đó.
@@ -119,9 +121,9 @@ function IntroOverlay({
         <span className="intro__mark" data-text="MFG">
           MFG
         </span>
-        <span className="intro__tag">My Football Game</span>
+        <span className="intro__tag">{t('intro.tagline')}</span>
       </h1>
-      <p className="intro__skip">Bấm phím bất kỳ để bỏ qua</p>
+      <p className="intro__skip">{t('intro.skip')}</p>
     </div>
   );
 }

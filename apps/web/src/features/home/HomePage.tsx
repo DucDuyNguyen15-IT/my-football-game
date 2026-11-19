@@ -1,25 +1,38 @@
 import type { CSSProperties } from 'react';
 import { useRef } from 'react';
 import { Link } from 'react-router';
-import { computeOvr, STARTER_SLOTS, type Card, type PlayerCard } from '@pitch/shared';
+import { computeOvr, STARTER_SLOTS, type Card, type PlayerCard, type SquadWarning } from '@pitch/shared';
 import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
-import { ApiClientError } from '../../api/client';
 import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { usePacks } from '../../api/packs';
 import { useEconomy, usePlayerCards } from '../../api/player-cards';
 import { useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
-import { RARITY_INFO } from '../../components/card/rarity';
+import { rarityLabel } from '../../components/card/rarity';
 import { ChalkPitch } from '../../components/ChalkPitch';
+import { errorMessageFor } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import { flyCoinsArc } from '../missions/coinArc';
 import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
 import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import { slotLayout } from '../squad/squad';
 import './home.css';
 
+function translateSquadWarning(w: SquadWarning, t: ReturnType<typeof useI18n>['t']): string {
+  switch (w.code) {
+    case 'missing_gk':
+      return t('squad.warn.missing_gk');
+    case 'gk_not_keeper':
+      return t('squad.warn.gk_not_keeper');
+    default:
+      return w.message;
+  }
+}
+
 /** Menu chính (docs/design/screens/home.html). Việc chính là "Đá ngay"; cột phải là lối tắt có trạng thái. */
 export function HomePage() {
+  const { locale, t } = useI18n();
   const me = useMe().data;
   const squad = useSquad();
   const catalog = useCardCatalog();
@@ -54,17 +67,18 @@ export function HomePage() {
           <section className="panel--notch home__hero" aria-labelledby="play-title">
             <div className="panel__in night-bg home__hero-in">
               <div className="home__hero-text">
-                <span className="label">Trận tiếp theo · 7 đấu 7</span>
+                <span className="label">{t('home.kicker')}</span>
                 <h1 id="play-title" className="display home__title">
-                  Đá với máy
+                  {t('home.title')}
                 </h1>
                 <p className="muted home__lead">
-                  Chọn <b>Dễ</b> hoặc <b>Khó</b> ở bước sau — thắng mức Khó được gấp đôi xu.
+                  {t('home.leadBefore')} <b>{t('home.leadEasy')}</b> {t('home.leadOr')}{' '}
+                  <b>{t('home.leadHard')}</b> {t('home.leadAfter')}
                 </p>
                 <div className="home__reward">
                   <div className="home__reward-row">
                     <span className={rewardLeft ? undefined : 'home__reward-out'}>
-                      {rewardLeft ? 'Trận có thưởng hôm nay' : 'Không còn trận có thưởng hôm nay'}
+                      {rewardLeft ? t('home.rewardedToday') : t('home.rewardedOut')}
                     </span>
                     <span className="display num home__reward-count">
                       {used}
@@ -74,7 +88,7 @@ export function HomePage() {
                   <div
                     className={`bar bar--segmented home__reward-bar${rewardLeft ? '' : ' is-out'}`}
                     role="img"
-                    aria-label={`Đã dùng ${used}/${limit} trận có thưởng`}
+                    aria-label={t('home.rewardedAria', { used, limit })}
                   >
                     {Array.from({ length: limit }, (_, i) => (
                       <i key={i} className={i < used ? 'on' : undefined} />
@@ -86,7 +100,7 @@ export function HomePage() {
                     <svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true">
                       <path d="M5 3l10 6-10 6z" fill="currentColor" />
                     </svg>
-                    {rewardLeft ? 'Đá ngay' : 'Đá luyện tập'}
+                    {rewardLeft ? t('home.playNow') : t('home.playPractice')}
                   </Link>
                 </div>
               </div>
@@ -111,16 +125,17 @@ export function HomePage() {
 
           <section className="panel home__team" aria-labelledby="team-title">
             <h2 id="team-title" className="panel__title">
-              Đội của bạn
+              {t('home.yourTeam')}
               <span className="meta">
                 {squad.data && (
                   <>
-                    {squad.data.formation} · OVR TB <b className="num">{squad.data.teamRating}</b>
+                    {squad.data.formation} · {t('home.avgOvr')}{' '}
+                    <b className="num">{squad.data.teamRating}</b>
                   </>
                 )}
               </span>
               <Link to="/squad" className="btn btn--ghost btn--sm home__edit">
-                Sửa đội hình
+                {t('home.editSquad')}
               </Link>
             </h2>
             <div className="home__xi">
@@ -146,7 +161,7 @@ export function HomePage() {
                         key={slot}
                         to="/squad"
                         className="home__empty-slot"
-                        aria-label={`Ô ${slot} còn trống`}
+                        aria-label={t('home.emptySlotAria', { slot })}
                       >
                         +
                       </Link>
@@ -154,23 +169,19 @@ export function HomePage() {
                   )}
             </div>
             {squad.data && squad.data.warnings.length > 0 && (
-              <p className="home__warn">⚠ {squad.data.warnings[0]!.message}</p>
+              <p className="home__warn">⚠ {translateSquadWarning(squad.data.warnings[0]!, t)}</p>
             )}
           </section>
         </div>
 
-        <aside className="home__side" aria-label="Lối tắt">
+        <aside className="home__side" aria-label={t('home.shortcutsAria')}>
           <DailyMissionsPanel
             missions={missions.data}
             isLoading={missions.isPending}
             onRetry={missions.isError ? () => void missions.refetch() : undefined}
             claimingCode={claim.isPending ? (claim.variables ?? null) : null}
             errorMessage={
-              claim.error
-                ? claim.error instanceof ApiClientError
-                  ? claim.error.message
-                  : 'Không nhận được thưởng nhiệm vụ.'
-                : null
+              claim.error ? errorMessageFor(claim.error, locale, 'home.claimMissionError') : null
             }
             onClaim={(code, sourceEl) => {
               claimSourceRef.current = sourceEl ?? null;
@@ -190,58 +201,63 @@ export function HomePage() {
               to={showOnboardingBanner ? '/shop?onboarding=1' : '/shop'}
               className="panel home__tile is-accent"
             >
-              <span className="label">Quà tân thủ</span>
+              <span className="label">{t('auth.giftKicker')}</span>
               <span className="display home__tile-big">
-                {me.freePack5Credits} gói 5 thẻ miễn phí
+                {t('home.starterPackTitle', { count: me.freePack5Credits })}
               </span>
-              <span className="muted">Mở ngay ở Cửa hàng →</span>
+              <span className="muted">{t('home.starterPackAction')}</span>
             </Link>
           )}
           <Link to="/shop" className="panel home__tile">
-            <span className="label">Hộp thẻ của bạn</span>
+            <span className="label">{t('home.yourBox')}</span>
             <span className="display home__tile-big">
               {box ? (
-                `${box.total}/${box.size} phiếu`
+                t('home.boxTickets', { total: box.total, size: box.size })
               ) : (
                 <>
                   <span className="skel skel--line home__tile-skel" aria-hidden="true" />
-                  <span className="sr-only">Đang tải…</span>
+                  <span className="sr-only">{t('common.loading')}</span>
                 </>
               )}
             </span>
             <span className="muted">
               {box
-                ? `Còn ${box.left.legend} ${RARITY_INFO.legend.label} · ${box.left.gold} ${RARITY_INFO.gold.label}`
+                ? t('home.boxLeft', {
+                    legendCount: box.left.legend,
+                    legendLabel: rarityLabel('legend', locale),
+                    goldCount: box.left.gold,
+                    goldLabel: rarityLabel('gold', locale),
+                  })
                 : ' '}
             </span>
           </Link>
           <Link to="/collection" className="panel home__tile">
-            <span className="label">Kho thẻ</span>
+            <span className="label">{t('nav.collection')}</span>
             <span className="display home__tile-big">
               {list.data ? (
-                `${list.data.length} thẻ`
+                t('common.cardsCount', { count: list.data.length })
               ) : (
                 <>
                   <span className="skel skel--line home__tile-skel" aria-hidden="true" />
-                  <span className="sr-only">Đang tải…</span>
+                  <span className="sr-only">{t('common.loading')}</span>
                 </>
               )}
             </span>
-            <span className="muted">Xem, bán, ép thẻ →</span>
+            <span className="muted">{t('home.collectionSub')}</span>
           </Link>
           <Link to="/upgrade" className="panel home__tile">
-            <span className="label">Ép thẻ</span>
+            <span className="label">{t('home.upgradeTitle')}</span>
             <span className="display home__tile-big">
               {maxLevel ? (
                 `+1 → +${maxLevel}`
               ) : (
                 <>
                   <span className="skel skel--line home__tile-skel" aria-hidden="true" />
-                  <span className="sr-only">Đang tải…</span>
+                  <span className="sr-only">{t('common.loading')}</span>
                 </>
               )}
             </span>
-            <span className="muted">Biết trước tỉ lệ thành công →</span>
+            <span className="muted">{t('home.upgradeSub')}</span>
           </Link>
         </aside>
       </div>

@@ -15,6 +15,19 @@ import './styles/ui.css';
 import { meKey } from './api/auth';
 import { ApiClientError } from './api/client';
 import { router } from './app/router';
+import { applyLocaleToDocument, readLocale, setActiveLocale } from './i18n/i18n';
+import { I18nProvider } from './i18n/I18nContext';
+import { applyThemeToDocument, readThemePreference } from './styles/theme';
+import { ThemeProvider } from './styles/ThemeContext';
+
+try {
+  applyThemeToDocument(document.documentElement, readThemePreference(window.localStorage));
+  const loc = readLocale(window.localStorage);
+  setActiveLocale(loc);
+  applyLocaleToDocument(document.documentElement, loc);
+} catch {
+  // localStorage bị chặn → giữ mặc định theo hệ thống.
+}
 
 const root = document.getElementById('root');
 if (!root) throw new Error('Thiếu #root trong index.html');
@@ -43,8 +56,12 @@ const queryClient: QueryClient = new QueryClient({
 
 createRoot(root).render(
   <StrictMode>
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
+    <I18nProvider>
+      <ThemeProvider>
+        <QueryClientProvider client={queryClient}>
+          <RouterProvider router={router} />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </I18nProvider>
   </StrictMode>,
 );

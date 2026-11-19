@@ -33,7 +33,15 @@ import { useSaveSquad, useSquad } from '../../api/squad';
 import { CardView } from '../../components/card/CardView';
 import { ChalkPitch } from '../../components/ChalkPitch';
 import { CountUp } from '../../components/CountUp';
-import { POSITION_NAME } from '../../components/card/rarity';
+import { positionName } from '../../components/card/rarity';
+import {
+  errorMessageFor,
+  formatMessage,
+  getActiveLocale,
+  type Locale,
+  type TranslationKey,
+} from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import {
   autoFillSquad,
@@ -63,18 +71,23 @@ const KHO = 'kho';
 const ovrOf = (it: Item) => computeOvr(it.card.position, it.pc.effectiveStats);
 const cardDragId = (pcId: string) => `card:${pcId}`;
 
-export function saveErrorMessage(err: unknown): string {
+export function saveErrorMessage(err: unknown, locale: Locale = getActiveLocale()): string {
   if (err instanceof ApiClientError) {
-    if (err.code === 'not_found') return 'Có thẻ không còn trong kho. Danh sách đã được làm mới.';
-    if (err.code === 'invalid_squad') return 'Đội hình không hợp lệ: ' + err.message;
-    if (err.code === 'network_error') return 'Mất kết nối — hãy thử lại.';
-    return err.message;
+    if (err.code === 'not_found') return formatMessage(locale, 'squad.saveErrNotFound');
+    if (err.code === 'invalid_squad') {
+      return formatMessage(locale, 'squad.saveErrInvalid', {
+        msg: errorMessageFor(err, locale, 'err.invalid_squad'),
+      });
+    }
+    if (err.code === 'network_error') return formatMessage(locale, 'squad.saveErrNetwork');
+    return errorMessageFor(err, locale, 'err.genericRetry');
   }
-  return 'Có lỗi xảy ra, hãy thử lại.';
+  return formatMessage(locale, 'err.genericRetry');
 }
 
 /** Xếp đội hình (DESIGN.md §6.5, PRD F6). */
 export function SquadPage() {
+  const { t } = useI18n();
   const squad = useSquad();
   const list = usePlayerCards({ sort: '-ovr' });
   const catalog = useCardCatalog();
@@ -82,7 +95,7 @@ export function SquadPage() {
   if (squad.isPending || list.isPending || catalog.isPending) {
     return (
       <div className="sq" aria-busy="true">
-        <p className="sr-only">Đang tải đội hình…</p>
+        <p className="sr-only">{t('squad.loading')}</p>
         <div className="skel sq-skel__head" />
         <div className="sq__body">
           <div className="skel sq-skel__pitch" />
@@ -94,7 +107,7 @@ export function SquadPage() {
   if (squad.isError || list.isError || catalog.isError) {
     return (
       <div className="screen-msg" role="alert">
-        <p>Không tải được đội hình.</p>
+        <p>{t('squad.loadError')}</p>
         <button
           type="button"
           className="btn btn--secondary"
@@ -104,7 +117,7 @@ export function SquadPage() {
             void catalog.refetch();
           }}
         >
-          Thử lại
+          {t('common.retry')}
         </button>
       </div>
     );
@@ -118,10 +131,10 @@ export function SquadPage() {
 }
 
 /** Mô tả sơ đồ (PRD §5: 2-3-1 cân bằng, 3-2-1 phòng ngự, 2-2-2 tấn công). */
-const FORMATION_HINT: Record<Formation, string> = {
-  '2-3-1': 'Cân bằng',
-  '3-2-1': 'Phòng ngự',
-  '2-2-2': 'Tấn công',
+const FORMATION_HINT: Record<Formation, TranslationKey> = {
+  '2-3-1': 'squad.formation.2-3-1',
+  '3-2-1': 'squad.formation.3-2-1',
+  '2-2-2': 'squad.formation.2-2-2',
 };
 
 type Filter = 'all' | 'role' | 'other';
@@ -155,6 +168,7 @@ function changeCount(a: Draft, b: Draft): number {
 }
 
 function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string, Item> }) {
+  const { locale, t } = useI18n();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const isOnboarding = searchParams.get('onboarding') === '1';
@@ -231,8 +245,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
       if (!target) {
         setNotice({
           tone: 'warn',
-          title: 'Không còn ô trống đúng vị trí',
-          body: 'Chọn một ô để thay người.',
+          title: t('squad.noEmptyTitle'),
+          body: t('squad.noEmptyBody'),
         });
         return;
       }
@@ -260,14 +274,14 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
     const names = (ids: string[]) => ids.map((id) => items.get(id)?.card.name ?? '?').join(', ');
     const moved = r.toBench.length + r.toCollection.length;
     const parts = [
-      r.toBench.length > 0 && `${names(r.toBench)} xuống dự bị`,
-      r.toCollection.length > 0 && `${names(r.toCollection)} về kho`,
+      r.toBench.length > 0 && t('squad.toBench', { names: names(r.toBench) }),
+      r.toCollection.length > 0 && t('squad.toCollection', { names: names(r.toCollection) }),
     ].filter(Boolean);
     setNotice(
       moved > 0
         ? {
             tone: 'warn',
-            title: `${moved} thẻ không còn chỗ trong sơ đồ ${f}`,
+            title: t('squad.formationMovedTitle', { count: moved, formation: f }),
             body: `${parts.join('; ')}.`,
           }
         : null,
@@ -301,8 +315,11 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
       onSuccess: () => {
         setNotice({
           tone: 'success',
-          title: 'Đã lưu đội hình',
-          body: `OVR đội ${evaluation.teamRating} · ${draft.formation}`,
+          title: t('squad.savedTitle'),
+          body: t('squad.savedBody', {
+            rating: evaluation.teamRating,
+            formation: draft.formation,
+          }),
         });
         after?.();
       },
@@ -314,6 +331,20 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
       .map((w) => w.slot),
   );
   const missing = evaluation.warnings.filter((w) => w.code !== 'misposition');
+  const starterCount = STARTER_SLOTS.filter((s) => !!members[s]).length;
+  const missingText = missing
+    .map((w) => {
+      if (w.code === 'missing_gk') return t('squad.warn.missing_gk');
+      if (w.code === 'gk_not_keeper') return t('squad.warn.gk_not_keeper');
+      if (w.code === 'missing_starters') {
+        return t('squad.warn.missing_starters', {
+          count: starterCount,
+          total: STARTER_SLOTS.length,
+        });
+      }
+      return w.message;
+    })
+    .join(' · ');
   // Server từ chối lưu đội hình có ô GK không phải thủ môn.
   const gkInvalid = evaluation.warnings.some((w) => w.code === 'gk_not_keeper');
   const mispositioned = evaluation.warnings.filter((w) => w.code === 'misposition' && w.slot);
@@ -333,10 +364,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
     saver.reset();
     setNotice({
       tone: 'success',
-      title: 'Đã tự xếp đội mạnh nhất',
-      body: isOnboarding
-        ? 'Thẻ mạnh nhất đã được xếp sẵn — bấm Đá với máy – Dễ để vào trận đầu.'
-        : 'Bấm Lưu để cập nhật đội hình mới.',
+      title: t('squad.autoFilledTitle'),
+      body: isOnboarding ? t('squad.autoFilledOnboarding') : t('squad.autoFilledNormal'),
     });
   }
 
@@ -398,14 +427,14 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
                 onClick={playEasyNow}
               >
                 {saver.isPending && <span className="spinner" aria-hidden="true" />}
-                Đá với máy – Dễ →
+                {t('squad.playEasyArrow')}
               </button>
             }
           />
         )}
         <header className="sq__head">
-          <h1 className="h1">Đội hình</h1>
-          <div className="seg" role="group" aria-label="Sơ đồ">
+          <h1 className="h1">{t('squad.title')}</h1>
+          <div className="seg" role="group" aria-label={t('squad.formationAria')}>
             {Formation.options.map((f) => (
               <button
                 key={f}
@@ -418,12 +447,12 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
               </button>
             ))}
           </div>
-          <span className="muted sq__formation">{FORMATION_HINT[draft.formation]}</span>
+          <span className="muted sq__formation">{t(FORMATION_HINT[draft.formation])}</span>
           <button type="button" className="btn btn--secondary" onClick={autoFillBest}>
-            Tự xếp đội mạnh nhất
+            {t('squad.autoFill')}
           </button>
           <span className="sq__rating">
-            <span className="label">OVR đội</span>
+            <span className="label">{t('squad.teamOvr')}</span>
             <span className="display num sq__ovr" aria-live="polite">
               <CountUp value={evaluation.teamRating} durationMs={260} />
             </span>
@@ -436,8 +465,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
             onClick={() => save()}
           >
             {saver.isPending && <span className="spinner" aria-hidden="true" />}
-            Lưu
-            {dirty && <span className="sq__dirty" role="img" aria-label="có thay đổi chưa lưu" />}
+            {t('common.save')}
+            {dirty && <span className="sq__dirty" role="img" aria-label={t('squad.dirtyAria')} />}
           </button>
           {!isOnboarding && (
             <button
@@ -448,13 +477,13 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
               onClick={playEasyNow}
             >
               {saver.isPending && <span className="spinner" aria-hidden="true" />}
-              Đá với máy – Dễ
+              {t('squad.playEasy')}
             </button>
           )}
         </header>
 
         <div className="sq__body">
-          <section className="sq__pitch-wrap" aria-label="Sân">
+          <section className="sq__pitch-wrap" aria-label={t('squad.pitchAria')}>
             <ChalkPitch />
             <ul className="sq__pitch">
               {STARTER_SLOTS.map((slot) => (
@@ -472,8 +501,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
               <div className="banner banner--danger" role="alert">
                 <WarnIcon />
                 <span>
-                  <b>{missing.map((w) => w.message).join(' · ')}.</b> Cần đủ {STARTER_SLOTS.length}{' '}
-                  người, có 1 GK, để vào trận.
+                  <b>{missingText}.</b>{' '}
+                  {t('squad.needStarters', { count: STARTER_SLOTS.length })}
                 </span>
               </div>
             )}
@@ -496,8 +525,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
                 onClick={() => setShowAllWarns((v) => !v)}
               >
                 {showAllWarns
-                  ? 'Thu gọn cảnh báo vị trí'
-                  : `Xem thêm ${mispositioned.length - 2} cảnh báo vị trí`}
+                  ? t('squad.collapseWarns')
+                  : t('squad.moreWarns', { count: mispositioned.length - 2 })}
               </button>
             )}
             {notice && (
@@ -513,15 +542,19 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
             )}
             {saver.error && (
               <p className="banner banner--danger" role="alert">
-                {saveErrorMessage(saver.error)}
+                {saveErrorMessage(saver.error, locale)}
               </p>
             )}
 
             <section className="panel sq__panel" aria-labelledby="sq-bench-title">
               <h2 className="panel__title" id="sq-bench-title">
-                Dự bị{' '}
+                {t('squad.benchTitle')}{' '}
                 <span className="meta">
-                  {benchUsed}/{BENCH_SLOTS.length} · thay người tối đa {MAX_SUBS} lượt/trận
+                  {t('squad.benchMeta', {
+                    used: benchUsed,
+                    total: BENCH_SLOTS.length,
+                    maxSubs: MAX_SUBS,
+                  })}
                 </span>
               </h2>
               <ul className="sq__bench">
@@ -551,8 +584,8 @@ function SquadEditor({ saved, items }: { saved: Squad; items: ReadonlyMap<string
             />
             <p className="muted sq__hint">
               {selected
-                ? `Đang chọn ô ${selected} — bấm thẻ để xếp, bấm ô khác để đổi chỗ, Esc để bỏ chọn.`
-                : 'Kéo-thả thẻ vào ô, hoặc bấm ô → bấm thẻ (dùng được bằng bàn phím). Kéo một thẻ lên thẻ khác để đổi chỗ, kéo về Kho để gỡ.'}
+                ? t('squad.hintSelected', { slot: selected })
+                : t('squad.hintIdle')}
             </p>
           </div>
         </div>
@@ -586,6 +619,7 @@ function MispositionBanner({
   stats: PlayerStats | undefined;
   fallback: string;
 }) {
+  const { locale, t } = useI18n();
   if (!item || !role) {
     return (
       <div className="banner banner--danger" role="alert">
@@ -599,12 +633,10 @@ function MispositionBanner({
     <div className="banner banner--danger" role="alert">
       <WarnIcon />
       <span>
-        <b>
-          {item.card.name} ({item.card.position}) đang đá {role}:
-        </b>{' '}
-        mọi chỉ số −15%
-        {base && after !== undefined && ` (OVR ${ovrOf(item)} → ${after})`}. Kéo một{' '}
-        {POSITION_NAME[role].toLowerCase()} vào ô này để bỏ phạt.
+        <b>{t('squad.misposLead', { name: item.card.name, pos: item.card.position, role })}</b>{' '}
+        {t('squad.misposBody')}
+        {base && after !== undefined && ` (OVR ${ovrOf(item)} → ${after})`}.{' '}
+        {t('squad.misposFix', { roleName: positionName(role, locale).toLowerCase() })}
       </span>
     </div>
   );
@@ -633,11 +665,15 @@ function SlotCell({
   style,
   onClick,
 }: SlotCellProps) {
+  const { locale, t } = useI18n();
   const drop = useDroppable({ id: `slot:${slot}` });
   const drag = useDraggable({ id: cardDragId(item?.pc.id ?? `empty-${slot}`), disabled: !item });
-  const label = `Ô ${slot}${role ? ` (${POSITION_NAME[role]})` : ' (dự bị)'}${
-    item ? `: ${item.card.name}` : ': trống'
-  }${warn ? ', sai vị trí −15%' : ''}`;
+  const label = t('squad.slotAria', {
+    slot,
+    rolePart: role ? ` (${positionName(role, locale)})` : t('squad.slotRoleBench'),
+    cardPart: item ? `: ${item.card.name}` : t('squad.slotEmpty'),
+    warnPart: warn ? t('squad.slotWarn') : '',
+  });
   return (
     <li
       className={`slot sq-slot${selected ? ' is-selected' : ''}${warn ? ' is-wrong' : ''}${
@@ -710,12 +746,13 @@ function PoolPanel({
   onPick,
   onClearSlot,
 }: PoolPanelProps) {
+  const { t } = useI18n();
   const { setNodeRef, isOver } = useDroppable({ id: KHO });
   const chips: [Filter, string][] = role
     ? [
-        ['all', 'Tất cả'],
+        ['all', t('coll.filterAll')],
         ['role', role],
-        ['other', 'Khác vị trí (−15%)'],
+        ['other', t('squad.poolOther')],
       ]
     : [];
   return (
@@ -725,9 +762,11 @@ function PoolPanel({
       aria-labelledby="sq-pool-title"
     >
       <h2 className="panel__title" id="sq-pool-title">
-        Kho{' '}
+        {t('squad.poolTitle')}{' '}
         <span className="meta">
-          {selected && role ? `Đang chọn ô ${selected} · lọc theo ${role}` : `${total} thẻ`}
+          {selected && role
+            ? t('squad.poolPicking', { slot: selected, role })
+            : t('common.cardsCount', { count: total })}
         </span>
       </h2>
       {(chips.length > 0 || onClearSlot) && (
@@ -745,14 +784,16 @@ function PoolPanel({
           ))}
           {onClearSlot && (
             <button type="button" className="btn btn--ghost btn--sm" onClick={onClearSlot}>
-              Gỡ thẻ ở ô {selected} về kho
+              {t('squad.poolClearSlot', { slot: selected ?? '' })}
             </button>
           )}
         </div>
       )}
       {items.length === 0 ? (
         <p className="muted">
-          {role && filter === 'role' ? `Không còn thẻ ${role} trong kho.` : 'Kho không còn thẻ.'}
+          {role && filter === 'role'
+            ? t('squad.poolEmptyRole', { role })
+            : t('squad.poolEmptyAll')}
         </p>
       ) : (
         <ul className="sq__pool-grid">
@@ -817,6 +858,7 @@ function LeaveDialog({
   onSave: () => void;
   onStay: () => void;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -833,17 +875,15 @@ function LeaveDialog({
       }}
     >
       <h2 className="dialog__title" id="sq-leave-title">
-        Lưu đội hình?
+        {t('squad.leaveTitle')}
       </h2>
-      <p className="dialog__body">
-        Bạn có {changes} thay đổi chưa lưu. Rời trang bây giờ sẽ bỏ các thay đổi này.
-      </p>
+      <p className="dialog__body">{t('squad.leaveBody', { count: changes })}</p>
       <div className="dialog__actions">
         <button type="button" className="btn btn--ghost" onClick={onStay}>
-          Ở lại
+          {t('squad.leaveStay')}
         </button>
         <button type="button" className="btn btn--secondary" onClick={onDiscard}>
-          Bỏ thay đổi
+          {t('squad.leaveDiscard')}
         </button>
         <button
           type="button"
@@ -854,7 +894,7 @@ function LeaveDialog({
           onClick={onSave}
         >
           {saving && <span className="spinner" aria-hidden="true" />}
-          Lưu &amp; rời
+          {t('squad.leaveSave')}
         </button>
       </div>
     </dialog>

@@ -1,5 +1,7 @@
 import type { CSSProperties } from 'react';
 import type { MissionProgress } from '@pitch/shared';
+import { translateMissionTitle } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import './missions.css';
 
 export interface DailyMissionsPanelProps {
@@ -19,7 +21,7 @@ export interface DailyMissionsPanelProps {
  * mục tiêu, và trạng thái đã nhận.
  */
 export function DailyMissionsPanel({
-  title = 'Nhiệm vụ ngày',
+  title,
   missions,
   isLoading = false,
   onRetry,
@@ -28,22 +30,24 @@ export function DailyMissionsPanel({
   onClaim,
   showResetNote = true,
 }: DailyMissionsPanelProps) {
+  const { locale, t } = useI18n();
+  const heading = title ?? t('missions.title');
   return (
     <section className="panel missions" aria-labelledby="missions-title">
       <h2 id="missions-title" className="panel__title missions__head">
-        {title}
-        <span className="meta">Reset 00:00 GMT+7</span>
+        {heading}
+        <span className="meta">{t('missions.resetMeta')}</span>
       </h2>
 
       {!isLoading && !missions && onRetry ? (
         <div className="banner banner--danger" role="alert">
-          <span>Không tải được nhiệm vụ.</span>
+          <span>{t('missions.loadError')}</span>
           <button type="button" className="btn btn--secondary btn--sm" onClick={onRetry}>
-            Thử lại
+            {t('common.retry')}
           </button>
         </div>
       ) : isLoading || !missions ? (
-        <div className="missions__skel" aria-busy="true" aria-label="Đang tải nhiệm vụ">
+        <div className="missions__skel" aria-busy="true" aria-label={t('missions.loadingAria')}>
           <div className="skel skel--line" />
           <div className="skel skel--line" />
           <div className="skel skel--line" />
@@ -54,10 +58,11 @@ export function DailyMissionsPanel({
             const pct = Math.min(100, Math.round((m.progress / m.target) * 100));
             const done = m.progress >= m.target;
             const claiming = claimingCode === m.code;
+            const label = translateMissionTitle(m.code, m.title, locale);
             return (
               <li key={m.code} className="missions__row">
                 <div className="missions__info">
-                  <span className="missions__name">{m.title}</span>
+                  <span className="missions__name">{label}</span>
                   <div className="missions__prog">
                     <div
                       className="bar bar--thin missions__bar"
@@ -72,7 +77,7 @@ export function DailyMissionsPanel({
                 </div>
 
                 {m.claimed ? (
-                  <span className="tag tag--success">Đã nhận</span>
+                  <span className="tag tag--success">{t('missions.claimed')}</span>
                 ) : done ? (
                   <button
                     type="button"
@@ -82,11 +87,11 @@ export function DailyMissionsPanel({
                     onClick={(e) => onClaim?.(m.code, e.currentTarget)}
                   >
                     <span className="btn__label">
-                      Nhận{' '}
+                      {t('missions.claim')}{' '}
                       <span className="coin coin--sm missions__claim-coin">
                         <span className="coin__icon" aria-hidden="true" />
                         <span>+{m.reward}</span>
-                        <span className="sr-only"> xu</span>
+                        <span className="sr-only"> {t('common.coin')}</span>
                       </span>
                     </span>
                   </button>
@@ -94,7 +99,7 @@ export function DailyMissionsPanel({
                   <span className="coin coin--sm missions__pending-coin">
                     <span className="coin__icon" aria-hidden="true" />
                     <span>{m.reward}</span>
-                    <span className="sr-only"> xu</span>
+                    <span className="sr-only"> {t('common.coin')}</span>
                   </span>
                 )}
               </li>
@@ -109,9 +114,7 @@ export function DailyMissionsPanel({
         </div>
       )}
 
-      {showResetNote && (
-        <p className="muted missions__foot">3 nhiệm vụ mỗi ngày · reset lúc 00:00</p>
-      )}
+      {showResetNote && <p className="muted missions__foot">{t('missions.foot')}</p>}
     </section>
   );
 }

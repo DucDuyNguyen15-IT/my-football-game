@@ -6,8 +6,22 @@ import { useCardCatalog } from '../../api/cards';
 import { ApiClientError } from '../../api/client';
 import { useEconomy, usePlayerCards, useSellCards } from '../../api/player-cards';
 import { CardView } from '../../components/card/CardView';
-import { POSITION_NAME, RARITY_INFO, statsFor } from '../../components/card/rarity';
+import {
+  localizedStatsFor,
+  positionName,
+  rarityLabel,
+  rarityPips,
+} from '../../components/card/rarity';
 import { HoldButton } from '../../components/HoldButton';
+import {
+  errorMessageFor,
+  formatMessage,
+  formatNumber,
+  getActiveLocale,
+  type Locale,
+  type TranslationKey,
+} from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import {
   isValuableSale,
   loadSavedFilter,
@@ -20,28 +34,24 @@ import {
 } from './collection';
 import './collection.css';
 
-import { fmt } from '../../components/format';
-
-const SORTS: { value: PlayerCardSort; label: string }[] = [
-  { value: '-ovr', label: 'OVR cao → thấp' },
-  { value: 'ovr', label: 'OVR thấp → cao' },
-  { value: '-acquired', label: 'Mới nhận trước' },
-  { value: 'acquired', label: 'Cũ nhất trước' },
+const SORTS: { value: PlayerCardSort; key: TranslationKey }[] = [
+  { value: '-ovr', key: 'coll.sortOvrDesc' },
+  { value: 'ovr', key: 'coll.sortOvrAsc' },
+  { value: '-acquired', key: 'coll.sortNewest' },
+  { value: 'acquired', key: 'coll.sortOldest' },
 ];
 
-const IN_SQUAD_REASON = 'Thẻ đang trong đội hình — gỡ khỏi đội để bán hoặc làm nguyên liệu.';
 /** Tối đa số thẻ một lần bán (server giới hạn 50). */
 const SELL_MAX = 50;
 
-export function sellErrorMessage(err: unknown): string {
+export function sellErrorMessage(err: unknown, locale: Locale = getActiveLocale()): string {
   if (err instanceof ApiClientError) {
-    if (err.code === 'card_in_squad') return 'Có thẻ đang trong đội hình — gỡ khỏi đội rồi bán.';
-    if (err.code === 'not_found')
-      return 'Một số thẻ không còn trong kho. Danh sách đã được làm mới.';
-    if (err.code === 'network_error') return 'Mất kết nối — hãy thử lại.';
-    return err.message;
+    if (err.code === 'card_in_squad') return formatMessage(locale, 'coll.sellErrInSquad');
+    if (err.code === 'not_found') return formatMessage(locale, 'coll.sellErrNotFound');
+    if (err.code === 'network_error') return formatMessage(locale, 'coll.sellErrNetwork');
+    return errorMessageFor(err, locale, 'err.genericRetry');
   }
-  return 'Có lỗi xảy ra, hãy thử lại.';
+  return formatMessage(locale, 'err.genericRetry');
 }
 
 interface Item {
@@ -50,11 +60,12 @@ interface Item {
 }
 
 function Coin({ n }: { n: number }) {
+  const { locale, t } = useI18n();
   return (
     <span className="coin coin--sm">
       <span className="coin__icon" aria-hidden="true" />
-      <span>{fmt(n)}</span>
-      <span className="sr-only"> xu</span>
+      <span>{formatNumber(n, locale)}</span>
+      <span className="sr-only"> {t('common.coin')}</span>
     </span>
   );
 }
@@ -77,14 +88,15 @@ function SearchIcon() {
 }
 
 function CollectionSkeleton() {
+  const { t } = useI18n();
   return (
     <div className="coll" aria-busy="true">
       <span className="sr-only" role="status">
-        Đang tải kho thẻ…
+        {t('coll.loading')}
       </span>
       <div className="coll__main">
         <div className="coll__head">
-          <h1 className="h1">Kho thẻ</h1>
+          <h1 className="h1">{t('coll.title')}</h1>
         </div>
         <div className="coll__filters">
           {[0, 1, 2, 3, 4].map((i) => (
@@ -116,6 +128,7 @@ const safeStorage = (): Storage | null => {
 
 /** Kho thẻ (docs/design/screens/collection*.html): lưới thẻ + bộ lọc trên URL, panel chi tiết, bán. */
 export function CollectionPage() {
+  const { locale, t } = useI18n();
   const [params, setParams] = useSearchParams();
   const restored = useRef(false);
   useEffect(() => {
@@ -211,8 +224,8 @@ export function CollectionPage() {
   if (list.isError || catalog.isError || economy.isError) {
     return (
       <div className="panel empty" role="alert">
-        <h1 className="empty__title">Không tải được kho thẻ</h1>
-        <p className="empty__body">Kiểm tra kết nối rồi thử lại.</p>
+        <h1 className="empty__title">{t('coll.loadErrorTitle')}</h1>
+        <p className="empty__body">{t('coll.loadErrorBody')}</p>
         <button
           type="button"
           className="btn btn--secondary"
@@ -222,7 +235,7 @@ export function CollectionPage() {
             void economy.refetch();
           }}
         >
-          Thử lại
+          {t('common.retry')}
         </button>
       </div>
     );
@@ -259,7 +272,12 @@ export function CollectionPage() {
     selling.current = false;
     setConfirming(null);
     if (!gained) return;
-    setNotice({ text: `Đã bán ${ids.length} thẻ, nhận ${fmt(gained.coinsGained)} xu.` });
+    setNotice({
+      text: t('coll.soldToast', {
+        count: ids.length,
+        coins: formatNumber(gained.coinsGained, locale),
+      }),
+    });
     setSelected((s) => new Set([...s].filter((id) => !ids.includes(id))));
     if (detailId && ids.includes(detailId)) setDetailId(null);
   }
@@ -270,33 +288,33 @@ export function CollectionPage() {
     setConfirming(batch);
   };
 
+  const inSquadReason = t('coll.inSquadReason');
+
   const emptyState = filtered ? (
     <div className="empty coll__empty">
-      <h2 className="empty__title">Không có thẻ khớp bộ lọc</h2>
-      <p className="empty__body">Thử bỏ bớt điều kiện lọc, hoặc mở thêm gói để có thẻ mới.</p>
+      <h2 className="empty__title">{t('coll.noMatchTitle')}</h2>
+      <p className="empty__body">{t('coll.noMatchBody')}</p>
       <div className="coll__empty-actions">
         <button
           type="button"
           className="btn btn--secondary"
           onClick={() => update({ position: undefined, rarity: undefined, q: '', squad: false })}
         >
-          Xoá lọc
+          {t('coll.clearFilters')}
         </button>
         <Link to="/shop" className="btn btn--ghost">
-          Tới cửa hàng
+          {t('coll.toShop')}
         </Link>
       </div>
     </div>
   ) : (
     <div className="empty coll__empty">
-      <h2 className="empty__title">Kho còn trống</h2>
+      <h2 className="empty__title">{t('coll.emptyTitle')}</h2>
       <p className="empty__body">
-        {me && me.freePack5Credits > 0
-          ? 'Mở gói 5 thẻ miễn phí để có thẻ đầu tiên, rồi xếp đội và ra sân.'
-          : 'Mở gói ở cửa hàng để có thẻ, rồi xếp đội và ra sân.'}
+        {me && me.freePack5Credits > 0 ? t('coll.emptyBodyFree') : t('coll.emptyBodyPaid')}
       </p>
       <Link to="/shop" className="btn btn--primary">
-        {me && me.freePack5Credits > 0 ? 'Mở gói miễn phí' : 'Tới cửa hàng'}
+        {me && me.freePack5Credits > 0 ? t('coll.openFreePack') : t('coll.toShop')}
       </Link>
     </div>
   );
@@ -305,23 +323,23 @@ export function CollectionPage() {
     <div className={`coll${detail ? ' has-detail' : ''}`}>
       <div className="coll__main">
         <div className="coll__head">
-          <h1 className="h1">Kho thẻ</h1>
+          <h1 className="h1">{t('coll.title')}</h1>
           <span className="display num muted coll__count">{list.data.length}</span>
           <span className="coll__spacer" />
           <label className="search coll__search">
-            <span className="sr-only">Tìm tên cầu thủ</span>
+            <span className="sr-only">{t('coll.searchSr')}</span>
             <SearchIcon />
             <input
               ref={searchRef}
               type="search"
               className="input"
-              placeholder="Tìm tên cầu thủ… (/)"
+              placeholder={t('coll.searchPlaceholder')}
               value={filter.q}
               onChange={(e) => update({ q: e.target.value })}
             />
           </label>
           <label className="muted coll__sort">
-            Sắp xếp
+            {t('coll.sortLabel')}
             <select
               className="input"
               value={filter.sort}
@@ -329,7 +347,7 @@ export function CollectionPage() {
             >
               {SORTS.map((s) => (
                 <option key={s.value} value={s.value}>
-                  {s.label}
+                  {t(s.key)}
                 </option>
               ))}
             </select>
@@ -338,11 +356,11 @@ export function CollectionPage() {
 
         <div className="coll__filters">
           <ChipGroup
-            label="Vị trí"
+            label={t('coll.filterPosition')}
             options={Position.options.map((p) => ({
               value: p,
               label: <>{p}</>,
-              title: POSITION_NAME[p],
+              title: positionName(p, locale),
             }))}
             value={filter.position}
             onChange={(position) => update({ position })}
@@ -350,20 +368,23 @@ export function CollectionPage() {
           {showMoreFilters || filter.rarity || filter.squad ? (
             <>
               <ChipGroup
-                label="Độ hiếm"
+                label={t('coll.filterRarity')}
                 all={false}
-                options={Rarity.options.map((r) => ({
-                  value: r,
-                  label: (
-                    <>
-                      <span className={`r-${r} coll__pips`} aria-hidden="true">
-                        {'◆'.repeat(RARITY_INFO[r].pips)}
-                      </span>
-                      {RARITY_INFO[r].label}
-                    </>
-                  ),
-                  title: RARITY_INFO[r].label,
-                }))}
+                options={Rarity.options.map((r) => {
+                  const rLabel = rarityLabel(r, locale);
+                  return {
+                    value: r,
+                    label: (
+                      <>
+                        <span className={`r-${r} coll__pips`} aria-hidden="true">
+                          {'◆'.repeat(rarityPips(r))}
+                        </span>
+                        {rLabel}
+                      </>
+                    ),
+                    title: rLabel,
+                  };
+                })}
                 value={filter.rarity}
                 onChange={(rarity) => update({ rarity })}
               />
@@ -376,7 +397,7 @@ export function CollectionPage() {
                 <span className="coll__dot" aria-hidden="true">
                   ●
                 </span>
-                Trong đội hình
+                {t('coll.filterInSquad')}
               </button>
               {!filter.rarity && !filter.squad && (
                 <button
@@ -385,7 +406,7 @@ export function CollectionPage() {
                   aria-expanded="true"
                   onClick={() => setShowMoreFilters(false)}
                 >
-                  Ẩn bớt
+                  {t('coll.hideFilters')}
                 </button>
               )}
             </>
@@ -396,7 +417,7 @@ export function CollectionPage() {
               aria-expanded="false"
               onClick={() => setShowMoreFilters(true)}
             >
-              + Độ hiếm, đội hình
+              {t('coll.moreFilters')}
             </button>
           )}
           <button
@@ -410,7 +431,7 @@ export function CollectionPage() {
               setSelecting(true);
             }}
           >
-            {selecting ? 'Xong' : 'Chọn để bán'}
+            {selecting ? t('common.done') : t('coll.selectToSell')}
           </button>
         </div>
 
@@ -424,7 +445,7 @@ export function CollectionPage() {
         )}
         {seller.error && !confirming && (
           <p className="banner banner--danger" role="alert">
-            {sellErrorMessage(seller.error)}
+            {sellErrorMessage(seller.error, locale)}
           </p>
         )}
 
@@ -442,7 +463,7 @@ export function CollectionPage() {
                     className="coll-item"
                     aria-pressed={isSel}
                     disabled={locked}
-                    title={locked ? IN_SQUAD_REASON : undefined}
+                    title={locked ? inSquadReason : undefined}
                     onClick={() => (selecting ? toggle(pc.id) : setDetailId(pc.id))}
                   >
                     <CardView
@@ -466,14 +487,14 @@ export function CollectionPage() {
             <span className="coll__dot" aria-hidden="true">
               ●
             </span>{' '}
-            đang trong đội hình
+            {t('coll.legendInSquad')}
           </span>
-          <span>+N cấp ép</span>
-          {selecting && <span>Bấm thẻ để chọn bán · thẻ trong đội hình không bán được</span>}
+          <span>{t('coll.legendLevel')}</span>
+          {selecting && <span>{t('coll.legendSelect')}</span>}
         </div>
       </div>
 
-      <aside className="panel coll__detail" aria-label="Chi tiết thẻ">
+      <aside className="panel coll__detail" aria-label={t('coll.detailAria')}>
         {detail ? (
           <CardDetail
             item={detail}
@@ -484,14 +505,15 @@ export function CollectionPage() {
             onClose={() => setDetailId(null)}
           />
         ) : (
-          <p className="muted coll__hint">Chọn một thẻ để xem chỉ số, ép hoặc bán.</p>
+          <p className="muted coll__hint">{t('coll.detailHint')}</p>
         )}
       </aside>
 
       {selecting && chosen.length > 0 && (
-        <div className="coll__bar" role="region" aria-label="Bán thẻ đã chọn">
+        <div className="coll__bar" role="region" aria-label={t('coll.sellBarAria')}>
           <span>
-            Đã chọn <b className="num">{chosen.length}</b> thẻ · nhận{' '}
+            {t('coll.selectedCountBefore')} <b className="num">{chosen.length}</b>{' '}
+            {t('coll.selectedCountMid')}{' '}
             <Coin
               n={saleTotal(
                 chosen.map((c) => c.pc),
@@ -501,7 +523,7 @@ export function CollectionPage() {
             />
           </span>
           <button type="button" className="btn btn--ghost" onClick={() => setSelected(new Set())}>
-            Bỏ chọn
+            {t('coll.deselectAll')}
           </button>
           <button
             type="button"
@@ -509,10 +531,10 @@ export function CollectionPage() {
             disabled={seller.isPending || chosen.length > SELL_MAX}
             onClick={() => ask(chosen)}
           >
-            Bán {chosen.length} thẻ
+            {t('coll.sellSelectedBtn', { count: chosen.length })}
           </button>
           {chosen.length > SELL_MAX && (
-            <span className="field__error">Tối đa {SELL_MAX} thẻ mỗi lần</span>
+            <span className="field__error">{t('coll.sellMaxWarn', { max: SELL_MAX })}</span>
           )}
         </div>
       )}
@@ -548,14 +570,17 @@ interface CardDetailProps {
 }
 
 function CardDetail({ item, maxLevel, price, selling, onSell, onClose }: CardDetailProps) {
+  const { locale, t } = useI18n();
   const { pc, card } = item;
   const stats = pc.effectiveStats;
+  const posTitle = positionName(card.position, locale);
+  const rLabel = rarityLabel(card.rarity, locale);
   return (
     <>
       <button
         type="button"
         className="btn btn--ghost btn--sm coll__close"
-        aria-label="Đóng chi tiết"
+        aria-label={t('coll.closeDetailAria')}
         onClick={onClose}
       >
         ✕
@@ -563,27 +588,27 @@ function CardDetail({ item, maxLevel, price, selling, onSell, onClose }: CardDet
       <div className="coll__who">
         <CardView card={card} size="lg" level={pc.level} stats={stats} tilt />
         <div className="coll__who-info">
-          <span className="label">{POSITION_NAME[card.position]}</span>
+          <span className="label">{posTitle}</span>
           <h2 className="h2 coll__name">{card.name}</h2>
           <span className="muted coll__nick">“{card.nickname}”</span>
           <div className="coll__badges">
             <span className={`rarity r-${card.rarity}`}>
               <span className="rarity__pips" aria-hidden="true">
-                {'◆'.repeat(RARITY_INFO[card.rarity].pips)}
+                {'◆'.repeat(rarityPips(card.rarity))}
               </span>
-              {RARITY_INFO[card.rarity].label}
+              {rLabel}
             </span>
-            <span className={`pos pos--${card.position}`} title={POSITION_NAME[card.position]}>
+            <span className={`pos pos--${card.position}`} title={posTitle}>
               {card.position}
             </span>
           </div>
-          {pc.inSquad && <span className="tag tag--info">● Trong đội hình</span>}
+          {pc.inSquad && <span className="tag tag--info">{t('coll.inSquadTag')}</span>}
         </div>
       </div>
 
       <table className="table coll__stats">
         <tbody>
-          {statsFor(card.position).map((s) => (
+          {localizedStatsFor(card.position, locale).map((s) => (
             <tr key={s.key}>
               <td>
                 <b className="display">{s.abbr}</b>
@@ -605,11 +630,11 @@ function CardDetail({ item, maxLevel, price, selling, onSell, onClose }: CardDet
       </table>
 
       <div className="coll__level">
-        <span className="label">Cấp ép</span>
+        <span className="label">{t('coll.levelLabel')}</span>
         <div
           className="bar bar--segmented"
           role="img"
-          aria-label={`Cấp ép ${pc.level}/${maxLevel}`}
+          aria-label={t('coll.levelAria', { level: pc.level, max: maxLevel })}
         >
           {Array.from({ length: maxLevel }, (_, i) => (
             <i key={i} className={i < pc.level ? 'on' : undefined} />
@@ -622,11 +647,11 @@ function CardDetail({ item, maxLevel, price, selling, onSell, onClose }: CardDet
         <div className="coll__actions-row">
           {pc.level >= maxLevel ? (
             <button type="button" className="btn btn--primary" disabled>
-              Đã +{maxLevel}
+              {t('coll.maxedBtn', { max: maxLevel })}
             </button>
           ) : (
             <Link to={`/upgrade?card=${pc.id}`} className="btn btn--primary">
-              Ép thẻ
+              {t('coll.upgradeBtn')}
             </Link>
           )}
           <button
@@ -635,10 +660,10 @@ function CardDetail({ item, maxLevel, price, selling, onSell, onClose }: CardDet
             disabled={pc.inSquad || selling}
             onClick={onSell}
           >
-            Bán · {fmt(price)} xu
+            {t('coll.sellBtn', { price: formatNumber(price, locale) })}
           </button>
         </div>
-        {pc.inSquad && <span className="muted coll__reason">{IN_SQUAD_REASON}</span>}
+        {pc.inSquad && <span className="muted coll__reason">{t('coll.inSquadReason')}</span>}
       </div>
     </>
   );
@@ -660,6 +685,7 @@ function ChipGroup<T extends string>({
   onChange,
   all = true,
 }: ChipGroupProps<T>) {
+  const { t } = useI18n();
   return (
     <div className="chips" role="group" aria-label={label}>
       <span className="label">{label}</span>
@@ -670,7 +696,7 @@ function ChipGroup<T extends string>({
           aria-pressed={value === undefined}
           onClick={() => onChange(undefined)}
         >
-          Tất cả
+          {t('coll.filterAll')}
         </button>
       )}
       {options.map((o) => (
@@ -700,6 +726,7 @@ interface SellDialogProps {
 }
 
 function SellDialog({ batch, total, valuable, pending, onConfirm, onCancel }: SellDialogProps) {
+  const { locale, t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -719,31 +746,33 @@ function SellDialog({ batch, total, valuable, pending, onConfirm, onCancel }: Se
       }}
     >
       <h2 id="sell-title" className="dialog__title">
-        {one ? `Bán ${one.card.name}?` : `Bán ${batch.length} thẻ?`}
+        {one
+          ? t('coll.sellOneTitle', { name: one.card.name })
+          : t('coll.sellManyTitle', { count: batch.length })}
       </h2>
       {one ? (
         <div className="sell-dialog__one">
           <CardView card={one.card} size="xs" level={one.pc.level} stats={one.pc.effectiveStats} />
           <p className="dialog__body">
-            Thẻ{' '}
+            {t('coll.sellOneBefore')}{' '}
             <b>
-              {RARITY_INFO[one.card.rarity].label} · {one.card.position} {one.card.ovr}
-              {one.pc.level > 0 && ` · cấp +${one.pc.level}`}
+              {rarityLabel(one.card.rarity, locale)} · {one.card.position} {one.card.ovr}
+              {one.pc.level > 0 && t('coll.sellOneLevel', { level: one.pc.level })}
             </b>{' '}
-            sẽ bị xoá khỏi kho. Bạn nhận <Coin n={total} />.
-            {one.pc.level > 0 && ' Giá bán không tính cấp ép.'} <b>Không hoàn tác được.</b>
+            {t('coll.sellOneMid')} <Coin n={total} />.
+            {one.pc.level > 0 && t('coll.sellOneLevelNote')} <b>{t('coll.sellIrreversible')}</b>
           </p>
         </div>
       ) : (
         <div className="dialog__body">
           <p>
-            Bạn nhận <Coin n={total} />. <b>Thẻ đã bán không lấy lại được.</b>
+            {t('coll.sellManyBefore')} <Coin n={total} />. <b>{t('coll.sellManyIrreversible')}</b>
           </p>
           {(rare.length > 0 || leveled.length > 0) && (
             <ul className="sell-dialog__warn">
-              {rare.length > 0 && <li>Có {rare.length} thẻ Vàng/Huyền thoại.</li>}
+              {rare.length > 0 && <li>{t('coll.sellWarnRare', { count: rare.length })}</li>}
               {leveled.length > 0 && (
-                <li>Có {leveled.length} thẻ đã ép +; cấp + không tăng giá bán.</li>
+                <li>{t('coll.sellWarnLeveled', { count: leveled.length })}</li>
               )}
             </ul>
           )}
@@ -757,12 +786,12 @@ function SellDialog({ batch, total, valuable, pending, onConfirm, onCancel }: Se
           disabled={pending}
           onClick={onCancel}
         >
-          Huỷ
+          {t('common.cancel')}
         </button>
         {valuable ? (
           <HoldButton onHold={onConfirm} disabled={pending}>
             {pending && <span className="spinner" aria-hidden="true" />}
-            Giữ 1 giây để bán
+            {t('coll.holdToSell')}
           </HoldButton>
         ) : (
           <button
@@ -772,7 +801,7 @@ function SellDialog({ batch, total, valuable, pending, onConfirm, onCancel }: Se
             aria-busy={pending}
             onClick={onConfirm}
           >
-            <span className="btn__label">Bán</span>
+            <span className="btn__label">{t('coll.sellConfirm')}</span>
           </button>
         )}
       </div>

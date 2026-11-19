@@ -10,8 +10,10 @@ import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
 import { useEconomy, usePlayerCards, useUpgradeCard } from '../../api/player-cards';
 import { CardView } from '../../components/card/CardView';
-import { RARITY_INFO } from '../../components/card/rarity';
+import { rarityLabel as getRarityLabel } from '../../components/card/rarity';
 import { HoldButton } from '../../components/HoldButton';
+import { formatNumber } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import { prefersReducedMotion } from '../shop/reveal';
 import {
   materialCandidates,
@@ -26,13 +28,15 @@ import {
 import { UpgradeStats } from './UpgradeStats';
 import './upgrade.css';
 
-import { fmt } from '../../components/format';
-const Coin = () => (
-  <>
-    <span className="coin__icon" aria-hidden />
-    <span className="sr-only"> xu</span>
-  </>
-);
+function Coin() {
+  const { t } = useI18n();
+  return (
+    <>
+      <span className="coin__icon" aria-hidden />
+      <span className="sr-only"> {t('common.coin')}</span>
+    </>
+  );
+}
 
 const svg = {
   width: 16,
@@ -76,6 +80,7 @@ interface Outcome {
  * tỉ lệ (cơ bản + may mắn), phí, chỉ số sau ép. Thẻ chọn lưu trên URL `?card=&mat=`; kết quả do server quay.
  */
 export function UpgradePage() {
+  const { locale, t } = useI18n();
   const [params, setParams] = useSearchParams();
   const list = usePlayerCards({ sort: '-ovr' });
   const catalog = useCardCatalog();
@@ -98,7 +103,7 @@ export function UpgradePage() {
   if (list.isPending || catalog.isPending || economy.isPending) {
     return (
       <div className="upg upg--loading" aria-busy="true">
-        <p className="sr-only">Đang tải…</p>
+        <p className="sr-only">{t('common.loading')}</p>
         <div className="skel upg-skel__head" />
         <div className="upg__layout">
           <div className="skel upg-skel__panel" />
@@ -111,7 +116,7 @@ export function UpgradePage() {
   if (list.isError || catalog.isError || economy.isError) {
     return (
       <div className="screen-msg" role="alert">
-        <p>Không tải được dữ liệu ép thẻ.</p>
+        <p>{t('upg.loadError')}</p>
         <button
           type="button"
           className="btn btn--secondary"
@@ -121,7 +126,7 @@ export function UpgradePage() {
             void economy.refetch();
           }}
         >
-          Thử lại
+          {t('common.retry')}
         </button>
       </div>
     );
@@ -181,10 +186,10 @@ export function UpgradePage() {
     !!me.data;
   const hold =
     target && material ? needsHoldConfirm(target.card, material.card, material.pc) : false;
-  const rarityLabel = target ? RARITY_INFO[target.card.rarity].label : '';
+  const rarityLabel = target ? getRarityLabel(target.card.rarity, locale) : '';
 
   const materialPicks: PickItem[] = target
-    ? materialGrid(target, materials, items, rarityLabel)
+    ? materialGrid(target, materials, items, rarityLabel, locale)
     : [];
   const openMaterials = materialPicks.filter((it) => it.tone !== 'lock');
   const lockedMaterials = materialPicks.filter((it) => it.tone === 'lock');
@@ -192,9 +197,9 @@ export function UpgradePage() {
 
   const targetGrid: PickItem[] = items.map((it) =>
     it.pc.level >= cfg.maxLevel
-      ? { ...it, tone: 'plain', note: 'Đã tối đa' }
+      ? { ...it, tone: 'plain', note: t('upg.noteMaxed') }
       : it.pc.luck > 0
-        ? { ...it, tone: 'warn', note: `May mắn ${it.pc.luck}%` }
+        ? { ...it, tone: 'warn', note: t('upg.noteLuck', { luck: it.pc.luck }) }
         : { ...it, tone: 'plain', note: `+${it.pc.level} → +${it.pc.level + 1}` },
   );
   const upgradableTargets = targetGrid.filter((it) => it.pc.level < cfg.maxLevel);
@@ -211,20 +216,18 @@ export function UpgradePage() {
       <header className="upg__head">
         <Link to="/collection" className="btn btn--ghost btn--sm">
           <BackIcon />
-          Kho thẻ
+          {t('nav.collection')}
         </Link>
-        <h1 className="h1">Ép thẻ</h1>
-        <span className="muted upg__sub">
-          +1 → +{cfg.maxLevel} · mỗi lần tiêu 1 thẻ nguyên liệu cùng độ hiếm trở lên
-        </span>
+        <h1 className="h1">{t('upg.title')}</h1>
+        <span className="muted upg__sub">{t('upg.sub', { maxLevel: cfg.maxLevel })}</span>
       </header>
 
       <div className="upg__layout">
         <section
           className={`panel upg__target${forging ? ' is-forging' : ''}`}
-          aria-label="Thẻ cần ép"
+          aria-label={t('upg.targetLabel')}
         >
-          <span className="label">Thẻ cần ép</span>
+          <span className="label">{t('upg.targetLabel')}</span>
           {target ? (
             <>
               <CardView
@@ -237,7 +240,7 @@ export function UpgradePage() {
                 <>
                   <div
                     className="upg__levels"
-                    aria-label={`Từ +${target.pc.level} lên +${preview.toLevel}`}
+                    aria-label={t('upg.levelsAria', { from: target.pc.level, to: preview.toLevel })}
                   >
                     <span className="display num upg__from">+{target.pc.level}</span>
                     <span className="muted" aria-hidden="true">
@@ -246,11 +249,11 @@ export function UpgradePage() {
                     <span className="display num upg__to">+{preview.toLevel}</span>
                   </div>
                   <span className="muted upg__small">
-                    +{preview.toLevel} = cộng tổng +{preview.bonusAfter} vào mọi chỉ số (tối đa 99)
+                    {t('upg.bonusNote', { level: preview.toLevel, bonus: preview.bonusAfter })}
                   </span>
                 </>
               ) : (
-                <span className="tag tag--accent">Đã tối đa +{cfg.maxLevel}</span>
+                <span className="tag tag--accent">{t('upg.maxedTag', { maxLevel: cfg.maxLevel })}</span>
               )}
               {!picking && (
                 <button
@@ -258,22 +261,22 @@ export function UpgradePage() {
                   className="btn btn--secondary btn--sm"
                   onClick={() => setPicking(true)}
                 >
-                  Đổi thẻ
+                  {t('upg.changeCard')}
                 </button>
               )}
             </>
           ) : (
-            <div className="upg__empty">Chọn thẻ cần ép ở danh sách bên cạnh</div>
+            <div className="upg__empty">{t('upg.emptyTarget')}</div>
           )}
         </section>
 
         <section className="panel upg__pick" aria-labelledby="upg-pick-title">
           <h2 className="panel__title" id="upg-pick-title">
-            {choosingTarget ? 'Chọn thẻ cần ép' : 'Chọn nguyên liệu'}
+            {choosingTarget ? t('upg.pickTargetTitle') : t('upg.pickMaterialTitle')}
             <span className="meta">
               {choosingTarget
-                ? `${items.length} thẻ trong kho`
-                : `${rarityLabel} trở lên · không trong đội hình`}
+                ? t('upg.poolCount', { count: items.length })
+                : t('upg.materialReq', { rarity: rarityLabel })}
             </span>
           </h2>
           {choosingTarget ? (
@@ -281,13 +284,13 @@ export function UpgradePage() {
               <PickGrid
                 items={shownTargets}
                 activeId={target?.pc.id}
-                label="Thẻ trong kho"
+                label={t('upg.targetGridAria')}
                 empty={
                   <div className="empty">
-                    <h3 className="empty__title">Kho còn trống</h3>
-                    <p className="empty__body">Mở gói ở Cửa hàng để có thẻ đầu tiên.</p>
+                    <h3 className="empty__title">{t('upg.emptyPoolTitle')}</h3>
+                    <p className="empty__body">{t('upg.emptyPoolBody')}</p>
                     <Link className="btn btn--primary" to="/shop">
-                      Tới cửa hàng
+                      {t('coll.toShop')}
                     </Link>
                   </div>
                 }
@@ -304,26 +307,26 @@ export function UpgradePage() {
                   aria-expanded={showMaxed}
                   onClick={() => setShowMaxed((v) => !v)}
                 >
-                  {showMaxed ? 'Ẩn thẻ đã tối đa' : `Thêm · ${maxedCount} thẻ đã tối đa`}
+                  {showMaxed
+                    ? t('upg.hideMaxed')
+                    : t('upg.showMaxed', { count: maxedCount })}
                 </button>
               )}
             </>
           ) : !preview ? (
-            <p className="muted">Thẻ đã đạt +{cfg.maxLevel} — không ép thêm được.</p>
+            <p className="muted">{t('upg.maxedCardNote', { maxLevel: cfg.maxLevel })}</p>
           ) : (
             <>
               <PickGrid
                 items={shownMaterials}
                 activeId={material?.pc.id}
-                label="Nguyên liệu"
+                label={t('upg.materialGridAria')}
                 empty={
                   <div className="empty">
-                    <h3 className="empty__title">Chưa có nguyên liệu</h3>
-                    <p className="empty__body">
-                      Cần 1 thẻ {rarityLabel} trở lên không nằm trong đội hình.
-                    </p>
+                    <h3 className="empty__title">{t('upg.emptyMatTitle')}</h3>
+                    <p className="empty__body">{t('upg.emptyMatBody', { rarity: rarityLabel })}</p>
                     <Link className="btn btn--secondary" to="/shop">
-                      Tới cửa hàng
+                      {t('coll.toShop')}
                     </Link>
                   </div>
                 }
@@ -337,20 +340,18 @@ export function UpgradePage() {
                   onClick={() => setShowLocked((v) => !v)}
                 >
                   {showLocked
-                    ? 'Ẩn thẻ không đủ điều kiện'
-                    : `Thêm · ${lockedMaterials.length} thẻ bị khoá`}
+                    ? t('upg.hideLocked')
+                    : t('upg.showLocked', { count: lockedMaterials.length })}
                 </button>
               )}
             </>
           )}
         </section>
 
-        <section className="panel upg__sum" aria-label="Tỉ lệ và phí">
+        <section className="panel upg__sum" aria-label={t('upg.sumAria')}>
           {!target || !preview ? (
             <p className="muted">
-              {target
-                ? `Thẻ đã đạt cấp tối đa +${cfg.maxLevel}.`
-                : 'Chọn thẻ cần ép để xem tỉ lệ, phí và chỉ số sau khi ép.'}
+              {target ? t('upg.sumMaxed', { maxLevel: cfg.maxLevel }) : t('upg.sumIdle')}
             </p>
           ) : (
             <Summary
@@ -363,7 +364,7 @@ export function UpgradePage() {
               canRun={canRun}
               pending={upgrader.isPending || forging}
               short={short}
-              error={upgrader.error ? upgradeErrorMessage(upgrader.error) : null}
+              error={upgrader.error ? upgradeErrorMessage(upgrader.error, locale) : null}
               onRun={() => void run()}
             />
           )}
@@ -402,20 +403,21 @@ function Summary({
   error,
   onRun,
 }: SummaryProps) {
+  const { locale, t } = useI18n();
   const base = Math.min(preview.baseRate, preview.rate);
   const luck = preview.rate - base;
   const fails = cfg.luckPerFail > 0 ? Math.round(preview.luck / cfg.luckPerFail) : 0;
-  const warnings = material ? materialWarnings(card, material.card, material.pc) : [];
+  const warnings = material ? materialWarnings(card, material.card, material.pc, locale) : [];
   const label = (
     <>
       {pending && <span className="spinner" aria-hidden="true" />}
-      {hold ? 'Giữ để ép' : 'Ép thẻ'} · {fmt(preview.fee)} <Coin />
+      {hold ? t('upg.holdBtn') : t('upg.runBtn')} · {formatNumber(preview.fee, locale)} <Coin />
     </>
   );
   return (
     <>
       <div className="upg__rate-row">
-        <span className="label">Tỉ lệ thành công</span>
+        <span className="label">{t('upg.rateLabel')}</span>
         <span className="display num upg__rate">
           {preview.rate}
           <span className="upg__pct">%</span>
@@ -424,28 +426,28 @@ function Summary({
       <UpgradeBar base={base} luck={luck} />
       <div className="muted upg__legend">
         <span>
-          <i className="upg__key upg__key--base" aria-hidden="true" /> Cơ bản +{preview.toLevel}:{' '}
-          {preview.baseRate}%
+          <i className="upg__key upg__key--base" aria-hidden="true" />{' '}
+          {t('upg.baseLabel', { level: preview.toLevel, rate: preview.baseRate })}
         </span>
         {preview.luck > 0 && (
           <span>
-            <i className="upg__key upg__key--luck" aria-hidden="true" /> May mắn tích luỹ: +
-            {preview.luck}% ({fails} lần trượt)
+            <i className="upg__key upg__key--luck" aria-hidden="true" />{' '}
+            {t('upg.luckLabel', { luck: preview.luck, fails })}
           </span>
         )}
       </div>
       <div className="upg__fee">
         <span>
-          Phí ép{' '}
+          {t('upg.feeLabel')}{' '}
           <span className="muted">
-            ({fmt(preview.fee / cfg.rarityFeeMultiplier[card.rarity])} ×{' '}
-            {RARITY_INFO[card.rarity].label} ×{cfg.rarityFeeMultiplier[card.rarity]})
+            ({formatNumber(preview.fee / cfg.rarityFeeMultiplier[card.rarity], locale)} ×{' '}
+            {getRarityLabel(card.rarity, locale)} ×{cfg.rarityFeeMultiplier[card.rarity]})
           </span>
         </span>
         <span className={`coin${short > 0 ? ' coin--short' : ''}`}>
           <span className="coin__icon" aria-hidden />
-          <span className="num">{fmt(preview.fee)}</span>
-          <span className="sr-only"> xu</span>
+          <span className="num">{formatNumber(preview.fee, locale)}</span>
+          <span className="sr-only"> {t('common.coin')}</span>
         </span>
       </div>
       <UpgradeStats card={card} preview={preview} />
@@ -457,22 +459,27 @@ function Summary({
       )}
       {!material ? (
         <p className="muted upg__note">
-          <WarnIcon /> Chọn 1 thẻ nguyên liệu để ép. Nguyên liệu sẽ mất dù thành công hay thất bại.
+          <WarnIcon /> {t('upg.selectMatNote')}
         </p>
       ) : hold ? (
         <div className="banner" role="note">
           <WarnIcon />
           <span>
-            <b>Nguyên liệu quý:</b> {warnings.slice(1).join(' ') || warnings[0]} Giữ nút 1 giây để
-            xác nhận.
+            <b>{t('upg.valuableMatTitle')}</b> {warnings.slice(1).join(' ') || warnings[0]}{' '}
+            {t('upg.valuableMatHint')}
           </span>
         </div>
       ) : (
         <p className="muted upg__note">
-          <WarnIcon /> {warnings[0]} Thất bại: giữ cấp +{level}, may mắn +{cfg.luckPerFail}%.
+          <WarnIcon /> {warnings[0]}{' '}
+          {t('upg.failKeepNote', { level, luckPerFail: cfg.luckPerFail })}
         </p>
       )}
-      {short > 0 && <p className="upg__short">Thiếu {fmt(short)} xu để ép.</p>}
+      {short > 0 && (
+        <p className="upg__short">
+          {t('upg.shortCoins', { short: formatNumber(short, locale) })}
+        </p>
+      )}
       {hold ? (
         <HoldButton
           className="btn btn--primary btn--lg btn--hold"
@@ -573,6 +580,7 @@ function ResultDialog({
   cfg: UpgradeConfig;
   onClose: () => void;
 }) {
+  const { locale, t } = useI18n();
   const ref = useRef<HTMLDialogElement>(null);
   useEffect(() => {
     const d = ref.current;
@@ -590,7 +598,7 @@ function ResultDialog({
       aria-labelledby="upg-result-title"
       onClose={onClose}
     >
-      <span className="label">{win ? 'Thành công' : 'Thất bại'}</span>
+      <span className="label">{win ? t('upg.resultWinLabel') : t('upg.resultLoseLabel')}</span>
       <div className="upg-result__stage">
         {win && <span className="upg-result__ring" aria-hidden="true" />}
         <div className="upg-result__card">
@@ -603,45 +611,51 @@ function ResultDialog({
         </div>
       </div>
       <h2 id="upg-result-title" className="display upg-result__title" role="status">
-        {win ? `+${res.level} thành công` : 'Thất bại'}
+        {win ? t('upg.resultWinTitle', { level: res.level }) : t('upg.resultLoseLabel')}
       </h2>
       {win ? (
         <p className="muted upg-result__text">
-          {card.name} lên +{res.level} (từ +{fromLevel}) · may mắn về 0%
+          {t('upg.resultWinDesc', { name: card.name, level: res.level, from: fromLevel })}
         </p>
       ) : (
         <div className="upg-result__luck">
           <div className="upg-result__luck-row">
             <span>
-              Giữ cấp <b>+{res.level}</b> · nguyên liệu đã mất
+              {t('upg.resultLoseKeep')} <b>+{res.level}</b> {t('upg.resultLoseLost')}
             </span>
             {next && (
               <span>
-                Lần sau: <b className="num upg-result__next">{next.rate}%</b>
+                {t('upg.resultLoseNext')} <b className="num upg-result__next">{next.rate}%</b>
               </span>
             )}
           </div>
           {next && <UpgradeBar base={nextBase} luck={next.rate - nextBase} />}
           <span className="muted upg__small">
-            May mắn +{cfg.luckPerFail}% → tích luỹ {res.luck}% (gắn với thẻ này)
+            {t('upg.resultLoseLuck', { perFail: cfg.luckPerFail, total: res.luck })}
           </span>
         </div>
       )}
       <p className="muted upg__small">
-        Tỉ lệ đã áp {res.rate}% · phí {fmt(res.fee)} xu · còn {fmt(res.balance)} xu
+        {t('upg.resultSummary', {
+          rate: res.rate,
+          fee: formatNumber(res.fee, locale),
+          balance: formatNumber(res.balance, locale),
+        })}
       </p>
       <div className="upg-result__actions">
         {next ? (
           <button type="button" className="btn btn--primary" autoFocus onClick={onClose}>
-            {win ? `Ép tiếp lên +${next.toLevel} (${next.rate}%)` : 'Thử lại với nguyên liệu khác'}
+            {win
+              ? t('upg.resultContinue', { level: next.toLevel, rate: next.rate })
+              : t('upg.resultRetry')}
           </button>
         ) : (
           <button type="button" className="btn btn--primary" autoFocus onClick={onClose}>
-            Xong
+            {t('common.done')}
           </button>
         )}
         <Link className="btn btn--secondary" to="/collection">
-          Về kho
+          {t('shop.toCollection')}
         </Link>
       </div>
     </dialog>

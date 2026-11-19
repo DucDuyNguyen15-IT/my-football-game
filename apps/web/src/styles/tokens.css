@@ -4,6 +4,8 @@
  * Giữ nguyên toàn bộ tên biến của v2 để tương thích; các biến mới cho v3 có chú thích riêng.
  */
 :root {
+  color-scheme: light;
+
   /* Nền & bề mặt — Giấy ngà ấm & kem ấn phẩm */
   --c-bg: #f3efe6;
   --c-surface-1: #faf8f3;
@@ -140,4 +142,94 @@
   --c-hud-bg: rgb(14 26 21 / 0.9);
   --c-hud-surface: #15261f;
   --c-hud-line: rgb(250 248 243 / 0.2);
+
+  /* Token phụ trợ để giữ tương phản đồng nhất giữa chế độ Sáng và Tối */
+  --c-coin-hover: #6b4100;
+  --c-btn-coin: var(--r-gold-hi);
+  --c-pitch-border: var(--c-text);
+}
+
+/* ---------- Chế độ Tối: "Sa Bàn Hoàng Kim" ban đêm (mặc định theo hệ thống, ghi đè qua data-theme) ---------- */
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --c-bg: #0c1310;
+    --c-surface-1: #131d19;
+    --c-surface-2: #1a2822;
+    --c-surface-3: #23342d;
+    --c-line: #2b3f36;
+    --c-line-strong: #415c50;
+    --c-line-control: #688578;
+
+    --c-text: #f2ede2;
+    --c-text-muted: #b8c2bb;
+    --c-text-faint: #92a097;
+
+    --c-accent: #2ec486;
+    --c-accent-hover: #44d498;
+    --c-accent-ink: #071c14;
+    --c-accent-soft: rgb(46 196 134 / 0.16);
+    --c-danger: #ff7b7b;
+    --c-warning: #f4a24b;
+    --c-success: #2ec486;
+    --c-info: #6ab7ff;
+    --c-coin: #f5b942;
+    --c-focus: #6ab7ff;
+    --c-scrim: rgb(4 8 6 / 0.84);
+
+    --shadow-1: 0 2px 10px rgb(0 0 0 / 0.34);
+    --shadow-2: 0 12px 30px rgb(0 0 0 / 0.55);
+
+    --c-gold-leaf: #d49b1a;
+    --r-bronze-ink: #f0b289;
+    --r-silver-ink: #d4dde8;
+    --r-gold-ink: #ffe58f;
+    --r-legend-ink: #d8beff;
+
+    --c-coin-hover: #ffca5c;
+    --c-btn-coin: var(--c-accent-ink);
+    --c-pitch-border: var(--c-line-strong);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --c-bg: #0c1310;
+  --c-surface-1: #131d19;
+  --c-surface-2: #1a2822;
+  --c-surface-3: #23342d;
+  --c-line: #2b3f36;
+  --c-line-strong: #415c50;
+  --c-line-control: #688578;
+
+  --c-text: #f2ede2;
+  --c-text-muted: #b8c2bb;
+  --c-text-faint: #92a097;
+
+  --c-accent: #2ec486;
+  --c-accent-hover: #44d498;
+  --c-accent-ink: #071c14;
+  --c-accent-soft: rgb(46 196 134 / 0.16);
+  --c-danger: #ff7b7b;
+  --c-warning: #f4a24b;
+  --c-success: #2ec486;
+  --c-info: #6ab7ff;
+  --c-coin: #f5b942;
+  --c-focus: #6ab7ff;
+  --c-scrim: rgb(4 8 6 / 0.84);
+
+  --shadow-1: 0 2px 10px rgb(0 0 0 / 0.34);
+  --shadow-2: 0 12px 30px rgb(0 0 0 / 0.55);
+
+  --c-gold-leaf: #d49b1a;
+  --r-bronze-ink: #f0b289;
+  --r-silver-ink: #d4dde8;
+  --r-gold-ink: #ffe58f;
+  --r-legend-ink: #d8beff;
+
+  --c-coin-hover: #ffca5c;
+  --c-btn-coin: var(--c-accent-ink);
+  --c-pitch-border: var(--c-line-strong);
 }

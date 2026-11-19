@@ -8,6 +8,9 @@ import { HALF_TIME_MAX_TICKS, TICK_RATE } from '@pitch/sim';
 import type { Difficulty, MissionProgress, Position, SquadSlot } from '@pitch/shared';
 import type { GraphicsSettings } from '../../game/bridge';
 import { Avatar } from '../../components/card/Avatar';
+import { positionName } from '../../components/card/rarity';
+import { formatNumber, type TranslationKey } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import { DailyMissionsPanel } from '../missions/DailyMissionsPanel';
 import {
   GRAPHICS_TOGGLES,
@@ -16,61 +19,65 @@ import {
   toggleGraphics,
 } from '../../game/render/quality';
 import {
-  CARD_LABEL,
-  TEAM_LABEL,
   canSwap,
+  cardLabel,
   matchOutcome,
   shootoutOutcome,
   shootoutScore,
   staminaLevel,
+  teamLabel,
   type HudSnapshot,
   type SubCardMeta,
   type SubOptions,
 } from './hud';
 
-import { fmt } from '../../components/format';
-const POSITION_NAME = { GK: 'Thủ môn', DF: 'Hậu vệ', MF: 'Tiền vệ', FW: 'Tiền đạo' } as const;
+type KeySpec = { raw: string } | { k: TranslationKey };
+type ControlRow = readonly [KeySpec, TranslationKey, TranslationKey | null];
 
-const CONTROLS_BASIC: ReadonlyArray<readonly [string, string, string]> = [
-  ['Mũi tên', 'Di chuyển', 'Di chuyển'],
-  ['E (giữ)', 'Chạy nước rút', 'Chạy nước rút'],
-  ['S', 'Chuyền sệt', 'Đổi cầu thủ'],
-  ['A', 'Chuyền bổng', 'Xoạc'],
-  ['D (giữ)', 'Sút (giữ để tăng lực)', 'Áp sát / tắc bóng'],
+const CONTROLS_BASIC: readonly ControlRow[] = [
+  [{ k: 'ctrl.arrows' }, 'ctrl.move', 'ctrl.move'],
+  [{ k: 'ctrl.sprintKey' }, 'ctrl.sprint', 'ctrl.sprint'],
+  [{ raw: 'S' }, 'ctrl.passGround', 'ctrl.switchPlayer'],
+  [{ raw: 'A' }, 'ctrl.passLob', 'ctrl.slideTackle'],
+  [{ k: 'ctrl.shootKey' }, 'ctrl.shootHold', 'ctrl.pressTackle'],
 ];
 
-const CONTROLS_ADVANCED: ReadonlyArray<readonly [string, string, string]> = [
-  ['W', 'Chọc khe', '—'],
-  ['Q + W', 'Chọc khe bổng', '—'],
-  ['Z + D', 'Sút xoáy vào góc xa', '—'],
-  ['Shift + mũi tên', 'Đá phạt/phạt góc: chỉnh điểm chạm bóng', '—'],
-  ['Esc', 'Tạm dừng', 'Tạm dừng'],
+const CONTROLS_ADVANCED: readonly ControlRow[] = [
+  [{ raw: 'W' }, 'ctrl.through', null],
+  [{ raw: 'Q + W' }, 'ctrl.throughLob', null],
+  [{ raw: 'Z + D' }, 'ctrl.curlShot', null],
+  [{ k: 'ctrl.aimKey' }, 'ctrl.aimDesc', null],
+  [{ raw: 'Esc' }, 'ctrl.pause', 'ctrl.pause'],
 ];
 
 export function ControlsTable() {
-  const renderRows = (rows: ReadonlyArray<readonly [string, string, string]>) =>
-    rows.map(([key, attack, defend]) => (
-      <tr key={key}>
-        <th scope="row">
-          <kbd className="kbd">{key}</kbd>
-        </th>
-        <td>{attack}</td>
-        <td>{defend}</td>
-      </tr>
-    ));
+  const { t } = useI18n();
+  const renderRows = (rows: readonly ControlRow[]) =>
+    rows.map(([keySpec, attack, defend]) => {
+      const label = 'raw' in keySpec ? keySpec.raw : t(keySpec.k);
+      return (
+        <tr key={label}>
+          <th scope="row">
+            <kbd className="kbd">{label}</kbd>
+          </th>
+          <td>{t(attack)}</td>
+          <td>{defend ? t(defend) : '—'}</td>
+        </tr>
+      );
+    });
   return (
     <table className="table">
       <thead>
         <tr>
-          <th scope="col">Phím</th>
-          <th scope="col">Có bóng</th>
-          <th scope="col">Không có bóng</th>
+          <th scope="col">{t('ctrl.colKey')}</th>
+          <th scope="col">{t('ctrl.colAttack')}</th>
+          <th scope="col">{t('ctrl.colDefend')}</th>
         </tr>
       </thead>
       <tbody>
         <tr>
           <th colSpan={3} scope="colgroup" className="label">
-            Cơ bản
+            {t('ctrl.groupBasic')}
           </th>
         </tr>
         {renderRows(CONTROLS_BASIC)}
@@ -78,7 +85,7 @@ export function ControlsTable() {
       <tbody>
         <tr>
           <th colSpan={3} scope="colgroup" className="label">
-            Nâng cao &amp; tình huống
+            {t('ctrl.groupAdv')}
           </th>
         </tr>
         {renderRows(CONTROLS_ADVANCED)}
@@ -89,41 +96,46 @@ export function ControlsTable() {
 
 /** Lượt sút luân lưu của người chơi: nhắc cách sút (match-shootout.html). */
 export function ShootoutHint() {
+  const { t } = useI18n();
   return (
     <p className="hud-panel hud-keys" role="status">
       <span className="keyhint">
-        <kbd className="kbd">Mũi tên</kbd>Chọn góc
+        <kbd className="kbd">{t('ctrl.arrows')}</kbd>
+        {t('hint.soAngle')}
       </span>
       <span className="keyhint">
-        <kbd className="kbd">D</kbd>Giữ để nạp lực, nhả để sút
+        <kbd className="kbd">D</kbd>
+        {t('hint.soShoot')}
       </span>
       <span className="keyhint">
-        <kbd className="kbd">Esc</kbd>Tạm dừng
+        <kbd className="kbd">Esc</kbd>
+        {t('ctrl.pause')}
       </span>
     </p>
   );
 }
 
-const KEY_HINTS: ReadonlyArray<readonly [string, string]> = [
-  ['← ↑ → ↓', 'Di chuyển'],
-  ['E', 'Nước rút'],
-  ['S', 'Chuyền / đổi người'],
-  ['A', 'Chuyền bổng / xoạc'],
-  ['D', 'Sút / áp sát'],
-  ['W', 'Chọc khe'],
-  ['Q+W', 'Chọc khe bổng'],
-  ['Z+D', 'Sút xoáy'],
-  ['Esc', 'Tạm dừng'],
+const KEY_HINTS: ReadonlyArray<readonly [string, TranslationKey]> = [
+  ['← ↑ → ↓', 'hint.move'],
+  ['E', 'hint.sprint'],
+  ['S', 'hint.passSwitch'],
+  ['A', 'hint.lobTackle'],
+  ['D', 'hint.shotPress'],
+  ['W', 'hint.through'],
+  ['Q+W', 'hint.throughLob'],
+  ['Z+D', 'hint.curl'],
+  ['Esc', 'ctrl.pause'],
 ];
 
 /** Dải gợi ý phím ở cạnh dưới trong những giây đầu trận. */
 export function KeyHints() {
+  const { t } = useI18n();
   return (
     <p className="hud-panel hud-keys">
-      {KEY_HINTS.map(([k, t]) => (
+      {KEY_HINTS.map(([k, key]) => (
         <span key={k} className="keyhint">
           <kbd className="kbd">{k}</kbd>
-          {t}
+          {t(key)}
         </span>
       ))}
     </p>
@@ -132,14 +144,15 @@ export function KeyHints() {
 
 /** Nghỉ giữa hiệp: dải sự kiện "Hết hiệp 1" giữ nguyên dưới bảng tỉ số (match-events.html). */
 export function HalfTimeStrip() {
+  const { t } = useI18n();
   return (
     <div className="event-strip hud-event hud-event--half" role="status">
       <span className="event-strip__mark" aria-hidden="true">
         ■
       </span>
       <span>
-        Hết hiệp 1 · nhấn <kbd className="kbd">S</kbd> để đá hiệp 2 (tự đá sau{' '}
-        {HALF_TIME_MAX_TICKS / TICK_RATE} giây)
+        {t('hint.halfTimeBefore')} <kbd className="kbd">S</kbd>{' '}
+        {t('hint.halfTimeAfter', { seconds: HALF_TIME_MAX_TICKS / TICK_RATE })}
       </span>
     </div>
   );
@@ -175,8 +188,10 @@ function SubPlayerOption({
   onChange: () => void;
   player: SubOptionRow;
 }) {
+  const { locale, t } = useI18n();
   const level = staminaLevel(player.stamina);
-  const fullName = player.name ?? POSITION_NAME[player.position];
+  const posName = positionName(player.position, locale);
+  const fullName = player.name ?? posName;
   const displayName = player.shortName ?? fullName;
   return (
     <label className="subs__item">
@@ -194,7 +209,7 @@ function SubPlayerOption({
       <span className="subs__info">
         <span className="subs__top">
           <span className="display num subs__num">#{player.number}</span>
-          <abbr className={`pos pos--${player.position}`} title={POSITION_NAME[player.position]}>
+          <abbr className={`pos pos--${player.position}`} title={posName}>
             {player.position}
           </abbr>
           <span className="subs__name" title={fullName}>
@@ -211,7 +226,7 @@ function SubPlayerOption({
           <span
             className={`bar subs__bar hud-stamina hud-stamina--${level}`}
             role="meter"
-            aria-label="Thể lực"
+            aria-label={t('hud.stamina')}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={player.stamina}
@@ -229,6 +244,7 @@ function SubPlayerOption({
 
 /** Chọn người ra (trên sân) và người vào (dự bị) rồi xác nhận. */
 export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
+  const { t } = useI18n();
   const [outId, setOutId] = useState<string | null>(null);
   const [inSlot, setInSlot] = useState<SquadSlot | null>(null);
   const out = subs.options.onPitch.find((p) => p.id === outId);
@@ -239,11 +255,11 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
   return (
     <>
       <h3 className="panel__title" id="pause-panel-title">
-        Thay người <span className="meta">Còn {subs.left} lượt</span>
+        {t('subs.title')} <span className="meta">{t('subs.leftTag', { left: subs.left })}</span>
       </h3>
       <div className="subs">
         <fieldset className="subs__col">
-          <legend className="label">Ra sân</legend>
+          <legend className="label">{t('subs.outLegend')}</legend>
           {subs.options.onPitch.map((p) => (
             <SubPlayerOption
               key={p.id}
@@ -255,8 +271,8 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
           ))}
         </fieldset>
         <fieldset className="subs__col">
-          <legend className="label">Vào sân</legend>
-          {subs.options.bench.length === 0 && <p className="muted">Hết dự bị</p>}
+          <legend className="label">{t('subs.inLegend')}</legend>
+          {subs.options.bench.length === 0 && <p className="muted">{t('subs.emptyBench')}</p>}
           {subs.options.bench.map((b) => (
             <SubPlayerOption
               key={b.slot}
@@ -270,7 +286,7 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
       </div>
       {mismatch && (
         <p className="subs__warn" role="alert">
-          Thủ môn chỉ thay được bằng thủ môn.
+          {t('subs.gkMismatch')}
         </p>
       )}
       <button
@@ -284,13 +300,13 @@ export function SubstitutionPanel({ subs }: { subs: PauseSubs }) {
           setInSlot(null);
         }}
       >
-        Thay người
+        {t('subs.title')}
       </button>
     </>
   );
 }
 
-const PRESET_LABEL = { low: 'Thấp', high: 'Cao' } as const;
+const PRESET_KEY = { low: 'gfx.preset.low', high: 'gfx.preset.high' } as const;
 
 /**
  * Cài đặt đồ hoạ (task 5.21): chọn preset rồi bật/tắt riêng từng chi tiết; chọn lại preset thì xoá
@@ -303,18 +319,21 @@ export function GraphicsPanel({
   graphics: GraphicsSettings;
   onChange: (g: GraphicsSettings) => void;
 }) {
+  const { t } = useI18n();
   const q = resolveQuality(graphics);
   const custom = Object.keys(graphics.overrides).length > 0;
   return (
     <>
       <h3 className="panel__title" id="pause-panel-title">
-        Đồ hoạ{' '}
+        {t('gfx.title')}{' '}
         <span className="meta">
-          Áp dụng ngay · {custom ? 'Tuỳ chỉnh' : PRESET_LABEL[graphics.preset]}
+          {t('gfx.meta', {
+            mode: custom ? t('gfx.custom') : t(PRESET_KEY[graphics.preset]),
+          })}
         </span>
       </h3>
       <div className="pause-row">
-        <span id="gfx-preset">Chất lượng</span>
+        <span id="gfx-preset">{t('gfx.quality')}</span>
         <div className="seg" role="group" aria-labelledby="gfx-preset">
           {(['low', 'high'] as const).map((preset) => {
             const on = graphics.preset === preset && !custom;
@@ -326,52 +345,52 @@ export function GraphicsPanel({
                 aria-pressed={on}
                 onClick={() => onChange({ ...graphics, preset, overrides: {} })}
               >
-                {PRESET_LABEL[preset]}
+                {t(PRESET_KEY[preset])}
               </button>
             );
           })}
         </div>
       </div>
       <div className="pause-row">
-        <span id="gfx-time">Thời điểm</span>
+        <span id="gfx-time">{t('gfx.timeOfDay')}</span>
         <div className="seg" role="group" aria-labelledby="gfx-time">
-          {TIMES_OF_DAY.map((t) => {
-            const on = graphics.timeOfDay === t.key;
+          {TIMES_OF_DAY.map((tod) => {
+            const on = graphics.timeOfDay === tod.key;
             return (
               <button
-                key={t.key}
+                key={tod.key}
                 type="button"
                 className={`seg__opt${on ? ' is-on' : ''}`}
                 aria-pressed={on}
-                onClick={() => onChange({ ...graphics, timeOfDay: t.key })}
+                onClick={() => onChange({ ...graphics, timeOfDay: tod.key })}
               >
-                {t.label}
+                {t(`gfx.time.${tod.key}`)}
               </button>
             );
           })}
         </div>
       </div>
       <div className="pause-switches">
-        {GRAPHICS_TOGGLES.map((t) => {
+        {GRAPHICS_TOGGLES.map((toggle) => {
           // SSAO chạy trong hậu kỳ: tắt hậu kỳ thì SSAO mờ đi.
-          const blocked = t.key === 'ssao' && !q.postFx;
-          const on = q[t.key];
+          const blocked = toggle.key === 'ssao' && !q.postFx;
+          const on = q[toggle.key];
           return (
             <label
-              key={t.key}
+              key={toggle.key}
               className={`switch${on ? ' is-on' : ''}${blocked ? ' is-blocked' : ''}`}
             >
               <span className="pause-switch__text">
-                <span>{t.label}</span>
-                {t.key === 'grass3d' && <span className="muted">Tốn GPU nhất — tắt nếu giật</span>}
-                {blocked && <span className="muted">Cần bật hậu kỳ</span>}
+                <span>{t(`gfx.toggle.${toggle.key}`)}</span>
+                {toggle.key === 'grass3d' && <span className="muted">{t('gfx.grassWarn')}</span>}
+                {blocked && <span className="muted">{t('gfx.ssaoNeedPostFx')}</span>}
               </span>
               <input
                 type="checkbox"
                 className="sr-only"
                 checked={on}
                 disabled={blocked}
-                onChange={(e) => onChange(toggleGraphics(graphics, t.key, e.target.checked))}
+                onChange={(e) => onChange(toggleGraphics(graphics, toggle.key, e.target.checked))}
               />
               <span className="switch__track" aria-hidden="true" />
             </label>
@@ -411,6 +430,7 @@ export function PauseMenu({
   onReplayTutorial?: () => void;
   subs: PauseSubs;
 }) {
+  const { t } = useI18n();
   const [view, setView] = useState<PauseView>('graphics');
   const subsOff = !subs.allowed || subs.left === 0;
   // Đang mở panel thay người mà bóng sống lại (không xảy ra khi tạm dừng) → về Đồ hoạ.
@@ -430,11 +450,11 @@ export function PauseMenu({
       <div className="pause__menu">
         {hud && (
           <span className="label">
-            Tạm dừng · H{hud.half} {hud.clock}
+            {t('pause.headerMeta', { half: hud.half, clock: hud.clock })}
           </span>
         )}
         <h2 id="pause-title" className="h1 pause__title">
-          Tạm dừng
+          {t('pause.title')}
         </h2>
         <button
           type="button"
@@ -443,7 +463,7 @@ export function PauseMenu({
           onClick={onResume}
         >
           <PlayIcon />
-          Tiếp tục
+          {t('pause.resume')}
         </button>
         <button
           type="button"
@@ -452,37 +472,38 @@ export function PauseMenu({
           aria-describedby="subs-hint"
           {...pick('subs')}
         >
-          Thay người <span className="tag">Còn {subs.left} lượt</span>
+          {t('subs.title')}{' '}
+          <span className="tag">{t('subs.leftTag', { left: subs.left })}</span>
         </button>
         <span id="subs-hint" className="muted pause__hint">
           {subs.left === 0
-            ? 'Đã dùng hết lượt thay người.'
+            ? t('pause.subsOut')
             : subs.penaltyPending
-              ? 'Không thay người lúc chờ phạt đền / luân lưu.'
-              : 'Chỉ thay người khi bóng chết (biên, góc, phạt, bàn thắng).'}
+              ? t('pause.subsPenalty')
+              : t('pause.subsDeadBall')}
         </span>
         <button
           type="button"
           className="btn btn--secondary btn--lg btn--block pause__btn"
           {...pick('graphics')}
         >
-          Đồ hoạ
+          {t('gfx.title')}
         </button>
         <button
           type="button"
           className="btn btn--secondary btn--lg btn--block pause__btn"
           {...pick('controls')}
         >
-          Phím điều khiển
+          {t('pause.controls')}
         </button>
         <button
           type="button"
           className="btn btn--danger btn--lg btn--block pause__btn pause__quit"
           {...pick('confirm')}
         >
-          Bỏ trận
+          {t('pause.quit')}
         </button>
-        <span className="muted pause__hint">Bỏ trận bị tính thua (hỏi xác nhận).</span>
+        <span className="muted pause__hint">{t('pause.quitHint')}</span>
       </div>
       <section
         id="pause-panel"
@@ -494,7 +515,7 @@ export function PauseMenu({
         {shown === 'controls' && (
           <>
             <h3 className="panel__title" id="pause-panel-title">
-              Phím điều khiển
+              {t('pause.controls')}
             </h3>
             <ControlsTable />
             {onReplayTutorial && (
@@ -504,7 +525,7 @@ export function PauseMenu({
                   className="btn btn--secondary btn--sm"
                   onClick={onReplayTutorial}
                 >
-                  Xem lại hướng dẫn 5 bước
+                  {t('pause.replayTutorial')}
                 </button>
               </div>
             )}
@@ -513,9 +534,9 @@ export function PauseMenu({
         {shown === 'confirm' && (
           <>
             <h3 className="panel__title" id="pause-panel-title">
-              Bỏ trận?
+              {t('pause.quitTitle')}
             </h3>
-            <p className="muted">Bỏ trận sẽ bị tính thua. Chắc chắn bỏ?</p>
+            <p className="muted">{t('pause.quitBody')}</p>
             <div className="pause__actions">
               <button
                 type="button"
@@ -523,10 +544,10 @@ export function PauseMenu({
                 autoFocus
                 onClick={() => setView('graphics')}
               >
-                Không, đá tiếp
+                {t('pause.quitStay')}
               </button>
               <button type="button" className="btn btn--danger" onClick={onQuit}>
-                Bỏ trận
+                {t('pause.quit')}
               </button>
             </div>
           </>
@@ -536,9 +557,16 @@ export function PauseMenu({
   );
 }
 
-const OUTCOME_LABEL = { win: 'Thắng', draw: 'Hoà', loss: 'Thua' } as const;
-const SHOOTOUT_LABEL = { win: 'Thắng luân lưu', loss: 'Thua luân lưu' } as const;
-const DIFFICULTY_LABEL: Record<Difficulty, string> = { easy: 'Dễ', hard: 'Khó' };
+const OUTCOME_KEY = {
+  win: 'result.outcome.win',
+  draw: 'result.outcome.draw',
+  loss: 'result.outcome.loss',
+} as const;
+const SHOOTOUT_KEY = { win: 'result.shootout.win', loss: 'result.shootout.loss' } as const;
+const DIFFICULTY_KEY: Record<Difficulty, TranslationKey> = {
+  easy: 'pm.diff.easy',
+  hard: 'pm.diff.hard',
+};
 
 /**
  * Kết quả chưa nộp xong (hoặc còn gửi lại được): rời màn kết quả rồi vào trận mới sẽ làm server huỷ
@@ -578,10 +606,11 @@ const WarnIcon = () => (
 );
 
 function Coin({ value, muted }: { value: string; muted?: boolean }) {
+  const { t } = useI18n();
   return (
     <span className={`coin coin--xl${muted ? ' result-coin--none' : ''}`}>
       <span className="coin__icon" aria-hidden="true" />
-      <span className="num">{value}</span> xu
+      <span className="num">{value}</span> {t('common.coin')}
     </span>
   );
 }
@@ -597,24 +626,25 @@ function RewardBlock({
   matches: RewardedMatches | null;
   onRetry: () => void;
 }) {
+  const { locale, t } = useI18n();
   if (status.kind === 'pending') {
     return (
       <div className="result-reward" role="status" aria-busy="true">
-        <span className="label">Thưởng trận</span>
+        <span className="label">{t('result.rewardLabel')}</span>
         <span className="skel skel--line result-reward__skel" aria-hidden="true" />
-        <span className="muted">Đang ghi nhận kết quả…</span>
+        <span className="muted">{t('result.rewardPending')}</span>
       </div>
     );
   }
   if (status.kind === 'error') {
     return (
       <div className="result-reward" role="alert">
-        <span className="label">Thưởng trận</span>
+        <span className="label">{t('result.rewardLabel')}</span>
         <div className="banner banner--danger">
           <WarnIcon />
           <span>
             <b>{status.message}</b>
-            {status.retryable && ' Thưởng sẽ được cộng khi máy chủ xác nhận.'}
+            {status.retryable && t('result.rewardRetryHint')}
           </span>
         </div>
         {status.retryable && (
@@ -625,7 +655,7 @@ function RewardBlock({
             disabled={status.retrying}
             onClick={onRetry}
           >
-            <span className="btn__label">Gửi lại kết quả</span>
+            <span className="btn__label">{t('result.rewardRetryBtn')}</span>
           </button>
         )}
       </div>
@@ -634,35 +664,43 @@ function RewardBlock({
   if (status.reward === 0) {
     return (
       <div className="result-reward" role="status">
-        <span className="label">Thưởng trận</span>
+        <span className="label">{t('result.rewardLabel')}</span>
         <div className="banner">
           <WarnIcon />
           <span>
-            <b>Trận luyện tập</b> — không có thưởng vì đã đủ số trận có thưởng hôm nay.
+            <b>{t('result.practiceBold')}</b> {t('result.practiceText')}
           </span>
         </div>
         <Coin value="+0" muted />
-        <span className="muted">Ví: {fmt(status.balance)} xu</span>
+        <span className="muted">
+          {t('result.walletLabel', { balance: formatNumber(status.balance, locale) })}
+        </span>
       </div>
     );
   }
   return (
     <div className="result-reward" role="status">
-      <span className="label">Thưởng trận</span>
-      <Coin value={`+${fmt(status.reward)}`} />
+      <span className="label">{t('result.rewardLabel')}</span>
+      <Coin value={`+${formatNumber(status.reward, locale)}`} />
       <span className="muted">
         {caption}
-        {matches && ` · trận có thưởng ${matches.today}/${matches.limit}`} · ví:{' '}
-        {fmt(status.balance)} xu
+        {matches &&
+          t('result.rewardedNum', { today: matches.today, limit: matches.limit })}
+        {t('result.walletInline', { balance: formatNumber(status.balance, locale) })}
       </span>
     </div>
   );
 }
 
 function StatRow({ title, home, away }: { title: string; home: number; away: number }) {
+  const { t } = useI18n();
   const total = home + away;
   return (
-    <div className="result-stat" role="group" aria-label={`${title}: Nhà ${home}, Khách ${away}`}>
+    <div
+      className="result-stat"
+      role="group"
+      aria-label={t('result.statAria', { title, home, away })}
+    >
       <span className="display num">{home}</span>
       <div className="result-stat__mid" aria-hidden="true">
         <span className="label">{title}</span>
@@ -702,13 +740,14 @@ export function ResultScreen({
   onRetryReward,
   onRematch,
 }: ResultScreenProps) {
+  const { locale, t } = useI18n();
   const outcome = matchOutcome(hud.score);
   const shootout = shootoutOutcome(hud);
   const pens = hud.shootout && shootoutScore(hud.shootout);
   const count = (team: 'home' | 'away', card: 'yellow' | 'red') =>
     hud.bookings.filter((b) => b.team === team && b.card === card).length;
-  const headline = shootout ? SHOOTOUT_LABEL[shootout] : OUTCOME_LABEL[outcome];
-  const level = DIFFICULTY_LABEL[difficulty];
+  const headline = shootout ? t(SHOOTOUT_KEY[shootout]) : t(OUTCOME_KEY[outcome]);
+  const level = t(DIFFICULTY_KEY[difficulty]);
   const unsaved = isUnsavedResult(reward);
   // autoFocus không ăn vì lúc mount nút còn khoá: focus khi nút bật lại để Enter là đá tiếp.
   const rematchRef = useRef<HTMLButtonElement>(null);
@@ -719,24 +758,30 @@ export function ResultScreen({
     <main className="night-bg result" aria-labelledby="result-title">
       <div className="result__main">
         <span className="label">
-          Kết thúc · vs Máy mức {level} · {hud.shootout ? '2 hiệp + luân lưu' : '2 hiệp'}
+          {t('result.kicker', {
+            level,
+            halves: hud.shootout ? t('result.halvesWithPens') : t('result.halvesNormal'),
+          })}
         </span>
-        <p className="result__score" aria-label={`Nhà ${hud.score.home}, Khách ${hud.score.away}`}>
+        <p
+          className="result__score"
+          aria-label={t('result.scoreAria', { home: hud.score.home, away: hud.score.away })}
+        >
           <span className="display result__team" aria-hidden="true">
             <span className="result__sw result__sw--home" />
-            NHÀ
+            {t('hud.homeUpper')}
           </span>
           <span className="display num result__goals" aria-hidden="true">
             {hud.score.home} – {hud.score.away}
           </span>
           <span className="display result__team" aria-hidden="true">
-            KHÁCH
+            {t('hud.awayUpper')}
             <span className="result__sw result__sw--away" />
           </span>
         </p>
         {pens && (
           <span className="muted result__pens">
-            Luân lưu{' '}
+            {t('result.pensLabel')}{' '}
             <b className="num">
               {pens.home} – {pens.away}
             </b>
@@ -748,16 +793,27 @@ export function ResultScreen({
         >
           {headline}
         </h1>
-        <section className="panel result__stats" aria-label="Thống kê trận">
-          <StatRow title="Sút" home={hud.shots.home} away={hud.shots.away} />
-          <StatRow title="Thẻ vàng" home={count('home', 'yellow')} away={count('away', 'yellow')} />
-          <StatRow title="Thẻ đỏ" home={count('home', 'red')} away={count('away', 'red')} />
+        <section className="panel result__stats" aria-label={t('result.statsAria')}>
+          <StatRow title={t('result.statShots')} home={hud.shots.home} away={hud.shots.away} />
+          <StatRow
+            title={t('result.statYellow')}
+            home={count('home', 'yellow')}
+            away={count('away', 'yellow')}
+          />
+          <StatRow
+            title={t('result.statRed')}
+            home={count('home', 'red')}
+            away={count('away', 'red')}
+          />
         </section>
         {hud.bookings.length > 0 && (
           <p className="muted result__bookings">
-            Thẻ phạt:{' '}
+            {t('result.bookingsPrefix')}{' '}
             {hud.bookings
-              .map((b) => `${b.clock} ${CARD_LABEL[b.card]} · ${TEAM_LABEL[b.team]} #${b.number}`)
+              .map(
+                (b) =>
+                  `${b.clock} ${cardLabel(b.card, locale)} · ${teamLabel(b.team, locale)} #${b.number}`,
+              )
               .join(' · ')}
           </p>
         )}
@@ -767,7 +823,7 @@ export function ResultScreen({
           <div className="panel__in">
             <RewardBlock
               status={reward}
-              caption={`${headline} mức ${level}`}
+              caption={t('result.rewardCaption', { headline, level })}
               matches={matches}
               onRetry={onRetryReward}
             />
@@ -775,7 +831,7 @@ export function ResultScreen({
         </section>
         {missions && missions.length > 0 && (
           <DailyMissionsPanel
-            title="Nhiệm vụ vừa tăng"
+            title={t('missions.resultTitle')}
             missions={missions}
             claimingCode={claimingMissionCode ?? null}
             errorMessage={missionError ?? null}
@@ -792,11 +848,11 @@ export function ResultScreen({
             disabled={unsaved}
             onClick={onRematch}
           >
-            Đá tiếp
+            {t('result.rematch')}
           </button>
           {/* Rời đi lúc chưa lưu xong: PlayPage (`useLeaveGuard`) hỏi trước cho mọi lối rời màn. */}
           <Link to="/" className="btn btn--secondary btn--lg">
-            Về trang chủ
+            {t('result.backHome')}
           </Link>
         </div>
       </div>

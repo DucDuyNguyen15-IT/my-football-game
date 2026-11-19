@@ -37,6 +37,22 @@
   text-decoration: underline;
   text-underline-offset: 3px;
 }
+.account__prefs {
+  display: grid;
+  gap: var(--sp-3);
+  margin-top: var(--sp-3);
+}
+.account__pref-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--c-surface-1);
+  border: 1px solid var(--c-line);
+  border-radius: var(--radius-md);
+}
 .account__form {
   display: grid;
   gap: var(--sp-4);
