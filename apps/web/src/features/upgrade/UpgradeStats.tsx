@@ -1,12 +1,14 @@
 import type { Card } from '@pitch/shared';
-import { statsFor } from '../../components/card/rarity';
+import { localizedStatsFor } from '../../components/card/rarity';
+import { useI18n } from '../../i18n/I18nContext';
 import type { UpgradePreview } from './upgrade';
 
 /** Bảng chỉ số trước → sau khi ép (PRD F10: UI hiển thị chỉ số sau khi ép). */
 export function UpgradeStats({ card, preview }: { card: Card; preview: UpgradePreview }) {
+  const { locale, t } = useI18n();
   const rows = [
-    { key: 'ovr', abbr: 'OVR', name: 'Chỉ số tổng', from: preview.ovrBefore, to: preview.ovrAfter },
-    ...statsFor(card.position).map((s) => ({
+    { key: 'ovr', abbr: 'OVR', name: t('upg.statsOvrName'), from: preview.ovrBefore, to: preview.ovrAfter },
+    ...localizedStatsFor(card.position, locale).map((s) => ({
       key: s.key,
       abbr: s.abbr,
       name: s.name,
@@ -17,18 +19,18 @@ export function UpgradeStats({ card, preview }: { card: Card; preview: UpgradePr
   return (
     <table className="table upg-stats">
       <caption className="sr-only">
-        Chỉ số ở +{preview.toLevel - 1} và sau khi ép lên +{preview.toLevel}
+        {t('upg.statsCaption', { from: preview.toLevel - 1, to: preview.toLevel })}
       </caption>
       <thead>
         <tr>
           <th scope="col">
-            <span className="sr-only">Chỉ số</span>
+            <span className="sr-only">{t('upg.statsColStat')}</span>
           </th>
           <th scope="col">+{preview.toLevel - 1}</th>
           <th scope="col" aria-hidden="true" />
           <th scope="col">+{preview.toLevel}</th>
           <th scope="col">
-            <span className="sr-only">Tăng</span>
+            <span className="sr-only">{t('upg.statsColGain')}</span>
           </th>
         </tr>
       </thead>

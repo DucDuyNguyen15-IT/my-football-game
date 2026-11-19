@@ -12,6 +12,7 @@
  */
 import * as THREE from 'three';
 import type { GraphicsQuality } from '../bridge';
+import { t } from '../../i18n/i18n';
 import {
   RollingFps,
   buildTransitionSpec,
@@ -834,8 +835,8 @@ export class MatchStinger {
       '</div>' +
       '<div class="stinger-scrim"></div>' +
       '<div class="stinger-plaque" style="opacity:0">' +
-      '<span class="stinger-plaque__sub">TÌNH HUỐNG CỐ ĐỊNH</span>' +
-      '<strong class="stinger-plaque__label">GIAO BÓNG</strong>' +
+      `<span class="stinger-plaque__sub">${t('stinger.sub.setPiece')}</span>` +
+      `<strong class="stinger-plaque__label">${t('stinger.kind.kickoff')}</strong>` +
       '</div>';
 
     const plaque = root.querySelector('.stinger-plaque') as HTMLElement;

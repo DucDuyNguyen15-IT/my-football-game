@@ -6,6 +6,7 @@
 import type { Vec2 } from '@pitch/sim';
 import { COLORS } from '../render/colors';
 import { contactLabel } from '../render/view';
+import { t } from '../../i18n/i18n';
 
 const SVG_NS = 'http://www.w3.org/2000/svg';
 const BOX = 100;
@@ -99,7 +100,7 @@ export class ContactWidgetView {
     svg.append(ball, cross, dot);
     const label = document.createElement('span');
     const hint = document.createElement('small');
-    hint.textContent = 'Shift + mũi tên';
+    hint.textContent = t('ctrl.aimKey');
     Object.assign(hint.style, { opacity: '0.7', fontWeight: '400', fontSize: '11px' });
     root.append(svg, label, hint);
     this.parent.appendChild(root);

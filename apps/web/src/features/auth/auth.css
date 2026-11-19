@@ -164,14 +164,14 @@
 .auth__box {
   display: flex;
   flex-direction: column;
-  gap: 22px;
-  width: min(380px, 100%);
+  gap: 20px;
+  width: min(420px, 100%);
 }
 .auth__prefs {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  justify-content: flex-end;
+  justify-content: space-between;
   gap: var(--sp-2);
 }
 .auth__form {

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import { useI18n } from '../i18n/I18nContext';
 
 export interface HoldButtonProps {
   onHold: () => void;
@@ -20,6 +21,7 @@ export function HoldButton({
   className = 'btn btn--danger',
   children,
 }: HoldButtonProps) {
+  const { t } = useI18n();
   const [holding, setHolding] = useState(false);
   const timer = useRef<number | undefined>(undefined);
 
@@ -62,7 +64,7 @@ export function HoldButton({
     >
       <span className="hold__fill" aria-hidden="true" />
       <span className="hold__label">{children}</span>
-      <span className="sr-only"> (bấm giữ {duration / 1000} giây)</span>
+      <span className="sr-only"> {t('common.holdSeconds', { seconds: duration / 1000 })}</span>
     </button>
   );
 }

@@ -1,5 +1,6 @@
 import { LoginRequest, RegisterRequest, Username } from '@pitch/shared';
 import { ApiClientError } from '../../api/client';
+import { errorMessageFor, formatMessage, getActiveLocale, type Locale } from '../../i18n/i18n';
 
 /** Thông báo lỗi ở màn đăng nhập: `warning` cho lỗi tạm thời (khoá, rate limit), `danger` còn lại. */
 export interface AuthNotice {
@@ -11,52 +12,75 @@ export interface AuthNotice {
 /** Ô nhập có lỗi riêng (lỗi `validation_error` của server có `details[].field`). */
 export type AuthField = 'username' | 'password' | 'confirmPassword' | 'email';
 
-/** Đổi lỗi API thành thông báo cho người chơi; `login_locked` và `rate_limited` có lời riêng. */
-export function describeAuthError(err: unknown): AuthNotice {
+/** Đổi lỗi API thành thông báo cho người chơi theo `error.code` (message server chỉ là dự phòng). */
+export function describeAuthError(err: unknown, locale: Locale = getActiveLocale()): AuthNotice {
   if (!(err instanceof ApiClientError)) {
-    return { tone: 'danger', text: 'Có lỗi xảy ra. Thử lại sau.' };
+    return { tone: 'danger', text: formatMessage(locale, 'err.generic') };
   }
   switch (err.code) {
     case 'login_locked':
       return {
         tone: 'warning',
-        title: 'Tạm khoá đăng nhập',
-        text: 'Sai mật khẩu quá nhiều lần. Đợi 15 phút rồi thử lại.',
+        title: formatMessage(locale, 'err.login_lockedTitle'),
+        text: formatMessage(locale, 'err.login_locked'),
       };
     case 'rate_limited':
       return {
         tone: 'warning',
-        title: 'Thao tác quá nhanh',
-        text: 'Bạn gửi quá nhiều yêu cầu. Đợi khoảng 1 phút rồi thử lại.',
+        title: formatMessage(locale, 'err.rate_limitedTitle'),
+        text: formatMessage(locale, 'err.rate_limited'),
       };
     case 'reauth_required':
-      // Xoá tài khoản chỉ Google: phiên đăng nhập quá 10 phút.
       return {
         tone: 'warning',
-        title: 'Cần đăng nhập lại',
-        text: 'Vì an toàn, hãy đăng xuất rồi đăng nhập lại bằng Google, sau đó xoá tài khoản trong vòng 10 phút.',
+        title: formatMessage(locale, 'err.reauth_requiredTitle'),
+        text: formatMessage(locale, 'err.reauth_required'),
       };
-    case 'network_error':
-      return { tone: 'danger', text: 'Không kết nối được máy chủ. Kiểm tra mạng rồi thử lại.' };
-    case 'bad_response':
-    case 'internal_error':
-      return { tone: 'danger', text: 'Máy chủ đang gặp lỗi. Thử lại sau.' };
-    case 'validation_error':
-      return { tone: 'danger', text: err.details?.[0]?.message ?? err.message };
+    case 'validation_error': {
+      const detail = err.details?.[0];
+      if (detail?.field === 'username') {
+        return { tone: 'danger', text: formatMessage(locale, 'auth.usernameInvalid') };
+      }
+      if (detail?.field === 'password') {
+        return { tone: 'danger', text: formatMessage(locale, 'auth.passwordMinLength') };
+      }
+      if (detail?.field === 'email') {
+        return { tone: 'danger', text: formatMessage(locale, 'auth.emailInvalid') };
+      }
+      return {
+        tone: 'danger',
+        text: detail?.message ?? formatMessage(locale, 'err.validation_error'),
+      };
+    }
     default:
-      return { tone: 'danger', text: err.message };
+      return { tone: 'danger', text: errorMessageFor(err, locale) };
   }
 }
 
 /** Lỗi gắn được vào một ô nhập (để hiện ngay dưới ô đó), nếu có. */
-export function fieldErrorOf(err: unknown): { field: AuthField; text: string } | null {
+export function fieldErrorOf(
+  err: unknown,
+  locale: Locale = getActiveLocale(),
+): { field: AuthField; text: string } | null {
   if (!(err instanceof ApiClientError)) return null;
-  if (err.code === 'username_taken') return { field: 'username', text: err.message };
+  if (err.code === 'username_taken') {
+    return { field: 'username', text: formatMessage(locale, 'err.username_taken') };
+  }
   if (err.code !== 'validation_error') return null;
   const d = err.details?.find(
     (x) => x.field === 'username' || x.field === 'password' || x.field === 'email',
   );
-  return d ? { field: d.field as AuthField, text: d.message } : null;
+  if (!d) return null;
+  if (d.field === 'username') {
+    return { field: 'username', text: formatMessage(locale, 'auth.usernameInvalid') };
+  }
+  if (d.field === 'password') {
+    return { field: 'password', text: formatMessage(locale, 'auth.passwordMinLength') };
+  }
+  if (d.field === 'email') {
+    return { field: 'email', text: formatMessage(locale, 'auth.emailInvalid') };
+  }
+  return { field: d.field as AuthField, text: d.message };
 }
 
 export type FieldErrors = Partial<Record<AuthField, string>>;
@@ -69,6 +93,7 @@ export function parseAuthForm(input: {
   confirmPassword?: string;
   email: string;
   agreed: boolean;
+  locale?: Locale;
 }):
   | {
       ok: true;
@@ -83,6 +108,7 @@ export function parseAuthForm(input: {
       trimmedUsername: string;
       trimmedEmail: string;
     } {
+  const locale = input.locale ?? getActiveLocale();
   const trimmedUsername = input.username.trim();
   const trimmedEmail = input.email.trim();
   const parsed =
@@ -100,14 +126,14 @@ export function parseAuthForm(input: {
     for (const issue of parsed.error.issues) {
       const f = issue.path[0];
       if (f === 'email' && !errors.email) {
-        errors.email = 'Email chưa đúng định dạng (ví dụ: ten@vidu.vn).';
+        errors.email = formatMessage(locale, 'auth.emailInvalid');
       } else if (f === 'password' && !errors.password) {
         errors.password =
           input.mode === 'login' && input.password.length === 0
-            ? 'Nhập mật khẩu để đăng nhập.'
-            : issue.message;
+            ? formatMessage(locale, 'auth.passwordRequiredLogin')
+            : formatMessage(locale, 'auth.passwordMinLength');
       } else if (f === 'username' && !errors.username) {
-        errors.username = issue.message;
+        errors.username = formatMessage(locale, 'auth.usernameInvalid');
       } else if (f === 'acceptTerms') {
         consentError = true;
       }
@@ -120,8 +146,8 @@ export function parseAuthForm(input: {
   ) {
     errors.confirmPassword =
       input.confirmPassword.length === 0
-        ? 'Nhập lại mật khẩu để xác nhận.'
-        : 'Mật khẩu nhập lại chưa khớp.';
+        ? formatMessage(locale, 'auth.confirmRequired')
+        : formatMessage(locale, 'auth.confirmMismatch');
   }
   if (parsed.success && !errors.confirmPassword) {
     return { ok: true, data: parsed.data, trimmedUsername, trimmedEmail };
@@ -132,13 +158,14 @@ export function parseAuthForm(input: {
 /** Chuẩn hoá + kiểm tra tên đăng nhập Google lần đầu. */
 export function parseGoogleUsername(
   raw: string,
+  locale: Locale = getActiveLocale(),
 ): { ok: true; value: string } | { ok: false; error: string; trimmed: string } {
   const trimmed = raw.trim();
   const parsed = Username.safeParse(trimmed);
   if (parsed.success) return { ok: true, value: parsed.data };
   return {
     ok: false,
-    error: parsed.error.issues[0]?.message ?? 'Tên đăng nhập 3–20 ký tự: chữ, số, dấu gạch dưới.',
+    error: formatMessage(locale, 'auth.usernameInvalid'),
     trimmed,
   };
 }

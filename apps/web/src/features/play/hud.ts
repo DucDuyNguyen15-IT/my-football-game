@@ -25,6 +25,7 @@ import {
 } from '@pitch/sim';
 import { shortCardName } from '../../components/card/rarity';
 import { originSlot, playerNumber, shirtNumber } from '../../game/render/view';
+import { formatMessage, getActiveLocale, type Locale } from '../../i18n/i18n';
 
 export type Score = Record<TeamSide, number>;
 export type StaminaLevel = 'ok' | 'low' | 'critical';
@@ -89,7 +90,8 @@ export function stoppageMinutes(state: Pick<MatchState, 'phase' | 'addedMinutes'
 }
 
 /** Câu đọc cho trình đọc màn hình khi bắt đầu bù giờ. */
-export const stoppageLabel = (minutes: number): string => `Bù giờ ${minutes} phút`;
+export const stoppageLabel = (minutes: number, locale: Locale = getActiveLocale()): string =>
+  formatMessage(locale, 'hud.stoppageAria', { minutes });
 
 /** Mốc màu thanh thể lực: vàng < 50%, đỏ < 30% (mốc PRD làm giảm tốc). */
 export function staminaLevel(stamina: number): StaminaLevel {
@@ -209,28 +211,60 @@ export function shootoutOutcome(hud: HudSnapshot): 'win' | 'loss' | null {
 
 export const TEAM_LABEL: Record<TeamSide, string> = { home: 'Nhà', away: 'Khách' };
 export const CARD_LABEL = { yellow: 'Thẻ vàng', red: 'Thẻ đỏ' } as const;
-const RESTART_LABEL = { free_kick: 'Đá phạt', penalty: 'Phạt đền' } as const;
+
+export function teamLabel(team: TeamSide, locale: Locale = getActiveLocale()): string {
+  return formatMessage(locale, team === 'home' ? 'hud.home' : 'hud.away');
+}
+
+export function cardLabel(card: 'yellow' | 'red', locale: Locale = getActiveLocale()): string {
+  return formatMessage(locale, card === 'yellow' ? 'hud.yellowCard' : 'hud.redCard');
+}
+
+function restartLabel(type: 'free_kick' | 'penalty', locale: Locale): string {
+  return formatMessage(locale, type === 'penalty' ? 'hud.penalty' : 'hud.freeKick');
+}
 
 /** Sự kiện mới giữa hai snapshot, hiện thành dải dưới bảng tỉ số. */
-export function hudEvents(prev: HudSnapshot, next: HudSnapshot): HudEvent[] {
+export function hudEvents(
+  prev: HudSnapshot,
+  next: HudSnapshot,
+  locale: Locale = getActiveLocale(),
+): HudEvent[] {
   const events: HudEvent[] = [];
   for (const team of ['home', 'away'] as const) {
     if (next.score[team] > prev.score[team]) {
-      events.push({ kind: 'goal', team, text: `${next.clock} Bàn thắng · ${TEAM_LABEL[team]}` });
+      events.push({
+        kind: 'goal',
+        team,
+        text: formatMessage(locale, 'hud.evGoal', {
+          clock: next.clock,
+          team: teamLabel(team, locale),
+        }),
+      });
     }
   }
   for (const b of next.bookings.slice(prev.bookings.length)) {
     events.push({
       kind: b.card,
       team: b.team,
-      text: `${b.clock} ${CARD_LABEL[b.card]} · ${TEAM_LABEL[b.team]} #${b.number}`,
+      text: formatMessage(locale, 'hud.evCard', {
+        clock: b.clock,
+        card: cardLabel(b.card, locale),
+        team: teamLabel(b.team, locale),
+        num: b.number,
+      }),
     });
   }
   for (const s of next.substitutions.slice(prev.substitutions.length)) {
     events.push({
       kind: 'sub',
       team: s.team,
-      text: `${s.clock} Thay người · ${TEAM_LABEL[s.team]} #${s.inNumber} vào, #${s.outNumber} ra`,
+      text: formatMessage(locale, 'hud.evSub', {
+        clock: s.clock,
+        team: teamLabel(s.team, locale),
+        inNum: s.inNumber,
+        outNum: s.outNumber,
+      }),
     });
   }
   for (const team of ['home', 'away'] as const) {
@@ -240,7 +274,13 @@ export function hudEvents(prev: HudSnapshot, next: HudSnapshot): HudEvent[] {
       events.push({
         kind: 'shootout',
         team,
-        text: `Luân lưu · ${TEAM_LABEL[team]}: ${scored ? 'Vào!' : 'Hỏng'}`,
+        text: formatMessage(locale, 'hud.evShootout', {
+          team: teamLabel(team, locale),
+          result: formatMessage(
+            locale,
+            scored ? 'hud.evShootoutHit' : 'hud.evShootoutMiss',
+          ),
+        }),
       });
     }
   }
@@ -249,7 +289,11 @@ export function hudEvents(prev: HudSnapshot, next: HudSnapshot): HudEvent[] {
     events.push({
       kind: 'foul',
       team: foul.team,
-      text: `${next.clock} ${RESTART_LABEL[foul.type]} · ${TEAM_LABEL[foul.team]}`,
+      text: formatMessage(locale, 'hud.evRestart', {
+        clock: next.clock,
+        type: restartLabel(foul.type, locale),
+        team: teamLabel(foul.team, locale),
+      }),
     });
   }
   return events;

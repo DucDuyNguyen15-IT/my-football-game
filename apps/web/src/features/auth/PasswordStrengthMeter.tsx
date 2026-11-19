@@ -1,23 +1,25 @@
 import type { Rarity } from '@pitch/shared';
-import { RARITY_INFO } from '../../components/card/rarity';
+import { rarityLabel } from '../../components/card/rarity';
+import { useI18n } from '../../i18n/I18nContext';
+import type { TranslationKey } from '../../i18n/vi';
 import type { PasswordHintKey, PasswordStrength } from './passwordStrength';
 
-const RANK_LABELS: Record<Rarity, string> = {
-  bronze: 'Dự bị',
-  silver: 'Đá chính',
-  gold: 'Ngôi sao',
-  legend: 'Huyền thoại',
+const RANK_KEYS: Record<Rarity, TranslationKey> = {
+  bronze: 'pw.rank.bronze',
+  silver: 'pw.rank.silver',
+  gold: 'pw.rank.gold',
+  legend: 'pw.rank.legend',
 };
 
-const HINT_TEXT: Record<PasswordHintKey, string> = {
-  empty: 'Gợi ý: ít nhất 8 ký tự, kết hợp chữ hoa, số hoặc ký tự đặc biệt.',
-  tooShort: 'Cần ít nhất 8 ký tự để vượt bậc Đồng.',
-  common: 'Mật khẩu quá phổ biến — hãy đổi sang cụm từ riêng.',
-  matchesUsername: 'Không dùng giống hoặc chứa tên đăng nhập.',
-  repeatOrSeq: 'Tránh lặp ký tự (aaaa) hoặc chuỗi liên tiếp (1234, abcd).',
-  addVariety: 'Thêm chữ hoa, số hoặc ký tự đặc biệt để tăng lực sút.',
-  makeLonger: 'Tăng lên 12+ ký tự để đạt bậc Huyền thoại.',
-  strong: 'Thể lực tối đa — mật khẩu rất vững chắc.',
+const HINT_KEYS: Record<PasswordHintKey, TranslationKey> = {
+  empty: 'pw.hint.empty',
+  tooShort: 'pw.hint.tooShort',
+  common: 'pw.hint.common',
+  matchesUsername: 'pw.hint.matchesUsername',
+  repeatOrSeq: 'pw.hint.repeatOrSeq',
+  addVariety: 'pw.hint.addVariety',
+  makeLonger: 'pw.hint.makeLonger',
+  strong: 'pw.hint.strong',
 };
 
 export interface PasswordStrengthMeterProps {
@@ -30,16 +32,17 @@ export interface PasswordStrengthMeterProps {
  * kiểu thanh thể lực/lực sút 4 vạch, luôn kèm nhãn chữ + gợi ý (không chỉ dùng màu).
  */
 export function PasswordStrengthMeter({ id, strength }: PasswordStrengthMeterProps) {
+  const { locale, t } = useI18n();
   const isEmpty = strength.level === 0;
-  const rarityInfo = RARITY_INFO[strength.tier];
-  const rank = RANK_LABELS[strength.tier];
+  const rarity = rarityLabel(strength.tier, locale);
+  const rank = t(RANK_KEYS[strength.tier]);
   const statusText = isEmpty
-    ? 'Chưa nhập mật khẩu'
+    ? t('pw.emptyStatus')
     : strength.tier === 'legend'
-      ? `${rarityInfo.label} (${strength.level}/4)`
+      ? t('pw.statusLegend', { rarity })
       : strength.level === 1
-        ? `${rarityInfo.label} · ${rank} (quá yếu)`
-        : `${rarityInfo.label} · ${rank}`;
+        ? t('pw.statusWeak', { rarity, rank })
+        : t('pw.statusMid', { rarity, rank });
 
   return (
     <div
@@ -49,7 +52,7 @@ export function PasswordStrengthMeter({ id, strength }: PasswordStrengthMeterPro
       aria-atomic="true"
     >
       <div className="pw-meter__head">
-        <span className="pw-meter__label">Lực sút mật khẩu</span>
+        <span className="pw-meter__label">{t('pw.label')}</span>
         <span className="pw-meter__badge">
           <span className="pw-meter__pips" aria-hidden="true">
             {isEmpty ? '◇◇◇◇' : '◆'.repeat(strength.level)}
@@ -65,7 +68,7 @@ export function PasswordStrengthMeter({ id, strength }: PasswordStrengthMeterPro
           />
         ))}
       </div>
-      <p className="pw-meter__hint">{HINT_TEXT[strength.hint]}</p>
+      <p className="pw-meter__hint">{t(HINT_KEYS[strength.hint])}</p>
     </div>
   );
 }

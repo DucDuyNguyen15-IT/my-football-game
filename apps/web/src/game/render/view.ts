@@ -18,6 +18,7 @@ import {
   TICK_RATE,
 } from '@pitch/sim';
 import type { MatchState, Vec2 } from '@pitch/sim';
+import { t } from '../../i18n/i18n';
 
 /**
  * Dịch chuyển trong 1 tick lớn hơn mức này (m) là dịch chuyển tức thời (đặt bóng, xếp lại đội hình
@@ -183,8 +184,8 @@ export const CONTACT_CENTRE = 0.25;
  * là má trong, bên trái là má ngoài; chân trái ngược lại.
  */
 export function contactLabel(c: Vec2, foot: 'right' | 'left' = 'right'): string {
-  if (Math.hypot(c.x, c.y) < CONTACT_CENTRE) return 'Sút căng';
+  if (Math.hypot(c.x, c.y) < CONTACT_CENTRE) return t('contact.power');
   if (Math.abs(c.x) >= Math.abs(c.y))
-    return c.x > 0 === (foot === 'right') ? 'Sút xoáy bằng má trong' : 'Sút xoáy bằng má ngoài';
-  return c.y < 0 ? 'Sút bổng' : 'Đá sệt';
+    return c.x > 0 === (foot === 'right') ? t('contact.insideCurl') : t('contact.outsideCurl');
+  return c.y < 0 ? t('contact.lofted') : t('contact.low');
 }

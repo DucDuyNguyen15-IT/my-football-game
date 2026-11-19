@@ -2,14 +2,26 @@ import { useState, type CSSProperties } from 'react';
 import type { OnboardingStats, RetentionCohort } from '@pitch/shared';
 import { useAdminOnboarding, useAdminRetention } from '../../api/admin';
 import { ApiClientError } from '../../api/client';
+import {
+  errorMessageFor,
+  formatDateFull,
+  formatNumber,
+  formatPercentValue,
+  getActiveLocale,
+  type Locale,
+} from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import './admin.css';
 
-/** Chuyển `YYYY-MM-DD` thành `DD/MM/YYYY`. */
-export function formatCohortDay(iso: string): string {
+/** Chuyển `YYYY-MM-DD` thành ngày theo locale (`DD/MM/YYYY` ở vi, `MM/DD/YYYY` ở en). */
+export function formatCohortDay(iso: string, locale: Locale = getActiveLocale()): string {
   const parts = iso.split('-');
   if (parts.length === 3) {
-    const [y, m, d] = parts;
-    return `${d}/${m}/${y}`;
+    if (locale === 'vi') {
+      const [y, m, d] = parts;
+      return `${d}/${m}/${y}`;
+    }
+    return formatDateFull(iso, locale);
   }
   return iso;
 }
@@ -34,23 +46,28 @@ export function calculateWeightedAverage(
   return weightedSum / totalRegistered;
 }
 
-/** Định dạng số thực 0..1 sang chuỗi phần trăm tiếng Việt `43,8%`, hoặc `—` nếu null. */
-export function formatPercent(val: number | null): string {
+/** Định dạng số thực 0..1 sang chuỗi phần trăm theo locale (`43,8%` ở vi, `43.8%` ở en), hoặc `—` nếu null. */
+export function formatPercent(val: number | null, locale: Locale = getActiveLocale()): string {
   if (val === null || Number.isNaN(val)) return '—';
-  return `${(val * 100).toFixed(1).replace('.', ',')}%`;
+  return formatPercentValue(val, locale, 1, 1);
 }
 
-/** Định dạng khoảng thời gian (giây) sang dạng dễ đọc (`45s`, `1p 30s`, `2p`), hoặc `—`. */
-export function formatDurationSeconds(seconds: number | null | undefined): string {
+/** Định dạng khoảng thời gian (giây) sang dạng dễ đọc (`45s`, `1p 30s`, `1m 30s`), hoặc `—`. */
+export function formatDurationSeconds(
+  seconds: number | null | undefined,
+  locale: Locale = getActiveLocale(),
+): string {
   if (seconds === null || seconds === undefined || Number.isNaN(seconds)) return '—';
   const total = Math.max(0, Math.round(seconds));
   if (total < 60) return `${total}s`;
   const mins = Math.floor(total / 60);
   const secs = total % 60;
-  return secs > 0 ? `${mins}p ${String(secs).padStart(2, '0')}s` : `${mins}p`;
+  const minUnit = locale === 'en' ? 'm' : 'p';
+  return secs > 0 ? `${mins}${minUnit} ${String(secs).padStart(2, '0')}s` : `${mins}${minUnit}`;
 }
 
 function RateCell({ value }: { value: number | null }) {
+  const { locale } = useI18n();
   if (value === null) {
     return <td className="r muted">—</td>;
   }
@@ -58,7 +75,7 @@ function RateCell({ value }: { value: number | null }) {
   const pct = value * 100;
   // Thanh đầy ở mốc 60% theo thiết kế admin.html / screens2.js §14.
   const barWidthPct = Math.min(100, (pct / 60) * 100);
-  const text = `${pct.toFixed(1).replace('.', ',')}%`;
+  const text = formatPercentValue(value, locale, 1, 1);
 
   return (
     <td>
@@ -95,6 +112,7 @@ export function AdminRetentionView({
   error,
   onRetry,
 }: AdminRetentionViewProps) {
+  const { locale, t } = useI18n();
   const isForbidden =
     (error instanceof ApiClientError && error.code === 'forbidden') ||
     (typeof error === 'object' &&
@@ -106,13 +124,13 @@ export function AdminRetentionView({
     return (
       <div className="admin-page">
         <div className="admin-head">
-          <h1 className="h1">Retention theo ngày đăng ký</h1>
-          <span className="tag tag--warn">Chỉ admin</span>
+          <h1 className="h1">{t('admin.title')}</h1>
+          <span className="tag tag--warn">{t('admin.tag')}</span>
         </div>
         <div className="panel admin-forbidden" role="alert">
-          <p>Trang này chỉ dành cho quản trị viên.</p>
+          <p>{t('admin.forbiddenBody')}</p>
           <a href="/" className="btn btn--secondary">
-            Về trang chủ
+            {t('result.backHome')}
           </a>
         </div>
       </div>
@@ -121,10 +139,10 @@ export function AdminRetentionView({
 
   const header = (
     <div className="admin-head">
-      <h1 className="h1">Retention theo ngày đăng ký</h1>
-      <span className="tag tag--warn">Chỉ admin</span>
+      <h1 className="h1">{t('admin.title')}</h1>
+      <span className="tag tag--warn">{t('admin.tag')}</span>
       <span className="admin-head__spacer" />
-      <div className="seg" role="group" aria-label="Khoảng thời gian">
+      <div className="seg" role="group" aria-label={t('admin.rangeAria')}>
         <button
           type="button"
           className={`seg__opt${days === 7 ? ' is-on' : ''}`}
@@ -132,7 +150,7 @@ export function AdminRetentionView({
           onClick={() => onChangeDays?.(7)}
           disabled={isLoading}
         >
-          7 ngày
+          {t('admin.days7')}
         </button>
         <button
           type="button"
@@ -141,7 +159,7 @@ export function AdminRetentionView({
           onClick={() => onChangeDays?.(30)}
           disabled={isLoading}
         >
-          30 ngày
+          {t('admin.days30')}
         </button>
       </div>
     </div>
@@ -182,13 +200,15 @@ export function AdminRetentionView({
       {error ? (
         <div className="banner banner--danger admin-error" role="alert">
           <span>
-            {error instanceof Error
-              ? error.message
-              : 'Đã có lỗi xảy ra khi tải dữ liệu retention.'}
+            {error instanceof ApiClientError
+              ? errorMessageFor(error, locale, 'admin.loadError')
+              : error instanceof Error
+                ? error.message
+                : t('admin.loadError')}
           </span>
           {onRetry ? (
             <button type="button" className="btn btn--secondary btn--sm" onClick={onRetry}>
-              Thử lại
+              {t('common.retry')}
             </button>
           ) : null}
         </div>
@@ -196,61 +216,59 @@ export function AdminRetentionView({
 
       <div className="admin-stats">
         <section className="panel admin-stat">
-          <span className="label">Đăng ký {days} ngày</span>
+          <span className="label">{t('admin.registeredDays', { days })}</span>
           <div className="display num admin-stat__num">
-            {totalRegistered.toLocaleString('vi-VN')}
+            {formatNumber(totalRegistered, locale)}
           </div>
           <span className="muted admin-stat__sub" />
         </section>
 
         <section className="panel admin-stat">
-          <span className="label">D1 trung bình</span>
-          <div className="display num admin-stat__num">{formatPercent(d1Avg)}</div>
-          <span className="muted admin-stat__sub">mục tiêu ≥ 40%</span>
+          <span className="label">{t('admin.d1Avg')}</span>
+          <div className="display num admin-stat__num">{formatPercent(d1Avg, locale)}</div>
+          <span className="muted admin-stat__sub">{t('admin.d1Target')}</span>
         </section>
 
         <section className="panel admin-stat">
-          <span className="label">D7 trung bình</span>
-          <div className="display num admin-stat__num">{formatPercent(d7Avg)}</div>
-          <span className="muted admin-stat__sub">mục tiêu ≥ 15%</span>
+          <span className="label">{t('admin.d7Avg')}</span>
+          <div className="display num admin-stat__num">{formatPercent(d7Avg, locale)}</div>
+          <span className="muted admin-stat__sub">{t('admin.d7Target')}</span>
         </section>
       </div>
 
       {onboarding && (
-        <section className="panel admin-onboarding" aria-label="Thời gian tới trận đầu">
+        <section className="panel admin-onboarding" aria-label={t('admin.obAria')}>
           <div className="admin-onboarding__head">
-            <span className="label">Phễu tân thủ · register → match_start</span>
+            <span className="label">{t('admin.obHead')}</span>
             {onboarding.medianSeconds !== null && (
               <span
                 className={`tag ${onboarding.medianSeconds <= 120 ? 'tag--success' : 'tag--warn'}`}
               >
-                {onboarding.medianSeconds <= 120
-                  ? 'Đạt mục tiêu ≤ 2 phút'
-                  : 'Chậm hơn mục tiêu 2 phút'}
+                {onboarding.medianSeconds <= 120 ? t('admin.obOnTarget') : t('admin.obSlow')}
               </span>
             )}
           </div>
           <div className="admin-onboarding__grid">
             <div className="admin-onboarding__metric">
-              <span className="label">Thời gian trung vị</span>
+              <span className="label">{t('admin.obMedian')}</span>
               <span className="display num admin-onboarding__val">
-                {formatDurationSeconds(onboarding.medianSeconds)}
+                {formatDurationSeconds(onboarding.medianSeconds, locale)}
               </span>
             </div>
             <div className="admin-onboarding__metric">
-              <span className="label">Phân vị P90</span>
+              <span className="label">{t('admin.obP90')}</span>
               <span className="display num admin-onboarding__val">
-                {formatDurationSeconds(onboarding.p90Seconds)}
+                {formatDurationSeconds(onboarding.p90Seconds, locale)}
               </span>
             </div>
             <div className="admin-onboarding__metric">
-              <span className="label">Đã vào trận đầu</span>
+              <span className="label">{t('admin.obCompleted')}</span>
               <span className="display num admin-onboarding__val">
                 {onboarding.completedUsers}/{onboarding.totalRegistered}
               </span>
             </div>
             <div className="admin-onboarding__metric">
-              <span className="label">Trong ≤ 2 phút</span>
+              <span className="label">{t('admin.obWithin')}</span>
               <span className="display num admin-onboarding__val">
                 {onboarding.withinTargetUsers}/{onboarding.totalRegistered}
               </span>
@@ -262,33 +280,31 @@ export function AdminRetentionView({
       <section className="panel admin-table-panel">
         {!cohorts || cohorts.length === 0 ? (
           <p className="muted admin-empty" role="status">
-            Chưa có dữ liệu đăng ký trong khoảng thời gian này.
+            {t('admin.empty')}
           </p>
         ) : (
           <>
             <table className="table">
               <thead>
                 <tr>
-                  <th>Ngày đăng ký</th>
-                  <th className="r">Người chơi mới</th>
-                  <th className="r">D1</th>
-                  <th className="r">D7</th>
+                  <th>{t('admin.colDay')}</th>
+                  <th className="r">{t('admin.colUsers')}</th>
+                  <th className="r">{t('admin.colD1')}</th>
+                  <th className="r">{t('admin.colD7')}</th>
                 </tr>
               </thead>
               <tbody>
                 {cohorts.map((c) => (
                   <tr key={c.cohortDay}>
-                    <td>{formatCohortDay(c.cohortDay)}</td>
-                    <td className="r">{c.registered.toLocaleString('vi-VN')}</td>
+                    <td>{formatCohortDay(c.cohortDay, locale)}</td>
+                    <td className="r">{formatNumber(c.registered, locale)}</td>
                     <RateCell value={c.d1} />
                     <RateCell value={c.d7} />
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="muted admin-table-note">
-              D1 = quay lại vào ngày thứ 2 sau đăng ký. &quot;—&quot; = chưa đủ ngày để tính.
-            </p>
+            <p className="muted admin-table-note">{t('admin.tableNote')}</p>
           </>
         )}
       </section>

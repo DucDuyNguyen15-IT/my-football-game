@@ -17,30 +17,41 @@ describe('describeAuthError', () => {
     expect(notice.text).toMatch(/đăng nhập lại bằng Google/);
   });
 
-  it('lỗi thường dùng message của server; validation lấy chi tiết đầu tiên', () => {
-    expect(describeAuthError(new ApiClientError('invalid_credentials', 401, 'Sai'))).toEqual({
+  it('map mã lỗi server sang từ điển theo error.code (vi & en); validation lấy chi tiết đầu tiên', () => {
+    expect(describeAuthError(new ApiClientError('invalid_credentials', 401, 'raw-msg'))).toEqual({
       tone: 'danger',
-      text: 'Sai',
+      text: 'Sai tên đăng nhập hoặc mật khẩu.',
+    });
+    expect(
+      describeAuthError(new ApiClientError('invalid_credentials', 401, 'raw-msg'), 'en'),
+    ).toEqual({
+      tone: 'danger',
+      text: 'Incorrect username or password.',
     });
     const v = new ApiClientError('validation_error', 400, 'Dữ liệu không hợp lệ', [
       { field: 'username', message: 'Tên ngắn' },
     ]);
-    expect(describeAuthError(v).text).toBe('Tên ngắn');
+    expect(describeAuthError(v).text).toMatch(/3–20 ký tự/);
+    expect(describeAuthError(v, 'en').text).toMatch(/3–20 characters/);
     expect(describeAuthError(new ApiClientError('network_error', 0, 'x')).text).toMatch(/máy chủ/);
     expect(describeAuthError(new Error('boom')).tone).toBe('danger');
   });
 });
 
 describe('fieldErrorOf', () => {
-  it('gắn lỗi trùng tên / validation vào đúng ô', () => {
-    expect(fieldErrorOf(new ApiClientError('username_taken', 409, 'Trùng'))).toEqual({
+  it('gắn lỗi trùng tên / validation vào đúng ô theo error.code', () => {
+    expect(fieldErrorOf(new ApiClientError('username_taken', 409, 'raw'))).toEqual({
       field: 'username',
-      text: 'Trùng',
+      text: 'Tên đăng nhập này đã có người dùng.',
+    });
+    expect(fieldErrorOf(new ApiClientError('username_taken', 409, 'raw'), 'en')).toEqual({
+      field: 'username',
+      text: 'That username is already taken.',
     });
     const v = new ApiClientError('validation_error', 400, 'x', [
       { field: 'password', message: 'Ngắn' },
     ]);
-    expect(fieldErrorOf(v)).toEqual({ field: 'password', text: 'Ngắn' });
+    expect(fieldErrorOf(v)).toEqual({ field: 'password', text: 'Mật khẩu ít nhất 8 ký tự.' });
     expect(fieldErrorOf(new ApiClientError('login_locked', 429, 'x'))).toBeNull();
   });
 });
@@ -71,7 +82,7 @@ describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () =>
     expect(parseGoogleUsername('  g_user  ')).toEqual({ ok: true, value: 'g_user' });
   });
 
-  it('thông báo lỗi tiếng Việt rõ cách sửa cho mật khẩu trống và email sai định dạng', () => {
+  it('thông báo lỗi rõ cách sửa theo ngôn ngữ đang chọn', () => {
     const emptyPw = parseAuthForm({
       mode: 'login',
       username: 'alice',
@@ -100,8 +111,9 @@ describe('parseAuthForm & parseGoogleUsername (nguyên tắc 18: Postel)', () =>
       confirmPassword: 'password999',
       email: '',
       agreed: true,
+      locale: 'en',
     });
     expect(mismatch.ok).toBe(false);
-    if (!mismatch.ok) expect(mismatch.errors.confirmPassword).toMatch(/chưa khớp/);
+    if (!mismatch.ok) expect(mismatch.errors.confirmPassword).toBe('Passwords do not match.');
   });
 });

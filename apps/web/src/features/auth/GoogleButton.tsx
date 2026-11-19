@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useI18n } from '../../i18n/I18nContext';
 import { loadGoogleIdentity } from './googleIdentity';
 
 interface Props {
@@ -14,6 +15,7 @@ const GSI_MAX_WIDTH = 400;
 
 /** Nút "Tiếp tục với Google" do GIS vẽ (ADR-0010); tải script lỗi thì báo nhẹ, không chặn form. */
 export function GoogleButton({ clientId, onCredential, busy = false }: Props) {
+  const { locale, t } = useI18n();
   const slot = useRef<HTMLDivElement>(null);
   const callback = useRef(onCredential);
   const [state, setState] = useState<'loading' | 'ready' | 'error'>('loading');
@@ -28,6 +30,7 @@ export function GoogleButton({ clientId, onCredential, busy = false }: Props) {
       (gsi) => {
         const el = slot.current;
         if (!alive || !el) return;
+        el.innerHTML = '';
         gsi.initialize({
           client_id: clientId,
           callback: (res) => callback.current(res.credential),
@@ -43,7 +46,7 @@ export function GoogleButton({ clientId, onCredential, busy = false }: Props) {
           shape: 'rectangular',
           logo_alignment: 'center',
           width: Math.min(GSI_MAX_WIDTH, Math.max(200, Math.floor(el.clientWidth))),
-          locale: 'vi',
+          locale,
         });
         setState('ready');
       },
@@ -54,19 +57,17 @@ export function GoogleButton({ clientId, onCredential, busy = false }: Props) {
     return () => {
       alive = false;
     };
-  }, [clientId]);
+  }, [clientId, locale]);
 
   return (
     <div className={`gbtn${busy ? ' is-busy' : ''}`} aria-busy={busy || state === 'loading'}>
       <div ref={slot} className="gbtn__slot" hidden={state === 'error'} />
       {state === 'loading' && <div className="gbtn__placeholder" aria-hidden="true" />}
-      {state === 'error' && (
-        <p className="gbtn__error">Không tải được nút Google. Kiểm tra mạng hoặc tải lại trang.</p>
-      )}
+      {state === 'error' && <p className="gbtn__error">{t('auth.googleLoadError')}</p>}
       {busy && (
         <span className="gbtn__busy">
           <span className="spinner" aria-hidden="true" />
-          <span className="sr-only">Đang đăng nhập Google…</span>
+          <span className="sr-only">{t('auth.googleSigningIn')}</span>
         </span>
       )}
     </div>

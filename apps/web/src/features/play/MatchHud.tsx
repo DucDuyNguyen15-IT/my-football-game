@@ -6,8 +6,10 @@ import { useEffect, useRef, type CSSProperties } from 'react';
 import { HALF_LENGTH, HALF_WIDTH, PENALTY_AREA_DEPTH, PENALTY_AREA_WIDTH } from '@pitch/sim';
 import type { MatchState } from '@pitch/sim';
 import { COLORS } from '../../game/render/colors';
+import { positionName } from '../../components/card/rarity';
+import { useI18n } from '../../i18n/I18nContext';
 import type { HudEvent, HudSnapshot } from './hud';
-import { TEAM_LABEL, shootoutScore, staminaLevel, stoppageLabel } from './hud';
+import { teamLabel, shootoutScore, staminaLevel, stoppageLabel } from './hud';
 import {
   MINIMAP_H,
   MINIMAP_HZ,
@@ -17,39 +19,43 @@ import {
   type MinimapFrame,
 } from './minimap';
 
-const POSITION_NAME = { GK: 'Thủ môn', DF: 'Hậu vệ', MF: 'Tiền vệ', FW: 'Tiền đạo' } as const;
-
 /** Bảng tỉ số giữa trên (match.html): vạch màu đội, số bàn, hàng dưới là hiệp + phút / luân lưu. */
 export function Scoreboard({ hud }: { hud: HudSnapshot }) {
+  const { locale, t } = useI18n();
   const pens = hud.shootout && shootoutScore(hud.shootout);
+  const stoppageText =
+    hud.stoppage !== null ? `, ${stoppageLabel(hud.stoppage, locale).toLowerCase()}` : '';
   return (
     <div
       className="hud-score"
       role="group"
-      aria-label={
-        `Nhà ${hud.score.home}, Khách ${hud.score.away}, hiệp ${hud.half}, phút ${hud.clock}` +
-        (hud.stoppage !== null ? `, ${stoppageLabel(hud.stoppage).toLowerCase()}` : '')
-      }
+      aria-label={t('hud.scoreboardAria', {
+        home: hud.score.home,
+        away: hud.score.away,
+        half: hud.half,
+        clock: hud.clock,
+        stoppage: stoppageText,
+      })}
     >
       <span className="hud-score__sw hud-score__sw--home" aria-hidden="true" />
-      <span className="hud-score__team">NHÀ</span>
+      <span className="hud-score__team">{t('hud.homeUpper')}</span>
       <span className="hud-score__goals">{hud.score.home}</span>
       <span className="hud-score__goals hud-score__goals--away">{hud.score.away}</span>
-      <span className="hud-score__team">KHÁCH</span>
+      <span className="hud-score__team">{t('hud.awayUpper')}</span>
       <span className="hud-score__sw hud-score__sw--away" aria-hidden="true" />
       <span className="hud-score__clock">
         {pens ? (
           <>
-            Luân lưu{' '}
+            {t('hud.shootout')}{' '}
             <b className="num">
               {pens.home}–{pens.away}
             </b>
           </>
         ) : (
           <>
-            H{hud.half} · <b className="num">{hud.clock}</b>
+            {t('hud.halfPrefix', { half: hud.half })} · <b className="num">{hud.clock}</b>
             {hud.stoppage !== null && (
-              <span className="num hud-score__added" title={stoppageLabel(hud.stoppage)}>
+              <span className="num hud-score__added" title={stoppageLabel(hud.stoppage, locale)}>
                 +{hud.stoppage}
               </span>
             )}
@@ -66,16 +72,17 @@ export function Scoreboard({ hud }: { hud: HudSnapshot }) {
  * thời gian bù giờ, nên trình đọc màn hình đọc đúng một lần lúc bắt đầu.
  */
 export function StoppageBoard({ minutes, show }: { minutes: number | null; show: boolean }) {
+  const { locale, t } = useI18n();
   return (
     <>
       <span className="sr-only" role="status" aria-live="polite">
-        {minutes !== null ? stoppageLabel(minutes) : ''}
+        {minutes !== null ? stoppageLabel(minutes, locale) : ''}
       </span>
       {show && minutes !== null && (
         <div className="stoppage-board" aria-hidden="true">
-          <span className="label stoppage-board__label">Bù giờ</span>
+          <span className="label stoppage-board__label">{t('hud.stoppageTitle')}</span>
           <span className="display num stoppage-board__num">+{minutes}</span>
-          <span className="label stoppage-board__unit">phút</span>
+          <span className="label stoppage-board__unit">{t('hud.stoppageUnit')}</span>
         </div>
       )}
     </>
@@ -83,19 +90,23 @@ export function StoppageBoard({ minutes, show }: { minutes: number | null; show:
 }
 
 const MAX_DOTS = 5;
-const KICK_LABEL = { hit: 'Trúng', miss: 'Trượt', '': 'Chưa sút' } as const;
 
 /** Một chấm mỗi lượt sút (đủ 5 chấm, chưa sút thì rỗng); sudden death thì hiện thêm chấm. */
 function KickDots({ kicks }: { kicks: boolean[] }) {
+  const { t } = useI18n();
   const n = Math.max(MAX_DOTS, kicks.length);
   return (
     <span className="so-row__dots">
       {Array.from({ length: n }, (_, i) => {
         const k = kicks[i];
         const state = k === undefined ? '' : k ? 'hit' : 'miss';
-        return (
-          <span key={i} className={`dot${state ? ` ${state}` : ''}`} title={KICK_LABEL[state]} />
-        );
+        const title =
+          state === 'hit'
+            ? t('hud.kickHit')
+            : state === 'miss'
+              ? t('hud.kickMiss')
+              : t('hud.kickPending');
+        return <span key={i} className={`dot${state ? ` ${state}` : ''}`} title={title} />;
       })}
     </span>
   );
@@ -103,29 +114,35 @@ function KickDots({ kicks }: { kicks: boolean[] }) {
 
 /** Bảng luân lưu (match-shootout.html): mỗi đội một hàng chấm trúng/trượt/chưa sút + số bàn. */
 export function ShootoutPanel({ shootout }: { shootout: NonNullable<HudSnapshot['shootout']> }) {
+  const { locale, t } = useI18n();
   const score = shootoutScore(shootout);
   // Lượt đang đá: lượt kế của đội đang sút; bóng đang bay / đã xong thì lượt vừa đá.
   const round = shootout.turn
     ? shootout[shootout.turn].length + 1
     : Math.max(shootout.home.length, shootout.away.length);
-  const turn = shootout.turn ? `${TEAM_LABEL[shootout.turn]} sút` : null;
+  const turn = shootout.turn
+    ? t('hud.shootoutKicking', { team: teamLabel(shootout.turn, locale) })
+    : '';
   return (
     <section
       className="hud-panel so"
-      aria-label={`Luân lưu: Nhà ${score.home}, Khách ${score.away}`}
+      aria-label={t('hud.shootoutAria', { home: score.home, away: score.away })}
     >
       <div className="so__head">
-        <h2 className="h3">Luân lưu</h2>
+        <h2 className="h3">{t('hud.shootout')}</h2>
         <span className="label">
-          Lượt {Math.max(1, round)}/{Math.max(MAX_DOTS, round)}
-          {turn && ` · ${turn}`}
+          {t('hud.shootoutTurn', {
+            round: Math.max(1, round),
+            total: Math.max(MAX_DOTS, round),
+            turn,
+          })}
         </span>
       </div>
       {(['home', 'away'] as const).map((team) => (
         <div key={team} className="so-row">
           <span className="display so-row__team">
             <span className={`so-row__sw so-row__sw--${team}`} aria-hidden="true" />
-            {team === 'home' ? 'NHÀ' : 'KHÁCH'}
+            {team === 'home' ? t('hud.homeUpper') : t('hud.awayUpper')}
           </span>
           <KickDots kicks={shootout[team]} />
           <span className="display num so-row__score">{score[team]}</span>
@@ -166,27 +183,26 @@ export function EventStrip({ events }: { events: ShownEvent[] }) {
 
 /** Panel cầu thủ đang điều khiển (góc dưới-trái): số áo, vị trí, thanh thể lực. */
 export function PlayerPanel({ controlled }: { controlled: HudSnapshot['controlled'] }) {
+  const { locale, t } = useI18n();
   if (!controlled) return null;
   const level = staminaLevel(controlled.stamina);
+  const posName = positionName(controlled.position, locale);
   return (
     <div className="hud-panel hud-player">
       <span className="display num hud-player__num">{controlled.number}</span>
       <div className="hud-player__body">
         <div className="hud-player__name">
-          <span>{POSITION_NAME[controlled.position]}</span>
-          <abbr
-            className={`pos pos--${controlled.position}`}
-            title={POSITION_NAME[controlled.position]}
-          >
+          <span>{posName}</span>
+          <abbr className={`pos pos--${controlled.position}`} title={posName}>
             {controlled.position}
           </abbr>
         </div>
         <div className="hud-player__stamina">
-          <span className="label">Thể lực</span>
+          <span className="label">{t('hud.stamina')}</span>
           <span
             className={`bar bar--thin hud-stamina hud-stamina--${level}`}
             role="meter"
-            aria-label="Thể lực"
+            aria-label={t('hud.stamina')}
             aria-valuemin={0}
             aria-valuemax={100}
             aria-valuenow={controlled.stamina}
@@ -205,14 +221,15 @@ export function PlayerPanel({ controlled }: { controlled: HudSnapshot['controlle
 
 /** Chú thích màu thanh lực (match.html, góc trên-trái) — thanh lực thật vẽ trên đầu cầu thủ. */
 export function PowerLegend() {
+  const { t } = useI18n();
   return (
     <div className="hud-legend">
-      <span className="label">Thanh lực (giữ phím)</span>
+      <span className="label">{t('hud.powerTitle')}</span>
       {(
         [
-          ['pass', 'Chuyền · S/A'],
-          ['through', 'Chọc khe · W'],
-          ['shot', 'Sút · D'],
+          ['pass', t('hud.powerPass')],
+          ['through', t('hud.powerThrough')],
+          ['shot', t('hud.powerShot')],
         ] as const
       ).map(([tone, text]) => (
         <span key={tone} className="hud-legend__row">

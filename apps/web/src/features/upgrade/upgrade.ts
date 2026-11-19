@@ -11,7 +11,13 @@ import {
   type UpgradeConfig,
 } from '@pitch/shared';
 import { ApiClientError } from '../../api/client';
-import { RARITY_INFO } from '../../components/card/rarity';
+import { rarityLabel as getRarityLabel } from '../../components/card/rarity';
+import {
+  errorMessageFor,
+  formatMessage,
+  getActiveLocale,
+  type Locale,
+} from '../../i18n/i18n';
 
 export interface UpgradePreview {
   /** Cấp đích. */
@@ -113,20 +119,31 @@ export function materialGrid(
   materials: readonly CardItem[],
   items: readonly CardItem[],
   rarityLabel: string,
+  locale: Locale = getActiveLocale(),
 ): PickItem[] {
   const validIds = new Set(materials.map((it) => it.pc.id));
   return [
     ...materials.map((it): PickItem => {
-      if (it.pc.level > 0) return { ...it, tone: 'warn', note: `Đã ép +${it.pc.level}` };
-      if (it.card.rarity !== target.card.rarity) return { ...it, tone: 'warn', note: 'Hiếm hơn' };
-      return { ...it, tone: 'success', note: 'Hợp lệ' };
+      if (it.pc.level > 0) {
+        return {
+          ...it,
+          tone: 'warn',
+          note: formatMessage(locale, 'upg.matLeveled', { level: it.pc.level }),
+        };
+      }
+      if (it.card.rarity !== target.card.rarity) {
+        return { ...it, tone: 'warn', note: formatMessage(locale, 'upg.matRarer') };
+      }
+      return { ...it, tone: 'success', note: formatMessage(locale, 'upg.matValid') };
     }),
     ...items
       .filter((it) => it.pc.id !== target.pc.id && !validIds.has(it.pc.id))
       .map((it): PickItem => ({
         ...it,
         tone: 'lock',
-        note: it.pc.inSquad ? 'Trong đội hình' : `Thấp hơn ${rarityLabel}`,
+        note: it.pc.inSquad
+          ? formatMessage(locale, 'upg.matInSquad')
+          : formatMessage(locale, 'upg.matLowerRarity', { rarity: rarityLabel }),
       }))
       .sort((a, b) => Number(b.pc.inSquad) - Number(a.pc.inSquad)),
   ];
@@ -137,14 +154,18 @@ export function materialWarnings(
   target: Card,
   material: Card,
   materialState: Pick<PlayerCard, 'level'>,
+  locale: Locale = getActiveLocale(),
 ): string[] {
-  const out = [`Nguyên liệu ${material.name} sẽ mất dù ép thành công hay thất bại.`];
+  const out = [formatMessage(locale, 'upg.warnBase', { name: material.name })];
   if (materialState.level > 0) {
-    out.push(`Nguyên liệu đang +${materialState.level} — cấp ép của nó cũng mất theo.`);
+    out.push(formatMessage(locale, 'upg.warnLeveled', { level: materialState.level }));
   }
   if (rank(material.rarity) > rank(target.rarity)) {
     out.push(
-      `Nguyên liệu ${RARITY_INFO[material.rarity].label} hiếm hơn thẻ được ép (${RARITY_INFO[target.rarity].label}).`,
+      formatMessage(locale, 'upg.warnRarer', {
+        matRarity: getRarityLabel(material.rarity, locale),
+        targetRarity: getRarityLabel(target.rarity, locale),
+      }),
     );
   }
   return out;
@@ -163,24 +184,24 @@ export function needsHoldConfirm(
   );
 }
 
-export function upgradeErrorMessage(err: unknown): string {
+export function upgradeErrorMessage(err: unknown, locale: Locale = getActiveLocale()): string {
   if (err instanceof ApiClientError) {
     switch (err.code) {
       case 'insufficient_coins':
-        return 'Không đủ xu để ép thẻ.';
+        return formatMessage(locale, 'upg.errInsufficientCoins');
       case 'card_in_squad':
-        return 'Nguyên liệu đang trong đội hình — gỡ khỏi đội rồi thử lại.';
+        return formatMessage(locale, 'upg.errInSquad');
       case 'max_level':
-        return 'Thẻ đã đạt cấp tối đa.';
+        return formatMessage(locale, 'upg.errMaxLevel');
       case 'invalid_material':
-        return 'Nguyên liệu không hợp lệ (phải cùng độ hiếm trở lên và khác thẻ được ép).';
+        return formatMessage(locale, 'upg.errInvalidMat');
       case 'not_found':
-        return 'Thẻ không còn trong kho. Danh sách đã được làm mới.';
+        return formatMessage(locale, 'upg.errNotFound');
       case 'network_error':
-        return 'Mất kết nối — hãy thử lại (không bị trừ xu hai lần).';
+        return formatMessage(locale, 'upg.errNetwork');
       default:
-        return err.message;
+        return errorMessageFor(err, locale, 'err.genericRetry');
     }
   }
-  return 'Có lỗi xảy ra, hãy thử lại.';
+  return formatMessage(locale, 'err.genericRetry');
 }

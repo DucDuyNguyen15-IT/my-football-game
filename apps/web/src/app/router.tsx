@@ -11,11 +11,17 @@ import { ShopPage } from '../features/shop/ShopPage';
 import { SquadPage } from '../features/squad/SquadPage';
 import { UpgradePage } from '../features/upgrade/UpgradePage';
 import { AppLayout, RequireAuth } from './AppLayout';
+import { useI18n } from '../i18n/I18nContext';
 
 // Three.js (~600 KB) chỉ tải khi vào trận.
 const PlayPage = lazy(() =>
   import('../features/play/PlayPage').then((m) => ({ default: m.PlayPage })),
 );
+
+function PlayFallback() {
+  const { t } = useI18n();
+  return <p className="screen-msg">{t('play.loadingChunk')}</p>;
+}
 
 export const router = createBrowserRouter([
   // Trang pháp lý công khai, mở thẳng không qua intro (link từ màn đăng nhập, email…).
@@ -31,7 +37,7 @@ export const router = createBrowserRouter([
           {
             path: '/play',
             element: (
-              <Suspense fallback={<p className="screen-msg">Đang tải trận…</p>}>
+              <Suspense fallback={<PlayFallback />}>
                 <PlayPage />
               </Suspense>
             ),

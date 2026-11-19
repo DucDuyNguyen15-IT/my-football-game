@@ -46,6 +46,7 @@ import {
   type PenaltyRing,
 } from '../render/view';
 import { formatFrameSummary, FrameStats, perfEnabled } from '../render/perf';
+import { getActiveLocale, t } from '../../i18n/i18n';
 import {
   REPLAY_AFTER_TICKS,
   ReplayBuffer,
@@ -573,14 +574,16 @@ export class MatchRenderer {
       this.parent.appendChild(el);
       this.foulCall = el;
     }
+    const locale = getActiveLocale();
+    const bookedPrefix = locale === 'en' ? ' · #' : ' · SỐ ';
     const card = foul.card
       ? `<span class="foul-call__card foul-call__card--${foul.card}" aria-hidden="true"></span>` +
-        `<span class="foul-call__who">${foul.card === 'red' ? 'THẺ ĐỎ' : 'THẺ VÀNG'}` +
-        `${foul.bookedNumber !== null ? ` · SỐ ${foul.bookedNumber}` : ''}</span>`
+        `<span class="foul-call__who">${foul.card === 'red' ? t('hud.cardRedUpper') : t('hud.cardYellowUpper')}` +
+        `${foul.bookedNumber !== null ? `${bookedPrefix}${foul.bookedNumber}` : ''}</span>`
       : '';
     el.innerHTML =
       '<span class="foul-call__whistle" aria-hidden="true"></span>' +
-      `<span class="display foul-call__text">${spec.kind === 'penalty' ? 'PHẠM LỖI TRONG VÒNG CẤM' : 'PHẠM LỖI'}</span>` +
+      `<span class="display foul-call__text">${spec.kind === 'penalty' ? t('hud.foulPenalty') : t('hud.foul')}</span>` +
       card;
     el.hidden = false;
   }
@@ -894,8 +897,8 @@ export class MatchRenderer {
     el.setAttribute('role', 'status');
     el.innerHTML =
       '<span class="replay-tag__dot" aria-hidden="true"></span>' +
-      '<span class="display replay-tag__text">PHÁT LẠI</span>' +
-      '<span class="keyhint"><kbd class="kbd">S</kbd>Bỏ qua</span>';
+      `<span class="display replay-tag__text">${t('hud.replayTag')}</span>` +
+      `<span class="keyhint"><kbd class="kbd">S</kbd>${t('hud.replaySkip')}</span>`;
     this.parent.appendChild(el);
     this.replayLabel = el;
   }

@@ -14,6 +14,7 @@ import {
 } from '@pitch/sim';
 import type { GraphicsQuality } from '../bridge';
 import { SNAP_DISTANCE, countdownRing, playerNumber } from './view';
+import { formatMessage, getActiveLocale } from '../../i18n/i18n';
 
 export type TransitionKind =
   | 'goal_kick'
@@ -93,11 +94,6 @@ export const OUT_OF_BOUNDS_DELAY_SEC = OUT_HOLD_TICKS / TICK_RATE;
 /** Luân lưu: xem bóng rung lưới / pha cản phá của lượt vừa sút trước khi sang lượt kế (giây). */
 export const SHOOTOUT_RESULT_DELAY_SEC = SHOOTOUT_HOLD_TICKS / TICK_RATE;
 
-const TEAM_SUBLABEL: Record<TeamSide, string> = {
-  home: 'ĐỘI NHÀ',
-  away: 'ĐỘI KHÁCH',
-};
-
 export const TRANSITION_LABELS: Record<TransitionKind, string> = {
   goal_kick: 'PHÁT BÓNG',
   corner: 'PHẠT GÓC',
@@ -140,13 +136,14 @@ const DURATION_2D: Record<TransitionKind, number> = {
   shootout_turn: 0.62,
 };
 
-/** Nhãn hiển thị cho từng loại chuyển cảnh; lượt luân lưu giữa trận hiện `"LƯỢT N"`. */
+/** Nhãn hiển thị cho từng loại chuyển cảnh; lượt luân lưu giữa trận hiện `"LƯỢT N"` / `"ROUND N"`. */
 export function transitionLabel(kind: TransitionKind, turn?: number | null): string {
+  const locale = getActiveLocale();
   if (kind === 'shootout_turn') {
     const n = turn !== undefined && turn !== null && turn > 0 ? Math.floor(turn) : 1;
-    return `${TRANSITION_LABELS.shootout_turn} ${n}`;
+    return `${formatMessage(locale, 'stinger.kind.shootout_turn')} ${n}`;
   }
-  return TRANSITION_LABELS[kind];
+  return formatMessage(locale, `stinger.kind.${kind}`);
 }
 
 function defaultSublabel(
@@ -154,26 +151,36 @@ function defaultSublabel(
   team: TeamSide | null,
   turn: number | null,
 ): string {
+  const locale = getActiveLocale();
+  const teamLabel = team ? formatMessage(locale, `stinger.team.${team}`) : null;
   switch (kind) {
     case 'replay_in':
-      return 'PHA GHI BÀN';
+      return formatMessage(locale, 'stinger.sub.replay_in');
     case 'replay_out':
     case 'kickoff':
-      return team ? `GIAO BÓNG · ${TEAM_SUBLABEL[team]}` : 'TIẾP TỤC TRẬN ĐẤU';
+      return teamLabel
+        ? formatMessage(locale, 'stinger.sub.kickoffTeam', { team: teamLabel })
+        : formatMessage(locale, 'stinger.sub.kickoff');
     case 'second_half':
-      return team ? `HIỆP 2 · ${TEAM_SUBLABEL[team]}` : 'HIỆP 2';
+      return teamLabel
+        ? formatMessage(locale, 'stinger.sub.secondHalfTeam', { team: teamLabel })
+        : formatMessage(locale, 'stinger.sub.secondHalf');
     case 'shootout':
-      return team ? `LƯỢT 1 · ${TEAM_SUBLABEL[team]} SÚT` : 'PHÂN ĐỊNH THẮNG THUA';
+      return teamLabel
+        ? formatMessage(locale, 'stinger.sub.shootoutTeam', { team: teamLabel })
+        : formatMessage(locale, 'stinger.sub.shootout');
     case 'shootout_turn':
-      return team
-        ? `LUÂN LƯU · ${TEAM_SUBLABEL[team]} SÚT`
-        : `LUÂN LƯU · LƯỢT ${turn ?? 1}`;
+      return teamLabel
+        ? formatMessage(locale, 'stinger.sub.shootoutTurnTeam', { team: teamLabel })
+        : formatMessage(locale, 'stinger.sub.shootoutTurn', { turn: turn ?? 1 });
     case 'goal_kick':
     case 'corner':
     case 'throw_in':
     case 'free_kick':
     case 'penalty':
-      return team ? `TÌNH HUỐNG CỐ ĐỊNH · ${TEAM_SUBLABEL[team]}` : 'TÌNH HUỐNG CỐ ĐỊNH';
+      return teamLabel
+        ? formatMessage(locale, 'stinger.sub.setPieceTeam', { team: teamLabel })
+        : formatMessage(locale, 'stinger.sub.setPiece');
   }
 }
 

@@ -1,7 +1,16 @@
 import { useRef, type PointerEvent } from 'react';
 import { computeOvr, type Card, type PlayerStats } from '@pitch/shared';
+import { formatMessage, getActiveLocale, type Locale } from '../../i18n/i18n';
+import { useI18n } from '../../i18n/I18nContext';
 import { Avatar } from './Avatar';
-import { POSITION_NAME, RARITY_INFO, shortCardName, splitName, statsFor } from './rarity';
+import {
+  localizedStatsFor,
+  positionName,
+  rarityLabel,
+  rarityPips,
+  shortCardName,
+  splitName,
+} from './rarity';
 import { canHoverTilt, computeCardTilt } from './tilt';
 import './card.css';
 
@@ -26,9 +35,21 @@ export interface CardViewProps {
 }
 
 /** Mô tả đọc cho trình đọc màn hình, VD "Vàng, Rafinho Duarte, Tiền đạo, OVR 81". */
-export function cardLabel(card: Card, ovr = card.ovr, level = 0): string {
-  const plus = level > 0 ? `, cấp +${level}` : '';
-  return `${RARITY_INFO[card.rarity].label}, ${card.name}, ${POSITION_NAME[card.position]}, OVR ${ovr}${plus}`;
+export function cardLabel(
+  card: Card,
+  ovr = card.ovr,
+  level = 0,
+  locale: Locale = getActiveLocale(),
+): string {
+  const plus = level > 0 ? formatMessage(locale, 'card.ariaLevel', { level }) : '';
+  return (
+    formatMessage(locale, 'card.ariaLabel', {
+      rarity: rarityLabel(card.rarity, locale),
+      name: card.name,
+      position: positionName(card.position, locale),
+      ovr,
+    }) + plus
+  );
 }
 
 export { shortCardName, splitName };
@@ -49,10 +70,13 @@ export function CardView({
   dim,
   tilt,
 }: CardViewProps) {
+  const { locale, t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const shown = stats ?? card.stats;
   const ovr = stats ? computeOvr(card.position, stats) : card.ovr;
-  const info = RARITY_INFO[card.rarity];
+  const tierLabel = rarityLabel(card.rarity, locale);
+  const pips = rarityPips(card.rarity);
+  const posLabel = positionName(card.position, locale);
   const [last, first] = splitName(card.name);
 
   const onPointerMove = (e: PointerEvent<HTMLDivElement>) => {
@@ -78,22 +102,22 @@ export function CardView({
       ref={ref}
       className={`card card--${size} r-${card.rarity}${selected ? ' is-selected' : ''}${dim ? ' is-dim' : ''}${tilt ? ' card--tilt' : ''}`}
       role="img"
-      aria-label={cardLabel(card, ovr, level)}
+      aria-label={cardLabel(card, ovr, level, locale)}
       onPointerMove={tilt ? onPointerMove : undefined}
       onPointerLeave={tilt ? resetTilt : undefined}
       onPointerCancel={tilt ? resetTilt : undefined}
     >
       <div className="card__body">
         <div className="card__ovr">{ovr}</div>
-        <div className="card__pos" title={POSITION_NAME[card.position]}>
+        <div className="card__pos" title={posLabel}>
           {card.position}
         </div>
         <div className="card__pips" aria-hidden="true">
-          {'◆'.repeat(info.pips)}
+          {'◆'.repeat(pips)}
         </div>
-        {isNew && <div className="card__flag">MỚI</div>}
-        {!isNew && isDuplicate && <div className="card__flag card__flag--dup">TRÙNG</div>}
-        {inSquad && <div className="card__squad" title="Đang trong đội hình" />}
+        {isNew && <div className="card__flag">{t('card.flagNew')}</div>}
+        {!isNew && isDuplicate && <div className="card__flag card__flag--dup">{t('card.flagDup')}</div>}
+        {inSquad && <div className="card__squad" title={t('card.inSquadTitle')} />}
         <div className="card__avatar">
           <Avatar seed={card.avatarSeed} />
         </div>
@@ -103,7 +127,7 @@ export function CardView({
         </div>
         {(size === 'lg' || size === 'md') && (
           <div className="card__stats">
-            {statsFor(card.position).map((s) => (
+            {localizedStatsFor(card.position, locale).map((s) => (
               <div key={s.key} className="card__stat" title={s.name}>
                 <b>{shown[s.key]}</b>
                 <span>{s.abbr}</span>
@@ -111,7 +135,7 @@ export function CardView({
             ))}
           </div>
         )}
-        <div className="card__tier">{info.label}</div>
+        <div className="card__tier">{tierLabel}</div>
         {level > 0 && <div className="card__level">+{level}</div>}
         <div className="card__sheen" />
       </div>
