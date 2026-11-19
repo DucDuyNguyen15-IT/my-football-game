@@ -187,7 +187,7 @@
   padding-right: 52px;
 }
 
-/* ---------- Thanh đo độ mạnh mật khẩu kiểu thể lực / lực sút 4 bậc độ hiếm ---------- */
+/* ---------- Thanh độ mạnh mật khẩu: 1 thanh liền, màu theo độ hiếm 4 mức ---------- */
 .pw-meter {
   display: grid;
   gap: 6px;
@@ -239,33 +239,22 @@
   letter-spacing: 1px;
 }
 .pw-meter__bar {
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 4px;
   height: 8px;
-  padding: 1px;
   border-radius: 999px;
-  background: var(--c-surface-3);
-}
-.pw-meter__seg {
-  position: relative;
   overflow: hidden;
-  border-radius: 999px;
-  background: var(--c-line);
-  transform: scaleX(0.96);
-  opacity: 0.45;
-  transition:
-    transform var(--dur-base) var(--ease-snap),
-    opacity var(--dur-fast) var(--ease-out),
-    background-color var(--dur-fast) var(--ease-out);
+  background: var(--c-surface-3);
+  box-shadow: inset 0 0 0 1px var(--c-line);
 }
-.pw-meter__seg.is-on {
-  opacity: 1;
-  transform: scaleX(1);
+.pw-meter__fill {
+  position: relative;
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  overflow: hidden;
   background: linear-gradient(90deg, var(--base), var(--hi));
-  box-shadow: 0 0 6px color-mix(in srgb, var(--base) 55%, transparent);
+  transition: width var(--dur-base) var(--ease-snap);
 }
-.pw-meter.r-legend .pw-meter__seg.is-on::after {
+.pw-meter.r-legend .pw-meter__fill::after {
   content: '';
   position: absolute;
   inset: 0;
@@ -294,10 +283,10 @@
 }
 @media (prefers-reduced-motion: reduce) {
   .pw-meter__badge,
-  .pw-meter__seg {
+  .pw-meter__fill {
     transition: none;
   }
-  .pw-meter.r-legend .pw-meter__seg.is-on::after {
+  .pw-meter.r-legend .pw-meter__fill::after {
     animation: none;
     display: none;
   }

@@ -4,7 +4,7 @@ import { evaluatePasswordStrength } from './passwordStrength';
 import { PasswordStrengthMeter } from './PasswordStrengthMeter';
 
 describe('<PasswordStrengthMeter>', () => {
-  it('hiển thị aria-live="polite", 4 bậc theo độ hiếm thẻ và gợi ý chữ', () => {
+  it('hiển thị aria-live="polite", 1 thanh liền 4 mức (màu theo độ hiếm) và gợi ý chữ', () => {
     const emptyHtml = renderToStaticMarkup(
       <PasswordStrengthMeter id="pw-s" strength={evaluatePasswordStrength('')} />,
     );
@@ -16,14 +16,17 @@ describe('<PasswordStrengthMeter>', () => {
       <PasswordStrengthMeter id="pw-s" strength={evaluatePasswordStrength('12345678')} />,
     );
     expect(bronzeHtml).toContain('r-bronze');
-    expect(bronzeHtml).toContain('Đồng · Dự bị (quá yếu)');
+    expect(bronzeHtml).toContain('>Yếu<');
+    expect(bronzeHtml).toContain('width:25%');
     expect(bronzeHtml).toContain('Mật khẩu quá phổ biến');
 
     const legendHtml = renderToStaticMarkup(
       <PasswordStrengthMeter id="pw-s" strength={evaluatePasswordStrength('Saigon@2026!')} />,
     );
     expect(legendHtml).toContain('r-legend');
-    expect(legendHtml).toContain('Huyền thoại (4/4)');
-    expect(legendHtml).toContain('Thể lực tối đa');
+    expect(legendHtml).toContain('>Rất mạnh<');
+    expect(legendHtml).toContain('width:100%');
+    expect(legendHtml).toContain('Mật khẩu rất mạnh.');
+    expect(legendHtml).toContain('Độ mạnh mật khẩu');
   });
 });

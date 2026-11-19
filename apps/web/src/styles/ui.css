@@ -198,10 +198,19 @@
 .btn--block {
   width: 100%;
 }
-.btn[disabled],
+/* Nút bị khoá: nền trung tính + chữ muted (≥ 4.5:1 ở cả 2 theme, xem contrast.test.ts) thay vì
+   opacity — opacity làm chữ chìm vào nền, nhất là ở giao diện tối. Nút đang tải giữ màu gốc. */
+.btn[disabled]:not(.is-loading),
 .btn.is-disabled {
-  opacity: 0.45;
+  background: var(--c-surface-2);
+  border-color: var(--c-line-strong);
+  color: var(--c-text-muted);
+  box-shadow: none;
   cursor: not-allowed;
+}
+.btn[disabled]:not(.is-loading) .coin,
+.btn.is-disabled .coin {
+  color: inherit;
 }
 .btn.is-loading {
   cursor: progress;
