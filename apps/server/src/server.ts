@@ -19,6 +19,7 @@ const app = buildApp({
   logger: true,
   enableDevRoutes: env.enableDevRoutes,
   secureCookies: env.nodeEnv === 'production',
+  sessionSecret: env.sessionSecret,
   trustProxy: env.trustProxy,
   matchMinDurationSec: env.matchMinDurationSec,
   googleClientId: env.googleClientId,
