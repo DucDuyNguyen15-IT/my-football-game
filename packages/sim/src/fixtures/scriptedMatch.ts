@@ -11,7 +11,7 @@ import { NO_INPUT, type MatchSetup, type MatchState, type PlayerInput } from '..
 export function playScriptedMatch(
   setup: MatchSetup,
   inputSeed = 1,
-  opts: { subAtTick?: number; maxTicks?: number } = {},
+  opts: { subAtTick?: number; maxTicks?: number; onStep?: (s: MatchState) => void } = {},
 ): { log: string; final: MatchState } {
   const rec = new InputRecorder();
   let s = createMatch(setup);
@@ -43,6 +43,7 @@ export function playScriptedMatch(
     }
     rec.tick(input);
     s = step(s, input);
+    opts.onStep?.(s);
   }
   return { log: rec.encode(), final: s };
 }
