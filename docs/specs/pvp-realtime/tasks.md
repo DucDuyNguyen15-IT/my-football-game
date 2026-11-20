@@ -84,12 +84,12 @@
   - `start` mang `countdownMs` (tương đối, 3000), **không có** `startAt` theo đồng hồ server (A16).
 
   Export qua index của shared.
-- [ ] T015 Trong `apps/server/src/db/schema.ts` + `drizzle-kit generate` → `apps/server/drizzle/0008_pvp.sql` (A5):
+- [x] T015 Trong `apps/server/src/db/schema.ts` + `drizzle-kit generate` → `apps/server/drizzle/0008_pvp.sql` (A5):
   - bảng `pvp_matches` theo data-model.md §1: enum `pvp_kind` (`ranked`,`friendly`), `pvp_status` (`live`,`finished`,`cancelled`), `pvp_end_reason` (`full_time`,`forfeit_disconnect`,`forfeit_desync`,`void_desync`,`void_both_left`,`void_not_ready`,`server_restart`); CHECK `home_user_id <> away_user_id`; CHECK goals 0..20;
   - thêm vào `matches` các cột `mode` (enum `match_mode`, mặc định `cpu`), `pvp_match_id`, `opponent_user_id`, `consumes_daily_cap` (mặc định false), UNIQUE `(pvp_match_id, user_id)`;
   - đổi điều kiện index `matches_user_reward_day_idx` thành `reward > 0 OR consumes_daily_cap`.
-- [ ] T016 Thêm `mode: 'cpu' | 'pvp'` vào `MissionEvent` `match_finished` (`apps/server/src/domain/missions.ts:11`). `match_hard` chỉ đếm khi `mode === 'cpu'` (research R13). Sửa nơi gọi hiện có trong `submitMatchResult` để truyền `mode: 'cpu'`. Thêm test trong `missions.test.ts`.
-- [ ] T016b Sửa `countRewardedMatches` trong `apps/server/src/services/matches.ts:42` để đếm `reward > 0 OR consumes_daily_cap`. Thêm 6 sự kiện `pvp_matched`, `pvp_start`, `pvp_end`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync` vào `AnalyticsEventName` trong `apps/server/src/services/analytics.ts`. Test hồi quy: trận đấu máy vẫn đếm như cũ.
+- [x] T016 Thêm `mode: 'cpu' | 'pvp'` vào `MissionEvent` `match_finished` (`apps/server/src/domain/missions.ts:11`). `match_hard` chỉ đếm khi `mode === 'cpu'` (research R13). Sửa nơi gọi hiện có trong `submitMatchResult` để truyền `mode: 'cpu'`. Thêm test trong `missions.test.ts`.
+- [x] T016b Sửa `countRewardedMatches` trong `apps/server/src/services/matches.ts:42` để đếm `reward > 0 OR consumes_daily_cap`. Thêm 6 sự kiện `pvp_matched`, `pvp_start`, `pvp_end`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync` vào `AnalyticsEventName` trong `apps/server/src/services/analytics.ts`. Test hồi quy: trận đấu máy vẫn đếm như cũ.
 - [ ] T017 Tạo `apps/server/src/routes/pvp.ts` và đăng ký trong `apps/server/src/app.ts`:
   - endpoint WS `GET /api/v1/pvp/ws`;
   - `preValidation` xác thực `sid` bằng logic của `plugins/auth.ts` `requireAuth`; header `Origin` **bắt buộc**, thiếu hoặc sai (khác `Host`) → 403 (A18);

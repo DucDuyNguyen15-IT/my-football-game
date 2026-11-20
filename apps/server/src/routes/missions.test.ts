@@ -337,6 +337,7 @@ describe('Nhiệm vụ ngày (F12)', () => {
     const day1 = await getMissions(sid);
     const eventDay1 = {
       type: 'match_finished' as const,
+      mode: 'cpu' as const,
       difficulty: 'hard' as const,
       outcome: 'win' as const,
       homeGoals: 3,

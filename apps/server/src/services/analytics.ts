@@ -15,7 +15,13 @@ export type AnalyticsEventName =
   | 'match_replay_mismatch'
   | 'pack_open'
   | 'upgrade'
-  | 'mission_claim';
+  | 'mission_claim'
+  | 'pvp_matched'
+  | 'pvp_start'
+  | 'pvp_end'
+  | 'pvp_disconnect'
+  | 'pvp_forfeit'
+  | 'pvp_desync';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
