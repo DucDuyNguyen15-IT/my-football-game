@@ -18,6 +18,7 @@ import {
   smallint,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core';
@@ -40,6 +41,18 @@ export const matchOutcomeEnum = pgEnum('match_outcome', [
   'loss',
   'shootout_win',
   'shootout_loss',
+]);
+export const matchModeEnum = pgEnum('match_mode', ['cpu', 'pvp_ranked', 'pvp_friendly']);
+export const pvpKindEnum = pgEnum('pvp_kind', ['ranked', 'friendly']);
+export const pvpStatusEnum = pgEnum('pvp_status', ['live', 'finished', 'cancelled']);
+export const pvpEndReasonEnum = pgEnum('pvp_end_reason', [
+  'full_time',
+  'forfeit_disconnect',
+  'forfeit_desync',
+  'void_desync',
+  'void_both_left',
+  'void_not_ready',
+  'server_restart',
 ]);
 export const cardSourceEnum = pgEnum('card_source', ['starter', 'pack']);
 export const coinTxTypeEnum = pgEnum('coin_tx_type', [
@@ -243,6 +256,41 @@ export const squadSlots = pgTable(
   ],
 );
 
+/** Mỗi trận đá trực tiếp một dòng; mỗi người chơi còn một dòng `matches` (data-model.md §2). */
+export const pvpMatches = pgTable(
+  'pvp_matches',
+  {
+    id: id(),
+    kind: pvpKindEnum('kind').notNull(),
+    homeUserId: userRef('home_user_id')
+      .notNull()
+      .references(() => users.id),
+    awayUserId: userRef('away_user_id')
+      .notNull()
+      .references(() => users.id),
+    seed: bigint('seed', { mode: 'number' }).notNull(),
+    squadSnapshot: jsonb('squad_snapshot').notNull(),
+    status: pvpStatusEnum('status').notNull().default('live'),
+    endReason: pvpEndReasonEnum('end_reason'),
+    forfeitUserId: userRef('forfeit_user_id').references(() => users.id),
+    homeGoals: smallint('home_goals'),
+    awayGoals: smallint('away_goals'),
+    inputLog: text('input_log'),
+    startedAt: ts('started_at').notNull(),
+    finishedAt: ts('finished_at'),
+  },
+  (t) => [
+    index('pvp_matches_home_started_idx').on(t.homeUserId, t.startedAt),
+    index('pvp_matches_away_started_idx').on(t.awayUserId, t.startedAt),
+    index('pvp_matches_ranked_finished_idx')
+      .on(t.kind, t.finishedAt)
+      .where(sql`${t.kind} = 'ranked' and ${t.status} = 'finished'`),
+    check('pvp_matches_distinct_users', sql`${t.homeUserId} <> ${t.awayUserId}`),
+    check('pvp_matches_home_goals_range', sql`${t.homeGoals} between 0 and 20`),
+    check('pvp_matches_away_goals_range', sql`${t.awayGoals} between 0 and 20`),
+  ],
+);
+
 export const matches = pgTable(
   'matches',
   {
@@ -264,12 +312,18 @@ export const matches = pgTable(
     reward: integer('reward').notNull().default(0),
     /** Ngày GMT+7 lúc nộp kết quả, để đếm trần trận có thưởng/ngày. */
     rewardDay: date('reward_day'),
+    mode: matchModeEnum('mode').notNull().default('cpu'),
+    pvpMatchId: userRef('pvp_match_id').references(() => pvpMatches.id),
+    opponentUserId: userRef('opponent_user_id').references(() => users.id),
+    /** True cho người bị xử thua ở trận ranked: vẫn tốn một suất trần ngày dù thưởng 0. */
+    consumesDailyCap: boolean('consumes_daily_cap').notNull().default(false),
   },
   (t) => [
     index('matches_user_started_idx').on(t.userId, t.startedAt),
     index('matches_user_reward_day_idx')
       .on(t.userId, t.rewardDay)
-      .where(sql`${t.reward} > 0`),
+      .where(sql`${t.reward} > 0 or ${t.consumesDailyCap}`),
+    unique('matches_pvp_user_uniq').on(t.pvpMatchId, t.userId),
     check('matches_home_goals_range', sql`${t.homeGoals} between 0 and 20`),
     check('matches_away_goals_range', sql`${t.awayGoals} between 0 and 20`),
     check('matches_reward_nonneg', sql`${t.reward} >= 0`),

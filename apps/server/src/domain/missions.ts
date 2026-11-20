@@ -11,6 +11,7 @@ import {
 export type MissionEvent =
   | {
       type: 'match_finished';
+      mode: 'cpu' | 'pvp';
       difficulty: Difficulty;
       outcome: MatchOutcome;
       homeGoals: number;
@@ -56,7 +57,7 @@ export function missionDelta(kind: MissionEventKind, event: MissionEvent): numbe
     case 'match_goals':
       return Math.max(0, event.homeGoals);
     case 'match_hard':
-      return event.difficulty === 'hard' ? 1 : 0;
+      return event.mode === 'cpu' && event.difficulty === 'hard' ? 1 : 0;
     case 'match_play':
       return 1;
     case 'match_clean_sheet':

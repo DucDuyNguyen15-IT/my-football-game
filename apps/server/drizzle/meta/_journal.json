@@ -57,6 +57,13 @@
       "when": 1795072589204,
       "tag": "0007_users_trusted_device_lock",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1795190146055,
+      "tag": "0008_pvp",
+      "breakpoints": true
     }
   ]
 }
