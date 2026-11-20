@@ -25,6 +25,7 @@ export const PvpMatchSetup = z.object({
   halfLengthSec: z.number().positive().optional(),
   autopilot: z.boolean().optional(),
   homeAi: z.enum(['teammate', 'proxy']).optional(),
+  humans: z.array(TeamSide).max(2).optional(),
 });
 export type PvpMatchSetup = z.infer<typeof PvpMatchSetup>;
 
