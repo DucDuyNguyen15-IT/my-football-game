@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { cpuEasyTeam, cpuHardTeam, starterLikeTeam } from './fixtures/demoTeams';
 import { playScriptedMatch } from './fixtures/scriptedMatch';
+import { stateHash } from './hash';
 import { createMatch, step } from './match';
 import {
   buildMatchSetup,
@@ -84,9 +85,6 @@ describe('golden hash (tất định số học)', () => {
     for (let i = 0; i < 3000; i++) {
       s = step(s, decodeInput((Math.imul((i >> 4) + 1, 2654435761) >>> 0) % 4608));
     }
-    // FNV-1a 32-bit trên JSON state (không cần mật mã, chỉ cần phát hiện đổi).
-    let h = 2166136261;
-    for (const ch of JSON.stringify(s)) h = Math.imul(h ^ ch.charCodeAt(0), 16777619) >>> 0;
-    expect(h).toBe(2036198609);
+    expect(stateHash(s)).toBe(1047449807);
   });
 });
