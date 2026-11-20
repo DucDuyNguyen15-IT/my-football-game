@@ -25,6 +25,8 @@ export interface MatchSetup {
   autopilot?: boolean;
   /** Hồ sơ AI của đội người chơi: `proxy` khi chạy cân bằng (task 5.13). Mặc định `teammate`. */
   homeAi?: 'teammate' | 'proxy';
+  /** Đội do người chơi điều khiển (PvP: cả hai). Mặc định `['home']`; đội còn lại là máy. */
+  humans?: TeamSide[];
 }
 
 export interface PlayerState {
@@ -94,6 +96,8 @@ export interface PlayerInput {
 }
 
 /** Đóng băng vì được nhiều state dùng chung tham chiếu. */
+export type TeamInputs = Record<TeamSide, PlayerInput>;
+
 export const NO_INPUT: PlayerInput = Object.freeze({
   move: Object.freeze({ x: 0, y: 0 }),
   pass: false,
@@ -254,6 +258,8 @@ export interface MatchState {
   } | null;
   /** AI điều khiển luôn đội người chơi, input bị bỏ qua. */
   autopilot: boolean;
+  /** Đội do người chơi điều khiển (`MatchSetup.humans`). */
+  humans: TeamSide[];
   /** Hồ sơ AI của đội người chơi (`MatchSetup.homeAi`). */
   homeAi: 'teammate' | 'proxy';
   formations: Record<TeamSide, Formation>;
@@ -288,7 +294,7 @@ export interface MatchState {
   /** Các lượt thay người theo thứ tự (cho HUD và màn kết quả). */
   substitutions: Substitution[];
   /** Hạn chót người chơi phải thực hiện (ôm bóng / tình huống cố định); null khi không có. */
-  actionDeadline: ActionDeadline | null;
+  actionDeadline: Record<TeamSide, ActionDeadline | null>;
   /** Nghỉ giữa hiệp: tới tick này mà chưa bấm chuyền thì tự đá hiệp 2; null ngoài giờ nghỉ. */
   halfTimeEndTick: number | null;
   /**
@@ -312,18 +318,21 @@ export interface MatchState {
   /** `touch`: chạm bóng bổng bằng đầu / móc bóng (để phần hiển thị chọn clip). */
   kickLock: { playerId: string; untilTick: number; touch?: 'header' | 'scissor' } | null;
   /** Số tick người chơi đã giữ nút sút (0 = không nạp lực). */
-  shotChargeTicks: number;
+  shotChargeTicks: Record<TeamSide, number>;
   /**
    * Người chơi đang giữ S/A (chuyền) hoặc W / Q+W (chọc khe, `through`) để nạp lực, nhả mới đá: loại
    * chuyền, số tick đã giữ, hướng bấm gần nhất. null khi không nạp.
    */
-  passCharge: { kind: 'ground' | 'lob'; ticks: number; dir: Vec2; through: boolean } | null;
-  /** Cầu thủ đội nhà người chơi đang điều khiển. */
-  controlledId: string;
+  passCharge: Record<
+    TeamSide,
+    { kind: 'ground' | 'lob'; ticks: number; dir: Vec2; through: boolean } | null
+  >;
+  /** Cầu thủ người chơi đang điều khiển, theo đội ('' với đội máy). */
+  controlledId: Record<TeamSide, string>;
   /** Thủ môn đang lấy đà ném/phát bóng; null khi không. */
   windup: Windup | null;
   /** Người chơi vừa chuyền cho đồng đội: người nhận tự chạy đón; null khi không. */
-  passReceiver: PassReceiver | null;
+  passReceiver: Record<TeamSide, PassReceiver | null>;
   /**
    * Luật chuyền về: đội có cầu thủ (không phải thủ môn) vừa cố ý đá/ném bóng đi mà chưa ai khác chạm
    * — thủ môn đội đó không được bắt bằng tay, nhận được thì giữ bằng chân tới khi bóng rời chân.
@@ -336,5 +345,5 @@ export interface MatchState {
    */
   ai: Record<TeamSide, TeamAiState | null> | null;
   /** Input đã áp dụng ở tick trước. */
-  input: PlayerInput;
+  input: TeamInputs;
 }

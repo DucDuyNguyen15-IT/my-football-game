@@ -68,12 +68,13 @@ export interface ChargeMeter {
 export function chargeMeter(
   state: Pick<MatchState, 'shotChargeTicks' | 'passCharge'>,
 ): ChargeMeter | null {
-  if (state.passCharge) {
-    const fill = Math.min(1, state.passCharge.ticks / PASS_FULL_CHARGE_TICKS);
-    return { kind: state.passCharge.through ? 'through' : state.passCharge.kind, fill };
+  const pass = state.passCharge.home;
+  if (pass) {
+    const fill = Math.min(1, pass.ticks / PASS_FULL_CHARGE_TICKS);
+    return { kind: pass.through ? 'through' : pass.kind, fill };
   }
-  if (state.shotChargeTicks > 0) {
-    return { kind: 'shot', fill: Math.min(1, state.shotChargeTicks / MAX_CHARGE_TICKS) };
+  if (state.shotChargeTicks.home > 0) {
+    return { kind: 'shot', fill: Math.min(1, state.shotChargeTicks.home / MAX_CHARGE_TICKS) };
   }
   return null;
 }
@@ -101,7 +102,7 @@ export interface CountdownRing {
 export function countdownRing(
   state: Pick<MatchState, 'actionDeadline' | 'tick'>,
 ): CountdownRing | null {
-  const d = state.actionDeadline;
+  const d = state.actionDeadline.home;
   if (!d) return null;
   const left = Math.max(0, d.deadlineTick - state.tick);
   const shown = COUNTDOWN_VISIBLE_SEC * TICK_RATE;
@@ -163,10 +164,10 @@ export function penaltyRing(
   const r = state.restart;
   if (!r || r.type !== 'penalty' || r.team !== 'home' || state.autopilot) return null;
   const run = r.penaltyRunUp;
-  if (!run && state.shotChargeTicks <= 0) return null;
+  if (!run && state.shotChargeTicks.home <= 0) return null;
   const taker = state.players.find((p) => p.id === r.takerId);
   if (!taker) return null;
-  const power = run ? run.power : shotPower(state.shotChargeTicks);
+  const power = run ? run.power : shotPower(state.shotChargeTicks.home);
   return {
     x: Math.sign(r.spot.x) * HALF_LENGTH,
     y: run ? run.y : 0,

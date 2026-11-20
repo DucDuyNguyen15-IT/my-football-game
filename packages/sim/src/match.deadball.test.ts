@@ -34,7 +34,7 @@ function freeKick(seed: number, team: TeamSide): MatchState {
       startTick: s.tick,
       readyTick: s.tick,
     },
-    controlledId: team === 'home' ? taker.id : s.controlledId,
+    controlledId: { home: team === 'home' ? taker.id : s.controlledId.home, away: '' },
   };
 }
 

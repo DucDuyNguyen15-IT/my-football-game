@@ -48,7 +48,7 @@ function scene(owner: Vec2, me: Vec2, ownerFacing: Vec2 = vec2(-1, 0), rng?: Rng
     ballOwnerId: OWNER,
     ball: dribbleBall(players.find((p) => p.id === OWNER)!),
     lastTouchTeam: 'away',
-    controlledId: ME,
+    controlledId: { home: ME, away: '' },
     rng: rng ?? s.rng,
     ai: null,
   };
@@ -116,7 +116,7 @@ describe('giữ D: tắc bóng đứng khi bóng vào tầm', () => {
     expect(won.ballOwnerId).toBe(ME);
     expect(won.kickLock?.playerId).toBe(OWNER);
     const held = repeat(won, D, 30);
-    expect(held.shotChargeTicks).toBe(0);
+    expect(held.shotChargeTicks.home).toBe(0);
     const released = step(held, NO_INPUT);
     expect(released.ballOwnerId).toBe(ME);
     expect(released.phase).toBe('play');

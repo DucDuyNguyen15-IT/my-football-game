@@ -70,7 +70,7 @@ describe('createMatch', () => {
   it('người chơi điều khiển cầu thủ đội nhà gần bóng nhất', () => {
     const home = s.players.filter((p) => p.team === 'home');
     const nearest = home.reduce((a, b) => (length(b.pos) < length(a.pos) ? b : a));
-    expect(s.controlledId).toBe(nearest.id);
+    expect(s.controlledId.home).toBe(nearest.id);
   });
 
   it('PRNG lấy từ seed', () => {
@@ -149,7 +149,7 @@ describe('step', () => {
     const s1 = step(createMatch(setup), input);
     expect(s1.tick).toBe(1);
     expect(s1.halfTick).toBe(1);
-    expect(s1.input).toEqual(input);
+    expect(s1.input.home).toEqual(input);
   });
 
   it('không sửa state đầu vào', () => {
@@ -162,10 +162,10 @@ describe('step', () => {
   it('làm sạch input: giá trị không hữu hạn → 0, hướng dài hơn 1 bị kẹp về 1', () => {
     const s0 = createMatch(setup);
     const nan = step(s0, { ...NO_INPUT, move: { x: Number.NaN, y: Number.POSITIVE_INFINITY } });
-    expect(nan.input.move).toEqual({ x: 0, y: 0 });
+    expect(nan.input.home.move).toEqual({ x: 0, y: 0 });
     const long = step(s0, { ...NO_INPUT, move: { x: 3, y: 4 } });
-    expect(long.input.move.x).toBeCloseTo(0.6);
-    expect(long.input.move.y).toBeCloseTo(0.8);
+    expect(long.input.home.move.x).toBeCloseTo(0.6);
+    expect(long.input.home.move.y).toBeCloseTo(0.8);
   });
 });
 
@@ -211,7 +211,7 @@ describe('createMatch — kiểm soát bóng', () => {
     const s = createMatch(setup);
     expect(s.ballOwnerId).toBeNull();
     expect(s.kickLock).toBeNull();
-    expect(s.shotChargeTicks).toBe(0);
+    expect(s.shotChargeTicks.home).toBe(0);
   });
 });
 
@@ -238,7 +238,7 @@ function scenario(
     ballDead: false,
     restart: null,
     players,
-    controlledId: controlled,
+    controlledId: { home: controlled, away: '' },
     ballOwnerId: owner,
     ball: ownerP ? dribbleBall(ownerP) : { pos: ballPos, vel: ZERO, z: 0, vz: 0 },
   };
@@ -279,7 +279,7 @@ describe('step — dẫn bóng và bắt bóng', () => {
     const s0 = scenario({ 'away-P1': vec2(0.5, 0), 'home-P1': vec2(-10, 0) }, null);
     const s1 = step(s0, NO_INPUT);
     expect(s1.ballOwnerId).toBe('away-P1');
-    expect(s1.controlledId).toBe('home-P1');
+    expect(s1.controlledId.home).toBe('home-P1');
   });
 
   it('chạy nhanh rồi bấm ngược hướng (xoay gắt) thì mất bóng', () => {
@@ -305,8 +305,8 @@ describe('step — chuyền', () => {
       'away-P6': vec2(5, 0.3),
     };
     const s1 = tap(scenario(crowded, 'home-P1'), press({ pass: true, move: vec2(1, 0) }));
-    expect(s1.controlledId).toBe('home-P2');
-    expect(s1.passReceiver?.playerId).toBe('home-P2');
+    expect(s1.controlledId.home).toBe('home-P2');
+    expect(s1.passReceiver.home?.playerId).toBe('home-P2');
   });
 
   it('người nhận tự chạy đón bóng dù người chơi vẫn giữ hướng khác', () => {
@@ -322,7 +322,7 @@ describe('step — chuyền', () => {
 
   it('người nhận chạy theo đường bóng thật (bóng lệch hướng dự định) tới chỗ bóng lăn tới', () => {
     const s1 = tap(scenario(at, 'home-P1'), press({ pass: true, move: vec2(1, 0) }));
-    expect(s1.passReceiver?.playerId).toBe('home-P2');
+    expect(s1.passReceiver.home?.playerId).toBe('home-P2');
     // Bóng lệch ~25° so với đường chuyền dự định (sai số lớn).
     const v = s1.ball.vel;
     const c = Math.cos(0.45);
@@ -358,7 +358,7 @@ describe('step — chuyền', () => {
     let s = s0;
     for (let i = 0; i < 3 * 60 && s.ballOwnerId === 'away-P1'; i++) s = step(s, NO_INPUT);
     expect(s.ballOwnerId).toBeNull();
-    const receiverId = s.passReceiver?.playerId;
+    const receiverId = s.passReceiver.away?.playerId;
     expect(receiverId?.startsWith('away-')).toBe(true);
     for (let i = 0; i < 4 * 60 && s.ballOwnerId === null; i++) s = step(s, NO_INPUT);
     expect(s.ballOwnerId).toBe(receiverId);
@@ -375,7 +375,7 @@ describe('step — chuyền', () => {
     const released = repeat(before, NO_INPUT, 2);
     expect(released.windup).toBeNull();
     expect(released.ballOwnerId).toBeNull();
-    expect(released.controlledId).toBe('home-P2');
+    expect(released.controlledId.home).toBe('home-P2');
   });
 
   it('thủ môn ném tay: bóng rời tay ở độ cao vai và bay lên, rồi người nhận vẫn bắt được', () => {
@@ -397,13 +397,13 @@ describe('step — chuyền', () => {
     expect(s1.rng).not.toBe(scenario(at, 'home-P1').rng);
     const s2 = repeat(s1, NO_INPUT, 3 * 60);
     expect(s2.ballOwnerId).toBe('home-P2');
-    expect(s2.controlledId).toBe('home-P2');
+    expect(s2.controlledId.home).toBe('home-P2');
   });
 
   it('bấm chuyền là đổi ngay sang điều khiển người nhận, không chờ bắt bóng (5.17)', () => {
     const s1 = tap(scenario(at, 'home-P1'), press({ pass: true }));
     expect(s1.ballOwnerId).toBeNull();
-    expect(s1.controlledId).toBe('home-P2');
+    expect(s1.controlledId.home).toBe('home-P2');
   });
 
   it('giao bóng bằng S cũng đổi ngay sang người nhận (5.17)', () => {
@@ -412,13 +412,13 @@ describe('step — chuyền', () => {
     // Giao bóng: mọi đồng đội đứng phần sân nhà, chuyền về phía sau.
     const s1 = step(s0, press({ pass: true, move: vec2(-1, 0) }));
     expect(s1.phase).toBe('play');
-    expect(s1.controlledId).not.toBe(s0.controlledId);
-    expect(playerOf(s1, s1.controlledId).team).toBe('home');
+    expect(s1.controlledId.home).not.toBe(s0.controlledId.home);
+    expect(playerOf(s1, s1.controlledId.home).team).toBe('home');
   });
 
   it('chuyền vào khoảng trống (không có người nhận) thì giữ người đang điều khiển', () => {
     const s1 = tap(scenario({ 'home-P1': ZERO }, 'home-P1'), press({ pass: true }));
-    expect(s1.controlledId).toBe('home-P1');
+    expect(s1.controlledId.home).toBe('home-P1');
   });
 
   it('chuyền xong vẫn giữ S: người nhận giữ bóng, không chuyền tiếp', () => {
@@ -460,18 +460,23 @@ describe('step — lực chuyền (giữ S/A, nhả mới chuyền)', () => {
   it('đang giữ S thì chưa chuyền, lực tăng theo thời gian giữ', () => {
     const s = repeat(scenario(near, 'home-P1'), press({ pass: true, move: vec2(1, 0) }), 20);
     expect(s.ballOwnerId).toBe('home-P1');
-    expect(s.passCharge).toEqual({ kind: 'ground', ticks: 20, dir: vec2(1, 0), through: false });
+    expect(s.passCharge.home).toEqual({
+      kind: 'ground',
+      ticks: 20,
+      dir: vec2(1, 0),
+      through: false,
+    });
   });
 
   it('nhả S thì chuyền, hết nạp lực', () => {
     const s = hold(scenario(near, 'home-P1'), 'pass', 20);
     expect(s.ballOwnerId).toBeNull();
-    expect(s.passCharge).toBeNull();
+    expect(s.passCharge.home).toBeNull();
   });
 
   it('bấm nhanh → người nhận gần; giữ đầy thanh → người nhận xa hơn trong cùng hướng', () => {
-    expect(hold(scenario(near, 'home-P1'), 'pass', 1).controlledId).toBe('home-P2');
-    expect(hold(scenario(near, 'home-P1'), 'pass', PASS_FULL_CHARGE_TICKS).controlledId).toBe(
+    expect(hold(scenario(near, 'home-P1'), 'pass', 1).controlledId.home).toBe('home-P2');
+    expect(hold(scenario(near, 'home-P1'), 'pass', PASS_FULL_CHARGE_TICKS).controlledId.home).toBe(
       'home-P3',
     );
   });
@@ -480,7 +485,7 @@ describe('step — lực chuyền (giữ S/A, nhả mới chuyền)', () => {
     const one = { 'home-P1': ZERO, 'home-P2': vec2(15, 0) };
     const tap = hold(scenario(one, 'home-P1'), 'pass', 1);
     const full = hold(scenario(one, 'home-P1'), 'pass', PASS_FULL_CHARGE_TICKS);
-    expect(full.controlledId).toBe('home-P2');
+    expect(full.controlledId.home).toBe('home-P2');
     expect(length(full.ball.vel)).toBeGreaterThan(length(tap.ball.vel) * 1.2);
   });
 
@@ -495,12 +500,12 @@ describe('step — lực chuyền (giữ S/A, nhả mới chuyền)', () => {
     const s0 = scenario(near, 'home-P1');
     const charging = repeat(s0, press({ pass: true, move: vec2(1, 0) }), 10);
     const lost = step({ ...charging, ballOwnerId: null }, press({ pass: true, move: vec2(1, 0) }));
-    expect(lost.passCharge).toBeNull();
+    expect(lost.passCharge.home).toBeNull();
   });
 
   it('không có bóng thì S vẫn là đổi người, không nạp lực', () => {
     const s = step(scenario(near, null, 'home-P1', vec2(20, 0)), press({ pass: true }));
-    expect(s.passCharge).toBeNull();
+    expect(s.passCharge.home).toBeNull();
   });
 });
 
@@ -513,9 +518,9 @@ describe('step — chọc khe (W, Q+W)', () => {
   it('W: chuyền sệt tới điểm phía trước người nhận theo hướng tấn công', () => {
     const s1 = holdW(scenario(at, 'home-P1'), 1);
     expect(s1.ballOwnerId).toBeNull();
-    expect(s1.controlledId).toBe('home-P2');
-    expect(s1.passReceiver?.playerId).toBe('home-P2');
-    expect(s1.passReceiver!.point.x).toBeGreaterThan(12 + 3);
+    expect(s1.controlledId.home).toBe('home-P2');
+    expect(s1.passReceiver.home?.playerId).toBe('home-P2');
+    expect(s1.passReceiver.home!.point.x).toBeGreaterThan(12 + 3);
     expect(s1.ball.z).toBe(0);
     expect(s1.ball.vel.x).toBeGreaterThan(0);
   });
@@ -523,7 +528,7 @@ describe('step — chọc khe (W, Q+W)', () => {
   it('Q+W: chọc khe bổng bay qua đầu hậu vệ đứng chắn', () => {
     const crowded = { ...at, 'away-P6': vec2(6, 2.5) };
     let s = holdW(scenario(crowded, 'home-P1'), 1, vec2(1, 0.4), true);
-    expect(s.passReceiver?.playerId).toBe('home-P2');
+    expect(s.passReceiver.home?.playerId).toBe('home-P2');
     while (s.ball.pos.x < 6) s = step(s, NO_INPUT);
     expect(s.ball.z).toBeGreaterThan(1);
     expect(s.ballOwnerId).toBeNull();
@@ -532,37 +537,42 @@ describe('step — chọc khe (W, Q+W)', () => {
   it('đang giữ W thì chưa chọc, thanh lực tăng (đánh dấu là chọc khe)', () => {
     const s = repeat(scenario(at, 'home-P1'), press({ through: true, move: vec2(1, 0) }), 20);
     expect(s.ballOwnerId).toBe('home-P1');
-    expect(s.passCharge).toEqual({ kind: 'ground', ticks: 20, dir: vec2(1, 0), through: true });
+    expect(s.passCharge.home).toEqual({
+      kind: 'ground',
+      ticks: 20,
+      dir: vec2(1, 0),
+      through: true,
+    });
   });
 
   it('Q+W giữ thì nạp lực chọc khe bổng', () => {
     const s = repeat(scenario(at, 'home-P1'), press({ through: true, modifier: true }), 5);
-    expect(s.passCharge).toMatchObject({ kind: 'lob', through: true });
+    expect(s.passCharge.home).toMatchObject({ kind: 'lob', through: true });
   });
 
   it('giữ đầy thanh → bóng chọc tới xa hơn trước người nhận và đi căng hơn', () => {
     const tap = holdW(scenario(at, 'home-P1'), 1);
     const full = holdW(scenario(at, 'home-P1'), PASS_FULL_CHARGE_TICKS);
-    expect(full.passReceiver?.playerId).toBe('home-P2');
+    expect(full.passReceiver.home?.playerId).toBe('home-P2');
     // Trong lúc giữ W mọi người vẫn chạy: đo khoảng dẫn so với vị trí người nhận lúc chọc.
     const leadOf = (s: MatchState) =>
-      s.passReceiver!.point.x - s.players.find((p) => p.id === 'home-P2')!.pos.x;
+      s.passReceiver.home!.point.x - s.players.find((p) => p.id === 'home-P2')!.pos.x;
     expect(leadOf(full)).toBeGreaterThan(leadOf(tap));
     expect(length(full.ball.vel)).toBeGreaterThan(length(tap.ball.vel));
   });
 
   it('giữ đầy thanh → ưu tiên đồng đội xa hơn trong cùng hướng', () => {
     const two = { 'home-P1': ZERO, 'home-P2': vec2(8, 0), 'home-P3': vec2(26, 1) };
-    expect(holdW(scenario(two, 'home-P1'), 1, vec2(1, 0)).controlledId).toBe('home-P2');
-    expect(holdW(scenario(two, 'home-P1'), PASS_FULL_CHARGE_TICKS, vec2(1, 0)).controlledId).toBe(
-      'home-P3',
-    );
+    expect(holdW(scenario(two, 'home-P1'), 1, vec2(1, 0)).controlledId.home).toBe('home-P2');
+    expect(
+      holdW(scenario(two, 'home-P1'), PASS_FULL_CHARGE_TICKS, vec2(1, 0)).controlledId.home,
+    ).toBe('home-P3');
   });
 
   it('mất bóng khi đang nạp chọc khe thì huỷ nạp', () => {
     const charging = repeat(scenario(at, 'home-P1'), press({ through: true }), 10);
     const lost = step({ ...charging, ballOwnerId: null }, press({ through: true }));
-    expect(lost.passCharge).toBeNull();
+    expect(lost.passCharge.home).toBeNull();
   });
 });
 
@@ -571,7 +581,7 @@ describe('step — sút', () => {
 
   it('giữ K thì nạp lực, bóng vẫn dính chân', () => {
     const s = repeat(scenario(at, 'home-P1'), press({ shoot: true }), 30);
-    expect(s.shotChargeTicks).toBe(30);
+    expect(s.shotChargeTicks.home).toBe(30);
     expect(s.ballOwnerId).toBe('home-P1');
   });
 
@@ -581,7 +591,7 @@ describe('step — sút', () => {
     const tap = shotAfter(1);
     const full = shotAfter(MAX_CHARGE_TICKS);
     expect(full.ballOwnerId).toBeNull();
-    expect(full.shotChargeTicks).toBe(0);
+    expect(full.shotChargeTicks.home).toBe(0);
     expect(full.ball.vel.x).toBeGreaterThan(15);
     expect(length(full.ball.vel)).toBeGreaterThan(length(tap.ball.vel));
   });
@@ -598,12 +608,12 @@ describe('step — đổi người', () => {
 
   it('bấm nút đổi người khi không có bóng → cầu thủ đội nhà gần bóng nhất', () => {
     const s = step(scenario(at, null, 'home-P1', ZERO), press({ switch: true }));
-    expect(s.controlledId).toBe('home-P2');
+    expect(s.controlledId.home).toBe('home-P2');
   });
 
   it('bấm J khi không có bóng cũng là đổi người', () => {
     const s = step(scenario(at, null, 'home-P1', ZERO), press({ pass: true }));
-    expect(s.controlledId).toBe('home-P2');
+    expect(s.controlledId.home).toBe('home-P2');
     expect(s.ballOwnerId).toBeNull();
   });
 
@@ -615,11 +625,11 @@ describe('step — đổi người', () => {
       'home-P3': vec2(5, 10),
     };
     const s = step(scenario(defending, 'away-P5', 'home-P3'), press({ pass: true }));
-    expect(s.controlledId).toBe('home-P1');
+    expect(s.controlledId.home).toBe('home-P1');
   });
 
   it('giữ nút đổi người chỉ đổi một lần', () => {
     const s = repeat(scenario(at, null, 'home-P1', ZERO), press({ switch: true }), 5);
-    expect(s.controlledId).toBe('home-P2');
+    expect(s.controlledId.home).toBe('home-P2');
   });
 });

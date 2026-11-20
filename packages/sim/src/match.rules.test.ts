@@ -70,7 +70,7 @@ describe('createMatch — giao bóng đầu trận', () => {
     expect(s.phase).toBe('kickoff');
     expect(s.ballDead).toBe(true);
     expect(s.restart).toMatchObject({ type: 'kickoff', team: 'home', spot: ZERO, startTick: 0 });
-    expect(s.controlledId).toBe(s.restart!.takerId);
+    expect(s.controlledId.home).toBe(s.restart!.takerId);
     expect(s.addedMinutes).toBeNull();
     expect(s.stoppage).toEqual({ overrunTicks: 0, goals: 0 });
   });
@@ -114,7 +114,7 @@ describe('bóng ra ngoài — đúng đội được hưởng', () => {
       team: 'home',
       spot: vec2(HALF_LENGTH, HALF_WIDTH),
     });
-    expect(s.controlledId).toBe(s.restart!.takerId);
+    expect(s.controlledId.home).toBe(s.restart!.takerId);
   });
 
   it('hiệp 2 đổi sân: bóng ra vạch cuối phía −x do đội nhà chạm → phát bóng cho đội khách', () => {
@@ -128,7 +128,7 @@ describe('bóng ra ngoài — đúng đội được hưởng', () => {
     const start: MatchState = {
       ...s0,
       players: s0.players.map((p) => (p.id === me.id ? me : p)),
-      controlledId: me.id,
+      controlledId: { home: me.id, away: '' },
       ballOwnerId: me.id,
       ball: rolling(vec2(0, HALF_WIDTH - 0.4), ZERO),
     };
@@ -144,7 +144,7 @@ describe('bóng ra ngoài — đúng đội được hưởng', () => {
     return {
       ...s0,
       ai: null,
-      controlledId: id,
+      controlledId: { home: id, away: '' },
       players: s0.players.map((p) => (p.id === id ? { ...p, pos, facing } : p)),
     };
   };

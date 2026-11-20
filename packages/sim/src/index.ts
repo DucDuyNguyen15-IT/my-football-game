@@ -1,5 +1,5 @@
 export { TICK_RATE, TICK_DT } from './tick';
-export { createMatch, step } from './match';
+export { createMatch, step, stepBoth } from './match';
 export * from './types';
 export * from './rng';
 export * from './pitch';

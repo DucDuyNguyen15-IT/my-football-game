@@ -55,7 +55,7 @@ function keeperHolding(): MatchState {
     players,
     ballOwnerId: GK,
     ownerSinceTick: s0.tick,
-    controlledId: GK,
+    controlledId: { home: GK, away: '' },
     lastTouchTeam: 'home',
     ball: dribbleBall(gk),
   };
@@ -78,7 +78,7 @@ function setPiece(type: 'free_kick' | 'penalty', team: TeamSide, half: 1 | 2 = 1
     ballDead: true,
     ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
     restart: { type, team, spot, takerId: taker.id, startTick: s0.tick, readyTick: s0.tick },
-    controlledId: team === 'home' ? taker.id : s0.controlledId,
+    controlledId: { home: team === 'home' ? taker.id : s0.controlledId.home, away: '' },
   };
 }
 
@@ -93,13 +93,13 @@ describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', ()
   it('lộ hạn chót trong state; hết 10 s thì tự lấy đà phát bóng như AI', () => {
     const s0 = keeperHolding();
     let s = step(s0, NO_INPUT);
-    expect(s.actionDeadline).toEqual({
+    expect(s.actionDeadline.home).toEqual({
       kind: 'keeper_hold',
       playerId: GK,
       deadlineTick: s0.ownerSinceTick + KEEPER_HOLD_MAX_TICKS,
     });
     expect(KEEPER_HOLD_MAX_TICKS).toBe(10 * TICK_RATE);
-    const deadline = s.actionDeadline!.deadlineTick;
+    const deadline = s.actionDeadline.home!.deadlineTick;
     while (s.tick < deadline - 1) {
       s = step(s, NO_INPUT);
       expect(s.ballOwnerId).toBe(GK);
@@ -110,7 +110,7 @@ describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', ()
     s = run(s, KEEPER_WINDUP_TICKS);
     expect(s.ballOwnerId).not.toBe(GK);
     expect(length(s.ball.vel)).toBeGreaterThan(3);
-    expect(s.actionDeadline).toBeNull();
+    expect(s.actionDeadline.home).toBeNull();
   });
 
   it('người chơi tự phát bóng trước hạn thì hạn chót biến mất', () => {
@@ -118,7 +118,7 @@ describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', ()
     s = step(s, { ...NO_INPUT, pass: true });
     s = run(s, KEEPER_WINDUP_TICKS + 2);
     expect(s.ballOwnerId).not.toBe(GK);
-    expect(s.actionDeadline).toBeNull();
+    expect(s.actionDeadline.home).toBeNull();
     expect(s.tick).toBeLessThan(keeperHolding().tick + KEEPER_HOLD_MAX_TICKS);
   });
 
@@ -135,7 +135,7 @@ describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', ()
       const gk = s.players.find((p) => p.id === GK)!;
       const dir = gk.pos.x < edge ? 1 : -1;
       s = step(s, { ...NO_INPUT, move: vec2(dir, 0) });
-      if (s.actionDeadline) expect(s.actionDeadline.deadlineTick).toBe(deadline);
+      if (s.actionDeadline.home) expect(s.actionDeadline.home.deadlineTick).toBe(deadline);
     }
     expect(s.windup).toMatchObject({ playerId: GK });
     expect(s.tick).toBeLessThanOrEqual(deadline + 30);
@@ -143,7 +143,7 @@ describe('thủ môn đội người chơi ôm bóng tối đa 10 s (B1-05)', ()
 
   it('autopilot (AI cầm cả đội) không có hạn chót', () => {
     const s = step({ ...keeperHolding(), autopilot: true }, NO_INPUT);
-    expect(s.actionDeadline).toBeNull();
+    expect(s.actionDeadline.home).toBeNull();
   });
 });
 
@@ -164,7 +164,7 @@ describe('đá phạt của người chơi tối đa 15 s', () => {
   it('đá phạt: chờ tới 15 s vẫn chưa đá, hết hạn thì máy đá hộ', () => {
     const s0 = setPiece('free_kick', 'home');
     let s = step(s0, NO_INPUT);
-    expect(s.actionDeadline).toEqual({
+    expect(s.actionDeadline.home).toEqual({
       kind: 'free_kick',
       playerId: s0.restart!.takerId,
       deadlineTick: s0.tick + SET_PIECE_MAX_TICKS,
@@ -175,14 +175,14 @@ describe('đá phạt của người chơi tối đa 15 s', () => {
     expect(s.restart).toBeNull();
     expect(s.phase).toBe('play');
     expect(length(s.ball.vel)).toBeGreaterThan(3);
-    expect(s.actionDeadline).toBeNull();
+    expect(s.actionDeadline.home).toBeNull();
   });
 
   it('phạt đền: hết 15 s thì tự sút', () => {
     const s0 = setPiece('penalty', 'home');
     let s = run(s0, SET_PIECE_MAX_TICKS - 1);
     expect(s.restart).not.toBeNull();
-    expect(s.actionDeadline).toMatchObject({ kind: 'penalty' });
+    expect(s.actionDeadline.home).toMatchObject({ kind: 'penalty' });
     s = run(s, 1);
     expect(s.restart).toBeNull();
     expect(s.shots.home).toBe(1);
@@ -200,7 +200,7 @@ describe('đá phạt của người chơi tối đa 15 s', () => {
   it('đội máy vẫn tự đá sau 3 s, không có hạn chót hiển thị', () => {
     const s = run(setPiece('free_kick', 'away'), 2 * TICK_RATE);
     expect(s.restart).not.toBeNull();
-    expect(s.actionDeadline).toBeNull();
+    expect(s.actionDeadline.home).toBeNull();
   });
 
   it('lượt luân lưu của người chơi: hết 15 s thì tự sút (B1-10)', () => {
@@ -213,7 +213,7 @@ describe('đá phạt của người chơi tối đa 15 s', () => {
     expect(ready).toBe(s.restart!.startTick + RESTART_REVEAL_TICKS);
     s = run(s, ready + SET_PIECE_MAX_TICKS - s.tick - 1);
     expect(s.shootout!.kickTick).toBeNull();
-    expect(s.actionDeadline).toMatchObject({
+    expect(s.actionDeadline.home).toMatchObject({
       kind: 'penalty',
       deadlineTick: ready + SET_PIECE_MAX_TICKS,
     });
@@ -388,7 +388,7 @@ describe('hạn 15 s cho mọi tình huống cố định, tính từ lúc chuy�
       expect(r.readyTick).toBe(r.startTick + OUT_HOLD_TICKS + RESTART_REVEAL_TICKS);
       s = step(s, NO_INPUT);
       const deadlineTick = r.readyTick + SET_PIECE_MAX_TICKS;
-      expect(s.actionDeadline).toEqual({ kind: type, playerId: r.takerId, deadlineTick });
+      expect(s.actionDeadline.home).toEqual({ kind: type, playerId: r.takerId, deadlineTick });
       // Tới sát hạn vẫn chờ người chơi (trước đây các tình huống này chờ vô hạn).
       s = run(s, deadlineTick - s.tick - 1);
       expect(s.restart).not.toBeNull();
@@ -398,7 +398,7 @@ describe('hạn 15 s cho mọi tình huống cố định, tính từ lúc chuy�
       expect(s.restart).toBeNull();
       expect(s.phase).toBe('play');
       expect(length(s.ball.vel)).toBeGreaterThan(3);
-      expect(s.actionDeadline).toBeNull();
+      expect(s.actionDeadline.home).toBeNull();
     },
   );
 
@@ -407,7 +407,7 @@ describe('hạn 15 s cho mọi tình huống cố định, tính từ lúc chuy�
     const r = s.restart!;
     expect(r.readyTick).toBe(RESTART_REVEAL_TICKS);
     const deadlineTick = RESTART_REVEAL_TICKS + SET_PIECE_MAX_TICKS;
-    expect(s.actionDeadline).toEqual({ kind: 'kickoff', playerId: r.takerId, deadlineTick });
+    expect(s.actionDeadline.home).toEqual({ kind: 'kickoff', playerId: r.takerId, deadlineTick });
     s = run(s, deadlineTick - s.tick - 1);
     expect(s.phase).toBe('kickoff');
     s = step(s, NO_INPUT);
@@ -416,10 +416,10 @@ describe('hạn 15 s cho mọi tình huống cố định, tính từ lúc chuy�
 
   it('bấm chuyền trước hạn thì người chơi tự thực hiện, hạn chót mất', () => {
     let s = run(untilDead(vec2(5, HALF_WIDTH - 0.5), vec2(0, 10)), 5 * TICK_RATE);
-    expect(s.actionDeadline).not.toBeNull();
+    expect(s.actionDeadline.home).not.toBeNull();
     s = step(s, { ...NO_INPUT, pass: true });
     expect(s.phase).toBe('play');
-    expect(s.actionDeadline).toBeNull();
+    expect(s.actionDeadline.home).toBeNull();
   });
 
   it('giao bóng sau bàn thắng giữ hình GOAL_HOLD_TICKS; đội máy được hưởng thì không có hạn chót', () => {
@@ -429,7 +429,7 @@ describe('hạn 15 s cho mọi tình huống cố định, tính từ lúc chuy�
     const r = scored.restart!;
     expect(r).toMatchObject({ type: 'kickoff', team: 'away' });
     expect(r.readyTick).toBe(r.startTick + GOAL_HOLD_TICKS + RESTART_REVEAL_TICKS);
-    expect(step(scored, NO_INPUT).actionDeadline).toBeNull();
+    expect(step(scored, NO_INPUT).actionDeadline.home).toBeNull();
   });
 
   it('các mốc giữ hình khớp phần hiển thị: phạm lỗi 1,25 s, bóng ra biên 0,6 s, luân lưu 1 s', () => {

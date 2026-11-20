@@ -74,7 +74,7 @@ describe('CutHold — diễn tiếp pha bóng trước khi khép stinger', () =>
     const r = () => hold.state.players.find((p) => p.id === runner.id)!;
 
     expect(hold.state.ballOwnerId).toBeNull();
-    expect(hold.state.actionDeadline).toBeNull();
+    expect(hold.state.actionDeadline.home).toBeNull();
     expect(hold.state.tackleRecovery[victim.id]).toBeGreaterThan(curr.tick);
     expect(hold.ready).toBe(false);
 

@@ -52,7 +52,7 @@ function shoot(seed: number, gkStats: Partial<PlayerStats>): Result {
     kickLock: { playerId: SHOOTER, untilTick: s0.tick + 12 },
     lastTouchTeam: 'away',
     lastShot: { team: 'away', tick: s0.tick },
-    controlledId: 'home-P3',
+    controlledId: { home: 'home-P3', away: '' },
   };
   for (let i = 0; i < 2 * TICK_RATE; i++) {
     s = step(s, NO_INPUT);

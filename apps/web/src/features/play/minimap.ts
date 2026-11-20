@@ -39,7 +39,7 @@ export function minimapFrame(
     players: state.players.map((p) => ({
       ...toMinimap(p.pos),
       team: p.team,
-      controlled: !state.autopilot && p.id === state.controlledId,
+      controlled: !state.autopilot && p.id === state.controlledId.home,
     })),
     ball: toMinimap(state.ball.pos),
   };

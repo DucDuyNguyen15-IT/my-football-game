@@ -111,7 +111,7 @@ export function matchOutcome(score: Score): Outcome {
  * thẻ mới lấy phút hiện tại.
  */
 export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapshot {
-  const c = state.players.find((p) => p.id === state.controlledId);
+  const c = state.players.find((p) => p.id === state.controlledId.home);
   const clock = formatClock(matchClock(state));
   const r = state.restart;
   return {

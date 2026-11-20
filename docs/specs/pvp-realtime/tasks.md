@@ -44,11 +44,11 @@
 
 ### 2b. Sim cho hai đội người (P1), theo contracts/sim-api.md
 
-- [ ] T008 Trong `packages/sim/src/types.ts`:
+- [x] T008 Trong `packages/sim/src/types.ts`:
   - thêm `MatchSetup.humans?: TeamSide[]` (mặc định `['home']`) và kiểu `TeamInputs = Record<TeamSide, PlayerInput>`;
   - chuyển `controlledId`, `shotChargeTicks`, `passCharge`, `input`, `actionDeadline`, `passReceiver` thành `Record<TeamSide, …>`;
   - golden hash của T005 (`golden-hash.json`) phải giữ nguyên sau refactor, vì `stateHash` băm phép chiếu chứ không băm JSON (A7, research.md R9). Lệch thì dừng và báo.
-- [ ] T009 Trong `packages/sim/src/match.ts`:
+- [x] T009 Trong `packages/sim/src/match.ts`:
   - thay hằng `HUMAN_TEAM` (dòng 154, khoảng 20 chỗ dùng) bằng `isHuman(state, team)`;
   - thêm `stepBoth(state, inputs)`; `step(state, input)` gọi `stepBoth` với away là `NO_INPUT`;
   - sửa `aiProfile` (khoảng dòng 559, đội người dùng `teammate`), `runTeamAi` (622, gán `controlledId` theo đội), `nextDeadline` (665-694, chạy cho mọi đội người), nghỉ giữa hiệp (723, một trong hai đội người bấm chuyền), tự thay người (732, chỉ cho đội máy);

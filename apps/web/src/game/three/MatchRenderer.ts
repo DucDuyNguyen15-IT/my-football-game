@@ -644,7 +644,7 @@ export class MatchRenderer {
   };
 
   private isCharging(): boolean {
-    return this.curr.passCharge !== null || this.curr.shotChargeTicks > 0;
+    return this.curr.passCharge.home !== null || this.curr.shotChargeTicks.home > 0;
   }
 
   /** Mất focus (Alt+Tab) thì trình duyệt không gửi keyup — coi như nhả hết phím. */
@@ -979,7 +979,7 @@ export class MatchRenderer {
       this.models.delete(id);
     }
 
-    const controlled = this.actors.get(curr.controlledId);
+    const controlled = this.actors.get(curr.controlledId.home);
     this.marker.visible =
       controlled !== undefined && !curr.autopilot && !cameraOverride && this.setPieceW === 0;
     if (controlled) {

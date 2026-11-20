@@ -104,7 +104,7 @@ export function substitute(
       bench: { ...state.bench, [team]: state.bench[team].filter((p) => p.slot !== benchSlot) },
       subsUsed: { ...state.subsUsed, [team]: state.subsUsed[team] + 1 },
       substitutions: [...state.substitutions, { team, outId, inId, tick: state.tick }],
-      controlledId: swap(state.controlledId),
+      controlledId: { home: swap(state.controlledId.home), away: swap(state.controlledId.away) },
       restart: state.restart && { ...state.restart, takerId: swap(state.restart.takerId) },
       // Thủ môn đang lấy đà phát bóng (bóng vẫn chết) bị thay: người vào phát bóng tiếp.
       windup: state.windup && swapWindup(state.windup, swap),

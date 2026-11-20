@@ -163,7 +163,7 @@ describe('luân lưu trong trận', () => {
     const s0 = endOfSecondHalf(3, { home: 0, away: 0 });
     const entered = step({ ...s0, autopilot: false }, NO_INPUT);
     expect(entered.restart!.team).toBe('home');
-    expect(entered.controlledId).toBe(entered.restart!.takerId);
+    expect(entered.controlledId.home).toBe(entered.restart!.takerId);
     // Chờ người sút đi tới chấm (không có lệnh nào thì người chơi chờ mãi).
     let s = runUntil(entered, (x) => x.restart === null, 10 * TICK_RATE, NO_INPUT);
     expect(s.restart).not.toBeNull();
