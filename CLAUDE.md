@@ -3,6 +3,7 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
+- **Đang làm (20/11/2026): PvP đá trực tiếp** (`docs/specs/pvp-realtime/`, nhánh `feat/pvp-realtime`, theo `tasks.md`).
 - **Giai đoạn đang làm:** GĐ8 xong (2026-11-14), giao diện v3 xong. Đang Phần B — review toàn bộ đồ án theo tác giả (`.claude/collab/plan-review-B.md`): B1, B1b, B3, B4, B5, B6, luật 2–4, R78, phần Opus của B2 (8.2), audit bảo mật server đã xong (2026-11-16)
 - **Việc tiếp theo:** GĐ9: 9.1 Docker xong, pháp lý + xoá tài khoản xong, README có bản đầu (2026-11-16). Còn 9.2 deploy (chờ người dùng chọn VPS/domain) và Fable review chéo các commit Opus 16/11. Việc còn tồn: `docs/QA-REPORT.md` §6
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
@@ -27,7 +28,7 @@ Chi tiết và lý do: `docs/adr/README.md`.
 - **UI:** React + Vite, TanStack Query; Three.js nhúng trong `<MatchCanvas>` — [ADR-0003](docs/adr/0003-react-vite-ui.md)
 - **Backend:** Node.js LTS + Fastify, Zod, session cookie + argon2, random bằng `node:crypto`, test bằng Vitest — [ADR-0004](docs/adr/0004-fastify-backend.md)
 - **Database:** PostgreSQL 16+ + Drizzle ORM; ví/hộp thẻ dùng transaction + `FOR UPDATE` — [ADR-0005](docs/adr/0005-postgresql-drizzle.md)
-- **Realtime:** không dùng trong MVP (chỉ REST); Colyseus cho PvP realtime sau này — [ADR-0006](docs/adr/0006-no-realtime-in-mvp.md)
+- **Realtime:** MVP chỉ REST ([ADR-0006](docs/adr/0006-no-realtime-in-mvp.md), superseded); PvP đá trực tiếp dùng lockstep do server giữ nhịp, có sim bóng trên server, WebSocket qua `@fastify/websocket` — [ADR-0012](docs/adr/0012-pvp-lockstep.md)
 - **Hosting:** Docker Compose (Caddy + server + Postgres), nhà cung cấp chốt ở Giai đoạn 9 — [ADR-0007](docs/adr/0007-hosting-docker-compose.md) _(proposed)_
 
 ## Lệnh thường dùng
@@ -57,7 +58,7 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 - **Không ghi attribution của Claude:** không thêm dòng `Co-Authored-By: Claude …` vào commit, không thêm "Generated with Claude Code" vào PR.
 - **AI LOG** (nếu đồ án yêu cầu): luôn hỏi người dùng trước khi ghi. Không chép nguyên văn câu lệnh ngắn của người dùng; viết lại thành prompt đầy đủ (bối cảnh, mục tiêu, yêu cầu, ràng buộc, kết quả mong muốn), cho xem trước, chỉ ghi khi được đồng ý.
 - **Tiết kiệm usage:** phiên vượt ~200k token thì dừng và báo người dùng (trừ khi người dùng cho phép riêng phiên đó).
-- **Phân vai agent (từ 14/11/2026):** không dùng Gemini nữa. Opus điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit; Fable 5.2 làm code từng task trong worktree riêng; Haiku làm việc vặt (docs, chạy lệnh).
+- **Phân vai agent (từ 14/11/2026):** không dùng Gemini nữa. Opus điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit; Sonnet làm code từng task trong worktree riêng (không dùng Fable nữa); Haiku làm việc vặt (docs, chạy lệnh).
 
 ## Phối hợp với Gemini (Antigravity) — chỉ khi người dùng giao riêng (ngoại lệ của quy tắc "không dùng Gemini")
 - CLI: `C:\Users\Admin\.gemini\bin\agy.exe` (cài Antigravity rồi chạy `agy install`). Model: `gemini-pro-orchestrator-g1-pro` (Orchestrator Argon, **không** nhận cờ `--effort`).

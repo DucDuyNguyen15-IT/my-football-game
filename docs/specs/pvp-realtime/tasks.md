@@ -17,12 +17,12 @@
 
 ## Phase 1: Setup
 
-- [ ] T001 Tạo nhánh `feat/pvp-realtime` từ `main`. Trong `CLAUDE.md`: đánh dấu PvP là việc đang làm ở mục "Trạng thái hiện tại", sửa dòng "Phân vai agent" từ Fable sang Sonnet (theo quyết định không dùng Fable). Thêm mục PvP realtime vào `docs/ROADMAP.md`.
-- [ ] T002 [P] Viết `docs/adr/0012-pvp-lockstep.md` theo `docs/adr/template.md`. Nội dung:
+- [x] T001 Tạo nhánh `feat/pvp-realtime` từ `main`. Trong `CLAUDE.md`: đánh dấu PvP là việc đang làm ở mục "Trạng thái hiện tại", sửa dòng "Phân vai agent" từ Fable sang Sonnet (theo quyết định không dùng Fable). Thêm mục PvP realtime vào `docs/ROADMAP.md`.
+- [x] T002 [P] Viết `docs/adr/0012-pvp-lockstep.md` theo `docs/adr/template.md`. Nội dung:
   - thay phần "Colyseus cho PvP realtime" của ADR-0006 bằng lockstep do server giữ nhịp, có **sim bóng trên server**, server không gửi state xuống client (research.md R1, R11);
   - cập nhật `docs/adr/README.md` và dòng Realtime trong `CLAUDE.md`.
-- [ ] T003 [P] Thêm dependency `@fastify/websocket` vào `apps/server/package.json` (`pnpm --filter @pitch/server add @fastify/websocket`).
-- [ ] T004 [P] Thêm `ws: true` vào proxy `/api` trong `apps/web/vite.config.ts`. Thêm `wss:` vào `connect-src` của CSP trong `deploy/Caddyfile`.
+- [x] T003 [P] Thêm dependency `@fastify/websocket` vào `apps/server/package.json` (`pnpm --filter @pitch/server add @fastify/websocket`).
+- [x] T004 [P] Thêm `ws: true` vào proxy `/api` trong `apps/web/vite.config.ts`. Thêm `wss:` vào `connect-src` của CSP trong `deploy/Caddyfile`.
 
 ---
 

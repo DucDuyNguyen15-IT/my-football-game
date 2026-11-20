@@ -12,7 +12,7 @@ export default defineConfig(({ mode }) => {
       port: 5173,
       // Dev: chuyển /api sang Fastify để cookie phiên cùng origin (docs/ARCHITECTURE.md §2).
       // Giữ nguyên Host (changeOrigin: false) để server so khớp Origin ↔ Host khi chặn CSRF (§4.1).
-      proxy: { '/api': { target: apiTarget, changeOrigin: false } },
+      proxy: { '/api': { target: apiTarget, changeOrigin: false, ws: true } },
     },
     build: {
       // Three.js (ADR-0009) nằm riêng một chunk `three-*.js`, chỉ tải khi vào /play hoặc chạy intro 3D;
