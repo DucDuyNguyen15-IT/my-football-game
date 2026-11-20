@@ -129,7 +129,7 @@
   - thiếu header `Origin` → 403; kết nối thứ 5 từ cùng IP bị từ chối; đăng xuất hoặc xoá tài khoản đóng mọi WS PvP của user (A18);
   - socket đóng thì mục hàng chờ bị xoá; chủ phòng `waiting` đóng socket thì phòng `closed` (A15).
 - [ ] T049 Test `apps/server/src/routes/pvp.ws-auth.test.ts` (phụ thuộc T017): chứng minh `@fastify/websocket` chạy hook xác thực `preValidation` **trước** upgrade (A18). Chưa đăng nhập hoặc `Origin` sai/thiếu thì nhận HTTP 401/403 ngay ở bước upgrade và handler WS không bao giờ được gọi; session đã thu hồi thì không upgrade được. Nếu hook chạy sau upgrade thì chuyển xác thực sang `server.on('upgrade')` hoặc `verifyClient` rồi mới đóng việc.
-- [ ] T022 Tạo `apps/web/src/features/pvp/useNetMatch.ts`: client WS
+- [x] T022 Tạo `apps/web/src/features/pvp/useNetMatch.ts`: client WS
   - kết nối, gửi và nhận tin, parse bằng schema shared;
   - **chạy `stepBoth` và gửi `hash` (mỗi 60 tick) ngay trong `onmessage`**, không phụ thuộc `requestAnimationFrame`, để tab ẩn vẫn theo kịp (research.md R2);
   - đưa state mới nhất ra cho renderer, kèm bộ đệm hiển thị thích ứng 3–6 khung theo độ giật (jitter) đo được (A17);
@@ -137,7 +137,7 @@
   - nếu tụt quá 300 khung (ví dụ trình duyệt bóp timer) thì gửi `rejoin` để xin `catchup`;
   - nhận `error busy` khi `rejoin` thì thử lại mỗi 2 s (socket cũ chết sẽ bị heartbeat phát hiện ≤ 5 s), vẫn trong hạn 30 s rớt mạng (A1);
   - 5 s không nhận được khung nào trong lúc trận đang chạy thì tự đóng và kết nối lại (R12).
-- [ ] T023 Trong `apps/web/src/game/three/MatchRenderer.ts`:
+- [x] T023 Trong `apps/web/src/game/three/MatchRenderer.ts`:
   - thêm `driver: 'local' | 'net'`; với `net` thì không dùng accumulator (khoảng dòng 676-770) mà chỉ vẽ state từ `useNetMatch`;
   - lấy mẫu input mỗi frame và gửi `input` khi mã đổi;
   - khi `visibilitychange` (tab ẩn) hoặc `blur` thì gửi ngay `input c=0` và xoá trạng thái phím đang giữ (spec, trường hợp biên "Tạm dừng");

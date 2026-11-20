@@ -17,7 +17,7 @@ import {
   shotPower,
   TICK_RATE,
 } from '@pitch/sim';
-import type { MatchState, Vec2 } from '@pitch/sim';
+import type { MatchState, TeamSide, Vec2 } from '@pitch/sim';
 import { t } from '../../i18n/i18n';
 
 /**
@@ -67,14 +67,15 @@ export interface ChargeMeter {
 /** Thanh lực trên đầu cầu thủ đang giữ nút sút/chuyền (DESIGN.md §6.2); null khi không nạp. */
 export function chargeMeter(
   state: Pick<MatchState, 'shotChargeTicks' | 'passCharge'>,
+  team: TeamSide = 'home',
 ): ChargeMeter | null {
-  const pass = state.passCharge.home;
+  const pass = state.passCharge[team];
   if (pass) {
     const fill = Math.min(1, pass.ticks / PASS_FULL_CHARGE_TICKS);
     return { kind: pass.through ? 'through' : pass.kind, fill };
   }
-  if (state.shotChargeTicks.home > 0) {
-    return { kind: 'shot', fill: Math.min(1, state.shotChargeTicks.home / MAX_CHARGE_TICKS) };
+  if (state.shotChargeTicks[team] > 0) {
+    return { kind: 'shot', fill: Math.min(1, state.shotChargeTicks[team] / MAX_CHARGE_TICKS) };
   }
   return null;
 }
@@ -101,8 +102,9 @@ export interface CountdownRing {
  */
 export function countdownRing(
   state: Pick<MatchState, 'actionDeadline' | 'tick'>,
+  team: TeamSide = 'home',
 ): CountdownRing | null {
-  const d = state.actionDeadline.home;
+  const d = state.actionDeadline[team];
   if (!d) return null;
   const left = Math.max(0, d.deadlineTick - state.tick);
   const shown = COUNTDOWN_VISIBLE_SEC * TICK_RATE;
@@ -122,9 +124,12 @@ export const countdownArcStep = (elapsed: number): number =>
   elapsed >= 1 ? COUNTDOWN_ARC_STEPS : Math.floor(Math.max(0, elapsed) * COUNTDOWN_ARC_STEPS);
 
 /** Điểm chạm đang chọn khi đội người chơi đá phạt / phạt góc (widget góc màn hình); không thì null. */
-export function setPieceContact(state: Pick<MatchState, 'restart' | 'autopilot'>): Vec2 | null {
+export function setPieceContact(
+  state: Pick<MatchState, 'restart' | 'autopilot'>,
+  team: TeamSide = 'home',
+): Vec2 | null {
   const r = state.restart;
-  if (!r || r.team !== 'home' || state.autopilot || !CONTACT_RESTARTS.has(r.type)) return null;
+  if (!r || r.team !== team || state.autopilot || !CONTACT_RESTARTS.has(r.type)) return null;
   return restartContact(r);
 }
 
@@ -160,14 +165,15 @@ export function penaltyRingColor(power: number): string {
  */
 export function penaltyRing(
   state: Pick<MatchState, 'restart' | 'players' | 'shotChargeTicks' | 'autopilot'>,
+  team: TeamSide = 'home',
 ): PenaltyRing | null {
   const r = state.restart;
-  if (!r || r.type !== 'penalty' || r.team !== 'home' || state.autopilot) return null;
+  if (!r || r.type !== 'penalty' || r.team !== team || state.autopilot) return null;
   const run = r.penaltyRunUp;
-  if (!run && state.shotChargeTicks.home <= 0) return null;
+  if (!run && state.shotChargeTicks[team] <= 0) return null;
   const taker = state.players.find((p) => p.id === r.takerId);
   if (!taker) return null;
-  const power = run ? run.power : shotPower(state.shotChargeTicks.home);
+  const power = run ? run.power : shotPower(state.shotChargeTicks[team]);
   return {
     x: Math.sign(r.spot.x) * HALF_LENGTH,
     y: run ? run.y : 0,

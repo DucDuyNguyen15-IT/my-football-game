@@ -3,6 +3,7 @@ import { decodeInput, encodeInput, NO_INPUT } from '@pitch/sim';
 import {
   CONTROL_KEYS,
   NO_KEYS,
+  mirrorKeys,
   actionKeysOnly,
   createBlindGuard,
   createTapLatch,
@@ -168,5 +169,13 @@ describe('keysToInput ↔ log replay', () => {
       const input = keysToInput(keys(held));
       expect(decodeInput(encodeInput(input))).toEqual(input);
     }
+  });
+});
+
+describe('mirrorKeys', () => {
+  it('đội khách đảo hướng, đội nhà giữ nguyên', () => {
+    const k = { ...NO_KEYS, up: true, left: true, pass: true };
+    expect(mirrorKeys(k, false)).toBe(k);
+    expect(mirrorKeys(k, true)).toEqual({ ...NO_KEYS, down: true, right: true, pass: true });
   });
 });

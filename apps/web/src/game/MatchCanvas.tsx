@@ -3,6 +3,7 @@ import type { MatchSetup } from '@pitch/sim';
 import type { GraphicsSettings, MatchBridge } from './bridge';
 import { DEFAULT_GRAPHICS } from './render/quality';
 import { MatchRenderer } from './three/MatchRenderer';
+import type { NetMatch } from '../features/pvp/useNetMatch';
 
 /**
  * Ranh giới React ↔ Three.js (ADR-0003, ADR-0009): tạo renderer khi mount, huỷ hẳn (canvas, WebGL
@@ -14,11 +15,14 @@ export function MatchCanvas({
   bridge,
   graphics = DEFAULT_GRAPHICS,
   avatarSeeds,
+  net,
 }: {
   setup: MatchSetup;
   bridge?: MatchBridge;
   graphics?: GraphicsSettings;
   avatarSeeds?: ReadonlyMap<string, string>;
+  /** PvP: vẽ state từ client WS thay vì tự chạy sim. */
+  net?: NetMatch;
 }) {
   const hostRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<MatchRenderer | null>(null);
@@ -34,13 +38,14 @@ export function MatchCanvas({
       bridge,
       graphicsRef.current,
       avatarSeedsRef.current,
+      net,
     );
     rendererRef.current = renderer;
     return () => {
       rendererRef.current = null;
       renderer.dispose();
     };
-  }, [setup, bridge]);
+  }, [setup, bridge, net]);
 
   useEffect(() => {
     graphicsRef.current = graphics;
