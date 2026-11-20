@@ -54,3 +54,4 @@
 10. Socket đóng thì xoá mục hàng chờ của user. Chủ phòng đang `waiting` rời hoặc đóng socket thì phòng bị đóng (`closed`).
 11. Bộ đệm hiển thị của client thích ứng 3–6 khung theo độ giật (jitter) đo được (research R2).
 12. Bộ giữ nhịp phía server: một vòng lặp chung cho mọi phiên, tick theo mốc tuyệt đối (research R11).
+13. Quy ước tick: khung `f` mang tick k = `state.tick` TRƯỚC bước (khung đầu là 0); áp `subs` rồi `stepBoth` đưa state lên k+1. `hash.tick` = `state.tick` SAU bước, khi chia hết cho 60. `catchup.tick` = tick khung cuối có trong `log`; khung `f` kế tiếp là `catchup.tick + 1`.
