@@ -4,7 +4,7 @@
  */
 import { expect, test } from '@playwright/test';
 import { build } from 'esbuild';
-import { hashTrace } from '../packages/sim/src/fixtures/determinism';
+import { hashTrace, isTwoHuman } from '../packages/sim/src/fixtures/determinism';
 
 const SEEDS = Number(process.env.DET_SEEDS ?? 100);
 const seeds = Array.from({ length: SEEDS }, (_, i) => i + 1);
@@ -46,5 +46,5 @@ test(`${SEEDS} seed × trận đầy đủ: hash mỗi 60 tick khớp Node`, asy
     ).toBe('khớp');
     ticks += want.length * 60;
   }
-  console.log(`${browserName}: ${SEEDS} seed, ~${ticks} tick, không lệch`);
+  console.log(`${browserName}: ${SEEDS} seed (${seeds.filter(isTwoHuman).length} hai người), ~${ticks} tick, không lệch`);
 });
