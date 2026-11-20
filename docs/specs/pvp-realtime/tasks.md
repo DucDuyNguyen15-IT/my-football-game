@@ -128,7 +128,7 @@
   - `maxPayload` 512 byte (tin lớn hơn bị đóng), `bufferedAmount` > 256 KB thì đóng mã 4408 và xử như rớt mạng (A11);
   - thiếu header `Origin` → 403; kết nối thứ 5 từ cùng IP bị từ chối; đăng xuất hoặc xoá tài khoản đóng mọi WS PvP của user (A18);
   - socket đóng thì mục hàng chờ bị xoá; chủ phòng `waiting` đóng socket thì phòng `closed` (A15).
-- [ ] T049 Test `apps/server/src/routes/pvp.ws-auth.test.ts` (phụ thuộc T017): chứng minh `@fastify/websocket` chạy hook xác thực `preValidation` **trước** upgrade (A18). Chưa đăng nhập hoặc `Origin` sai/thiếu thì nhận HTTP 401/403 ngay ở bước upgrade và handler WS không bao giờ được gọi; session đã thu hồi thì không upgrade được. Nếu hook chạy sau upgrade thì chuyển xác thực sang `server.on('upgrade')` hoặc `verifyClient` rồi mới đóng việc.
+- [x] T049 Test `apps/server/src/routes/pvp.ws-auth.test.ts` (phụ thuộc T017): chứng minh `@fastify/websocket` chạy hook xác thực `preValidation` **trước** upgrade (A18). Chưa đăng nhập hoặc `Origin` sai/thiếu thì nhận HTTP 401/403 ngay ở bước upgrade và handler WS không bao giờ được gọi; session đã thu hồi thì không upgrade được. Nếu hook chạy sau upgrade thì chuyển xác thực sang `server.on('upgrade')` hoặc `verifyClient` rồi mới đóng việc.
 - [ ] T022 Tạo `apps/web/src/features/pvp/useNetMatch.ts`: client WS
   - kết nối, gửi và nhận tin, parse bằng schema shared;
   - **chạy `stepBoth` và gửi `hash` (mỗi 60 tick) ngay trong `onmessage`**, không phụ thuộc `requestAnimationFrame`, để tab ẩn vẫn theo kịp (research.md R2);

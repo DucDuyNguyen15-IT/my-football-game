@@ -199,19 +199,24 @@ async function loadStored(
 }
 
 /** T020: khi khởi động, mọi trận `live` bị huỷ `server_restart` (đủ hai dòng `matches` expired). */
-export async function cancelLiveMatches(db: Db, now: Date): Promise<number> {
+export async function cancelLiveMatches(
+  db: Db,
+  now: Date,
+  onError: (err: unknown) => void = () => {},
+): Promise<number> {
   const live = await db
     .select({ id: pvpMatches.id })
     .from(pvpMatches)
     .where(eq(pvpMatches.status, 'live'));
   for (const { id } of live) {
+    // Một dòng hỏng không được chặn server khởi động.
     await finishPvpMatch(db, {
       pvpId: id,
       reason: 'server_restart',
       score: { home: 0, away: 0 },
       inputLog: '',
       now,
-    });
+    }).catch(onError);
   }
   return live.length;
 }
