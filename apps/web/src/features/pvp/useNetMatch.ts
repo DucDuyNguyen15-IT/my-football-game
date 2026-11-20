@@ -109,10 +109,10 @@ export function createNetMatch(opts: NetMatchOptions): NetMatch {
     state = rebuild(m.setup, m.log);
     history.reset();
     history.push(state);
-    gate.resumeAfter(m.tick);
+    gate.resumeAt(state.tick);
     const pending = queue;
     queue = null;
-    for (const f of pending) applyFrame(f); // applyFrame tự bỏ khung tick <= catchup.tick
+    for (const f of pending) applyFrame(f); // applyFrame tự bỏ khung đã có trong log
     send({ t: 'catchup_done' });
   }
 

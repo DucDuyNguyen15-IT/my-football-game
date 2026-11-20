@@ -29,7 +29,7 @@ describe('netCore', () => {
   it('FrameGate: đúng thứ tự / bỏ cũ / báo hụt / resume', () => {
     const g = new FrameGate(5);
     expect(g.classify(5)).toBe('apply'); expect(g.classify(4)).toBe('drop'); expect(g.classify(7)).toBe('gap');
-    g.resumeAfter(100); expect(g.classify(100)).toBe('drop'); expect(g.classify(101)).toBe('apply');
+    g.resumeAt(101); expect(g.classify(100)).toBe('drop'); expect(g.classify(101)).toBe('apply');
   });
   it('quyết định gửi input và hash', () => {
     expect(shouldSendInput(3, 3)).toBe(false); expect(shouldSendInput(3, 0)).toBe(true);

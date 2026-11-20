@@ -52,9 +52,12 @@ export class FrameGate {
     return tick === this.next ? 'apply' : 'gap';
   }
 
-  /** Sau khi dựng lại từ `catchup`: khung đầu áp dụng là `catchupTick + 1` (A13). */
-  resumeAfter(catchupTick: number): void {
-    this.next = catchupTick + 1;
+  /**
+   * Sau khi dựng lại từ `catchup` (A13): khung tick k đưa state từ k lên k+1, nên khung đầu cần áp là
+   * tick của state vừa dựng (= tick khung cuối trong log + 1). Lấy từ state, không tin `catchup.tick`.
+   */
+  resumeAt(stateTick: number): void {
+    this.next = stateTick;
   }
 }
 
