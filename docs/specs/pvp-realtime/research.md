@@ -108,7 +108,9 @@ Mỗi mục ghi: Quyết định, Lý do, Phương án đã cân nhắc.
 ## R11. Chi phí sim bóng trên server
 
 - **Quyết định:** đo ở P0 bằng `apps/server/scripts/perf-pvp-sim.ts`: thời gian trung bình và p99 của một `stepBoth` trên một trận đầy đủ, chạy bằng Node 24.
-  - **Ngưỡng:** dùng **p99** thời gian step (không dùng trung bình). Sim bóng của server tốn ≤ 40% một lõi ở `PVP_MAX_SESSIONS` (50 phiên × 60 tick/s, tức p99 ≤ ~0,13 ms/step).
+  - **Ngưỡng:** dùng **p99** thời gian step (không dùng trung bình). Sim bóng của server tốn ≤ 40% một lõi ở `PVP_MAX_SESSIONS` (50 phiên × 60 tick/s, tức p99 ≤ ~0,13 ms/step; đo thực tế p99 ≈ 0,03–0,04 ms, xem kết quả bên dưới).
+  - **Kết quả đo (20/11/2026):** `pnpm --filter @pitch/server bench:pvp-sim`, 12 seed × trận đầy đủ (~298 000 step, có warm-up 2 trận), input đổi mỗi 5–40 tick. Máy: Intel Core i7-13620H (16 luồng), Windows 11, Node v26.13.0 (chưa có Node 24 trên máy này). Ba lượt chạy: mean 0,012–0,014 ms, **p99 0,030–0,036 ms** (nặng nhất lượt nào cũng dưới 4 ms, hiếm). Với ngưỡng 40% một lõi (6,67 ms mỗi tick cho mọi phiên) thì tối đa 185–225 phiên theo p99, 490–550 theo mean. Đây là `step` một đội người; **phải đo lại bằng `stepBoth` sau T008** (ước tính chưa quá 2 lần).
+  - **Đề xuất `PVP_MAX_SESSIONS` = 50** (đúng mục tiêu plan, dư khoảng 3,7 lần so với số đo p99 nên vẫn đủ nếu `stepBoth` nặng gấp đôi và máy chủ yếu hơn máy dev). Chưa tính chi phí mạng/JSON; vCPU của máy chủ thật có thể chậm hơn.
   - **Bộ giữ nhịp:** MỘT vòng lặp chung cho mọi phiên, dùng `performance.now()`, tick tính theo mốc tuyệt đối (`tick_n = t0 + n·1000/60`), không cộng dồn sai số. Nếu trễ thì chạy bù tối đa 5 tick/lượt; trễ hơn nữa thì bỏ nhịp và ghi analytics. Phiên mới vào vòng ở tick kế tiếp (tự lệch pha, không cần lệch thêm).
   - **Nếu vượt ngưỡng:** giới hạn số phiên đồng thời (`PVP_MAX_SESSIONS`, quá thì báo "máy chủ bận") và ghi `shortcut:`. Phương án sau cùng là chuyển sim bóng sang `worker_threads`.
 - **Lý do:** sim bóng chạy trên luồng chính của Fastify, nặng quá sẽ làm chậm API khác.
