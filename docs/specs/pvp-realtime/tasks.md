@@ -63,7 +63,7 @@
   - `MAX_SUBS=3` (replay.ts:221) đổi thành **mỗi đội** 3 (A8);
   - `replayMatch` đọc được cả v1 lẫn v2, phân biệt bằng tiền tố `v2.`;
   - thêm `replayToState(setup, encoded): MatchState` (chạy hết log, trả state) để client dựng lại khi vào lại, vì `ReplayResult` (`replay.ts:236`) không có state.
-- [ ] T012 [P] Test trong `packages/sim/src/match.pvp.test.ts`:
+- [x] T012 [P] Test trong `packages/sim/src/match.pvp.test.ts`:
   - golden hash của T005 (`golden-hash.json`) giữ nguyên sau refactor, và quỹ đạo `step` một người chơi không đổi (A7);
   - `stepBoth` với hai đội người chạy hết trận;
   - luân phiên đá luân lưu với **hai người chơi** (`stepShootout`), `humanRestart` đúng đội được hưởng, `nearestHuman` theo đội (A9);
@@ -71,7 +71,7 @@
   - đội khách chịu hạn 15 s đá phạt, 10 s thủ môn ôm bóng, thủ môn tối đa thẻ vàng;
   - nghỉ giữa hiệp kết thúc khi đội khách bấm;
   - `checkSubStructure` đúng cho cả hai đội (cầu thủ không trên sân, slot sai, hết lượt, đã bị đuổi đều bị từ chối) và `MAX_SUBS=3` tính riêng mỗi đội (A8, A10).
-- [ ] T013 [P] Test trong `packages/sim/src/replay.v2.test.ts`: `replayMatch(v2)` khớp với chạy trực tiếp `stepBoth` (có thay người cho cả hai đội); nhật ký v1 cũ (không tiền tố) vẫn ra cùng kết quả, nhật ký `v2.` được nhận ra đúng (A8); `stateHash(replayToState(...))` khớp với chạy trực tiếp.
+- [x] T013 [P] Test trong `packages/sim/src/replay.v2.test.ts`: `replayMatch(v2)` khớp với chạy trực tiếp `stepBoth` (có thay người cho cả hai đội); nhật ký v1 cũ (không tiền tố) vẫn ra cùng kết quả, nhật ký `v2.` được nhận ra đúng (A8); `stateHash(replayToState(...))` khớp với chạy trực tiếp.
 
 ### 2c. Hạ tầng server/web dùng chung
 
