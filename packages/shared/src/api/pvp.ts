@@ -140,7 +140,7 @@ export const PvpServerMessage = z.discriminatedUnion('t', [
   z.object({
     t: z.literal('catchup'),
     setup: PvpMatchSetup,
-    log: z.string().regex(/^[A-Za-z0-9_-]*$/),
+    log: z.string().regex(/^(v2.)?[A-Za-z0-9_-]*$/),
     tick: Tick,
   }),
   z.object({ t: z.literal('opp_disconnected'), remainingMs: z.number().int().min(0) }),
