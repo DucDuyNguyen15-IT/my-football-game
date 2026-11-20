@@ -75,7 +75,7 @@
 
 ### 2c. Hạ tầng server/web dùng chung
 
-- [ ] T014 [P] Tạo `packages/shared/src/api/pvp.ts`: schema zod cho mọi tin nhắn trong contracts/ws-protocol.md (client→server và server→client). Ràng buộc:
+- [x] T014 [P] Tạo `packages/shared/src/api/pvp.ts`: schema zod cho mọi tin nhắn trong contracts/ws-protocol.md (client→server và server→client). Ràng buộc:
   - `code` gồm đúng 6 ký tự thuộc `ABCDEFGHJKLMNPQRSTUVWXYZ23456789`;
   - `c` là số nguyên trong `0..(2^9*9-1)`;
   - `tick` của `hash` là bội số của 60; `h` là uint32;
