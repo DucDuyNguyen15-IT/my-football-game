@@ -5,7 +5,7 @@
  * sim −y/+y như bản 2D.
  */
 import { HALF_LENGTH, restartAim } from '@pitch/sim';
-import type { MatchState, RestartType, Vec2 } from '@pitch/sim';
+import type { MatchState, RestartType, TeamSide, Vec2 } from '@pitch/sim';
 
 export interface Vec3 {
   x: number;
@@ -76,9 +76,10 @@ const SET_PIECE_LOOK_Y = 1;
  */
 export function setPieceAim(
   state: Pick<MatchState, 'restart' | 'half' | 'autopilot'>,
+  team: TeamSide = 'home',
 ): { spot: Vec2; aim: Vec2 } | null {
   const r = state.restart;
-  if (!r || r.team !== 'home' || state.autopilot || !SET_PIECE_TYPES.has(r.type)) return null;
+  if (!r || r.team !== team || state.autopilot || !SET_PIECE_TYPES.has(r.type)) return null;
   return { spot: r.spot, aim: restartAim(r, state.half) };
 }
 

@@ -160,3 +160,10 @@ export function createTapLatch() {
     },
   };
 }
+
+/** Đội khách thấy sân xoay 180°: đảo trái/phải và lên/xuống để phím bấm khớp hướng trên màn hình. */
+export function mirrorKeys(keys: KeyState, mirror: boolean): KeyState {
+  return mirror
+    ? { ...keys, up: keys.down, down: keys.up, left: keys.right, right: keys.left }
+    : keys;
+}

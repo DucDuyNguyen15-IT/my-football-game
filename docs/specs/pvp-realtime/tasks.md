@@ -137,7 +137,7 @@
   - nếu tụt quá 300 khung (ví dụ trình duyệt bóp timer) thì gửi `rejoin` để xin `catchup`;
   - nhận `error busy` khi `rejoin` thì thử lại mỗi 2 s (socket cũ chết sẽ bị heartbeat phát hiện ≤ 5 s), vẫn trong hạn 30 s rớt mạng (A1);
   - 5 s không nhận được khung nào trong lúc trận đang chạy thì tự đóng và kết nối lại (R12).
-- [ ] T023 Trong `apps/web/src/game/three/MatchRenderer.ts`:
+- [x] T023 Trong `apps/web/src/game/three/MatchRenderer.ts`:
   - thêm `driver: 'local' | 'net'`; với `net` thì không dùng accumulator (khoảng dòng 676-770) mà chỉ vẽ state từ `useNetMatch`;
   - lấy mẫu input mỗi frame và gửi `input` khi mã đổi;
   - khi `visibilitychange` (tab ẩn) hoặc `blur` thì gửi ngay `input c=0` và xoá trạng thái phím đang giữ (spec, trường hợp biên "Tạm dừng");
