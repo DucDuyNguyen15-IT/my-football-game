@@ -54,7 +54,7 @@
   - sửa `aiProfile` (khoảng dòng 559, đội người dùng `teammate`), `runTeamAi` (622, gán `controlledId` theo đội), `nextDeadline` (665-694, chạy cho mọi đội người), nghỉ giữa hiệp (723, một trong hai đội người bấm chuyền), tự thay người (732, chỉ cho đội máy);
   - autopilot (716) điều khiển **mọi** đội người khi bật, dùng cho e2e;
   - phủ thêm (A9): `stepShootout` (match.ts:854, mỗi đội người tự chọn người sút/thủ môn), `humanRestart` (match.ts:927, theo đội đang được hưởng), `nearestHuman` (match.ts:200, tính theo đội, không mặc định home).
-- [ ] T010 Trong `packages/sim/src/rules/substitution.ts` (A10): tách phần kiểm tra của `substitute` thành hai hàm, giữ nguyên hành vi của `substitute`:
+- [x] T010 Trong `packages/sim/src/rules/substitution.ts` (A10): tách phần kiểm tra của `substitute` thành hai hàm, giữ nguyên hành vi của `substitute`:
   - `checkSubStructure(state, team, out, bench)`: cầu thủ đang trên sân, slot dự bị hợp lệ, còn lượt thay, chưa bị đuổi; sai thì trả lý do để server gửi `sub_rejected` ngay;
   - `canSubstituteNow(state)`: kiểm thời điểm (bóng chết); không phải lỗi, chỉ quyết định áp ngay hay xếp lệnh chờ.
 - [ ] T011 Trong `packages/sim/src/replay.ts`:
