@@ -57,7 +57,7 @@
 - [x] T010 Trong `packages/sim/src/rules/substitution.ts` (A10): tách phần kiểm tra của `substitute` thành hai hàm, giữ nguyên hành vi của `substitute`:
   - `checkSubStructure(state, team, out, bench)`: cầu thủ đang trên sân, slot dự bị hợp lệ, còn lượt thay, chưa bị đuổi; sai thì trả lý do để server gửi `sub_rejected` ngay;
   - `canSubstituteNow(state)`: kiểm thời điểm (bóng chết); không phải lỗi, chỉ quyết định áp ngay hay xếp lệnh chờ.
-- [ ] T011 Trong `packages/sim/src/replay.ts`:
+- [x] T011 Trong `packages/sim/src/replay.ts`:
   - export `encodeInput`/`decodeInput`;
   - thêm `InputRecorder2` (ghi cặp mã home/away, `subs` có `team`) và định dạng v2 có **tiền tố chuỗi `v2.`** (v1 không có tiền tố, bắt đầu bằng varint nên không dùng "byte phiên bản") (A8);
   - `MAX_SUBS=3` (replay.ts:221) đổi thành **mỗi đội** 3 (A8);
