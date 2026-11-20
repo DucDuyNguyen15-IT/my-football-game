@@ -90,7 +90,7 @@
   - đổi điều kiện index `matches_user_reward_day_idx` thành `reward > 0 OR consumes_daily_cap`.
 - [x] T016 Thêm `mode: 'cpu' | 'pvp'` vào `MissionEvent` `match_finished` (`apps/server/src/domain/missions.ts:11`). `match_hard` chỉ đếm khi `mode === 'cpu'` (research R13). Sửa nơi gọi hiện có trong `submitMatchResult` để truyền `mode: 'cpu'`. Thêm test trong `missions.test.ts`.
 - [x] T016b Sửa `countRewardedMatches` trong `apps/server/src/services/matches.ts:42` để đếm `reward > 0 OR consumes_daily_cap`. Thêm 6 sự kiện `pvp_matched`, `pvp_start`, `pvp_end`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync` vào `AnalyticsEventName` trong `apps/server/src/services/analytics.ts`. Test hồi quy: trận đấu máy vẫn đếm như cũ.
-- [ ] T017 Tạo `apps/server/src/routes/pvp.ts` và đăng ký trong `apps/server/src/app.ts`:
+- [x] T017 Tạo `apps/server/src/routes/pvp.ts` và đăng ký trong `apps/server/src/app.ts`:
   - endpoint WS `GET /api/v1/pvp/ws`;
   - `preValidation` xác thực `sid` bằng logic của `plugins/auth.ts` `requireAuth`; header `Origin` **bắt buộc**, thiếu hoặc sai (khác `Host`) → 403 (A18);
   - tối đa 4 kết nối WS đồng thời theo IP, quá thì từ chối (A18);
