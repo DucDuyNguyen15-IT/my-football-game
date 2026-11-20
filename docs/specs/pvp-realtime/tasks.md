@@ -100,20 +100,20 @@
   - đăng xuất hoặc xoá tài khoản (thu hồi session) → đóng mọi WS PvP của user (A18);
   - quá `PVP_MAX_SESSIONS` thì trả `server_busy`;
   - heartbeat: ping mỗi 2 s, quá 5 s không có pong thì báo cho session là rớt mạng (research R12).
-- [ ] T018 Tạo `apps/server/src/services/pvp/session.ts` (`PvpSession`, xem data-model.md §3):
+- [x] T018 Tạo `apps/server/src/services/pvp/session.ts` (`PvpSession`, xem data-model.md §3):
   - bộ giữ nhịp: MỘT vòng lặp chung cho mọi phiên, dùng `performance.now()`, tick tính theo mốc tuyệt đối (`tick_n = t0 + n·1000/60`, không cộng dồn sai số); trễ thì chạy bù tối đa 5 tick/lượt, trễ hơn nữa thì bỏ nhịp và ghi analytics; phiên mới vào vòng ở tick kế tiếp. `Clock` giả lập được trong test (A4);
   - đếm ngược 3 s sau khi cả hai `ready`: gửi `start {countdownMs: 3000}` (tương đối, không gửi `startAt`) (A16), ghi sự kiện `pvp_start`; quá 30 s sau `matched` chưa đủ hai `ready` thì `finish('void_not_ready')`;
   - mỗi tick: lấy input mới nhất của mỗi đội (chưa có input mới thì giữ cũ), chạy `stepBoth` trên **sim bóng** `state`, ghi `InputRecorder2`, phát `f [tick, home, away, subs?]`;
   - ở tick bội số của 60 thì lưu `stateHash` vào `serverHashes`;
   - khi `state.phase === 'full_time'` thì gọi `finish('full_time')`.
-- [ ] T019 Tạo `apps/server/src/services/pvp/finish.ts`, chạy cho **mọi** cách kết thúc:
+- [x] T019 Tạo `apps/server/src/services/pvp/finish.ts`, chạy cho **mọi** cách kết thúc:
   - lấy tỉ số từ sim bóng (hoặc tỉ số xử thua);
   - trong một transaction: cập nhật `pvp_matches` (lưu `input_log`, `end_reason`), tạo đủ hai dòng `matches` (`mode`, `opponent_user_id`, `difficulty='hard'`, `reward_day = gameDay(finished_at)` cho cả hai dòng kể cả người bị xử thua; điền các cột NOT NULL: `seed` (= seed pvp), `squad_snapshot` (góc nhìn người đó, đội mình là home), `started_at`; dòng của người đá đội khách thì đảo `home_goals/away_goals` và kết quả luân lưu sang góc nhìn của họ trước khi tính `outcome` (A6); `token_hash` là SHA-256 của 32 byte ngẫu nhiên; trận bị huỷ thì `status='expired'`, `reward = 0`, tỉ số null);
   - nếu ranked và trận hợp lệ thì cộng thưởng qua `matchReward('hard', outcome, rewardedToday)` + `applyCoinDelta` + sự kiện nhiệm vụ `match_finished` với `mode: 'pvp'` (không tính `match_hard`) như `submitMatchResult` (`services/matches.ts:205`), khoá `users` bằng `FOR UPDATE`;
   - friendly thì `reward = 0`, `rewardReason='friendly'`;
   - ghi sự kiện `pvp_end`, gửi `end` cho cả hai.
-- [ ] T020 Trong `apps/server/src/app.ts`: khi khởi động, chuyển mọi `pvp_matches` có `status='live'` thành `cancelled/server_restart` và tạo dòng `matches` `expired` nếu chưa có. Ghi comment `shortcut: trạng thái trong bộ nhớ một tiến trình, nâng cấp khi chạy nhiều instance`.
-- [ ] T021 [P] Test `apps/server/src/services/pvp/session.test.ts` với client giả:
+- [x] T020 Trong `apps/server/src/app.ts`: khi khởi động, chuyển mọi `pvp_matches` có `status='live'` thành `cancelled/server_restart` và tạo dòng `matches` `expired` nếu chưa có. Ghi comment `shortcut: trạng thái trong bộ nhớ một tiến trình, nâng cấp khi chạy nhiều instance`.
+- [x] T021 [P] Test `apps/server/src/services/pvp/session.test.ts` với client giả:
   - khung phát đúng thứ tự;
   - input trễ thì giữ input cũ;
   - trận kết thúc khi sim bóng tới `full_time` (kể cả khi có bù giờ);
