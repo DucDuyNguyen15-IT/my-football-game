@@ -40,7 +40,7 @@
   - so `stateHash` mỗi 60 tick giữa ba engine và với Node (SC-003).
 
   **Nếu lệch: dừng lại, tìm tick đầu tiên lệch, sửa sim trước khi làm tiếp.**
-- [ ] T007 [P] Tạo `apps/server/scripts/perf-pvp-sim.ts`: đo trung bình và p99 của `step` qua một trận đầy đủ trên Node 24, in ra số phiên tối đa ước tính trên 1 lõi. Ngưỡng dùng **p99** (không dùng trung bình): sim bóng của server tốn ≤ 40% một lõi ở `PVP_MAX_SESSIONS` (A4). Ghi kết quả vào `docs/QA-REPORT.md` và chọn `PVP_MAX_SESSIONS` mặc định (research.md R11).
+- [x] T007 [P] Tạo `apps/server/scripts/perf-pvp-sim.ts`: đo trung bình và p99 của `step` qua một trận đầy đủ trên Node 24, in ra số phiên tối đa ước tính trên 1 lõi. Ngưỡng dùng **p99** (không dùng trung bình): sim bóng của server tốn ≤ 40% một lõi ở `PVP_MAX_SESSIONS` (A4). Ghi kết quả vào `docs/QA-REPORT.md` và chọn `PVP_MAX_SESSIONS` mặc định (research.md R11).
 
 ### 2b. Sim cho hai đội người (P1), theo contracts/sim-api.md
 
