@@ -17,12 +17,14 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "e2e:determinism": "playwright test -c playwright.determinism.config.ts"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.65.0",
     "@types/node": "^24.19.1",
+    "esbuild": "0.28.2",
     "eslint": "^10.12.0",
     "eslint-plugin-react-hooks": "^7.1.1",
     "globals": "^17.13.0",

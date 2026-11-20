@@ -30,10 +30,10 @@
 
 ### 2a. Tất định và chi phí (P0, làm đầu tiên)
 
-- [ ] T005 Chuyển hàm băm FNV-1a 32-bit từ `packages/sim/src/replay.test.ts:87-90` thành `stateHash(state): number` ở `packages/sim/src/hash.ts`, export qua `packages/sim/src/index.ts`. Sửa test cũ để dùng hàm mới.
+- [x] T005 Chuyển hàm băm FNV-1a 32-bit từ `packages/sim/src/replay.test.ts:87-90` thành `stateHash(state): number` ở `packages/sim/src/hash.ts`, export qua `packages/sim/src/index.ts`. Sửa test cũ để dùng hàm mới.
   - `stateHash` băm **phép chiếu** cố định: tick, tỉ số, phase, bóng (pos/vel), từng cầu thủ (id, pos, vel) theo thứ tự id. Không băm JSON cả state, nên đổi field sang `Record<TeamSide,…>` (T008) không đổi hash (A7).
   - **Ghi golden hash trước mọi refactor (trước T008):** chạy `stateHash` trên code HIỆN TẠI (một người chơi, vài seed, mốc tick 60/600/cuối trận), lưu vào `packages/sim/src/golden-hash.json`. Commit riêng, trước T008.
-- [ ] T006 Tạo `e2e/determinism.spec.ts` và script `pnpm e2e:determinism`:
+- [x] T006 Tạo `e2e/determinism.spec.ts` và script `pnpm e2e:determinism`:
   - dùng project Playwright cho chromium, firefox, webkit;
   - nạp bundle sim (build bằng esbuild có sẵn qua vite/tsup) vào trang trắng;
   - chạy **100 seed × một trận đầy đủ** với autopilot cộng chuỗi input giả ngẫu nhiên có seed;
