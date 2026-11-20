@@ -1,5 +1,7 @@
 import { z } from 'zod';
-import { Difficulty, MatchOutcome, MatchTeamSetup, SquadSlot } from '../match';
+import { BENCH_SLOTS, Difficulty, MatchOutcome, MatchTeamSetup } from '../match';
+
+const BenchSlot = z.enum(BENCH_SLOTS);
 
 /** Giao thức WebSocket PvP (docs/specs/pvp-realtime/contracts/ws-protocol.md). */
 
@@ -78,7 +80,7 @@ export const PvpClientMessage = z.discriminatedUnion('t', [
       t: z.literal('sub'),
       /** playerId trong sim: `${team}-${slot}`. */
       out: z.string().min(1).max(32),
-      bench: SquadSlot,
+      bench: BenchSlot,
     })
     .strict(),
   z
@@ -100,7 +102,7 @@ export type PvpClientMessage = z.infer<typeof PvpClientMessage>;
 
 // ---- Server -> Client ----
 
-export const PvpSub = z.object({ team: TeamSide, out: z.string(), bench: SquadSlot });
+export const PvpSub = z.object({ team: TeamSide, out: z.string().min(1).max(32), bench: BenchSlot });
 export type PvpSub = z.infer<typeof PvpSub>;
 
 const Tick = z.number().int().min(0);
