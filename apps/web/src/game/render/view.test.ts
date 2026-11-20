@@ -59,18 +59,21 @@ describe('shirtNumber', () => {
 });
 
 describe('chargeMeter', () => {
-  const none = { shotChargeTicks: 0, passCharge: null };
+  const none = {
+    shotChargeTicks: { home: 0, away: 0 },
+    passCharge: { home: null, away: null },
+  };
 
   it('không nạp lực thì không có thanh', () => {
     expect(chargeMeter(none)).toBeNull();
   });
 
   it('giữ D: thanh sút đầy dần tới MAX_CHARGE_TICKS', () => {
-    expect(chargeMeter({ ...none, shotChargeTicks: MAX_CHARGE_TICKS / 2 })).toEqual({
+    expect(chargeMeter({ ...none, shotChargeTicks: { home: MAX_CHARGE_TICKS / 2, away: 0 } })).toEqual({
       kind: 'shot',
       fill: 0.5,
     });
-    expect(chargeMeter({ ...none, shotChargeTicks: MAX_CHARGE_TICKS * 2 })?.fill).toBe(1);
+    expect(chargeMeter({ ...none, shotChargeTicks: { home: MAX_CHARGE_TICKS * 2, away: 0 } })?.fill).toBe(1);
   });
 
   it('giữ S/A: thanh chuyền theo số tick đã giữ', () => {
@@ -80,7 +83,7 @@ describe('chargeMeter', () => {
       dir: { x: 1, y: 0 },
       through: false,
     };
-    expect(chargeMeter({ ...none, passCharge })).toEqual({ kind: 'lob', fill: 0.25 });
+    expect(chargeMeter({ ...none, passCharge: { home: passCharge, away: null } })).toEqual({ kind: 'lob', fill: 0.25 });
   });
 
   it('giữ W / Q+W: thanh chọc khe (màu riêng), cùng nhịp đầy như chuyền', () => {
@@ -90,7 +93,7 @@ describe('chargeMeter', () => {
       dir: { x: 1, y: 0 },
       through: true,
     };
-    expect(chargeMeter({ ...none, passCharge })).toEqual({ kind: 'through', fill: 0.5 });
+    expect(chargeMeter({ ...none, passCharge: { home: passCharge, away: null } })).toEqual({ kind: 'through', fill: 0.5 });
   });
 });
 
@@ -107,7 +110,7 @@ describe('countdownRing', () => {
     deadlineTick: 40 + 10 * TICK_RATE,
   };
   const at = (d: typeof freeKick | typeof keeper, left: number) =>
-    countdownRing({ actionDeadline: d, tick: d.deadlineTick - left });
+    countdownRing({ actionDeadline: { home: d, away: null }, tick: d.deadlineTick - left });
 
   it('tình huống cố định nào của người chơi cũng có vòng 5 giây cuối trên đầu người thực hiện (luật 3)', () => {
     // Trận thật: đội nhà giao bóng đầu trận, không bấm gì.
@@ -116,8 +119,8 @@ describe('countdownRing', () => {
       NO_INPUT,
     );
     const takerId = s.restart!.takerId;
-    const deadline = s.actionDeadline!.deadlineTick;
-    expect(s.actionDeadline!.kind).toBe('kickoff');
+    const deadline = s.actionDeadline.home!.deadlineTick;
+    expect(s.actionDeadline.home!.kind).toBe('kickoff');
     expect(countdownRing(s)).toBeNull();
     while (s.tick < deadline - SHOWN) s = step(s, NO_INPUT);
     expect(countdownRing(s)).toEqual({ playerId: takerId, seconds: 5, elapsed: 0 });
@@ -126,7 +129,7 @@ describe('countdownRing', () => {
   });
 
   it('không có hạn chót thì không có vòng', () => {
-    expect(countdownRing({ actionDeadline: null, tick: 5 })).toBeNull();
+    expect(countdownRing({ actionDeadline: { home: null, away: null }, tick: 5 })).toBeNull();
   });
 
   it.each([
@@ -157,7 +160,7 @@ describe('countdownRing', () => {
   });
 
   it('hết hạn (thủ môn đang lấy đà phát bóng hộ): 0 giây, cả vòng đen', () => {
-    const ring = countdownRing({ actionDeadline: keeper, tick: keeper.deadlineTick + 20 })!;
+    const ring = countdownRing({ actionDeadline: { home: keeper, away: null }, tick: keeper.deadlineTick + 20 })!;
     expect(ring).toMatchObject({ seconds: 0, elapsed: 1 });
     expect(countdownArcStep(ring.elapsed)).toBe(COUNTDOWN_ARC_STEPS);
   });
@@ -240,15 +243,16 @@ describe('penaltyRing', () => {
       startTick: 0,
       readyTick: 0,
     } as const;
-    const base = { restart, players, shotChargeTicks: 0, autopilot: false };
+    const charge = (home: number) => ({ home, away: 0 });
+    const base = { restart, players, shotChargeTicks: charge(0), autopilot: false };
     expect(penaltyRing(base)).toBeNull();
-    expect(penaltyRing({ ...base, shotChargeTicks: 10, autopilot: true })).toBeNull();
+    expect(penaltyRing({ ...base, shotChargeTicks: charge(10), autopilot: true })).toBeNull();
     expect(
-      penaltyRing({ ...base, restart: { ...restart, team: 'away' }, shotChargeTicks: 10 }),
+      penaltyRing({ ...base, restart: { ...restart, team: 'away' }, shotChargeTicks: charge(10) }),
     ).toBeNull();
     // Đang giữ D: tâm giữa khung, lực theo số tick đã giữ.
-    const weak = penaltyRing({ ...base, shotChargeTicks: 1 })!;
-    const strong = penaltyRing({ ...base, shotChargeTicks: MAX_CHARGE_TICKS })!;
+    const weak = penaltyRing({ ...base, shotChargeTicks: charge(1) })!;
+    const strong = penaltyRing({ ...base, shotChargeTicks: charge(MAX_CHARGE_TICKS) })!;
     expect(weak).toMatchObject({ x: -HALF_LENGTH, y: 0 });
     expect(strong.z).toBeGreaterThan(weak.z);
     expect(strong.radius).toBeGreaterThan(weak.radius);

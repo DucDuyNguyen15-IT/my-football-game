@@ -189,12 +189,12 @@ export class CutHold {
       ballOwnerId: null,
       kickLock: null,
       lastShot: null,
-      shotChargeTicks: 0,
-      passCharge: null,
+      shotChargeTicks: { home: 0, away: 0 },
+      passCharge: { home: null, away: null },
       windup: null,
       tackleRecovery: recovery,
       // Không vẽ vòng đếm ngược/thanh lực từ khung cũ.
-      actionDeadline: null,
+      actionDeadline: { home: null, away: null },
     };
   }
 

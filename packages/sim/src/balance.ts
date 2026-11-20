@@ -161,7 +161,8 @@ function aimedPenaltyInput(s: MatchState): PlayerInput {
     return { ...NO_INPUT, move: { x, y: 0 } };
   }
   // Chưa nạp thì nhấn/nhả luân phiên (sim cần một lần nhấn mới, sau khi người sút vào vị trí).
-  const shoot = s.shotChargeTicks > 0 ? s.shotChargeTicks < GOOD_CHARGE_TICKS : !s.input.shoot;
+  const shoot =
+    s.shotChargeTicks.home > 0 ? s.shotChargeTicks.home < GOOD_CHARGE_TICKS : !s.input.home.shoot;
   return { ...NO_INPUT, shoot };
 }
 

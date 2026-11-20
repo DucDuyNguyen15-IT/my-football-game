@@ -44,26 +44,26 @@
 
 ### 2b. Sim cho hai đội người (P1), theo contracts/sim-api.md
 
-- [ ] T008 Trong `packages/sim/src/types.ts`:
+- [x] T008 Trong `packages/sim/src/types.ts`:
   - thêm `MatchSetup.humans?: TeamSide[]` (mặc định `['home']`) và kiểu `TeamInputs = Record<TeamSide, PlayerInput>`;
   - chuyển `controlledId`, `shotChargeTicks`, `passCharge`, `input`, `actionDeadline`, `passReceiver` thành `Record<TeamSide, …>`;
   - golden hash của T005 (`golden-hash.json`) phải giữ nguyên sau refactor, vì `stateHash` băm phép chiếu chứ không băm JSON (A7, research.md R9). Lệch thì dừng và báo.
-- [ ] T009 Trong `packages/sim/src/match.ts`:
+- [x] T009 Trong `packages/sim/src/match.ts`:
   - thay hằng `HUMAN_TEAM` (dòng 154, khoảng 20 chỗ dùng) bằng `isHuman(state, team)`;
   - thêm `stepBoth(state, inputs)`; `step(state, input)` gọi `stepBoth` với away là `NO_INPUT`;
   - sửa `aiProfile` (khoảng dòng 559, đội người dùng `teammate`), `runTeamAi` (622, gán `controlledId` theo đội), `nextDeadline` (665-694, chạy cho mọi đội người), nghỉ giữa hiệp (723, một trong hai đội người bấm chuyền), tự thay người (732, chỉ cho đội máy);
   - autopilot (716) điều khiển **mọi** đội người khi bật, dùng cho e2e;
   - phủ thêm (A9): `stepShootout` (match.ts:854, mỗi đội người tự chọn người sút/thủ môn), `humanRestart` (match.ts:927, theo đội đang được hưởng), `nearestHuman` (match.ts:200, tính theo đội, không mặc định home).
-- [ ] T010 Trong `packages/sim/src/rules/substitution.ts` (A10): tách phần kiểm tra của `substitute` thành hai hàm, giữ nguyên hành vi của `substitute`:
+- [x] T010 Trong `packages/sim/src/rules/substitution.ts` (A10): tách phần kiểm tra của `substitute` thành hai hàm, giữ nguyên hành vi của `substitute`:
   - `checkSubStructure(state, team, out, bench)`: cầu thủ đang trên sân, slot dự bị hợp lệ, còn lượt thay, chưa bị đuổi; sai thì trả lý do để server gửi `sub_rejected` ngay;
   - `canSubstituteNow(state)`: kiểm thời điểm (bóng chết); không phải lỗi, chỉ quyết định áp ngay hay xếp lệnh chờ.
-- [ ] T011 Trong `packages/sim/src/replay.ts`:
+- [x] T011 Trong `packages/sim/src/replay.ts`:
   - export `encodeInput`/`decodeInput`;
   - thêm `InputRecorder2` (ghi cặp mã home/away, `subs` có `team`) và định dạng v2 có **tiền tố chuỗi `v2.`** (v1 không có tiền tố, bắt đầu bằng varint nên không dùng "byte phiên bản") (A8);
   - `MAX_SUBS=3` (replay.ts:221) đổi thành **mỗi đội** 3 (A8);
   - `replayMatch` đọc được cả v1 lẫn v2, phân biệt bằng tiền tố `v2.`;
   - thêm `replayToState(setup, encoded): MatchState` (chạy hết log, trả state) để client dựng lại khi vào lại, vì `ReplayResult` (`replay.ts:236`) không có state.
-- [ ] T012 [P] Test trong `packages/sim/src/match.pvp.test.ts`:
+- [x] T012 [P] Test trong `packages/sim/src/match.pvp.test.ts`:
   - golden hash của T005 (`golden-hash.json`) giữ nguyên sau refactor, và quỹ đạo `step` một người chơi không đổi (A7);
   - `stepBoth` với hai đội người chạy hết trận;
   - luân phiên đá luân lưu với **hai người chơi** (`stepShootout`), `humanRestart` đúng đội được hưởng, `nearestHuman` theo đội (A9);
@@ -71,7 +71,7 @@
   - đội khách chịu hạn 15 s đá phạt, 10 s thủ môn ôm bóng, thủ môn tối đa thẻ vàng;
   - nghỉ giữa hiệp kết thúc khi đội khách bấm;
   - `checkSubStructure` đúng cho cả hai đội (cầu thủ không trên sân, slot sai, hết lượt, đã bị đuổi đều bị từ chối) và `MAX_SUBS=3` tính riêng mỗi đội (A8, A10).
-- [ ] T013 [P] Test trong `packages/sim/src/replay.v2.test.ts`: `replayMatch(v2)` khớp với chạy trực tiếp `stepBoth` (có thay người cho cả hai đội); nhật ký v1 cũ (không tiền tố) vẫn ra cùng kết quả, nhật ký `v2.` được nhận ra đúng (A8); `stateHash(replayToState(...))` khớp với chạy trực tiếp.
+- [x] T013 [P] Test trong `packages/sim/src/replay.v2.test.ts`: `replayMatch(v2)` khớp với chạy trực tiếp `stepBoth` (có thay người cho cả hai đội); nhật ký v1 cũ (không tiền tố) vẫn ra cùng kết quả, nhật ký `v2.` được nhận ra đúng (A8); `stateHash(replayToState(...))` khớp với chạy trực tiếp.
 
 ### 2c. Hạ tầng server/web dùng chung
 

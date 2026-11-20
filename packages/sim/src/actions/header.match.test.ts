@@ -31,7 +31,12 @@ describe('đánh đầu trong trận', () => {
   // Bóng ngang đầu sát người đang điều khiển (giữa sân, mọi người khác ở xa, tắt AI).
   const ME = 'home-P5';
   function scene(): MatchState {
-    const s = createMatch({ home: starterLikeTeam, away: cpuEasyTeam, seed: 3, difficulty: 'easy' });
+    const s = createMatch({
+      home: starterLikeTeam,
+      away: cpuEasyTeam,
+      seed: 3,
+      difficulty: 'easy',
+    });
     const players = s.players.map((p, i) =>
       p.id === ME
         ? { ...p, pos: vec2(0, 0), vel: ZERO }
@@ -45,7 +50,7 @@ describe('đánh đầu trong trận', () => {
       players,
       ballOwnerId: null,
       ball: { pos: vec2(0.3, 0), z: 1.9, vz: 0, vel: vec2(-2, 0) },
-      controlledId: ME,
+      controlledId: { home: ME, away: '' },
       kickLock: null,
       ai: null,
     };

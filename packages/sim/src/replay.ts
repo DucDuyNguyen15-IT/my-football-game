@@ -5,12 +5,25 @@
  * Mã hoá nhị phân rồi base64url: [số đoạn] + mỗi đoạn [số tick, mã input] (run-length, varint) + [số lượt
  * thay] + mỗi lượt [tick, ô người ra, ô dự bị]. Mã input = nút·9 + hướng (hướng 0 = đứng yên, 1–8 = 8
  * hướng bàn phím); `move` không phải 8 hướng chuẩn thì không ghi được (ném lỗi) — không có nguồn nào khác.
+ *
+ * Định dạng v2 (PvP, hai đội người): tiền tố chuỗi `v2.` rồi cùng cách mã hoá, nhưng mỗi đoạn là
+ * [số tick, mã home, mã away] và mỗi lượt thay là [tick, đội, ô người ra, ô dự bị]. v1 không có tiền tố
+ * (bắt đầu bằng varint, không có "byte phiên bản" để dùng) và base64url không chứa dấu '.', nên
+ * nhận biết v2 bằng tiền tố. Mỗi đội thay tối đa MAX_SUBS lượt.
  */
 import { SquadSlot, type Difficulty, type MatchTeamSetup } from '@pitch/shared';
-import { createMatch, step } from './match';
+import { createMatch, stepBoth } from './match';
 import { substitute, MAX_SUBS } from './rules/substitution';
 import { TICK_RATE } from './tick';
-import { NO_INPUT, type MatchPhase, type MatchSetup, type PlayerInput } from './types';
+import {
+  NO_INPUT,
+  type MatchPhase,
+  type MatchSetup,
+  type MatchState,
+  type PlayerInput,
+  type TeamInputs,
+  type TeamSide,
+} from './types';
 
 /** Trần tick của log: gấp 3 lần 2 hiệp chính thức (đo 40 trận: dài nhất 27.352 tick kể cả luân lưu). */
 export const MAX_LOG_TICKS = 3 * 2 * 180 * TICK_RATE;
@@ -242,24 +255,153 @@ export interface ReplayResult {
   ticks: number;
 }
 
-/** Chạy lại trận từ `setup` + log; dừng ở `full_time` (phần log thừa phía sau bị bỏ qua). */
-export function replayMatch(setup: MatchSetup, encoded: string): ReplayResult {
-  const log = decodeLog(encoded);
+/** Tiền tố nhận biết nhật ký v2. */
+export const LOG_V2_PREFIX = 'v2.';
+
+export interface InputLog2 {
+  /** Đoạn run-length [số tick, mã input đội nhà, mã input đội khách]. */
+  runs: [number, number, number][];
+  /** Thay người của từng đội, áp trước `stepBoth` của tick `tick`. */
+  subs: { tick: number; team: TeamSide; out: SquadSlot; bench: SquadSlot }[];
+}
+
+/** Ghi log v2 trong lúc chơi (server / client PvP): `tick(inputs)` ngay trước mỗi `stepBoth`. */
+export class InputRecorder2 {
+  private log: InputLog2 = { runs: [], subs: [] };
+  private ticks = 0;
+
+  reset(): void {
+    this.log = { runs: [], subs: [] };
+    this.ticks = 0;
+  }
+
+  tick(inputs: TeamInputs): void {
+    if (this.ticks >= MAX_LOG_TICKS) return;
+    this.ticks++;
+    const home = encodeInput(inputs.home);
+    const away = encodeInput(inputs.away);
+    const last = this.log.runs[this.log.runs.length - 1];
+    if (last && last[1] === home && last[2] === away) last[0]++;
+    else this.log.runs.push([1, home, away]);
+  }
+
+  /** `outId` dạng `<đội>-<ô>` (id sim); id lạ bị bỏ qua vì sim cũng không bao giờ chấp nhận. */
+  sub(tick: number, team: TeamSide, outId: string, bench: SquadSlot): void {
+    const out = SquadSlot.safeParse(outId.replace(`${team}-`, ''));
+    if (out.success) this.log.subs.push({ tick, team, out: out.data, bench });
+  }
+
+  encode(): string {
+    return encodeLog2(this.log);
+  }
+}
+
+export function encodeLog2(log: InputLog2): string {
+  const out: number[] = [];
+  pushVarint(out, log.runs.length);
+  for (const [ticks, home, away] of log.runs) {
+    pushVarint(out, ticks);
+    pushVarint(out, home);
+    pushVarint(out, away);
+  }
+  pushVarint(out, log.subs.length);
+  for (const s of log.subs) {
+    pushVarint(out, s.tick);
+    out.push(s.team === 'home' ? 0 : 1, SLOTS.indexOf(s.out), SLOTS.indexOf(s.bench));
+  }
+  return LOG_V2_PREFIX + toBase64Url(out);
+}
+
+/** Giải mã và kiểm log v2 (cần tiền tố `v2.`), cùng ràng buộc như v1; thay người tối đa MAX_SUBS mỗi đội. */
+export function decodeLog2(text: string): InputLog2 & { totalTicks: number } {
+  if (!text.startsWith(LOG_V2_PREFIX)) throw new ReplayLogError('Log không phải định dạng v2');
+  const bytes = fromBase64Url(text.slice(LOG_V2_PREFIX.length));
+  let pos = 0;
+  const varint = (): number => {
+    let n = 0;
+    let unit = 1;
+    for (let i = 0; i < 5; i++) {
+      const b = bytes[pos++];
+      if (b === undefined) throw new ReplayLogError('Log bị cụt');
+      n += (b & 127) * unit;
+      if (b < 128) return n;
+      unit *= 128;
+    }
+    throw new ReplayLogError('Log có số quá lớn');
+  };
+  const nRuns = varint();
+  if (nRuns > MAX_LOG_TICKS) throw new ReplayLogError('Log có quá nhiều đoạn');
+  const runs: [number, number, number][] = [];
+  let totalTicks = 0;
+  for (let i = 0; i < nRuns; i++) {
+    const ticks = varint();
+    const home = varint();
+    const away = varint();
+    totalTicks += ticks;
+    if (ticks < 1 || home >= CODE_LIMIT || away >= CODE_LIMIT || totalTicks > MAX_LOG_TICKS) {
+      throw new ReplayLogError('Log có đoạn không hợp lệ');
+    }
+    runs.push([ticks, home, away]);
+  }
+  const nSubs = varint();
+  if (nSubs > 2 * MAX_SUBS) throw new ReplayLogError('Log có quá nhiều lượt thay người');
+  const subs: InputLog2['subs'] = [];
+  const perTeam = { home: 0, away: 0 };
+  for (let i = 0; i < nSubs; i++) {
+    const tick = varint();
+    const teamByte = bytes[pos++];
+    const team: TeamSide = teamByte === 0 ? 'home' : 'away';
+    const out = SLOTS[bytes[pos++] ?? -1];
+    const bench = SLOTS[bytes[pos++] ?? -1];
+    if (
+      (teamByte !== 0 && teamByte !== 1) ||
+      !out ||
+      !bench ||
+      tick > totalTicks ||
+      tick < (subs[i - 1]?.tick ?? 0) ||
+      ++perTeam[team] > MAX_SUBS
+    ) {
+      throw new ReplayLogError('Lượt thay người không hợp lệ');
+    }
+    subs.push({ tick, team, out, bench });
+  }
+  if (pos !== bytes.length) throw new ReplayLogError('Log thừa dữ liệu');
+  return { runs, subs, totalTicks };
+}
+
+/** Log v1 (chỉ đội nhà có input, thay người chỉ đội nhà) quy về dạng v2 với đội khách NO_INPUT. */
+function fromV1(encoded: string): InputLog2 {
+  const v1 = decodeLog(encoded);
+  return {
+    runs: v1.runs.map(([t, code]): [number, number, number] => [t, code, 0]),
+    subs: v1.subs.map((x) => ({ ...x, team: 'home' as const })),
+  };
+}
+
+/** Chạy log (v1 hoặc v2) tới hết log hoặc `full_time`, trả state cuối. */
+function runLog(setup: MatchSetup, encoded: string): MatchState {
+  const log = encoded.startsWith(LOG_V2_PREFIX) ? decodeLog2(encoded) : fromV1(encoded);
   let s = createMatch(setup);
   let nextSub = 0;
-  done: for (const [ticks, code] of log.runs) {
-    const input = decodeInput(code);
+  for (const [ticks, home, away] of log.runs) {
+    const inputs = { home: decodeInput(home), away: decodeInput(away) };
     for (let i = 0; i < ticks; i++) {
       while (log.subs[nextSub]?.tick === s.tick) {
         const sub = log.subs[nextSub++]!;
-        const r = substitute(s, 'home', `home-${sub.out}`, sub.bench);
+        const r = substitute(s, sub.team, `${sub.team}-${sub.out}`, sub.bench);
         if (!r.ok) throw new ReplayLogError(`Thay người bị từ chối: ${r.reason}`);
         s = r.state;
       }
-      if (s.phase === 'full_time') break done;
-      s = step(s, input);
+      if (s.phase === 'full_time') return s;
+      s = stepBoth(s, inputs);
     }
   }
+  return s;
+}
+
+/** Chạy lại trận từ `setup` + log (v1 hoặc v2); dừng ở `full_time` (phần log thừa phía sau bị bỏ qua). */
+export function replayMatch(setup: MatchSetup, encoded: string): ReplayResult {
+  const s = runLog(setup, encoded);
   const sh = s.shootout;
   const goals = (kicks: boolean[]) => kicks.filter(Boolean).length;
   return {
@@ -268,4 +410,9 @@ export function replayMatch(setup: MatchSetup, encoded: string): ReplayResult {
     phase: s.phase,
     ticks: s.tick,
   };
+}
+
+/** Chạy hết log và trả state (client dựng lại khi vào lại trận, R6). */
+export function replayToState(setup: MatchSetup, encoded: string): MatchState {
+  return runLog(setup, encoded);
 }

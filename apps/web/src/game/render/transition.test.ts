@@ -321,9 +321,8 @@ describe('detectTransition — khi nào chuyển cảnh', () => {
       ...prev,
       tick: inLast5Sec,
       actionDeadline: {
-        kind: 'free_kick',
-        playerId: 'home-P1',
-        deadlineTick: deadline,
+        home: { kind: 'free_kick', playerId: 'home-P1', deadlineTick: deadline },
+        away: null,
       },
       // Giả sử có cầu thủ nhảy vị trí ngay trong 5 giây cuối.
       players: prev.players.map((p, i) =>

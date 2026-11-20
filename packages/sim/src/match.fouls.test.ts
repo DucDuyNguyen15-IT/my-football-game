@@ -79,7 +79,7 @@ function scene({
     ballOwnerId: OWNER,
     ball: dribbleBall(players.find((p) => p.id === OWNER)!),
     lastTouchTeam: 'away',
-    controlledId: ME,
+    controlledId: { home: ME, away: '' },
     rng: rng ?? s.rng,
     bookings: bookings ?? [],
   };
@@ -146,7 +146,7 @@ describe('xoạc trực diện', () => {
 
   it('giữ nút sút từ trước khi có bóng không thành nạp lực sút', () => {
     const s = repeat(frontal(vec2(0, 0), winRoll), press({ lob: true, shoot: true }), 10);
-    expect(s.shotChargeTicks).toBe(0);
+    expect(s.shotChargeTicks.home).toBe(0);
   });
 
   it('trượt bóng (không chạm bóng trước) → phạm lỗi, đội khách đá phạt tại chỗ, không thẻ', () => {
@@ -226,8 +226,8 @@ describe('xoạc từ phía sau', () => {
     expect(s.players.find((p) => p.id === ME)).toBeUndefined();
     expect(s.players.filter((p) => p.team === 'home')).toHaveLength(6);
     expect(s.players.filter((p) => p.team === 'away')).toHaveLength(7);
-    expect(s.controlledId).not.toBe(ME);
-    expect(playerOf(s, s.controlledId).team).toBe('home');
+    expect(s.controlledId.home).not.toBe(ME);
+    expect(playerOf(s, s.controlledId.home).team).toBe('home');
   });
 
   it('chơi tiếp sau thẻ đỏ: đội máy đá phạt, trận vẫn chạy và state serialize được', () => {
@@ -324,7 +324,7 @@ describe('thực hiện đá phạt / phạt đền', () => {
       restart,
       players: holdRestart(facing, restart, 1),
       ball: { pos: spot, vel: ZERO, z: 0, vz: 0 },
-      controlledId: ME,
+      controlledId: { home: ME, away: '' },
     };
   }
 
@@ -334,7 +334,7 @@ describe('thực hiện đá phạt / phạt đền', () => {
     // Bấm J chỉ bắt đầu nạp lực (camera sau lưng), nhả mới đá.
     const pressed = step(fk, J);
     expect(pressed.phase).toBe('dead_ball');
-    expect(pressed.passCharge?.kind).toBe('ground');
+    expect(pressed.passCharge.home?.kind).toBe('ground');
     const s = step(pressed, NO_INPUT);
     expect(s.phase).toBe('play');
     expect(length(s.ball.vel)).toBeGreaterThan(0);
@@ -352,7 +352,7 @@ describe('thực hiện đá phạt / phạt đền', () => {
     const fk = homeRestart('free_kick', vec2(10, 0));
     const charging = repeat(fk, D, 30);
     expect(charging.phase).toBe('dead_ball');
-    expect(charging.shotChargeTicks).toBe(30);
+    expect(charging.shotChargeTicks.home).toBe(30);
     const s = step(charging, NO_INPUT);
     expect(s.phase).toBe('play');
     expect(s.ball.vel.x).toBeGreaterThan(10);

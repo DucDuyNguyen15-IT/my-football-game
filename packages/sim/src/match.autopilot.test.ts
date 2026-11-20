@@ -103,7 +103,7 @@ describe('đếm cú sút', () => {
       restart: null,
       players,
       ballOwnerId: 'home-P3',
-      controlledId: 'home-P3',
+      controlledId: { home: 'home-P3', away: '' },
       ball: dribbleBall(players.find((p) => p.id === 'home-P3')!),
       ai: null,
     };
