@@ -432,6 +432,8 @@ export class ModelActor {
       if (dive) this.trigger(dive);
     }
     let lean = 0;
+    // Clip một lần (bắt bóng, sút…) chen vào thì đếm lại thời gian đứng từ đầu.
+    if (this.oneShot) this.slowSec = 0;
     if (!this.oneShot) {
       const current = this.loop?.getClip().name as ClipName | undefined;
       const loco = locomotionFor(p, this.speeds, current);

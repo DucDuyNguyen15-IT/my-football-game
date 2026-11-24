@@ -91,7 +91,7 @@ export type ClipSpeeds = Partial<Record<ClipName, number>>;
 /** Chậm hơn mức này (m/s) thì coi như đứng. */
 const IDLE_SPEED = 0.4;
 /** Đang đứng thì phải nhanh hơn mức này mới chạy: thủ môn nhích 0,2–0,5 m/s lật idle↔jog liên tục (C5 G1). */
-const IDLE_EXIT_SPEED = 0.8;
+const IDLE_EXIT_SPEED = 0.6;
 /** Vùng đệm quanh ranh giới hướng ±0,5 (tới / ngang / lùi) để chạy chéo không lật clip qua lại. */
 const DIR_MARGIN = 0.15;
 const FORWARD = new Set<ClipName | undefined>(['walk', 'jog', 'run']);
