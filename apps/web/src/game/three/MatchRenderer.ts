@@ -16,6 +16,7 @@ import {
   type TeamSide,
 } from '@pitch/sim';
 import type { NetMatch } from '../../features/pvp/useNetMatch';
+import { motionEnabled, MotionRecorder } from '../render/motionLog';
 import type { GraphicsSettings, MatchBridge } from '../bridge';
 import {
   CONTROL_KEYS,
@@ -217,6 +218,9 @@ export class MatchRenderer {
   /** Đo riêng thời gian khung hình trong lúc chuyển cảnh khi bật `?perf=1`. */
   private transitionPerf: FrameStats | null = null;
   private perfReported = false;
+  /** Soi chuyển động (`?motion=1`, review C5): ghi từng khung đã vẽ vào `window.__motionLog`. */
+  private motion: MotionRecorder | null = null;
+  private frameMs = 0;
   private readonly stingerEnabled =
     typeof window === 'undefined' ||
     new URLSearchParams(window.location.search).get('stinger') !== '0';
@@ -319,6 +323,10 @@ export class MatchRenderer {
       this.transitionPerf = new FrameStats();
     }
     if (import.meta.env.DEV || this.perf) this.createDebugOverlay();
+    if (motionEnabled(window.location.search)) {
+      this.motion = new MotionRecorder();
+      (window as Window & { __motionLog?: MotionRecorder }).__motionLog = this.motion;
+    }
 
     this.draw(this.prev, this.curr, 1, 0);
     this.render();
@@ -604,13 +612,18 @@ export class MatchRenderer {
     };
     el.replaceChildren(
       span('foul-call__whistle'),
-      span('display foul-call__text', spec.kind === 'penalty' ? t('hud.foulPenalty') : t('hud.foul')),
+      span(
+        'display foul-call__text',
+        spec.kind === 'penalty' ? t('hud.foulPenalty') : t('hud.foul'),
+      ),
     );
     if (foul.card) {
       const label = foul.card === 'red' ? t('hud.cardRedUpper') : t('hud.cardYellowUpper');
-      const num =
-        foul.bookedNumber !== null ? t('hud.bookedNum', { num: foul.bookedNumber }) : '';
-      el.append(span(`foul-call__card foul-call__card--${foul.card}`), span('foul-call__who', label + num));
+      const num = foul.bookedNumber !== null ? t('hud.bookedNum', { num: foul.bookedNumber }) : '';
+      el.append(
+        span(`foul-call__card foul-call__card--${foul.card}`),
+        span('foul-call__who', label + num),
+      );
     }
     el.hidden = false;
   }
@@ -685,6 +698,7 @@ export class MatchRenderer {
   private readonly frame = (now: number): void => {
     this.raf = requestAnimationFrame(this.frame);
     const frameMs = this.lastTime === 0 ? 0 : now - this.lastTime;
+    this.frameMs = frameMs;
     const dt = this.lastTime === 0 ? 0 : Math.min(frameMs / 1000, MAX_FRAME_SEC);
     if (frameMs > 0 && !this.bridge?.isPaused()) {
       this.transition.recordFrame(frameMs);
@@ -836,6 +850,30 @@ export class MatchRenderer {
       else this.renderer.render(this.scene, this.camera);
     }
     this.transition.render(covered);
+    if (this.motion) this.recordMotion(covered);
+  }
+
+  private recordMotion(covered: boolean): void {
+    const players: Record<string, [number, number, number, string]> = {};
+    for (const [id, a] of this.actors)
+      players[id] = [a.position.x, a.position.z, a.rotation.y, this.models.get(id)?.clipName ?? ''];
+    const c = this.camera.position;
+    const b = this.ball.position;
+    this.motion!.record({
+      t: Date.now(),
+      ms: this.frameMs,
+      tick: this.curr.tick,
+      phase: this.curr.phase,
+      mode: this.replay
+        ? 'replay'
+        : this.frozen || this.cutHold || this.goalHold || this.pendingReplay
+          ? 'hold'
+          : 'live',
+      covered: covered || this.transition.isHidingPlay(),
+      cam: [c.x, c.y, c.z],
+      ball: [b.x, b.y, b.z],
+      players,
+    });
   }
 
   /** Bắt đầu phát lại quay chậm: khép stinger "XEM LẠI", khi che kín (`onCovered`) mới mở cảnh replay. */

@@ -336,6 +336,11 @@ export class ModelActor {
     spine.add(plate);
   }
 
+  /** Clip đang chủ đạo (một lần nếu có, không thì clip lặp) — cho công cụ soi chuyển động. */
+  get clipName(): string {
+    return this.oneShot?.clip ?? this.loop?.getClip().name ?? '';
+  }
+
   /** Phát clip một lần (chuyền, sút, xoạc…), đè lên clip lặp đang chạy. */
   trigger(wanted: ClipName): void {
     this.variant += 1;
