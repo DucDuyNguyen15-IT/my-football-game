@@ -104,7 +104,7 @@ export function SquadPage() {
       </div>
     );
   }
-  if (squad.isError || list.isError || catalog.isError) {
+  if (squad.isLoadingError || list.isLoadingError || catalog.isLoadingError) {
     return (
       <div className="screen-msg" role="alert">
         <p>{t('squad.loadError')}</p>

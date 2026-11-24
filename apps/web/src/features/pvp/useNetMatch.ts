@@ -67,11 +67,15 @@ export interface NetMatch {
   /** Vòng vẽ: state trễ theo bộ đệm jitter, đã nội suy. null khi chưa có trận. */
   display(dtSec: number): { prev: MatchState; curr: MatchState; alpha: number } | null;
   delayFrames(): number;
+  /** State đã nhận ở `tick` (kẹp về khoảng còn giữ), để vòng vẽ xét sự kiện của tick bị nhảy qua. */
+  stateAt(tick: number): MatchState | null;
   send(msg: PvpClientMessage): void;
   /** Gửi `input` chỉ khi mã đổi. */
   sendInput(code: number): void;
   /** Tab ẩn / mất focus: gửi ngay c=0 (nếu đang khác 0). */
   releaseInput(): void;
+  /** Vào lại trận xong (`catchup`): gửi lại phím đang giữ — input gửi lúc chưa mở/đang rejoin có thể bị bỏ. */
+  resendInput(): void;
   /** Đổi sang socket mới khi tự kết nối lại (giữ nguyên state, gate, history). */
   swapSocket(socket: NetSocket): void;
   close(): void;
@@ -90,9 +94,18 @@ export function createNetMatch(opts: NetMatchOptions): NetMatch {
   let state: MatchState | null = null;
   let queue: [number, number, number, PvpSub[]?][] | null = null; // != null: đang dựng lại
   let lastInput = 0;
+  let wantedInput = 0;
   let gapRequested = false;
 
-  const send = (msg: PvpClientMessage) => socket.send(JSON.stringify(msg));
+  // WebSocket.send ném InvalidStateError khi còn CONNECTING (lúc tự kết nối lại): bỏ tin, báo false.
+  const send = (msg: PvpClientMessage): boolean => {
+    try {
+      socket.send(JSON.stringify(msg));
+      return true;
+    } catch {
+      return false;
+    }
+  };
 
   function applyFrame(f: [number, number, number, PvpSub[]?]): void {
     if (!state) return;
@@ -195,6 +208,7 @@ export function createNetMatch(opts: NetMatchOptions): NetMatch {
     },
     state: () => state,
     delayFrames: () => jitter.delayFrames(),
+    stateAt: (tick) => history.at(tick),
     display(dtSec) {
       if (!state || queue) return null;
       const c = cursor.advance(dtSec, history.latestTick(), jitter.delayFrames());
@@ -202,12 +216,16 @@ export function createNetMatch(opts: NetMatchOptions): NetMatch {
     },
     send,
     sendInput(code) {
+      wantedInput = code;
       if (!shouldSendInput(lastInput, code)) return;
-      lastInput = code;
-      send({ t: 'input', c: code });
+      if (send({ t: 'input', c: code })) lastInput = code;
     },
     releaseInput() {
       this.sendInput(0);
+    },
+    resendInput() {
+      lastInput = -1; // ép gửi: server có thể đã bỏ input trước khi rejoin thành công (busy)
+      this.sendInput(wantedInput);
     },
     swapSocket(next) {
       socket.onmessage = null;
@@ -369,6 +387,7 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
         matchRunning = true;
         lastFrameAt = now();
       } else if (m.t === 'catchup') {
+        net.resendInput();
         rejoining = false;
         busyRetrying = false;
         disconnectAt = null;
@@ -407,11 +426,8 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
         emitStatus();
         return;
       }
-      if (inMatch) scheduleReconnect();
-      else {
-        reconnecting = false;
-        emitStatus();
-      }
+      // Cả ở sảnh (C3-01): server đã bỏ phòng/hàng chờ, PvpPage xoá room/queue khi mất kết nối.
+      scheduleReconnect();
     },
   });
 

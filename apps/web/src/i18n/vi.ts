@@ -100,6 +100,8 @@ export const vi = {
   'card.ariaLabel': '{rarity}, {name}, {position}, OVR {ovr}',
   'card.ariaLevel': ', cấp +{level}',
 
+  'match.webglError': 'Trình duyệt không mở được đồ hoạ 3D (WebGL). Hãy bật tăng tốc phần cứng hoặc thử trình duyệt khác.',
+
   // Intro 3D
   'intro.skip': 'Bấm phím bất kỳ để bỏ qua',
   'intro.tagline': 'My Football Game',
@@ -519,6 +521,7 @@ export const vi = {
   'squad.warn.gk_not_keeper': 'Ô GK phải là thẻ thủ môn',
   'squad.warn.missing_starters': 'Mới có {count}/{total} người đá chính',
   'squad.warn.misposition': 'Ô {slot} cần {role}, thẻ là {cardRole} (−15% chỉ số)',
+  'squad.warn.misposition_short': 'Ô {slot} lệch vị trí (−15% chỉ số)',
   'squad.collapseWarns': 'Thu gọn cảnh báo vị trí',
   'squad.moreWarns': 'Xem thêm {count} cảnh báo vị trí',
   'squad.benchTitle': 'Dự bị',

@@ -49,7 +49,7 @@
 5. Server kết thúc trận khi sim bóng tới `full_time`, rồi gửi `end` sau khung cuối.
 6. Heartbeat: server gửi ping WebSocket mỗi 2 s, quá 5 s không có pong thì coi là rớt mạng (research R12).
 7. Hạn gửi mã băm: đang kết nối và không dựng lại (miễn tối đa 10 s) mà quá 15 s thời gian thật không gửi `hash` thì bị coi là lệch. Mã băm cũ hơn 30 s thì bỏ qua (research R5).
-8. Lệch mã băm: lần đầu của một bên thì server gửi `catchup` cho bên đó (miễn hạn mã băm 10 s như `rejoin`). Lệch **lần thứ hai** của cùng bên trong trận thì `end` với `forfeit_desync`. Cả hai bên cùng lệch lần hai thì `void_desync`.
+8. Lệch mã băm: lần đầu của một bên thì server gửi `catchup` cho bên đó (miễn hạn mã băm 10 s như `rejoin`). Lệch **lần thứ hai** của cùng bên trong trận thì `end` với `forfeit_desync`. Cả hai bên cùng lệch lần hai thì `void_desync`. Khi một bên lệch lần hai mà bên kia đã lệch lần một và đang kết nối, server chờ tối đa 1,2 s (`DUAL_DESYNC_WINDOW_MS`) để xem bên kia có lệch lần hai (→ `void_desync`) hay gửi mã băm đúng (→ `forfeit_desync` bên đầu).
 9. Một user chỉ có một socket "đang giữ" trận. Socket mới mở khi socket cũ còn sống thì KHÔNG đóng socket cũ; socket mới chỉ được `rejoin`, và bị `busy` nếu phía đó còn socket sống (socket cũ chết sẽ bị heartbeat phát hiện ≤5 s). `queue_join`/`room_*` từ socket thứ hai khi user đã có mục chờ/phòng/phiên thì trả `busy`.
 10. Socket đóng thì xoá mục hàng chờ của user. Chủ phòng đang `waiting` rời hoặc đóng socket thì phòng bị đóng (`closed`).
 11. Bộ đệm hiển thị của client thích ứng 3–6 khung theo độ giật (jitter) đo được (research R2).

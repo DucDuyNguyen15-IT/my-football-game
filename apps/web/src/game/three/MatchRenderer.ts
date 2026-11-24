@@ -644,6 +644,9 @@ export class MatchRenderer {
       if (name && MOVE_KEYS.has(name)) this.held = { ...this.held, [name]: true };
       return;
     }
+    // PvP không tạm dừng: đang thao tác trong ngăn thay người (role=dialog) thì để phím cho ngăn,
+    // kẻo mũi tên bị chặn và không chọn được cầu thủ bằng bàn phím (C4 G3).
+    if (this.net && e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
     if (!this.net && (this.replay || this.pendingReplay)) {
       // Đang phát lại (hoặc đang vào phát lại): S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
       if (e.code === CONTROL_KEYS.pass) this.skipReplay = true;
@@ -835,8 +838,17 @@ export class MatchRenderer {
     net.sendInput(encodeInput(input));
     const d = net.display(dt);
     if (d && d.curr.tick !== this.curr.tick) {
-      for (const e of animationEvents(d.prev, d.curr)) this.models.get(e.playerId)?.trigger(e.clip);
-      if (isGoal(d.prev, d.curr)) this.goalFx(d.prev, d.curr);
+      // Khung vẽ chậm hơn 1/60 s hoặc con trỏ đuổi kịp thì nhảy qua vài tick: xét sự kiện từng cặp
+      // để không mất clip sút/chuyền và hiệu ứng bàn thắng (C4 G1). Nhảy xa (rejoin) thì chỉ cặp cuối.
+      const gap = d.curr.tick - this.curr.tick;
+      const from = gap > 0 && gap <= 30 ? this.curr.tick + 1 : d.curr.tick;
+      for (let t = from; t <= d.curr.tick; t++) {
+        const a = t === d.curr.tick ? d.prev : net.stateAt(t - 1);
+        const b = t === d.curr.tick ? d.curr : net.stateAt(t);
+        if (!a || !b || a === b) continue;
+        for (const e of animationEvents(a, b)) this.models.get(e.playerId)?.trigger(e.clip);
+        if (isGoal(a, b)) this.goalFx(a, b);
+      }
       this.bridge?.onState(d.curr);
     }
     if (d) {

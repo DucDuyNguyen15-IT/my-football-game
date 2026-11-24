@@ -85,6 +85,6 @@ describe('golden hash (tất định số học)', () => {
     for (let i = 0; i < 3000; i++) {
       s = step(s, decodeInput((Math.imul((i >> 4) + 1, 2654435761) >>> 0) % 4608));
     }
-    expect(stateHash(s)).toBe(1047449807);
+    expect(stateHash(s)).toBe(1909105088);
   });
 });

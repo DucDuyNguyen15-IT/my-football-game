@@ -1,7 +1,7 @@
 # Đặc tả tính năng: Đá trực tiếp (PvP thời gian thực)
 
 **Ngày tạo:** 20/11/2026
-**Trạng thái:** Bản nháp, chờ người dùng duyệt
+**Trạng thái:** Đã duyệt 20/11/2026, đã triển khai (gộp main 24/11/2026)
 **Nguồn:** kế hoạch đá trực tiếp do người dùng duyệt ngày 20/11/2026, các quyết định ghép trận / thưởng / rớt mạng đã chốt cùng ngày.
 
 ## Clarifications
@@ -160,7 +160,7 @@ Mỗi người chơi được thay người cho đội mình theo luật như kh
 
 - Trận đá trực tiếp dài bằng trận đấu máy (mỗi hiệp 3 phút thời gian thật) và dùng cùng luật.
 - Ghép ngẫu nhiên theo thứ tự đến, không xét chênh lệch sức mạnh đội hình. Xếp hạng và ghép theo trình độ để đợt sau.
-- Người tạo phòng, hoặc người vào hàng chờ trước, là đội nhà.
+- Đội nhà/đội khách được server tung đồng xu chọn khi dựng trận (người tạo phòng hoặc vào hàng chờ trước không mặc nhiên là đội nhà).
 - Người chơi chủ yếu ở Việt Nam, kết nối tới một máy chủ đặt trong khu vực. Không tối ưu cho trễ liên lục địa.
 - Hệ thống chạy trên một máy chủ duy nhất. Phòng và hàng chờ mất khi máy chủ khởi động lại, và trận đang đá lúc đó bị huỷ không thưởng.
 - Trận đá trực tiếp chỉ dùng được sau khi game đã deploy công khai. Trước đó chỉ thử trên máy cục bộ hoặc mạng LAN.
@@ -179,4 +179,4 @@ Mỗi người chơi được thay người cho đội mình theo luật như kh
 
 ## Phụ lục kỹ thuật (để tham chiếu khi lập kế hoạch, không thuộc yêu cầu)
 
-Hướng làm đã duyệt: lockstep do server giữ nhịp. Server chạy 60 tick/s, nhận phím của hai bên, chạy một bản sim của riêng mình theo đúng các khung đó (sim bóng), rồi phát khung cho hai trình duyệt. Phím tới trễ thì lặp phím trước đó. Tỉ số, lúc hết trận, việc thay người hợp lệ và việc phân xử khi lệch đều lấy từ sim bóng của server. Client gửi mã băm trạng thái mỗi 60 tick để server so với mã băm của sim bóng. Chi tiết ở kế hoạch `C:\Users\Admin\.claude\plans\len-ke-hoach-di-prancy-melody.md`. Sẽ ghi thành ADR-0012.
+Hướng làm đã duyệt: lockstep do server giữ nhịp. Server chạy 60 tick/s, nhận phím của hai bên, chạy một bản sim của riêng mình theo đúng các khung đó (sim bóng), rồi phát khung cho hai trình duyệt. Phím tới trễ thì lặp phím trước đó. Tỉ số, lúc hết trận, việc thay người hợp lệ và việc phân xử khi lệch đều lấy từ sim bóng của server. Client gửi mã băm trạng thái mỗi 60 tick để server so với mã băm của sim bóng. Xem [research.md](research.md) R1, R11 và [ADR-0012](../../adr/0012-pvp-lockstep.md).

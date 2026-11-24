@@ -3,9 +3,9 @@
 Game bóng đá chơi trên trình duyệt: điều khiển trận đấu + sưu tầm/mở thẻ cầu thủ (gacha) + xây đội hình.
 
 ## Trạng thái hiện tại
-- **Đang làm (20/11/2026): PvP đá trực tiếp** (`docs/specs/pvp-realtime/`, nhánh `feat/pvp-realtime`, theo `tasks.md`).
-- **Giai đoạn đang làm:** GĐ8 xong (2026-11-14), giao diện v3 xong. Đang Phần B — review toàn bộ đồ án theo tác giả (`.claude/collab/plan-review-B.md`): B1, B1b, B3, B4, B5, B6, luật 2–4, R78, phần Opus của B2 (8.2), audit bảo mật server đã xong (2026-11-16)
-- **Việc tiếp theo:** GĐ9: 9.1 Docker xong, pháp lý + xoá tài khoản xong, README có bản đầu (2026-11-16). Còn 9.2 deploy (chờ người dùng chọn VPS/domain) và Fable review chéo các commit Opus 16/11. Việc còn tồn: `docs/QA-REPORT.md` §6
+- **Vừa xong (24/11/2026): PvP đá trực tiếp đã gộp main (47ab50d)** (`docs/specs/pvp-realtime/`); còn T045 (chạy toàn bộ quickstart + đo SC-001/002) và T046 (playtest ≥ 3 người).
+- **Đang làm: review C (rà lại toàn đồ án sau ~60 commit mới), xem `.claude/collab/plan-review-C.md`**; Phần B đã xong. GĐ8 xong (2026-11-14), giao diện v3 xong.
+- **Việc tiếp theo:** GĐ9: 9.1 Docker xong, pháp lý + xoá tài khoản xong, README có bản đầu. Còn 9.2 deploy (chờ người dùng chọn VPS/domain) và Sonnet review chéo các commit Opus 16/11. Việc còn tồn: `docs/QA-REPORT.md` §6
 - Cập nhật 2 dòng trên mỗi khi xong một giai đoạn.
 
 ## Quy tắc cho agent (đọc kỹ, không cần nhắc lại)
@@ -44,7 +44,12 @@ Yêu cầu: Node ≥ 24, pnpm 12 (bật qua corepack: `corepack enable --install
 | `pnpm lint` | ESLint (chặn Three.js/Phaser/DOM/`Math.random` trong `packages/sim`, `Math.random` trong server) |
 | `pnpm typecheck` | `tsc` cho từng package và `e2e/` |
 | `pnpm check` | lint + typecheck + test — **phải xanh trước mỗi commit** |
-| `pnpm e2e` | E2E luồng chính bằng Playwright (`e2e/`, task 8.1): tự migrate + seed DB test (`E2E_DATABASE_URL` → `DATABASE_URL_TEST` → `pitch_test`, không bao giờ DB dev `pitch`), bật server :3101 + web :5174 riêng. Lần đầu: `pnpm exec playwright install chromium`. Không nằm trong `pnpm check` |
+| `pnpm e2e` | E2E bằng Playwright (`e2e/`): luồng chính (task 8.1) + hai kịch bản PvP hai context (`e2e/pvp.spec.ts`), tổng 3 test: tự migrate + seed DB test (`E2E_DATABASE_URL` → `DATABASE_URL_TEST` → `pitch_test`, không bao giờ DB dev `pitch`), bật server :3101 + web :5174 riêng. Lần đầu: `pnpm exec playwright install chromium`. Không nằm trong `pnpm check` |
+| `pnpm e2e:determinism` | Test tất định PvP: mã băm mỗi 60 tick giống nhau trên Chromium, Firefox, WebKit (không nằm trong `pnpm check`) |
+| `pnpm motion` / `pnpm motion:pvp` | Công cụ soi chuyển động (C5): quay và ghi chuyển động trận máy / trận PvP bằng GPU thật, ra `motion-out/` (không nằm trong `pnpm e2e`) |
+| `pnpm --filter @pitch/server bench:pvp-sim` | Đo p99 thời gian `stepBoth` của sim bóng PvP (SC-009) |
+| `pnpm --filter @pitch/server ledger:check` | Kiểm toàn vẹn sổ cái xu (0 lệch) |
+| `pnpm --filter @pitch/server admin:grant <username>` | Cấp quyền admin cho một tài khoản |
 | `pnpm build` | Build web (`apps/web/dist`) + server (`apps/server/dist`) |
 | `pnpm format` | Prettier |
 | `docker compose up -d --build` | Bản production (GĐ9.1): Caddy HTTPS + server + Postgres; cần `SESSION_SECRET`, `POSTGRES_PASSWORD`, `APP_DB_PASSWORD` trong `.env` (xem `.env.example`). Mở `https://localhost` |
@@ -58,7 +63,7 @@ Kế hoạch task: `docs/plans/README.md` (cách chọn task tiếp theo, bất 
 - **Không ghi attribution của Claude:** không thêm dòng `Co-Authored-By: Claude …` vào commit, không thêm "Generated with Claude Code" vào PR.
 - **AI LOG** (nếu đồ án yêu cầu): luôn hỏi người dùng trước khi ghi. Không chép nguyên văn câu lệnh ngắn của người dùng; viết lại thành prompt đầy đủ (bối cảnh, mục tiêu, yêu cầu, ràng buộc, kết quả mong muốn), cho xem trước, chỉ ghi khi được đồng ý.
 - **Tiết kiệm usage:** phiên vượt ~200k token thì dừng và báo người dùng (trừ khi người dùng cho phép riêng phiên đó).
-- **Phân vai agent (từ 14/11/2026):** không dùng Gemini nữa. Opus điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit; Sonnet làm code từng task trong worktree riêng (không dùng Fable nữa); Haiku làm việc vặt (docs, chạy lệnh).
+- **Phân vai agent (từ 14/11/2026):** không dùng Gemini nữa. Opus điều phối và **review toàn bộ diff**, chịu trách nhiệm cuối trước khi commit; Sonnet làm code từng task trong worktree riêng; Haiku làm việc vặt (docs, chạy lệnh).
 
 ## Phối hợp với Gemini (Antigravity) — chỉ khi người dùng giao riêng (ngoại lệ của quy tắc "không dùng Gemini")
 - CLI: `C:\Users\Admin\.gemini\bin\agy.exe` (cài Antigravity rồi chạy `agy install`). Model: `gemini-pro-orchestrator-g1-pro` (Orchestrator Argon, **không** nhận cờ `--effort`).

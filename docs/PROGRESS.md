@@ -4,6 +4,21 @@ Mỗi giai đoạn xong ghi 3–5 dòng: đã làm gì, quyết định nào đ�
 
 ---
 
+## PvP đá trực tiếp (2026-11-24) ✅ gộp main 47ab50d
+- Hai người đá thời gian thực qua WebSocket: lockstep 60 Hz do server giữ nhịp, sim bóng trên server quyết tỉ số ([ADR-0012](adr/0012-pvp-lockstep.md)). Phòng bằng mã 6 ký tự (giao hữu) và hàng chờ (có thưởng như máy Khó); đội nhà/khách tung đồng xu.
+- Rớt mạng quá 30 s/lần hoặc 60 s/trận bị xử thua; lệch mã băm lần hai bị xử thua; nghỉ giữa hiệp cần cả hai bấm chuyền; thưởng đúng một lần (`UNIQUE (pvp_match_id, user_id)`). Bảng mới `pvp_matches` (migration 0008) nên DB có 14 bảng.
+- Công cụ soi chuyển động (C5): `pnpm motion`, `pnpm motion:pvp`. Test: `pnpm check` 1319 test, e2e 3 test (1 luồng chính + 2 PvP).
+- Còn: T045 (chạy toàn bộ quickstart, đo SC-001/002/004/005) và T046 (playtest ≥ 3 người).
+
+## Đợt 17–24/11/2026 — bảo mật, tài khoản, giao diện
+- Bảo mật: SEC-07 server chạy lại `inputLog` để chốt tỉ số ([ADR-0011](adr/0011-server-replay-verification.md)), SEC-13a cookie thiết bị quen, SEC-14 phiên tối đa 90 ngày tuyệt đối.
+- Đăng ký có ô đồng ý điều khoản; server chặn mật khẩu mức Đồng (quá yếu), kể cả gọi API thẳng.
+- Giao diện: chế độ tối/sáng và song ngữ Việt/English (xem `docs/DESIGN.md` §5–6), rà UX theo 20 nguyên tắc, chặn trận 3D trên điện thoại.
+- Trận: tình huống cố định, chân thuận/nghịch, model 3D cầu thủ.
+- Đang làm review C (rà lại toàn đồ án sau ~60 commit mới), xem `.claude/collab/plan-review-C.md`.
+
+---
+
 ## Bổ sung trận đấu — tình huống cố định, chân thuận/nghịch, đánh đầu (2026-11-16)
 - Tình huống cố định của người chơi: camera sau lưng người đá, mũi tên ngắm, Shift+mũi tên chấm điểm chạm (cong/bổng/sệt theo điểm chạm), giữ phím tích lực nhả mới đá, phạt đền ngắm bằng vòng tròn 2D đổi màu theo lực. Thêm xoáy bóng (`BallState.spin`), sút xoáy Z+D, chỉnh vùng chạm bóng (bóng nhanh khó dính chân) và chọc khe bớt căng.
 - Thẻ có chân thuận (migration 0004) và chân nghịch 2–5★ (migration 0005); máy tự chọn chân theo phía bóng, chân không thuận tăng sai số. Animation đá có bản chân trái, thủ môn bắt/đổ người theo độ cao bóng.

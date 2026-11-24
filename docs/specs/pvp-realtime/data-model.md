@@ -8,7 +8,7 @@ Migration mới: `apps/server/drizzle/0008_pvp.sql` (sinh bằng drizzle-kit; kh
 |---|---|---|
 | `id` | bigint identity | PK, `id()` như các bảng khác (`schema.ts:25`) |
 | `kind` | enum `pvp_kind` (`ranked`, `friendly`) | `ranked` là ghép ngẫu nhiên (có thưởng), `friendly` là mã phòng (không thưởng, FR-022) |
-| `home_user_id` | bigint → users (`userRef`) | NOT NULL. Người tạo phòng, hoặc người vào hàng chờ trước |
+| `home_user_id` | bigint → users (`userRef`) | NOT NULL. Chọn ngẫu nhiên giữa hai người lúc dựng trận (đồng xu, `services/pvp/rooms.ts` `startPvpMatch`) |
 | `away_user_id` | bigint → users (`userRef`) | NOT NULL. CHECK `home_user_id <> away_user_id` (spec: không đá với chính mình) |
 | `seed` | bigint | NOT NULL, sinh bằng `node:crypto` như `startMatch` |
 | `squad_snapshot` | jsonb | NOT NULL, `{formation_home, formation_away, home, away}` chụp lúc vào trận |

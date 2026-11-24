@@ -8,7 +8,7 @@
 Dự án nhắm phát hành thật nhưng chưa chốt ngân sách. Cần chạy server Node, Postgres, phục vụ file tĩnh của client và có HTTPS. Giai đoạn 9 trong ROADMAP đã định đóng gói bằng Docker.
 
 ## Decision
-Đóng gói bằng **Docker Compose** gồm: `caddy` (HTTPS tự động, phục vụ build tĩnh của web, reverse proxy) + `server` + `postgres`. Dùng chung cho dev và deploy. Ứng viên deploy: 1 VPS nhỏ (~5 USD/tháng). Giá và nhà cung cấp chốt ở Giai đoạn 9.
+Đóng gói bằng **Docker Compose** gồm: `caddy` (HTTPS tự động, phục vụ build tĩnh của web, reverse proxy) + `server` + `postgres` + dịch vụ một lần `migrate` (migration + seed trước khi bật server; thêm ở GĐ9.1). Dùng chung cho dev và deploy. Ứng viên deploy: 1 VPS nhỏ (~5 USD/tháng). Giá và nhà cung cấp chốt ở Giai đoạn 9.
 
 ## Alternatives Considered
 ### Free tier (static host + PaaS miễn phí + Postgres miễn phí)

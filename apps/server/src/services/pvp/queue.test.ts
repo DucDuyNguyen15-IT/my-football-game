@@ -269,16 +269,19 @@ describe('Hàng chờ ghép trận PvP (T035–T037)', () => {
       });
     }
 
-    const { pvpId } = await pairTwo(annId, caraId);
+    // Sân do server tung đồng xu (P8): Ann thắng 3-0 dù đá đội nhà hay đội khách.
+    const { pvpId, ma } = await pairTwo(annId, caraId);
+    const annSide = ma.side;
+    const caraSide = annSide === 'home' ? 'away' : 'home';
     const res = await finishPvpMatch(db, {
       pvpId,
       reason: 'full_time',
-      score: { home: 3, away: 0 },
+      score: annSide === 'home' ? { home: 3, away: 0 } : { home: 0, away: 3 },
       inputLog: 'v2.',
       now: clock.now(),
     });
-    expect(res.sides.home).toEqual({ outcome: 'win', reward: 0, rewardReason: 'daily_cap' });
-    expect(res.sides.away).toEqual({ outcome: 'loss', reward: MATCH_REWARD.hard.loss });
+    expect(res.sides[annSide]).toEqual({ outcome: 'win', reward: 0, rewardReason: 'daily_cap' });
+    expect(res.sides[caraSide]).toEqual({ outcome: 'loss', reward: MATCH_REWARD.hard.loss });
 
     // Kiểm tra nhiệm vụ: play_matches / win_match / score_goals / clean_sheet tăng; play_hard KHÔNG tăng
     // Ngoài ra kiểm trực tiếp applyMissionEvent với mode='pvp' để chắc mọi loại nhiệm vụ được phủ.
