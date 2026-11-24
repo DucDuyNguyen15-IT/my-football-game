@@ -44,7 +44,13 @@ class FakeConn implements HubConn {
   }
 }
 
-const flush = () => new Promise<void>((r) => setTimeout(r, 15));
+async function waitUntil(fn: () => boolean, ms = 2000): Promise<void> {
+  const deadline = Date.now() + ms;
+  while (!fn()) {
+    if (Date.now() >= deadline) throw new Error('waitUntil timed out');
+    await new Promise<void>((r) => setTimeout(r, 5));
+  }
+}
 
 let time: FakeTime;
 let clock: FakeClock;
@@ -99,7 +105,7 @@ describe('Phòng PvP (T024–T025)', () => {
 
     // Chủ phòng tạo phòng → nhận room_created
     hub.handle(ca, { t: 'room_create' });
-    await flush();
+    await waitUntil(() => ca.of('room_created').length >= 1);
     const created = ca.of('room_created')[0]!;
     expect(created.code).toHaveLength(6);
 
@@ -120,12 +126,12 @@ describe('Phòng PvP (T024–T025)', () => {
 
     // Tạo phòng mới, B vào thành công, C vào sau → room_full
     hub.handle(ca, { t: 'room_create' });
-    await flush();
+    await waitUntil(() => ca.of('room_created').length >= 2);
     const code2 = ca.of('room_created')[1]!.code;
     hub.handle(cb, { t: 'room_join', code: code2 });
-    await flush();
     hub.handle(cc, { t: 'room_join', code: code2 });
     expect(cc.of('error').at(-1)).toEqual({ t: 'error', code: 'room_full' });
+    await waitUntil(() => ca.of('matched').length >= 1 && cb.of('matched').length >= 1);
 
     const ma = ca.of('matched')[0]!;
     const mb = cb.of('matched')[0]!;
@@ -145,7 +151,7 @@ describe('Phòng PvP (T024–T025)', () => {
     const cBroken = new FakeConn(brokenId);
     hub.addConn(cBroken);
     hub.handle(cBroken, { t: 'room_create' });
-    await flush();
+    await waitUntil(() => cBroken.of('error').length >= 1);
     expect(cBroken.of('error').at(-1)).toEqual({ t: 'error', code: 'invalid_squad' });
 
     // Ô GK đặt thẻ không phải GK
@@ -164,10 +170,10 @@ describe('Phòng PvP (T024–T025)', () => {
     hub.addConn(ca);
     hub.addConn(cb);
     hub.handle(ca, { t: 'room_create' });
-    await flush();
+    await waitUntil(() => ca.of('room_created').length >= 1);
     const code = ca.of('room_created')[0]!.code;
     hub.handle(cb, { t: 'room_join', code });
-    await flush();
+    await waitUntil(() => cb.of('error').length >= 1);
     expect(cb.of('error').at(-1)).toEqual({ t: 'error', code: 'invalid_squad' });
     // Phòng vẫn waiting để người khác có thể vào
     expect(hub.rooms.get(code)?.status).toBe('waiting');
@@ -180,14 +186,14 @@ describe('Phòng PvP (T024–T025)', () => {
     hub.addConn(cb);
 
     hub.handle(ca, { t: 'room_create' });
-    await flush();
+    await waitUntil(() => ca.of('room_created').length >= 1);
     const code1 = ca.of('room_created')[0]!.code;
     hub.handle(ca, { t: 'room_leave' });
     hub.handle(cb, { t: 'room_join', code: code1 });
     expect(cb.of('error').at(-1)).toEqual({ t: 'error', code: 'room_not_found' });
 
     hub.handle(ca, { t: 'room_create' });
-    await flush();
+    await waitUntil(() => ca.of('room_created').length >= 2);
     const code2 = ca.of('room_created')[1]!.code;
     hub.onClosed(ca);
     hub.handle(cb, { t: 'room_join', code: code2 });
@@ -201,10 +207,10 @@ describe('Phòng PvP (T024–T025)', () => {
     hub.addConn(cb);
 
     hub.handle(ca, { t: 'room_create' });
-    await flush();
+    await waitUntil(() => ca.of('room_created').length >= 1);
     const code = ca.of('room_created')[0]!.code;
     hub.handle(cb, { t: 'room_join', code });
-    await flush();
+    await waitUntil(() => ca.of('matched').length >= 1 && cb.of('matched').length >= 1);
 
     const pvpId = ca.of('matched')[0]!.pvpId;
     const sess = hub.session(pvpId)!;
