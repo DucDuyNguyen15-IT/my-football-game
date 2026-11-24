@@ -281,8 +281,8 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 
 ## Phase 7: Polish & việc chung
 
-- [ ] T043 [P] Ghi "Trang lịch sử trận (phân biệt máy / PvP xếp hạng / PvP giao hữu, tên đối thủ)" vào `docs/BACKLOG.md` (FR-021 đã hoãn; dữ liệu `mode`, `opponent_user_id` đã lưu).
-- [ ] T044 [P] Cập nhật `docs/PRD.md` (mục PvP), `docs/ARCHITECTURE.md` (tham chiếu ADR-0012, sơ đồ WS, sim bóng), `docs/BACKLOG.md` (bỏ dòng PvP realtime, thêm rollback, ELO, nhiều instance), `docs/QA-REPORT.md`.
+- [x] T043 [P] Ghi "Trang lịch sử trận (phân biệt máy / PvP xếp hạng / PvP giao hữu, tên đối thủ)" vào `docs/BACKLOG.md` (FR-021 đã hoãn; dữ liệu `mode`, `opponent_user_id` đã lưu).
+- [x] T044 [P] Cập nhật `docs/PRD.md` (mục PvP), `docs/ARCHITECTURE.md` (tham chiếu ADR-0012, sơ đồ WS, sim bóng), `docs/BACKLOG.md` (bỏ dòng PvP realtime, thêm rollback, ELO, nhiều instance), `docs/QA-REPORT.md`.
 - [ ] T045 Chạy toàn bộ [quickstart.md](quickstart.md): `pnpm check`, `pnpm e2e`, `pnpm e2e:determinism`, rồi kiểm tra bằng tay các bước 1–6. Ghi vào QA-REPORT: kết quả đo SC-002 (RTT 100 ms), SC-001, thời gian dựng lại khi vào lại, chi phí sim bóng thực tế.
 - [ ] T046 Playtest với ít nhất 3 người lần đầu dùng: tạo phòng hoặc vào phòng không cần hướng dẫn (SC-008). Ghi kết quả vào QA-REPORT.
 - [ ] T047 Review chéo: Sonnet review diff phần Opus viết (T005–T013, T044); Opus review phần Sonnet viết (server, web). Sửa hết lỗi rồi merge `main`, push. Cập nhật "Trạng thái hiện tại" trong CLAUDE.md và `docs/PROGRESS.md`.
