@@ -31,7 +31,7 @@ import {
 } from '../play/matchShared';
 import { TeamSide } from '../play/PreMatch';
 import { KeyHints, ShootoutHint } from '../play/screens';
-import type { NetMatch } from './useNetMatch';
+import type { NetMatch, PvpClientStatus } from './useNetMatch';
 import '../play/play.css';
 import '../play/prematch.css';
 import './pvp.css';
@@ -41,9 +41,12 @@ export type EndMessage = Extract<PvpServerMessage, { t: 'end' }>;
 
 export interface PvpMatchPageProps {
   net: NetMatch;
+  status: PvpClientStatus;
   matched: MatchedMessage;
   countdownMs: number | null;
+  oppDisconnectedUntil: number | null;
   ended: EndMessage | null;
+  onLeave: () => void;
   onBackLobby: () => void;
 }
 
@@ -57,9 +60,12 @@ const OUTCOME_KEY = {
 
 export function PvpMatchPage({
   net,
+  status,
   matched,
   countdownMs,
+  oppDisconnectedUntil,
   ended,
+  onLeave,
   onBackLobby,
 }: PvpMatchPageProps) {
   const { locale, t } = useI18n();
@@ -75,6 +81,7 @@ export function PvpMatchPage({
   const [graphics] = useState(loadGraphics);
   const [confirmLeave, setConfirmLeave] = useState(false);
   const [countdownLeftSec, setCountdownLeftSec] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState(() => performance.now());
   const [matchStarted, setMatchStarted] = useState(false);
 
   useLeaveGuard(!ended, t('pvp.leaveConfirm'));
@@ -95,6 +102,17 @@ export function PvpMatchPage({
     const id = window.setInterval(tick, 100);
     return () => window.clearInterval(id);
   }, [countdownMs]);
+
+  useEffect(() => {
+    if (oppDisconnectedUntil === null) return;
+    const id = window.setInterval(() => setNowMs(performance.now()), 250);
+    return () => window.clearInterval(id);
+  }, [oppDisconnectedUntil]);
+
+  const oppLeftSec =
+    oppDisconnectedUntil === null
+      ? null
+      : Math.max(0, Math.ceil((oppDisconnectedUntil - nowMs) / 1000));
 
   useEffect(() => {
     if (matchStarted) later(HINTS_SHOW_MS, () => setHints(false));
@@ -223,6 +241,27 @@ export function PvpMatchPage({
         <div className="hud">
           <div className="hud-top">
             <Scoreboard hud={hud} names={names} />
+            {oppLeftSec !== null && (
+              <div className="pvp-banner pvp-banner--warn" role="status">
+                {t('pvp.oppDisconnected', { seconds: oppLeftSec })}
+              </div>
+            )}
+            {(status.rebuilding || status.reconnecting || status.busyRetrying) && (
+              <div className="pvp-banner" role="status">
+                {status.rebuilding
+                  ? t('pvp.rebuilding')
+                  : status.busyRetrying
+                    ? t('pvp.busyRetrying')
+                    : t('pvp.reconnecting')}
+              </div>
+            )}
+            {status.rebuildSlowMs !== null && (
+              <div className="pvp-banner" role="status">
+                {t('pvp.rebuildSlow', {
+                  seconds: (status.rebuildSlowMs / 1000).toFixed(1),
+                })}
+              </div>
+            )}
             {hud.phase === 'half_time' && !autopilot && (
               <div className="event-strip hud-event hud-event--half" role="status">
                 <span className="event-strip__mark" aria-hidden="true">
@@ -261,10 +300,7 @@ export function PvpMatchPage({
                   <button
                     type="button"
                     className="btn btn--danger btn--sm"
-                    onClick={() => {
-                      net.send({ t: 'leave' });
-                      onBackLobby();
-                    }}
+                    onClick={onLeave}
                   >
                     {t('pvp.leaveBtn')}
                   </button>

@@ -226,7 +226,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - nhận `catchup` mà không bao giờ gửi `catchup_done` thì sau 10 s + 15 s bị coi là lệch;
   - rớt lệch giờ: bên hết hạn trước thua; cả hai cùng đang rớt thì huỷ;
   - mất pong 5 s thì tính là rớt mạng.
-- [ ] T034 [US3] Trong `apps/web/src/features/pvp/useNetMatch.ts` và `PvpMatchPage.tsx`:
+- [x] T034 [US3] Trong `apps/web/src/features/pvp/useNetMatch.ts` và `PvpMatchPage.tsx`:
   - tự kết nối lại theo backoff, gửi `rejoin`;
   - nhận `error busy` thì thử `rejoin` lại mỗi 2 s trong hạn 30 s (A1); nhận `end` thay `catchup` thì hiện kết quả luôn (A2);
   - với `catchup` thì dựng lại state bằng `replayToState` trên `log` (không vẽ), hiện "Đang vào lại…", xếp hàng khung `f` tới, bỏ khung tick ≤ `catchup.tick`, khung đầu áp dụng là `catchup.tick + 1` (A13), xong thì gửi `catchup_done`;

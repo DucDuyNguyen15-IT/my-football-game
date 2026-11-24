@@ -6,7 +6,12 @@ import { readDevOptions } from '../play/hud';
 import { isTouchOnly, NeedKeyboard } from '../play/PreMatch';
 import { PvpLobby, type LobbyRoom } from './PvpLobby';
 import { PvpMatchPage, type EndMessage, type MatchedMessage } from './PvpMatchPage';
-import { createNetMatch, type NetMatch, type NetSocket } from './useNetMatch';
+import {
+  createPvpClient,
+  type NetSocket,
+  type PvpClient,
+  type PvpClientStatus,
+} from './useNetMatch';
 
 function wsUrl(): string {
   const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -14,7 +19,7 @@ function wsUrl(): string {
 }
 
 function wrapWebSocket(ws: WebSocket): NetSocket {
-  return {
+  const sock: NetSocket = {
     send: (d) => ws.send(d),
     close: (c, r) => ws.close(c, r),
     get onmessage() {
@@ -29,8 +34,23 @@ function wrapWebSocket(ws: WebSocket): NetSocket {
     set onclose(fn) {
       ws.onclose = fn;
     },
+    get onopen() {
+      return ws.onopen as NetSocket['onopen'];
+    },
+    set onopen(fn) {
+      ws.onopen = fn ?? null;
+    },
   };
+  return sock;
 }
+
+const INITIAL_STATUS: PvpClientStatus = {
+  connected: false,
+  reconnecting: false,
+  busyRetrying: false,
+  rebuilding: false,
+  rebuildSlowMs: null,
+};
 
 export function PvpPage() {
   const [params] = useSearchParams();
@@ -41,21 +61,26 @@ export function PvpPage() {
       : {};
   const [needKeyboard] = useState(() => !dev.autopilot && isTouchOnly());
 
-  const [net, setNet] = useState<NetMatch | null>(null);
-  const [connected, setConnected] = useState(false);
+  const [client, setClient] = useState<PvpClient | null>(null);
+  const [status, setStatus] = useState<PvpClientStatus>(INITIAL_STATUS);
   const [room, setRoom] = useState<LobbyRoom | null>(null);
   const [error, setError] = useState<PvpErrorCode | null>(null);
   const [matched, setMatched] = useState<MatchedMessage | null>(null);
   const [countdownMs, setCountdownMs] = useState<number | null>(null);
+  const [oppDisconnectedUntil, setOppDisconnectedUntil] = useState<number | null>(null);
   const [ended, setEnded] = useState<EndMessage | null>(null);
   const [connSeq, setConnSeq] = useState(0);
 
   useEffect(() => {
     if (needKeyboard) return;
     let disposed = false;
-    const ws = new WebSocket(wsUrl());
-    const client = createNetMatch({
-      socket: wrapWebSocket(ws),
+    const pvpClient = createPvpClient({
+      connect: () => wrapWebSocket(new WebSocket(wsUrl())),
+      onStatus: (next) => {
+        if (disposed) return;
+        setStatus(next);
+        if (next.connected) setClient(pvpClient);
+      },
       onMessage: (m: PvpServerMessage) => {
         if (disposed) return;
         switch (m.t) {
@@ -64,45 +89,47 @@ export function PvpPage() {
             setRoom({ code: m.code, expiresAt: m.expiresAt });
             break;
           case 'error':
-            setError(m.code);
+            if (m.code !== 'busy') setError(m.code);
+            else setError((prev) => prev ?? 'busy');
             break;
           case 'matched':
             setError(null);
             setRoom(null);
             setCountdownMs(null);
+            setOppDisconnectedUntil(null);
             setEnded(null);
             setMatched(m);
             break;
           case 'start':
             setCountdownMs(m.countdownMs);
             break;
+          case 'opp_disconnected':
+            setOppDisconnectedUntil(performance.now() + m.remainingMs);
+            break;
+          case 'opp_reconnected':
+            setOppDisconnectedUntil(null);
+            break;
           case 'end':
+            setOppDisconnectedUntil(null);
             setEnded(m);
             void qc.invalidateQueries({ queryKey: ['me'] });
             void qc.invalidateQueries({ queryKey: ['missions'] });
             break;
         }
       },
-      onClose: () => {
-        if (!disposed) setConnected(false);
-      },
-    });
-    ws.addEventListener('open', () => {
-      if (disposed) return;
-      setNet(client);
-      setConnected(true);
     });
     return () => {
       disposed = true;
-      client.close();
-      setNet((prev) => (prev === client ? null : prev));
-      setConnected(false);
+      pvpClient.dispose();
+      setClient((prev) => (prev === pvpClient ? null : prev));
+      setStatus(INITIAL_STATUS);
     };
   }, [needKeyboard, connSeq, qc]);
 
   const handleBackLobby = useCallback(() => {
     setMatched(null);
     setCountdownMs(null);
+    setOppDisconnectedUntil(null);
     setEnded(null);
     setRoom(null);
     setError(null);
@@ -111,14 +138,20 @@ export function PvpPage() {
 
   if (needKeyboard) return <NeedKeyboard />;
 
-  if (matched && net) {
+  if (matched && client) {
     return (
       <PvpMatchPage
         key={matched.pvpId}
-        net={net}
+        net={client.net}
+        status={status}
         matched={matched}
         countdownMs={countdownMs}
+        oppDisconnectedUntil={oppDisconnectedUntil}
         ended={ended}
+        onLeave={() => {
+          client.send({ t: 'leave' });
+          handleBackLobby();
+        }}
         onBackLobby={handleBackLobby}
       />
     );
@@ -126,20 +159,20 @@ export function PvpPage() {
 
   return (
     <PvpLobby
-      connected={connected}
-      reconnecting={false}
+      connected={status.connected}
+      reconnecting={status.reconnecting}
       room={room}
       error={error}
       onCreateRoom={() => {
         setError(null);
-        net?.send({ t: 'room_create' });
+        client?.send({ t: 'room_create' });
       }}
       onJoinRoom={(code) => {
         setError(null);
-        net?.send({ t: 'room_join', code });
+        client?.send({ t: 'room_join', code });
       }}
       onLeaveRoom={() => {
-        net?.send({ t: 'room_leave' });
+        client?.send({ t: 'room_leave' });
         setRoom(null);
       }}
     />
