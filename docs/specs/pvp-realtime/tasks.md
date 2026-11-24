@@ -90,7 +90,7 @@
   - đổi điều kiện index `matches_user_reward_day_idx` thành `reward > 0 OR consumes_daily_cap`.
 - [x] T016 Thêm `mode: 'cpu' | 'pvp'` vào `MissionEvent` `match_finished` (`apps/server/src/domain/missions.ts:11`). `match_hard` chỉ đếm khi `mode === 'cpu'` (research R13). Sửa nơi gọi hiện có trong `submitMatchResult` để truyền `mode: 'cpu'`. Thêm test trong `missions.test.ts`.
 - [x] T016b Sửa `countRewardedMatches` trong `apps/server/src/services/matches.ts:42` để đếm `reward > 0 OR consumes_daily_cap`. Thêm 6 sự kiện `pvp_matched`, `pvp_start`, `pvp_end`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync` vào `AnalyticsEventName` trong `apps/server/src/services/analytics.ts`. Test hồi quy: trận đấu máy vẫn đếm như cũ.
-- [ ] T017 Tạo `apps/server/src/routes/pvp.ts` và đăng ký trong `apps/server/src/app.ts`:
+- [x] T017 Tạo `apps/server/src/routes/pvp.ts` và đăng ký trong `apps/server/src/app.ts`:
   - endpoint WS `GET /api/v1/pvp/ws`;
   - `preValidation` xác thực `sid` bằng logic của `plugins/auth.ts` `requireAuth`; header `Origin` **bắt buộc**, thiếu hoặc sai (khác `Host`) → 403 (A18);
   - tối đa 4 kết nối WS đồng thời theo IP, quá thì từ chối (A18);
@@ -100,20 +100,20 @@
   - đăng xuất hoặc xoá tài khoản (thu hồi session) → đóng mọi WS PvP của user (A18);
   - quá `PVP_MAX_SESSIONS` thì trả `server_busy`;
   - heartbeat: ping mỗi 2 s, quá 5 s không có pong thì báo cho session là rớt mạng (research R12).
-- [ ] T018 Tạo `apps/server/src/services/pvp/session.ts` (`PvpSession`, xem data-model.md §3):
+- [x] T018 Tạo `apps/server/src/services/pvp/session.ts` (`PvpSession`, xem data-model.md §3):
   - bộ giữ nhịp: MỘT vòng lặp chung cho mọi phiên, dùng `performance.now()`, tick tính theo mốc tuyệt đối (`tick_n = t0 + n·1000/60`, không cộng dồn sai số); trễ thì chạy bù tối đa 5 tick/lượt, trễ hơn nữa thì bỏ nhịp và ghi analytics; phiên mới vào vòng ở tick kế tiếp. `Clock` giả lập được trong test (A4);
   - đếm ngược 3 s sau khi cả hai `ready`: gửi `start {countdownMs: 3000}` (tương đối, không gửi `startAt`) (A16), ghi sự kiện `pvp_start`; quá 30 s sau `matched` chưa đủ hai `ready` thì `finish('void_not_ready')`;
   - mỗi tick: lấy input mới nhất của mỗi đội (chưa có input mới thì giữ cũ), chạy `stepBoth` trên **sim bóng** `state`, ghi `InputRecorder2`, phát `f [tick, home, away, subs?]`;
   - ở tick bội số của 60 thì lưu `stateHash` vào `serverHashes`;
   - khi `state.phase === 'full_time'` thì gọi `finish('full_time')`.
-- [ ] T019 Tạo `apps/server/src/services/pvp/finish.ts`, chạy cho **mọi** cách kết thúc:
+- [x] T019 Tạo `apps/server/src/services/pvp/finish.ts`, chạy cho **mọi** cách kết thúc:
   - lấy tỉ số từ sim bóng (hoặc tỉ số xử thua);
   - trong một transaction: cập nhật `pvp_matches` (lưu `input_log`, `end_reason`), tạo đủ hai dòng `matches` (`mode`, `opponent_user_id`, `difficulty='hard'`, `reward_day = gameDay(finished_at)` cho cả hai dòng kể cả người bị xử thua; điền các cột NOT NULL: `seed` (= seed pvp), `squad_snapshot` (góc nhìn người đó, đội mình là home), `started_at`; dòng của người đá đội khách thì đảo `home_goals/away_goals` và kết quả luân lưu sang góc nhìn của họ trước khi tính `outcome` (A6); `token_hash` là SHA-256 của 32 byte ngẫu nhiên; trận bị huỷ thì `status='expired'`, `reward = 0`, tỉ số null);
   - nếu ranked và trận hợp lệ thì cộng thưởng qua `matchReward('hard', outcome, rewardedToday)` + `applyCoinDelta` + sự kiện nhiệm vụ `match_finished` với `mode: 'pvp'` (không tính `match_hard`) như `submitMatchResult` (`services/matches.ts:205`), khoá `users` bằng `FOR UPDATE`;
   - friendly thì `reward = 0`, `rewardReason='friendly'`;
   - ghi sự kiện `pvp_end`, gửi `end` cho cả hai.
-- [ ] T020 Trong `apps/server/src/app.ts`: khi khởi động, chuyển mọi `pvp_matches` có `status='live'` thành `cancelled/server_restart` và tạo dòng `matches` `expired` nếu chưa có. Ghi comment `shortcut: trạng thái trong bộ nhớ một tiến trình, nâng cấp khi chạy nhiều instance`.
-- [ ] T021 [P] Test `apps/server/src/services/pvp/session.test.ts` với client giả:
+- [x] T020 Trong `apps/server/src/app.ts`: khi khởi động, chuyển mọi `pvp_matches` có `status='live'` thành `cancelled/server_restart` và tạo dòng `matches` `expired` nếu chưa có. Ghi comment `shortcut: trạng thái trong bộ nhớ một tiến trình, nâng cấp khi chạy nhiều instance`.
+- [x] T021 [P] Test `apps/server/src/services/pvp/session.test.ts` với client giả:
   - khung phát đúng thứ tự;
   - input trễ thì giữ input cũ;
   - trận kết thúc khi sim bóng tới `full_time` (kể cả khi có bù giờ);
@@ -128,7 +128,7 @@
   - `maxPayload` 512 byte (tin lớn hơn bị đóng), `bufferedAmount` > 256 KB thì đóng mã 4408 và xử như rớt mạng (A11);
   - thiếu header `Origin` → 403; kết nối thứ 5 từ cùng IP bị từ chối; đăng xuất hoặc xoá tài khoản đóng mọi WS PvP của user (A18);
   - socket đóng thì mục hàng chờ bị xoá; chủ phòng `waiting` đóng socket thì phòng `closed` (A15).
-- [ ] T049 Test `apps/server/src/routes/pvp.ws-auth.test.ts` (phụ thuộc T017): chứng minh `@fastify/websocket` chạy hook xác thực `preValidation` **trước** upgrade (A18). Chưa đăng nhập hoặc `Origin` sai/thiếu thì nhận HTTP 401/403 ngay ở bước upgrade và handler WS không bao giờ được gọi; session đã thu hồi thì không upgrade được. Nếu hook chạy sau upgrade thì chuyển xác thực sang `server.on('upgrade')` hoặc `verifyClient` rồi mới đóng việc.
+- [x] T049 Test `apps/server/src/routes/pvp.ws-auth.test.ts` (phụ thuộc T017): chứng minh `@fastify/websocket` chạy hook xác thực `preValidation` **trước** upgrade (A18). Chưa đăng nhập hoặc `Origin` sai/thiếu thì nhận HTTP 401/403 ngay ở bước upgrade và handler WS không bao giờ được gọi; session đã thu hồi thì không upgrade được. Nếu hook chạy sau upgrade thì chuyển xác thực sang `server.on('upgrade')` hoặc `verifyClient` rồi mới đóng việc.
 - [x] T022 Tạo `apps/web/src/features/pvp/useNetMatch.ts`: client WS
   - kết nối, gửi và nhận tin, parse bằng schema shared;
   - **chạy `stepBoth` và gửi `hash` (mỗi 60 tick) ngay trong `onmessage`**, không phụ thuộc `requestAnimationFrame`, để tab ẩn vẫn theo kịp (research.md R2);
