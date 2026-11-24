@@ -1,4 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react';
+import {
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  useSyncExternalStore,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
 import { Link, useSearchParams } from 'react-router';
 import { Position, Rarity, type Card, type PlayerCard, type PlayerCardSort } from '@pitch/shared';
 import { useMe } from '../../api/auth';
@@ -32,6 +40,7 @@ import {
   writeFilter,
   type CollectionFilter,
 } from './collection';
+import { enterSheet, SHEET_QUERY } from './sheetFocus';
 import './collection.css';
 
 const SORTS: { value: PlayerCardSort; key: TranslationKey }[] = [
@@ -118,6 +127,21 @@ function CollectionSkeleton() {
   );
 }
 
+function subscribeSheet(onChange: () => void) {
+  const mq = window.matchMedia(SHEET_QUERY);
+  mq.addEventListener('change', onChange);
+  return () => mq.removeEventListener('change', onChange);
+}
+
+/** Đang ở chế độ bảng trượt (điện thoại) hay khung cạnh lưới (desktop). */
+function useSheetMode() {
+  return useSyncExternalStore(
+    subscribeSheet,
+    () => window.matchMedia(SHEET_QUERY).matches,
+    () => false,
+  );
+}
+
 const safeStorage = (): Storage | null => {
   try {
     return typeof window !== 'undefined' ? window.localStorage : null;
@@ -180,6 +204,13 @@ export function CollectionPage() {
         : [],
     [list.data, catalog.data, filter.q, filter.squad],
   );
+
+  const detailRef = useRef<HTMLElement>(null);
+  const sheetOpen = useSheetMode() && items.some((it) => it.pc.id === detailId);
+  // Bảng trượt (≤720px): focus vào bảng + khoá cuộn nền; đóng thì gỡ khoá và trả focus về thẻ.
+  useEffect(() => {
+    if (sheetOpen && detailRef.current) return enterSheet(document, detailRef.current);
+  }, [sheetOpen]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -494,7 +525,12 @@ export function CollectionPage() {
         </div>
       </div>
 
-      <aside className="panel coll__detail" aria-label={t('coll.detailAria')}>
+      <aside
+        ref={detailRef}
+        tabIndex={-1}
+        className="panel coll__detail"
+        aria-label={t('coll.detailAria')}
+      >
         {detail ? (
           <CardDetail
             item={detail}

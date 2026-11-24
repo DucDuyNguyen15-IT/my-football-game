@@ -315,6 +315,8 @@
     overflow-y: auto;
     border-radius: 16px 16px 0 0;
     animation: coll-sheet-in 280ms var(--ease-out);
+    /* Focus chuyển vào bảng khi mở (tabIndex=-1): không vẽ viền quanh cả bảng */
+    outline: none;
   }
 }
 @keyframes coll-sheet-in {
