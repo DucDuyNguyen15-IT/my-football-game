@@ -118,8 +118,8 @@ test('soi chuyển động: trận autopilot → log + báo cáo + clip', async 
     }
   }
   /** Vị trí (x,z) các đối tượng lúc bắt đầu đoạn nghi, để tìm trên ảnh. */
-  const posAt = (who: string, t: number): string => {
-    const f = frames.find((x) => x.t >= t) ?? frames[frames.length - 1]!;
+  const posAt = (who: string, tick: number): string => {
+    const f = frames.find((x) => x.tick >= tick) ?? frames[frames.length - 1]!;
     const p = who === 'ball' ? f.ball : who === 'camera' ? f.cam : f.players[who];
     if (!p) return '';
     return who === 'ball' || who === 'camera'
@@ -170,7 +170,7 @@ test('soi chuyển động: trận autopilot → log + báo cáo + clip', async 
           ]
         : []),
       ...w.issues.map(
-        (x) => `- ${KIND_VI[x.kind]} · \`${x.who}\`${posAt(x.who, w.from)} · ${x.detail}`,
+        (x) => `- ${KIND_VI[x.kind]} · \`${x.who}\`${posAt(x.who, x.tick)} · ${x.detail}`,
       ),
       '',
     ]),
