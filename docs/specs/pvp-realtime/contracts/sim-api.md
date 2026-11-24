@@ -10,6 +10,8 @@ type TeamInputs = Record<TeamSide, PlayerInput>;
 // match.ts
 function stepBoth(state: MatchState, inputs: TeamInputs): MatchState;
 function step(state: MatchState, input: PlayerInput): MatchState; // = stepBoth(state, {home: input, away: NO_INPUT})
+// Luật chống thiên vị đội nhà (commit 1860f6e): khi cả hai đội đều có người chơi, thứ tự xử lý hành động của hai đội đổi theo tick chẵn/lẻ
+// (`match.ts`). Ảnh hưởng `stateHash` và tính tất định: client khác phải chạy đúng cùng thứ tự này.
 
 // hash.ts (lấy từ replay.test.ts:87)
 function stateHash(state: MatchState): number;            // FNV-1a 32-bit, ổn định qua engine; băm PHÉP CHIẾU cố định (xem dưới)
@@ -23,9 +25,10 @@ function replayToState(setup: MatchSetup, encoded: string): MatchState;         
 
 // rules/substitution.ts (đã có): dùng để server kiểm lệnh thay người trên sim bóng
 // Tách `canSubstitute` thành hai:
-function checkSubStructure(state: MatchState, team: TeamSide, out, bench): boolean;
-// cầu thủ `out` đang trên sân, slot dự bị hợp lệ, đội còn lượt thay, `out` chưa bị đuổi.
-// Sai → server trả `sub_rejected` ngay.
+function checkSubStructure(state: MatchState, team: TeamSide, out, bench): SubRejection | null;
+// cầu thủ `out` đang trên sân, slot dự bị hợp lệ, đội còn lượt thay, `out` chưa bị đuổi,
+// thủ môn chỉ đổi thủ môn / cầu thủ ngoài sân chỉ đổi cầu thủ ngoài sân (`keeper_mismatch`).
+// Trả `no_subs_left | not_on_pitch | not_on_bench | keeper_mismatch`; khác null → server trả `sub_rejected` ngay.
 function canSubstituteNow(state: MatchState): boolean;   // bóng chết?
 // Kiểm thời điểm không gây lỗi: false thì lệnh xếp chờ tới bóng chết gần nhất.
 ```

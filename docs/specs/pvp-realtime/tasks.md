@@ -9,6 +9,7 @@
 - `[USn]`: thuộc câu chuyện n trong spec.
 
 **Quy tắc chung:**
+- Số dòng trong file này là lúc lập plan 20/11/2026, nay code đã lệch (match.ts, MatchRenderer.ts, …); tìm theo tên hàm.
 - Mỗi giai đoạn xong thì chạy `pnpm check`, commit và push (CLAUDE.md).
 - Commit không có dòng `Co-Authored-By`.
 - Mọi chuỗi giao diện mới đều có tiếng Việt và tiếng Anh (FR-018).
@@ -51,11 +52,11 @@
 - [x] T009 Trong `packages/sim/src/match.ts`:
   - thay hằng `HUMAN_TEAM` (dòng 154, khoảng 20 chỗ dùng) bằng `isHuman(state, team)`;
   - thêm `stepBoth(state, inputs)`; `step(state, input)` gọi `stepBoth` với away là `NO_INPUT`;
-  - sửa `aiProfile` (khoảng dòng 559, đội người dùng `teammate`), `runTeamAi` (622, gán `controlledId` theo đội), `nextDeadline` (665-694, chạy cho mọi đội người), nghỉ giữa hiệp (723, một trong hai đội người bấm chuyền), tự thay người (732, chỉ cho đội máy);
+  - sửa `aiProfile` (khoảng dòng 559, đội người dùng `teammate`), `runTeamAi` (622, gán `controlledId` theo đội), `nextDeadline` (665-694, chạy cho mọi đội người), nghỉ giữa hiệp (723, cả hai đội người đều bấm chuyền mới kết thúc, hoặc hết `HALF_TIME_MAX_TICKS` = 30 s), tự thay người (732, chỉ cho đội máy);
   - autopilot (716) điều khiển **mọi** đội người khi bật, dùng cho e2e;
   - phủ thêm (A9): `stepShootout` (match.ts:854, mỗi đội người tự chọn người sút/thủ môn), `humanRestart` (match.ts:927, theo đội đang được hưởng), `nearestHuman` (match.ts:200, tính theo đội, không mặc định home).
 - [x] T010 Trong `packages/sim/src/rules/substitution.ts` (A10): tách phần kiểm tra của `substitute` thành hai hàm, giữ nguyên hành vi của `substitute`:
-  - `checkSubStructure(state, team, out, bench)`: cầu thủ đang trên sân, slot dự bị hợp lệ, còn lượt thay, chưa bị đuổi; sai thì trả lý do để server gửi `sub_rejected` ngay;
+  - `checkSubStructure(state, team, out, bench)`: cầu thủ đang trên sân, slot dự bị hợp lệ, còn lượt thay, chưa bị đuổi, thủ môn chỉ đổi thủ môn và cầu thủ ngoài sân chỉ đổi cầu thủ ngoài sân (`keeper_mismatch`); sai thì trả lý do (`SubRejection | null`) để server gửi `sub_rejected` ngay;
   - `canSubstituteNow(state)`: kiểm thời điểm (bóng chết); không phải lỗi, chỉ quyết định áp ngay hay xếp lệnh chờ.
 - [x] T011 Trong `packages/sim/src/replay.ts`:
   - export `encodeInput`/`decodeInput`;
@@ -246,7 +247,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - hàng chờ FIFO; socket đóng thì xoá mục chờ của user (A15); `queue_status` mỗi giây (`waitedSec`, `offerCpu` chuyển true sau 60 s);
   - quá 5 phút thì gửi `queue_timeout` và loại khỏi hàng;
   - `queue_leave`;
-  - ghép hai người đầu hàng thành `kind='ranked'`, người vào trước là home, dùng hàm dựng trận chung từ T024.
+  - ghép hai người đầu hàng thành `kind='ranked'`, home/away do `startPvpMatch` tung đồng xu, dùng hàm dựng trận chung từ T024.
 - [x] T036 [US2] Trong `apps/server/src/services/pvp/finish.ts`:
   - nếu cặp hai user đã có quá 3 trận `ranked` `finished` trong ngày (tính theo `finished_at`, GMT+7) thì `reward = 0`, `rewardReason='same_opponent_limit'` (FR-017);
   - người hết giới hạn 15 trận/ngày thì `reward = 0`, `rewardReason='daily_cap'`.
@@ -283,7 +284,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 
 - [x] T043 [P] Ghi "Trang lịch sử trận (phân biệt máy / PvP xếp hạng / PvP giao hữu, tên đối thủ)" vào `docs/BACKLOG.md` (FR-021 đã hoãn; dữ liệu `mode`, `opponent_user_id` đã lưu).
 - [x] T044 [P] Cập nhật `docs/PRD.md` (mục PvP), `docs/ARCHITECTURE.md` (tham chiếu ADR-0012, sơ đồ WS, sim bóng), `docs/BACKLOG.md` (bỏ dòng PvP realtime, thêm rollback, ELO, nhiều instance), `docs/QA-REPORT.md`.
-- [ ] T045 Chạy toàn bộ [quickstart.md](quickstart.md): `pnpm check`, `pnpm e2e`, `pnpm e2e:determinism`, rồi kiểm tra bằng tay các bước 1–6. Ghi vào QA-REPORT: kết quả đo SC-002 (RTT 100 ms), SC-001, thời gian dựng lại khi vào lại, chi phí sim bóng thực tế.
+- [ ] T045 Chạy toàn bộ [quickstart.md](quickstart.md): `pnpm check`, `pnpm e2e`, `pnpm e2e:determinism`, rồi kiểm tra bằng tay các bước 1–6. T046 chờ người dùng/Gemini; C5 (công cụ soi chuyển động `pnpm motion:pvp`) đã gộp main. Ghi vào QA-REPORT: kết quả đo SC-002 (RTT 100 ms), SC-001, thời gian dựng lại khi vào lại, chi phí sim bóng thực tế.
 - [ ] T046 Playtest với ít nhất 3 người lần đầu dùng: tạo phòng hoặc vào phòng không cần hướng dẫn (SC-008). Ghi kết quả vào QA-REPORT.
 - [ ] T047 Review chéo: Sonnet review diff phần Opus viết (T005–T013, T044); Opus review phần Sonnet viết (server, web). Sửa hết lỗi rồi merge `main`, push. Cập nhật "Trạng thái hiện tại" trong CLAUDE.md và `docs/PROGRESS.md`.
 

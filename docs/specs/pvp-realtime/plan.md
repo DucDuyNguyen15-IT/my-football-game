@@ -1,6 +1,8 @@
 # Implementation Plan: Đá trực tiếp (PvP thời gian thực)
 
-**Spec:** [spec.md](spec.md) | **Ngày:** 20/11/2026 | **Nhánh dự kiến:** `feat/pvp-realtime`
+**Spec:** [spec.md](spec.md) | **Ngày:** 20/11/2026 | **Nhánh:** `feat/pvp-realtime` (đã gộp main 24/11/2026)
+
+_Ghi chú: số dòng trong plan này là lúc lập plan 20/11/2026, nay code đã lệch; tìm theo tên hàm._
 
 ## Tóm tắt
 
@@ -39,8 +41,8 @@ Lý do chọn hướng này ở [research.md](research.md), mục R1.
 |---|---|
 | Logic quan trọng chạy ở server, kể cả kết quả trận PvP | ✅ Sim bóng trên server chốt tỉ số, lúc hết trận, kiểm thay người và phân xử khi lệch. Server lưu nhật ký để kiểm lại |
 | `packages/sim` không dùng DOM, Three.js | ✅ Chỉ thêm hàm thuần |
-| Đã có ADR thì tuân theo | ⚠️ ADR-0006 ghi "Colyseus cho PvP realtime". **Lý do không theo:** sim đã tất định nên lockstep đơn giản hơn (R1). Sẽ ghi ADR-0012 thay thế, người dùng đã duyệt hướng ngày 20/11 |
-| Chỉ làm trong phạm vi giai đoạn hiện tại | ⚠️ PvP thuộc phần sau MVP, nhưng người dùng giao trực tiếp. Sẽ thêm mục vào ROADMAP |
+| Đã có ADR thì tuân theo | ⚠️ ADR-0006 ghi "Colyseus cho PvP realtime". **Lý do không theo:** sim đã tất định nên lockstep đơn giản hơn (R1). Đã ghi ADR-0012 thay thế, người dùng đã duyệt hướng ngày 20/11 |
+| Chỉ làm trong phạm vi giai đoạn hiện tại | ⚠️ PvP thuộc phần sau MVP, nhưng người dùng giao trực tiếp. Đã thêm mục vào ROADMAP |
 | Dữ liệu hư cấu, không thanh toán thật | ✅ Không đụng tới |
 | `pnpm check` xanh trước mỗi commit; mỗi tính năng một commit và push | ✅ Có trong tasks |
 

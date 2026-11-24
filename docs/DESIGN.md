@@ -1,4 +1,4 @@
-# Tài liệu Thiết kế Giao diện v3 — "Sa Bàn Hoàng Kim" (Editorial Luxury · Chế độ Sáng)
+# Tài liệu Thiết kế Giao diện v3 — "Sa Bàn Hoàng Kim" (Editorial Luxury · Sáng mặc định, có Chế độ Tối)
 
 > Tài liệu chuẩn cho toàn bộ UI 2D của **MFG** (`apps/web`).
 > Phiên bản v3 thay thế định hướng tối toàn trang của v2 bằng Hướng B — **"Sa Bàn Hoàng Kim"** (`docs/design/v3/b-tactical-atelier/`).
@@ -69,5 +69,21 @@
   - `apps/web/src/features/squad/squad.css` (Sa bàn nỉ xanh bên trái, dự bị & kho bên phải)
   - `apps/web/src/features/play/prematch.css` (Chọn độ khó sáng + Màn VS nỉ xanh)
   - `apps/web/src/features/play/play.css` (Vào trận nỉ xanh + HUD 3D + Tạm dừng tối + Kết quả sáng)
+  - `apps/web/src/features/pvp/pvp.css` (Sảnh Đá trực tiếp `PvpLobby`: tạo phòng / nhập mã / Tìm trận; màn trận dùng lại HUD của `play.css`)
 - **Mẫu tham chiếu HTML v3:** `docs/design/v3/b-tactical-atelier/` (`tokens.css`, `home.html`, `shop.html`, `squad.html`)
 - **Ảnh chụp màn hình sau khi áp dụng (1440×900):** `docs/design/v3/b-tactical-atelier/applied/`
+
+---
+
+## 5. Chế độ Tối
+
+- Người dùng chọn Sáng / Tối / Theo hệ thống ở `ThemeSwitcher` (trang Tài khoản và Đăng nhập). Lựa chọn lưu ở `localStorage` khóa `mfg.theme`; `Theo hệ thống` là mặc định (`apps/web/src/styles/theme.ts`).
+- `applyThemeToDocument` đặt `data-theme="light|dark"` trên `<html>`; chọn Theo hệ thống thì gỡ thuộc tính để CSS theo `prefers-color-scheme`.
+- Bảng tối nằm cuối `apps/web/src/styles/tokens.css`: cùng một bộ token `--c-*` được ghi đè (hai khối: `@media (prefers-color-scheme: dark)` và `:root[data-theme='dark']`). Component chỉ dùng token, không viết màu riêng cho từng chế độ.
+- Độ tương phản chữ/nền của cả hai chế độ được `apps/web/src/styles/contrast.test.ts` kiểm (WCAG AA). Sửa token thì chạy lại test này.
+
+## 6. Song ngữ Việt / English
+
+- Chuỗi giao diện nằm trong `apps/web/src/i18n/vi.ts` (nguồn khóa, `TranslationKey`) và `en.ts` (`Record<TranslationKey, string>`). Thiếu khóa ở một bên thì typecheck lỗi; `i18n.test.ts` còn kiểm tập khóa trùng khớp, không rỗng, cùng tham số `{placeholder}`.
+- Mọi chuỗi mới phải có cả hai ngôn ngữ (FR-018 của PvP; áp dụng cho toàn app). Không viết chữ cứng trong component, dùng `t('khóa')` từ `useI18n`.
+- Ngôn ngữ chọn ở `LanguageSwitcher`, lưu `localStorage` khóa `mfg.locale`, mặc định `vi`; `<html lang>` đổi theo. Số và ngày định dạng bằng `Intl` theo ngôn ngữ đang chọn (`formatNumber`, `formatDate` trong `i18n.ts`).

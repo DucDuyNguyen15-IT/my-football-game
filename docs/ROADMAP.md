@@ -22,6 +22,7 @@ Người dùng chỉ cần copy "Câu lệnh mẫu" dán cho agent. Agent đọc
 | 7 | Tài khoản, kinh tế, (tuỳ chọn) PvP | Đăng nhập, tiền ảo, ghép trận | ✅ (không làm PvP) |
 | 8 | Kiểm thử, bảo mật, tối ưu | Báo cáo test/security | ✅ |
 | 9 | Deploy & bàn giao | Link chạy thật, README | ⬜ |
+| PvP | Đá trực tiếp hai người (sau GĐ9) | Phòng + hàng chờ, WebSocket, sim server | 🟡 (đã gộp main 24/11; còn T045 đo SC, T046 playtest) |
 
 Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 
@@ -184,9 +185,9 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 Spec, plan, tasks: `docs/specs/pvp-realtime/`. Lockstep do server giữ nhịp, sim bóng trên server ([ADR-0012](adr/0012-pvp-lockstep.md)).
 
 **Hoàn thành khi:**
-- [ ] Hai người chơi đá trực tiếp được qua WebSocket, kết quả do sim server quyết định
-- [ ] Test tất định chromium/firefox/webkit xanh (`pnpm e2e:determinism`)
-- [ ] `pnpm check` xanh
+- [x] Hai người chơi đá trực tiếp được qua WebSocket, kết quả do sim server quyết định
+- [x] Test tất định chromium/firefox/webkit xanh (`pnpm e2e:determinism`; chưa ghi kết quả đủ 100 seed, xem QA-REPORT §7.2 SC-003)
+- [x] `pnpm check` xanh
 
 ---
 

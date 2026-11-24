@@ -1,6 +1,6 @@
 # PRD — Game bóng đá web: MFG (My Football Game)
 
-_Phiên bản 1.0 — 2026-10-09 — Trạng thái: DRAFT, cần kiểm chứng bằng playtest._
+_Phiên bản 1.3 — 2026-11-24 (bản đầu 2026-10-09) — Trạng thái: cần kiểm chứng bằng playtest._
 _Nguồn: `docs/research.md` (Giai đoạn 1), phương án MVP **B — Cân bằng** (`docs/PROGRESS.md`), hỏi đáp với chủ dự án._
 _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm trong file config phía server, được cân chỉnh sau playtest mà không cần sửa PRD (trừ khi đổi cơ chế)._
 _Cập nhật 2026-11-24: thêm **PvP đá trực tiếp** (§4.2a, ADR-0012; chi tiết yêu cầu ở `docs/specs/pvp-realtime/spec.md`)._
@@ -82,13 +82,13 @@ _Cập nhật 2026-11-24: thêm **PvP đá trực tiếp** (§4.2a, ADR-0012; ch
 5. Xếp hạng mùa.
 6. ~~PvP thời gian thực (netcode server authoritative).~~ **Đã đưa vào làm từ 20/11/2026** (người dùng giao trực tiếp), xem §4.2a. Phần chưa làm (ELO, rollback, nhiều instance, trang lịch sử trận) nằm ở `docs/BACKLOG.md`.
 
-### 4.2a PvP đá trực tiếp (đang làm từ 2026-11-20)
+### 4.2a PvP đá trực tiếp (đã gộp main 2026-11-24)
 
 Hai người chơi đá với nhau theo thời gian thực, mỗi người điều khiển đội mình bằng bộ phím và luật như đá với máy (§5). Yêu cầu đầy đủ: `docs/specs/pvp-realtime/spec.md`; quyết định kỹ thuật: [ADR-0012](adr/0012-pvp-lockstep.md).
 
 | Mục | Quy định |
 |---|---|
-| Hai kiểu trận | **Giao hữu** (tạo phòng, nhận mã 6 ký tự, bạn nhập mã; phòng hết hạn sau 10 phút): không xu, không tính nhiệm vụ, không tính vào 15 trận/ngày, UI báo trước khi đá. **Ghép ngẫu nhiên** (bấm "Tìm trận", ai vào hàng chờ trước được ghép trước, không xét sức đội hình): có thưởng |
+| Hai kiểu trận | Đội nhà/đội khách do server tung đồng xu lúc dựng trận (cả phòng lẫn hàng chờ). **Giao hữu** (tạo phòng, nhận mã 6 ký tự, bạn nhập mã; phòng hết hạn sau 10 phút): không xu, không tính nhiệm vụ, không tính vào 15 trận/ngày, UI báo trước khi đá. **Ghép ngẫu nhiên** (bấm "Tìm trận", ai vào hàng chờ trước được ghép trước, không xét sức đội hình): có thưởng |
 | Hàng chờ | Sau 60 s hiện thêm nút "Đá với máy"; quá 5 phút tự rời hàng chờ. Mỗi tài khoản chỉ một lượt chờ hoặc một trận tại một thời điểm |
 | Nhịp trận | Server giữ nhịp 60 tick/s và chạy sim bóng của riêng nó; tỉ số chính thức do server chốt, không tin tỉ số trình duyệt báo. Mỗi người dùng đội hình đã lưu, không có bước chọn đội riêng |
 | Khác với đá máy | **Không có tạm dừng**. Mất focus/chuyển tab thì cầu thủ của người đó nhận phím rỗng. Nghỉ giữa hiệp: **cả hai** bấm chuyền mới đá tiếp, không thì tự đá sau 30 s. Thay người gửi qua server, chỉ có hiệu lực khi bóng chết. Điện thoại bị chặn như đá máy |
@@ -145,7 +145,7 @@ Hai người chơi đá với nhau theo thời gian thực, mỗi người đi�
 
 ### 6.1 Độ hiếm và kho thẻ
 
-| Độ hiếm | OVR | Số mẫu thẻ (~150) | Màu (DESIGN.md §3.2) |
+| Độ hiếm | OVR | Số mẫu thẻ (~150) | Màu (DESIGN.md §3.1) |
 |---|---|---|---|
 | Đồng | 50–64 | ~60 | Nâu đồng |
 | Bạc | 65–74 | ~45 | Bạc |
@@ -295,7 +295,7 @@ Hai người chơi đá với nhau theo thời gian thực, mỗi người đi�
 
 ## 8. Tài khoản & phân tích (F8, F13)
 
-- Đăng ký bằng tên đăng nhập + mật khẩu (email để khôi phục là tuỳ chọn). Mật khẩu băm bằng thuật toán chậm (bcrypt/argon2). Phiên đăng nhập dùng cookie httpOnly.
+- Đăng ký bằng tên đăng nhập + mật khẩu (email để khôi phục là tuỳ chọn). Mật khẩu băm bằng thuật toán chậm (bcrypt/argon2). Phiên đăng nhập dùng cookie httpOnly. Đăng ký chặn mật khẩu mức Đồng (quá yếu: ngắn, thuộc danh sách phổ biến, trùng tên đăng nhập, lặp/dãy ký tự); server kiểm lại bằng cùng hàm trong `packages/shared`, gọi API thẳng cũng không lách được.
 - Không có chế độ khách trong MVP.
 - Analytics ghi sự kiện: `register`, `login`, `session_seen` (1 lần/ngày/người, khi gọi API đã đăng nhập), `match_start`, `match_end`, `pack_open`, `upgrade`, `mission_claim`, và sáu sự kiện PvP `pvp_matched`, `pvp_start`, `pvp_end`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync`. Dữ liệu này đủ để tính D1/D7 retention, số trận/ngày, số gói mở/ngày.
 - Người chơi **"quay lại ngày N"** = có ít nhất 1 sự kiện bất kỳ vào ngày thứ N (GMT+7) sau ngày đăng ký.
@@ -352,7 +352,7 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 
 - [x] Tên chính thức của game: **MFG** (My Football Game) — chốt 2026-10-25.
 - [ ] Phím điều khiển chi tiết. Chốt ở Giai đoạn 4 sau khi thử prototype.
-- [x] Ảnh đại diện thẻ: avatar vector sinh từ `avatar_seed` (DESIGN.md §4).
+- [x] Ảnh đại diện thẻ: avatar vector sinh từ `avatar_seed` (`apps/web/src/components/card/Avatar.tsx`).
 - [ ] OVR đội máy (~60 / ~78) và độ trễ phản ứng AI cần cân chỉnh qua playtest.
 - [x] Xác minh trận bằng log input: **làm ngay trong MVP** — server chạy lại sim từ seed + đội đã lưu + log input (chốt 2026-11-19, ADR-0011). PvP bất đồng bộ để sau.
 - [x] PvP thời gian thực: lockstep do server giữ nhịp, server có sim bóng, không dùng Colyseus (chốt 2026-11-20, ADR-0012). Các chi tiết ghép trận / thưởng / rớt mạng đã chốt cùng ngày ở phần Clarifications của `docs/specs/pvp-realtime/spec.md`.

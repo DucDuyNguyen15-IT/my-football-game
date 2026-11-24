@@ -51,7 +51,7 @@ Mỗi mục ghi: Quyết định, Lý do, Phương án đã cân nhắc.
 
 - **Quyết định:**
   - Server lưu `stateHash` của sim bóng ở mỗi tick bội số của 60 (giữ 30 mã gần nhất, tức 30 s).
-  - Client gửi `stateHash` mỗi 60 tick. Server so ngay với mã của mình. Bên nào khác lần đầu thì server ép bên đó dựng lại: gửi `catchup` (miễn hạn mã băm 10 s như `rejoin`). Bên đó lệch **lần thứ hai** trong cùng trận thì bị xử thua (`forfeit_desync`). Cả hai cùng lệch lần hai (lỗi của server/sim) thì huỷ trận (`void_desync`).
+  - Client gửi `stateHash` mỗi 60 tick. Server so ngay với mã của mình. Bên nào khác lần đầu thì server ép bên đó dựng lại: gửi `catchup` (miễn hạn mã băm 10 s như `rejoin`). Bên đó lệch **lần thứ hai** trong cùng trận thì bị xử thua (`forfeit_desync`). Cả hai cùng lệch lần hai (lỗi của server/sim) thì huỷ trận (`void_desync`). Khi một bên lệch lần hai mà bên kia đã lệch lần một và đang kết nối, server chờ tối đa 1,2 s (`DUAL_DESYNC_WINDOW_MS`, `session.ts`) rồi mới quyết: bên kia lệch lần hai → `void_desync`; bên kia gửi mã băm đúng → xử thua bên đầu.
   - Server giữ mã băm của 30 s gần nhất (30 mã). Mã băm tới muộn hơn thế thì bỏ qua, không phạt.
   - Một bên **đang kết nối** mà quá **15 s thời gian thật** không gửi mã băm nào thì bị coi là lệch. Không tính khi bên đó đang rớt mạng hoặc đang dựng lại sau `catchup` (client gửi `catchup_done` khi xong). Thời gian dựng lại được miễn tối đa **10 s**; quá 10 s thì vẫn áp hạn dù chưa nhận `catchup_done`, để client không thể né phân xử bằng cách không bao giờ gửi tin này. Lý do dùng thời gian thật: client luôn chạy sau server một khoảng (bộ đệm, tab bị bóp timer), tính theo tick server sẽ phạt oan.
 - **Lý do:** có sim bóng thì so trực tiếp được, không phải chạy lại trong worker.

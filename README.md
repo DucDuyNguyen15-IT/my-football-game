@@ -14,7 +14,9 @@ Game bóng đá 7 người chơi trên trình duyệt: điều khiển cầu th�
 
 ## Tính năng
 
-- **Trận 7v7 với máy** ở 2 mức Dễ và Khó: chuyền, sút, chọc khe (giữ phím để nạp lực), thể lực, thay người, thẻ phạt, phạt đền, luân lưu. Điều khiển kiểu FC Online: mũi tên, S/A/D/W/Q/E, Esc.
+- **Trận 7v7 với máy** ở 2 mức Dễ và Khó: chuyền, sút, chọc khe (giữ phím để nạp lực), thể lực, thay người, thẻ phạt, phạt đền, luân lưu. Điều khiển kiểu FC Online: mũi tên, S/A/D/W/Q/E, Z (sút xoáy), Shift (chấm điểm chạm), Esc.
+- **Đá trực tiếp (PvP)** (`/pvp`): tạo phòng bằng mã 6 ký tự (giao hữu, không thưởng) hoặc Tìm trận ngẫu nhiên (có thưởng như máy Khó); server giữ nhịp 60 Hz, xử thua khi rớt mạng quá 30 s/lần hoặc 60 s/trận.
+- **Giao diện** tiếng Việt / English, sáng / tối.
 - **Gói thẻ** dạng "hộp 100 phiếu": tỉ lệ ra thẻ công khai, rút không hoàn lại, có bảo đảm trong gói 5 thẻ.
 - **Đội hình**: 3 sơ đồ, 7 người đá chính + 5 dự bị. Xếp sai vị trí bị trừ 15% chỉ số; ô GK chỉ nhận thủ môn.
 - **Ép thẻ** +1 → +5, **nhiệm vụ ngày**, **quà tân thủ**, đăng nhập bằng mật khẩu hoặc Google.
@@ -55,8 +57,8 @@ Không có `.env` thì server dùng giá trị dev khớp `docker-compose.dev.ym
 
 | Lệnh | Nội dung |
 |---|---|
-| `pnpm check` | ESLint + typecheck + toàn bộ test Vitest (gần 1.000 test; test server cần Postgres dev đang chạy) |
-| `pnpm e2e` | Playwright chạy luồng chính: đăng ký → mở gói → xếp đội → đá trận → nhận thưởng → đăng nhập lại → xoá tài khoản. Lần đầu chạy `pnpm exec playwright install chromium` |
+| `pnpm check` | ESLint + typecheck + toàn bộ test Vitest (hơn 1.000 test; test server cần Postgres dev đang chạy) |
+| `pnpm e2e` | Playwright chạy luồng chính (đăng ký → mở gói → xếp đội → đá trận → nhận thưởng → đăng nhập lại → xoá tài khoản) và hai kịch bản PvP (phòng, hàng chờ). Lần đầu chạy `pnpm exec playwright install chromium` |
 
 Báo cáo kiểm thử, bảo mật và hiệu năng: [docs/QA-REPORT.md](docs/QA-REPORT.md).
 
@@ -81,7 +83,7 @@ Mở `https://localhost` (trình duyệt sẽ cảnh báo chứng chỉ nội b�
 ## Tài liệu
 
 - [docs/ROADMAP.md](docs/ROADMAP.md): các giai đoạn phát triển. Tiến độ ở [docs/PROGRESS.md](docs/PROGRESS.md)
-- [docs/DESIGN.md](docs/DESIGN.md): thiết kế giao diện và điều khiển
+- [docs/DESIGN.md](docs/DESIGN.md): thiết kế giao diện v3 (token, bề mặt, thẻ, chế độ tối, song ngữ); phím điều khiển ở PRD §5
 - [CLAUDE.md](CLAUDE.md): quy ước cho agent AI tham gia phát triển
 
 ## Nguồn tài nguyên

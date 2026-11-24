@@ -1,6 +1,6 @@
 # Báo cáo QA & Bảo mật — MFG (My Football Game)
 
-_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Cập nhật lần cuối: 2026-11-16 (Phần B review; tóm tắt bên dưới là số liệu ngày 2026-11-14 trừ chỗ ghi khác)._
+_Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/plans/phase-8-qa-security.md`). Cập nhật lần cuối: 2026-11-25 (§7 PvP và §3 E2E cập nhật; Phần B review 2026-11-16; tóm tắt bên dưới là số liệu ngày 2026-11-14 trừ chỗ ghi khác)._
 
 **Tóm tắt (2026-11-14)**
 
@@ -8,10 +8,10 @@ _Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/pla
 |---|---|---|
 | Bảo mật (8.2) | Không còn lỗi High/Critical; SEC-01…15: 13 đã sửa (gồm SEC-07 bằng replay ADR-0011, SEC-13a cookie thiết bị), 3 ghi nhận/chấp nhận (SEC-08, SEC-13b, SEC-15) (cập nhật 19/11); `pnpm audit` 0 High/Critical | §1 |
 | Hiệu năng (8.3) | Bundle, p95 mở gói (41–71 ms), truy vấn retention/onboarding (< 100 ms) đã đo; FPS cả trận trên Intel UHD: **Cao 74,6 · Thấp 166,0 FPS TB** (≥ 55); 20 lần vào/ra trận không rò bộ nhớ | §2 |
-| E2E luồng chính (8.1) | `pnpm e2e` xanh 3 lần liên tiếp | §3 |
+| E2E (8.1) | `pnpm e2e` = 3 test (1 luồng chính + 2 PvP); luồng chính xanh 3 lần liên tiếp (14/11) | §3 |
 | Tiêu chí chấp nhận PRD (8.4) | 36 tiêu chí: **36 Đạt**, 0 Chưa đạt, 0 Không áp dụng | §4 |
 | Playtest 5–10 người (PRD §10) | Chưa tổ chức; đã có checklist và bảng ghi | §5 |
-| PvP đá trực tiếp (cập nhật 2026-11-24) | Đang làm: test tự động cho sim/WS/phiên đã có; chưa đo SC-001/002/009 trên bản hoàn chỉnh, chưa playtest SC-008 | §7 |
+| PvP đá trực tiếp (cập nhật 2026-11-24) | Code + test tự động đã gộp main (47ab50d, 24/11); còn đo SC-001/002/004/005 và playtest SC-008 (T045, T046) | §7 |
 | Việc còn tồn | 1 việc chặn phát hành (playtest); T1 (đo FPS/bộ nhớ) đã xong; 1 lỗi giao diện mức trung bình phát hiện ở 8.4 (lưới nguyên liệu màn Ép thẻ lặp thẻ — T3, **đã sửa 15/11**, review B4-01); còn lại mức thấp hoặc ghi nhận | §6 |
 
 **Mục lục**
@@ -220,18 +220,18 @@ Công cụ có sẵn trong game (8.3 thêm): mở trận với **`?perf=1`** (VD
 
 Rà tĩnh phía code (không thay cho số đo): `MatchCanvas` huỷ renderer khi unmount; `MatchRenderer.dispose()` huỷ vòng `requestAnimationFrame`, listener phím/blur, `ResizeObserver`, hậu kỳ, toàn bộ geometry/material/texture của scene và model cầu thủ, gọi `renderer.dispose()` + `forceContextLoss()` và gỡ canvas.
 
-## 3. E2E luồng chính (Task 8.1)
+## 3. E2E (Task 8.1; thêm PvP 24/11)
 
 - **Ngày chạy:** 2026-11-14 · **Công cụ:** Playwright 1.65 (`@playwright/test`, Chromium headless) · **File:** `playwright.config.ts`, `e2e/main-flow.spec.ts`.
 - **Cách chạy:** `pnpm e2e` ở gốc repo (lần đầu: `pnpm exec playwright install chromium`; cần Postgres dev đang chạy). Playwright tự migrate + seed DB test rồi bật server Fastify `:3101` (`NODE_ENV=test`, `MATCH_MIN_DURATION_SEC=1`) và web Vite `:5174` (`--mode test`, proxy `/api` → `:3101` qua `API_PROXY_TARGET`), xong thì tắt. DB lấy theo `E2E_DATABASE_URL` → `DATABASE_URL_TEST` → `pitch_test`; cấu hình từ chối DB dev `pitch`. Đổi cổng bằng `E2E_SERVER_PORT` / `E2E_WEB_PORT`. Không xoá dữ liệu: mỗi lần chạy đăng ký một tài khoản mới (`e2e_<thời gian>`). `pnpm check` không chạy E2E (Vitest chỉ quét `apps/*`, `packages/*`), nhưng vẫn lint + typecheck thư mục `e2e/`.
-- **Kịch bản (1 test, 6 bước, thao tác trên giao diện thật, không gọi API tắt):**
+- **Kịch bản (hiện 3 test: 1 luồng chính 7 bước trong `e2e/main-flow.spec.ts` + 2 PvP trong `e2e/pvp.spec.ts` — phòng và hàng chờ, hai context trình duyệt; bảng 6 bước dưới là bản ngày 14/11, bước 7 sau đó là xoá tài khoản; thao tác trên giao diện thật, không gọi API tắt):**
   1. Đăng ký tài khoản mới → được đưa sang `/shop?onboarding=1`, hiện thanh "Luồng tân thủ".
   2. Mở gói 5 thẻ miễn phí (xé gói → lật tất cả) → "Đã nhận 5 thẻ", số xu không đổi → "Xếp đội".
   3. Đội hình: chọn ô dự bị đầu tiên → bấm một thẻ trong Kho → Lưu → "Đã lưu đội hình"; tải lại trang thẻ vẫn ở ô đó.
   4. `/play?difficulty=easy&autopilot=1&half=10` (đồ hoạ Thấp, tắt phát lại): trận tự đá hết 2 hiệp (+ luân lưu nếu hoà) → màn kết quả hiện `+N` xu, ví = số dư cũ + N, "trận có thưởng 1/15".
   5. Nhiệm vụ ngày: màn kết quả và trang chủ hiện 3 nhiệm vụ kèm tiến độ; mỗi nhiệm vụ đã đạt thì bấm "Nhận" và số xu trên thanh trên tăng đúng phần thưởng.
   6. Đăng xuất → đăng nhập lại: số xu đúng, trang chủ báo kho 16 thẻ (11 thẻ tân thủ + 5 thẻ vừa mở), mở được Kho thẻ.
-- **Kết quả 3 lần liên tiếp (cùng mã nguồn, DB `pitch_test_a`):**
+- **Kết quả 3 lần liên tiếp của luồng chính (ngày 14/11, cùng mã nguồn, DB `pitch_test_a`):**
 
   | Lần | Kết quả     | Thời gian test | Riêng bước trận | Nhiệm vụ đã nhận thưởng |
   | --- | ----------- | -------------- | --------------- | ----------------------- |
@@ -331,7 +331,7 @@ AC-F1-1 (vế ≥ 55 FPS) được xác nhận sau khi đo §2.4 (2026-11-14). C
 | AC-F7-3 | Thưởng trận chỉ cấp khi: có match token do server phát; token dùng 1 lần; ≥ 6 phút từ lúc phát; mỗi đội ≤ 20 bàn; chưa vượt 15 trận có thưởng/ngày | `apps/server/src/routes/matches.test.ts` — "thắng Dễ sau 6 phút: +60 xu, trận finished, ledger match_reward đúng", nhóm "từ chối (422 match_token_invalid, không đổi xu/trận)": "token sai", "chưa đủ 6 phút", "tỉ số 21"; "gửi lại cùng token → cùng kết quả, xu chỉ cộng một lần"; "trần 15 trận/ngày GMT+7: trận 16 thưởng 0; 23:59 và 00:01 là hai ngày khác nhau". `apps/server/src/routes/tamper.test.ts` — "nộp sớm hơn 6 phút / bịa token / dùng token của trận khác → 422, không thưởng", "thua xong nộp lại "thắng 20–0" cùng token → vẫn kết quả cũ, xu cộng đúng một lần". `apps/server/src/routes/security-review.test.ts` — "nộp sau quá 2 giờ → 422 match_token_invalid, xu giữ nguyên 0". | **Đạt** |
 | AC-F7-4 | Tài khoản mới nhận đúng 11 thẻ khởi đầu + 1 gói 5 miễn phí, đúng một lần | `apps/server/src/routes/register.test.ts` — "11 thẻ Đồng khác nhau: 1 TM, 3 HV, 4 TV, 3 TĐ; ô đá chính đúng vị trí trong 2-3-1", "201 + cookie; nhận đúng 11 thẻ, hộp 58/30/10/2, 1 gói 5 miễn phí, đội hình xếp sẵn"; `apps/server/src/routes/tamper.test.ts` — "lượt miễn phí chỉ có một: lần hai (kể cả kèm freePack5Credits: 99) → 409", "gửi thêm coins / isAdmin / freePack5Credits / id → bị bỏ qua, chỉ nhận đúng quà tân thủ"; `apps/server/src/routes/packs.test.ts` — "lượt miễn phí: giá 0, credit − 1, 5 thẻ (≥ 1 Bạc+)…". E2E `e2e/main-flow.spec.ts` (kho 16 thẻ sau gói miễn phí). | **Đạt** |
 | AC-F7-5 | Nhiệm vụ ngày cập nhật tiến độ theo sự kiện ở server, nhận thưởng một lần, reset 00:00 GMT+7 | `apps/server/src/routes/missions.test.ts` — "đá trận TRƯỚC KHI mở màn nhiệm vụ vẫn tạo & tăng tiến độ; trả về trong match result", "mở gói … vẫn tăng open_pack; gửi lại cùng Idempotency-Key không tăng lần 2", "claim: chưa xong → 422; sai mã → 404; đủ điều kiện → +xu + ledger; nhận 2 lần → 409", "2 request claim song song → đúng 1 thành công…", "reset lúc 00:00 GMT+7 (FakeClock): 23:59 và 00:01 là hai ngày riêng biệt"; `apps/server/src/domain/missions.test.ts`. E2E `e2e/main-flow.spec.ts` bước 5 (nhận thưởng trên giao diện). | **Đạt** |
-| AC-F8-1 | Đăng ký → đăng nhập → đăng xuất hoạt động; sai mật khẩu 5 lần trong 15 phút → khoá 15 phút | `apps/server/src/routes/register.test.ts` — "đăng nhập lại được bằng tài khoản vừa tạo"; `apps/server/src/routes/auth.test.ts` — "đúng mật khẩu → Me + cookie phiên an toàn; DB chỉ giữ hash token", "xoá phiên, cookie cũ hết dùng"; `apps/server/src/routes/auth-hardening.test.ts` — "5 lần sai → lần 6 bị khoá kể cả đúng mật khẩu; sau 15 phút đăng nhập được", "lần sai cách nhau hơn 15 phút không cộng dồn". E2E `e2e/main-flow.spec.ts` bước 1 và 6 (trên giao diện). | **Đạt** |
+| AC-F8-1 | Đăng ký → đăng nhập → đăng xuất hoạt động; sai mật khẩu 5 lần trong 15 phút → khoá 15 phút | `apps/server/src/routes/register.test.ts` — "đăng nhập lại được bằng tài khoản vừa tạo"; `apps/server/src/routes/auth.test.ts` — "đúng mật khẩu → Me + cookie phiên an toàn; DB chỉ giữ hash token", "xoá phiên, cookie cũ hết dùng"; `apps/server/src/routes/auth-hardening.test.ts` — "5 lần sai → lần 6 bị khoá kể cả đúng mật khẩu; sau 15 phút đăng nhập được", "lần sai cách nhau hơn 15 phút không cộng dồn". E2E `e2e/main-flow.spec.ts` bước 1 và 6 (trên giao diện). Chặn mật khẩu mức Đồng (quá yếu) ở `POST /auth/register`: `packages/shared/src/passwordStrength.test.ts` (hàm chấm điểm dùng chung, `RegisterRequest` refine). | **Đạt** |
 | AC-F8-2 | Mọi API thay đổi dữ liệu yêu cầu đăng nhập và chỉ tác động lên tài khoản người gọi | `apps/server/src/routes/write-routes-auth.test.ts` — "không cookie → 401 unauthenticated với mọi route ghi (trừ ngoại lệ)" (danh sách route lấy từ Fastify nên route mới tự được kiểm), "cookie phiên bịa / rỗng → 401…", "ngoại lệ công khai chỉ gồm route /auth/* có thật"; IDOR: `apps/server/src/routes/tamper.test.ts` — "bán playerCardId của người khác … → 404, không ai đổi gì", "nguyên liệu hoặc thẻ đích là của người khác → 404…", "xếp thẻ của người khác vào đội mình → 404…", "nộp trận của người khác (kể cả có token thật của họ) → 404…". Rà tay: §1.1 (IDOR). | **Đạt** |
 | AC-F8-3 | Có truy vấn hoặc trang admin cho ra D7 retention theo nhóm ngày đăng ký | `apps/server/src/routes/admin.test.ts` — "tính D1/D7 đúng qua 3 nhóm ngày đăng ký; giữ cookie không cần login ngày 7 vẫn tính D7", "chưa đăng nhập → 401; không phải admin → 403; query sai → 400", "ghi đủ sự kiện analytics trong transaction và session_seen tối đa 1 lần/ngày GMT+7"; trang `/admin`: `apps/web/src/features/admin/AdminPage.test.tsx` — "render đầy đủ dữ liệu mẫu: tổng đăng ký, D1/D7 trung bình…". Hiệu năng truy vấn: §2.3. | **Đạt** |
 
@@ -470,7 +470,7 @@ Trạng thái 2026-11-14. Mức độ: **Chặn** = phải xong mới đóng đ�
 
 ## 7. PvP đá trực tiếp (`docs/specs/pvp-realtime/`)
 
-_Trạng thái 2026-11-24: phần nền (sim hai đội, WebSocket, phiên có sim bóng, client `useNetMatch`) đã có test; ghép cặp, phòng, rớt mạng, thay người (US1–US4) và e2e hai trình duyệt đang làm nên chưa nằm trong số liệu dưới đây. Bước đo cuối và playtest là T045, T046 trong `tasks.md` — số đo ghi vào bảng 7.2 khi làm._
+_Trạng thái 2026-11-25: PvP (code + test tự động, US1–US4) đã gộp main (47ab50d, 24/11). Còn đo SC-001/002/004/005 trên bản deploy và playtest SC-008 (T045, T046 trong `tasks.md`) — số đo ghi vào bảng 7.2 khi làm._
 
 ### 7.1 Kiểm thử đã có
 
@@ -485,10 +485,13 @@ Mọi test dưới nằm trong `pnpm check` (trừ khi ghi khác); chạy riêng
 | Server | `apps/server/src/services/pvp/session.test.ts` | Phiên lockstep với client giả: khung đúng thứ tự và quy ước tick, input giữ tới khi đổi, kết thúc ở `full_time` với tỉ số bằng `replayMatch`, 30 s chưa đủ `ready` thì `void_not_ready`, một socket giữ mỗi user (`busy`); `finishPvpMatch`: chạy hai lần chỉ thưởng một lần, ranked thưởng như máy Khó, dòng đội khách đảo tỉ số, xử thua 3-0 (0 xu nhưng tốn lượt), friendly 0 xu; bộ giữ nhịp |
 | Server | `apps/server/src/services/matches.pvp-db.test.ts` | `countRewardedMatches` đếm `reward > 0` hoặc `consumes_daily_cap`; ràng buộc `pvp_matches` và `UNIQUE (pvp_match_id, user_id)` (cần Postgres test) |
 | Web | `apps/web/src/features/pvp/netCore.test.ts` | Lõi client: bộ đệm jitter 3–6 khung, thứ tự/bỏ khung cũ/báo hụt, `stepBoth` đúng một lần mỗi khung, gửi `hash` mỗi 60 tick, `catchup` xếp hàng khung tới |
+| Server | `apps/server/src/services/pvp/rooms.test.ts` | Mã phòng 6 ký tự (bảng chữ an toàn), mã lỗi `room_not_found`/`self_join`/`room_full`/`room_expired`/`busy`/`invalid_squad`, chủ phòng rời thì phòng đóng, trận giao hữu 0 xu, `rng(2)` quyết định đội nhà |
+| Server | `apps/server/src/services/pvp/queue.test.ts` | Ghép FIFO, `queue_status` mỗi giây, `offerCpu` sau 60 s, `queue_timeout` sau 5 phút, trùng cặp quá 3 trận/ngày không thưởng, trần 15 trận/ngày |
+| Server | `apps/server/src/services/pvp/disconnect.test.ts` | Rớt 30 s/lần và 60 s/trận (cộng dồn), xử thua giữ tỉ số, lệch mã băm lần 1 (`catchup`) / lần 2 (`forfeit_desync`) / cả hai (`void_desync`), hai tab (`busy`), `rejoin`, vào lại trận đã xong, đăng xuất/xoá tài khoản |
+| E2E | `e2e/pvp.spec.ts` (`pnpm e2e`) | Hai context trình duyệt: một trận qua phòng, một trận qua hàng chờ |
 | Tất định | `e2e/determinism.spec.ts` (`pnpm e2e:determinism`, **không** nằm trong `pnpm check`) | Mã băm mỗi 60 tick giống nhau trên Chromium, Firefox, WebKit (SC-003) |
 | Hiệu năng | `apps/server/scripts/perf-pvp-sim.ts` (`pnpm --filter @pitch/server bench:pvp-sim`) | p99 thời gian `stepBoth` (SC-009) |
 
-Chưa có test (chờ US1–US4): ghép cặp và phòng (mã lỗi, mã phòng, hết hạn 10 phút, trùng cặp quá 3 trận), rớt mạng 30 s / 60 s cộng dồn, lệch mã băm lần một và lần hai, thay người qua WS, vào lại trận đã xong, thưởng đúng một lần khi vào lại/gửi lặp, `e2e/pvp.spec.ts`.
 
 ### 7.2 Tiêu chí thành công (spec §Tiêu chí thành công)
 
@@ -497,9 +500,9 @@ Chưa có test (chờ US1–US4): ghép cặp và phòng (mã lỗi, mã phòng,
 | SC-001 | Từ lúc người thứ hai nhập mã tới lúc trận bắt đầu < 10 s | Chưa đo | T045 |
 | SC-002 | RTT 100 ms: phím phản ứng ≤ 200 ms, không khựng | Chưa đo | T045; thiết kế dự kiến ~150 ms (RTT + bộ đệm tối thiểu 3 khung, research R2) |
 | SC-003 | 100 trận tự động trên 3 nhóm trình duyệt: 0 lần lệch | Có `e2e:determinism`, chưa ghi số lần chạy đầy đủ | T006 đã tick; ghi kết quả khi chạy T045 |
-| SC-004 | 100% trận kết thúc: hai màn cùng tỉ số, trùng tỉ số server | Chưa đo | Cần e2e hai context (T029) |
-| SC-005 | Rời trận > 30 s luôn bị xử thua đúng FR-023 | Chưa đo | Chờ US3 |
-| SC-006 | Không ai được thưởng hai lần cho một trận | Một phần: `UNIQUE (pvp_match_id, user_id)` + test `finishPvpMatch` chạy hai lần chỉ thưởng một lần | Hoàn tất khi có test gửi lặp/vào lại (US3) |
+| SC-004 | 100% trận kết thúc: hai màn cùng tỉ số, trùng tỉ số server | Có test tự động (`e2e/pvp.spec.ts` hai context, `session.test.ts`); chưa đo trên bản deploy | T045 |
+| SC-005 | Rời trận > 30 s luôn bị xử thua đúng FR-023 | Có test tự động (`disconnect.test.ts`: 29 s đá tiếp, 31 s xử thua, cộng dồn 60 s); chưa đo trên bản deploy | T045 |
+| SC-006 | Không ai được thưởng hai lần cho một trận | Có test tự động: `UNIQUE (pvp_match_id, user_id)`, `finishPvpMatch` chạy hai lần chỉ thưởng một lần, `rejoin` trận đã xong (`disconnect.test.ts`); chưa đo trên bản deploy | T045 |
 | SC-007 | Đá máy không đổi kết quả hay cảm giác | Đạt ở mức sim: golden hash một người giữ nguyên; `pnpm check` xanh | Kiểm tay cảm giác ở T045 |
 | SC-008 | ≥ 3 người lần đầu tạo/vào phòng không cần hướng dẫn | Chưa làm | T046 |
 | SC-009 | p99 `stepBoth` trong ngưỡng, tổng ≤ 40% một lõi ở số phiên tối đa | Đạt trên máy dev (20/11/2026): p99 0,0455–0,0506 ms, ước tính 131–146 phiên theo p99 so với `PVP_MAX_SESSIONS` = 50 (dư ~2,6 lần) | Máy i7-13620H, Node v26 (chưa có Node 24); chưa tính chi phí mạng/JSON; đo lại trên máy chủ thật sau deploy 9.2 |

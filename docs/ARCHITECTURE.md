@@ -1,6 +1,6 @@
 # Kiến trúc — MFG (My Football Game)
 
-_Phiên bản 1.2 — 2026-11-24 (thêm PvP đá trực tiếp, ADR-0012) — 1.1 2026-11-16 (rà B6 khớp code) — bản đầu 2026-10-10, Giai đoạn 3. Nguồn: `docs/PRD.md`, ADR-0001…0012._
+_Phiên bản 1.3 — 2026-11-25 (rà C6 khớp code) — 1.2 2026-11-24 (thêm PvP đá trực tiếp, ADR-0012) — 1.1 2026-11-16 (rà B6 khớp code) — bản đầu 2026-10-10, Giai đoạn 3. Nguồn: `docs/PRD.md`, ADR-0001…0012._
 _Tài liệu này mô tả **hình dạng** hệ thống. Số liệu kinh tế (giá, tỉ lệ, thưởng) nằm trong PRD và file config server, không lặp lại ở đây._
 
 ---
@@ -59,15 +59,18 @@ flowchart LR
 
 **Không có "game server" riêng** (ADR-0006): trận vs máy chạy ở client; vai trò "game server" do `apps/server` đảm nhận qua match token + kiểm tra kết quả (§5.2). PvP đá trực tiếp (ADR-0012) cũng nằm trong cùng tiến trình `apps/server` (WebSocket qua `@fastify/websocket`, §5.4), **không dùng Colyseus** — ADR-0012 thay phần realtime của ADR-0006.
 
-### 2.1 Cấu trúc thư mục dự kiến
+### 2.1 Cấu trúc thư mục hiện tại
 
 ```
 apps/
   web/src/
     app/            router, providers (QueryClient), layout
     api/            fetch wrapper: parse response bằng schema trong @pitch/shared
-    features/       auth/ inventory/ packs/ squad/ upgrade/ missions/ match-setup/ pvp/ (sảnh, useNetMatch — client WS)
-    game/           MatchCanvas.tsx, scenes/MatchScene.ts, render/, input/
+    components/     thành phần dùng chung (thẻ, avatar `card/Avatar.tsx`, …)
+    features/       account/ admin/ auth/ collection/ home/ intro/ legal/ missions/ onboarding/ play/ pvp/ (sảnh, useNetMatch — client WS) shop/ squad/ upgrade/
+    game/           MatchCanvas.tsx, bridge.ts, three/ (MatchRenderer.ts, …), render/, input/
+    i18n/           vi.ts, en.ts (song ngữ)
+    styles/         token, theme sáng/tối, CSS dùng chung
   server/src/
     app.ts          buildApp() — đăng ký plugin + routes (test bằng inject)
     server.ts       listen
@@ -80,7 +83,7 @@ apps/
     db/             schema.ts, migrate.ts, seed/
   drizzle/          migration SQL 0000…0008 (+ meta/): 0004 `cards.foot`, 0005 `cards.weak_foot`, 0006 `users.terms_accepted_at`, 0007 khoá thiết bị quen, 0008 `pvp_matches` + cột PvP của `matches`
 packages/
-  sim/src/          math/ rng/ physics/ rules/ ai/ stats/ match.ts
+  sim/src/          math/ physics/ rules/ ai/ stats/ actions/ rng.ts tick.ts hash.ts replay.ts match.ts
   shared/src/       domain.ts (enum, OVR, formation) · api/*.ts (contract từng nhóm endpoint)
 ```
 
@@ -136,6 +139,7 @@ erDiagram
 | password_hash | text | argon2id; NULL = tài khoản chỉ đăng nhập Google (ADR-0010) |
 | google_sub | text | NULL; `UNIQUE` — `sub` của tài khoản Google đã gắn (ADR-0010, migration `0002_google_sign_in.sql`). `CHECK (password_hash IS NOT NULL OR google_sub IS NOT NULL)` |
 | email | text | NULL (tuỳ chọn) |
+| terms_accepted_at | timestamptz | NULL — lúc đồng ý Điều khoản + Chính sách khi đăng ký (migration 0006); NULL = tài khoản tạo trước khi có ô đồng ý |
 | coins | bigint | NOT NULL DEFAULT 0, **`CHECK (coins >= 0)`** |
 | free_pack5_credits | smallint | NOT NULL DEFAULT 0, `CHECK (>= 0)` — gói 5 miễn phí của quà tân thủ |
 | failed_login_count | smallint | NOT NULL DEFAULT 0 |
@@ -150,7 +154,7 @@ erDiagram
 |---|---|---|
 | id | text | PK = **SHA-256 của token** (cookie giữ token gốc 32 byte ngẫu nhiên; lộ DB không lộ phiên) |
 | user_id | bigint | FK → users ON DELETE CASCADE; index |
-| expires_at | timestamptz | NOT NULL; index để dọn phiên hết hạn |
+| expires_at | timestamptz | NOT NULL; index để dọn phiên hết hạn; ≤ `created_at` + 90 ngày (SEC-14) |
 | created_at | timestamptz | NOT NULL |
 
 **`cards`** — ~150 mẫu thẻ hư cấu (seed, chỉ đọc lúc chạy)
@@ -160,6 +164,7 @@ erDiagram
 | code | text | UNIQUE, VD `FW-0042` |
 | name, nickname | text | Tên hư cấu + biệt danh lối chơi |
 | position | position | |
+| foot, weak_foot | foot / smallint | Chân thuận (`right`/`left`/`both`) và chân nghịch 2–5 (migration 0004/0005) |
 | rarity | rarity | index `(rarity)` để bốc ngẫu nhiên đều trong độ hiếm |
 | pace, shooting, passing, dribbling, defending, stamina | smallint | `CHECK BETWEEN 1 AND 99`; thủ môn vẫn có (dùng cho di chuyển/thể lực) |
 | reflexes, handling, positioning, kicking | smallint | `CHECK BETWEEN 1 AND 99`; cầu thủ ngoài sân có giá trị thấp |
@@ -242,7 +247,7 @@ Dòng PvP: `token_hash` là SHA-256 của 32 byte ngẫu nhiên không bao giờ
 |---|---|---|
 | id | bigint identity | PK |
 | kind | pvp_kind | |
-| home_user_id, away_user_id | bigint | FK → `users`; `CHECK (home_user_id <> away_user_id)`. Home = người tạo phòng / vào hàng chờ trước |
+| home_user_id, away_user_id | bigint | FK → `users`; `CHECK (home_user_id <> away_user_id)`. Home/away chọn ngẫu nhiên lúc dựng trận (tung đồng xu trong `startPvpMatch`) |
 | seed | bigint | `node:crypto` |
 | squad_snapshot | jsonb | `{formation_home, formation_away, home, away}` chụp lúc vào trận |
 | status | pvp_status | `live` → `finished` / `cancelled`; khi server khởi động mọi dòng `live` thành `cancelled/server_restart` |
@@ -298,7 +303,7 @@ Quà tân thủ hiện không tặng xu nên không sinh dòng ledger (vì `amou
 |---|---|---|
 | id | bigint identity | PK |
 | user_id | bigint | NULL được (VD đăng ký thất bại không ghi) |
-| name | text | `register`, `login`, `session_seen`, `match_start`, `match_end`, `pack_open`, `upgrade`, `mission_claim` |
+| name | text | `register`, `login`, `session_seen`, `match_start`, `match_end`, `match_replay_mismatch`, `pack_open`, `upgrade`, `mission_claim`, và sáu sự kiện PvP `pvp_matched`, `pvp_start`, `pvp_end`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync` (danh sách đủ ở `services/analytics.ts`) |
 | props | jsonb | |
 | created_at | timestamptz | **BRIN** index (chuỗi thời gian, chỉ thêm) + index `(name, created_at)` |
 
@@ -325,7 +330,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 - **Contract:** mỗi endpoint có schema Zod request/response trong `packages/shared/src/api/<nhóm>.ts`. Server validate request bằng schema đó và có test kiểm response bằng `schema.parse`; web parse response bằng cùng schema. Đổi API = sửa schema trước (quy trình `contract-first`).
 - Thành công: `{ "data": … }`. Lỗi: `{ "error": { "code", "message", "details?" } }` (`ApiError` trong `@pitch/shared`).
 - ID trong JSON là **chuỗi số** (DB `bigint`).
-- Xác thực: cookie `sid` — `HttpOnly; Secure; SameSite=Lax; Path=/`, hạn 30 ngày, gia hạn trượt. Cookie `did` (thiết bị quen, SEC-13a): `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`, 1 năm, giá trị `userId.nonce.HMAC-SHA256(SESSION_SECRET)`, đặt sau đăng nhập/đăng ký; đăng nhập mật khẩu mang `did` hợp lệ của đúng user dùng bộ đếm khoá riêng. Mọi request đổi dữ liệu phải có `Content-Type: application/json` (chặn form CSRF đơn giản) và kiểm `Origin` khớp host. Endpoint không cần dữ liệu (logout, claim) vẫn gửi body `{}` — `apiFetch` của web luôn làm vậy.
+- Xác thực: cookie `sid` — `HttpOnly; Secure; SameSite=Lax; Path=/`, hạn trượt 30 ngày (gia hạn mỗi lần dùng), tối đa tuyệt đối 90 ngày kể từ lúc đăng nhập (`SESSION_MAX_AGE_MS`, SEC-14). Cookie `did` (thiết bị quen, SEC-13a): `HttpOnly; Secure; SameSite=Lax; Path=/api/v1/auth`, 1 năm, giá trị `userId.nonce.HMAC-SHA256(SESSION_SECRET)`, đặt sau đăng nhập/đăng ký; đăng nhập mật khẩu mang `did` hợp lệ của đúng user dùng bộ đếm khoá riêng. Mọi request đổi dữ liệu phải có `Content-Type: application/json` (chặn form CSRF đơn giản) và kiểm `Origin` khớp host. Endpoint không cần dữ liệu (logout, claim) vẫn gửi body `{}` — `apiFetch` của web luôn làm vậy.
 - Endpoint gây tốn xu/thẻ nhận header **`Idempotency-Key: <uuid>`** (bắt buộc).
 - Rate limit (`@fastify/rate-limit`): 100 req/phút/người dùng; `/auth/*` 10 req/phút/IP.
 - Không phân trang trong MVP: kho thẻ một người dự kiến < 500 dòng. Thêm cursor (`?cursor=&limit=`) khi vượt ngưỡng — thay đổi không phá vỡ.
@@ -343,18 +348,21 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | 409 | `username_taken` | Đăng ký trùng tên |
 | 409 | `insufficient_coins` | Không đủ xu |
 | 409 | `card_in_squad` | Bán/ép thẻ đang trong đội hình |
+| 409 | `mission_already_claimed` | Nhiệm vụ đã nhận thưởng |
 | 409 | `idempotency_conflict` | Cùng key nhưng body khác |
 | 422 | `invalid_material`, `max_level`, `invalid_squad` | Vi phạm luật nghiệp vụ |
+| 422 | `mission_incomplete` | Nhận thưởng nhiệm vụ chưa hoàn thành |
 | 422 | `match_token_invalid` | Token sai/đã dùng/hết hạn/chưa đủ 6 phút/tỉ số vô lý |
 | 429 | `login_locked`, `rate_limited` | Khoá đăng nhập; vượt giới hạn (kèm `Retry-After`) |
 | 500 | `internal_error` | Lỗi không lường trước (không lộ chi tiết) |
+| 503 | `internal_error` | DB hỏng ở `/health`; replay trận quá thời gian hoặc worker lỗi (ADR-0011) |
 
 ### 4.3 Danh sách endpoint
 
 | # | Method & path | Auth | Request | Response `data` | Ghi chú / PRD |
 |---|---|---|---|---|---|
 | 1 | `GET /health` | — | — | `{ status }` | Đã có trong skeleton |
-| 2 | `POST /auth/register` | — | `{ username, password, email?, acceptTerms: true }` | `Me` | 201. Thiếu `acceptTerms` → 400; lưu `users.terms_accepted_at`. Tạo user + hộp + đội hình mặc định + 11 thẻ khởi đầu + 1 lượt gói 5 miễn phí, **một transaction**. Đặt cookie. F8, F9 |
+| 2 | `POST /auth/register` | — | `{ username, password, email?, acceptTerms: true }` | `Me` | 201. Thiếu `acceptTerms` → 400; lưu `users.terms_accepted_at`. Mật khẩu 8–72 ký tự; mức Đồng (quá yếu) → 400 `validation_error` "Mật khẩu quá yếu" (cùng hàm `evaluatePasswordStrength` trong `packages/shared` với thanh độ mạnh trên web). Tạo user + hộp + đội hình mặc định + 11 thẻ khởi đầu + 1 lượt gói 5 miễn phí, **một transaction**. Đặt cookie. F8, F9 |
 | 3 | `POST /auth/login` | — | `{ username, password }` | `Me` | Khoá 15' sau 5 lần sai/15'. F8 |
 | 4 | `POST /auth/logout` | ✔ | — | — | 204, xoá session |
 | 5 | `GET /me` | ✔ | — | `Me` = `{ id, username, coins, freePack5Credits, rewardedMatchesToday, rewardedMatchesLimit }` | |
@@ -369,7 +377,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | 13 | `GET /squad` | ✔ | — | `{ formation, slots: { [slot]: Id \| null }, teamRating, warnings[] }` | F6 |
 | 14 | `PUT /squad` | ✔ | `{ formation, slots }` | như #13 | Thay toàn bộ (idempotent). Kiểm sở hữu, trùng thẻ, ≤ 5 dự bị |
 | 15 | `POST /matches` | ✔ | `{ difficulty }` | `{ matchId, token, seed, rewardEligible, home: MatchTeam, away: MatchTeam }` | 201. Kiểm có GK + đủ 7 người (`invalid_squad`). Đội máy sinh ở server. §5.2 |
-| 16 | `POST /matches/:id/result` | ✔ | `{ token, homeGoals, awayGoals, shootout?: { home, away } }` | `{ outcome, reward, balance, missions: MissionProgress[] }` | Token dùng 1 lần; nộp lại đúng token cho trận đã `finished` → trả kết quả cũ (không cộng lần 2). F7 |
+| 16 | `POST /matches/:id/result` | ✔ | `{ token, homeGoals, awayGoals, shootout?: { home, away }, inputLog: string (base64url, ≤ 56.000 ký tự) }` | `{ outcome, reward, balance, missions: MissionProgress[] }` | Token dùng 1 lần; nộp lại đúng token cho trận đã `finished` → trả kết quả cũ (không cộng lần 2). Tỉ số client báo chỉ để đối chiếu; server chạy lại `inputLog` (SEC-07, ADR-0011), lệch → 422 `match_token_invalid`; replay quá thời gian/worker lỗi → 503 `internal_error`. F7 |
 | 17 | `GET /missions/today` | ✔ | — | `MissionProgress[]` | Tự tạo 3 nhiệm vụ cho ngày GMT+7 nếu chưa có. F12 |
 | 18 | `POST /missions/:code/claim` | ✔ | — | `{ reward, balance }` | Một lần/ngày/nhiệm vụ |
 | 18b | `POST /missions/expired/claim` | ✔ | — | `{ items, balance }` | Tự nhận nhiệm vụ ngày cũ đã xong mà chưa nhận; `items` chỉ trả đúng một lần (client hiện bảng thông báo khi vào game). Quyết định 15/11/2026 |
@@ -443,15 +451,13 @@ Cùng khuôn với §5.1: `BEGIN` → khoá `users` → khoá `player_cards` c�
 
 ### 5.4 PvP đá trực tiếp (lockstep, ADR-0012)
 
-_Trạng thái 24/11/2026: khung WebSocket, phiên có sim bóng, ghi kết quả/thưởng, client `useNetMatch` đã có; ghép cặp + phòng (US1/US2), rớt mạng + lệch mã băm (US3), thay người (US4) đang làm — các mục đó mô tả theo spec/contracts._
-
 Nguồn sự thật là **sim bóng của server** (`services/pvp/session.ts`). Server không gửi state xuống client, chỉ gửi **input của hai đội theo từng tick**; hai trình duyệt chạy cùng `stepBoth` tất định nên thấy cùng diễn biến.
 
 ```mermaid
 sequenceDiagram
-  participant A as Trình duyệt A (home)
+  participant A as Trình duyệt A (home hoặc away, tung đồng xu)
   participant S as apps/server (hub + phiên + sim bóng)
-  participant B as Trình duyệt B (away)
+  participant B as Trình duyệt B (đội còn lại)
   A->>S: room_create / queue_join
   B->>S: room_join(code) / queue_join
   S-->>A: matched (side, opponent, setup)
@@ -473,7 +479,7 @@ sequenceDiagram
   S-->>B: end
 ```
 
-- **Nhịp:** MỘT `PvpTicker` chung (`services/pvp/ticker.ts`), tick theo mốc tuyệt đối `t0 + n·1000/60`, trễ thì chạy bù tối đa 5 tick/lượt (`MAX_CATCHUP_TICKS`), trễ hơn thì bỏ nhịp và ghi analytics. Trận không bao giờ đứng chờ người mạng chậm: chưa có input mới thì giữ input cũ. Giới hạn `PVP_MAX_SESSIONS` = 50 (`services/pvp/hub.ts`, theo số đo p99 của `stepBoth`, research R11); quá thì `server_busy`.
+- **Nhịp:** MỘT `PvpTicker` chung (`services/pvp/ticker.ts`), tick theo mốc tuyệt đối `t0 + n·1000/60`, trễ thì chạy bù tối đa 5 tick/lượt (`MAX_CATCHUP_TICKS`), trễ hơn thì bỏ nhịp và ghi analytics. Trận không bao giờ đứng chờ người mạng chậm: chưa có input mới thì giữ input cũ. Giới hạn `PVP_MAX_SESSIONS` = 50 (hằng trong `services/pvp/hub.ts`, đổi bằng sửa code, không phải biến môi trường; theo số đo p99 của `stepBoth`, research R11); quá thì `server_busy`.
 - **Phòng và hàng chờ:** nằm trong bộ nhớ một tiến trình (`shortcut:` trong `hub.ts`, nâng cấp khi chạy nhiều instance — BACKLOG). Phòng: mã 6 ký tự không có 0/O/1/I, hạn 10 phút. Hàng chờ FIFO, 60 s thì `offerCpu`, 5 phút thì `queue_timeout`. Mỗi user tối đa một mục trong (hàng chờ ∪ phòng đang chờ ∪ phiên live); socket thứ hai không đẩy socket cũ ra mà chỉ được `rejoin` (`busy` nếu socket cũ còn sống).
 - **Rớt mạng:** heartbeat ping mỗi 2 s, quá 5 s không pong là rớt. Cầu thủ người rớt đứng yên, trận chạy tiếp; mỗi lần rớt tối đa 30 s, cộng dồn tối đa 60 s, quá thì xử thua 3-0 (giữ tỉ số nếu người ở lại dẫn hơn). Vào lại bằng `rejoin` và nhận `catchup` (setup + nhật ký v2) để client dựng lại state.
 - **Lệch đồng bộ:** client gửi `hash` mỗi 60 tick, server so với `serverHashes`. Lần lệch đầu của một bên thì ép dựng lại bằng `catchup`; lần hai của cùng bên thì `forfeit_desync`; cả hai cùng lần hai thì `void_desync` (huỷ, không thưởng).
@@ -502,7 +508,7 @@ sequenceDiagram
 | Gian lận trận PvP (báo tỉ số sai, cố ý lệch mã băm, thoát để né thua) | Tỉ số do sim bóng của server chốt, client không báo kết quả; so mã băm mỗi 60 tick, lệch lần hai bị xử thua; rớt > 30 s/lần hoặc > 60 s/trận bị xử thua; thưởng đúng một lần (`UNIQUE (pvp_match_id, user_id)`), trần 15 trận/ngày, tối đa 3 trận/ngày cho mỗi cặp tài khoản |
 | Chiếm kết nối WebSocket từ trang khác (CSWSH), làm ngập WS | `Origin` bắt buộc trùng `Host` + cookie phiên kiểm trước upgrade; 4 kết nối/IP, 512 byte/tin, 120 tin/s, `PVP_MAX_SESSIONS` = 50 (§5.4) |
 | Đoán tỉ lệ / RNG | `node:crypto`; lint cấm `Math.random` ở server |
-| Chiếm phiên | Cookie HttpOnly/Secure/SameSite=Lax, lưu hash token, xoay token khi đăng nhập |
+| Chiếm phiên | Cookie HttpOnly/Secure/SameSite=Lax, lưu hash token, xoay token khi đăng nhập; hạn trượt 30 ngày nhưng tối đa 90 ngày tuyệt đối (SEC-14) |
 | Dò mật khẩu | argon2id, khoá 15' sau 5 lần sai, rate limit `/auth/*` |
 | IDOR | Mọi truy vấn lọc theo `user_id` của phiên; trả 404 thay vì 403 cho tài nguyên người khác |
 
@@ -514,11 +520,11 @@ sequenceDiagram
 | Test | Vitest. Test DB-integration dùng Postgres thật qua `DATABASE_URL_TEST`; mỗi test chạy trong transaction rồi rollback, hoặc truncate giữa các file |
 | Prod | `docker compose up -d --build` (`docker-compose.yml`, `Dockerfile`, `deploy/`, ADR-0007): Caddy (HTTPS tự động, file tĩnh web, reverse proxy `/api`, header bảo mật + CSP có `connect-src … wss:` cho WebSocket PvP) + server (user `node`, healthcheck `/api/v1/health`) + Postgres (không mở cổng ra ngoài). Dịch vụ một lần `migrate` chạy migration + seed thẻ bằng role chủ `pitch_owner` rồi mới bật server; server dùng role `pitch_app` chỉ có SELECT/INSERT/UPDATE/DELETE (`deploy/postgres-init/01-app-role.sh`). Trước khi cập nhật bản có migration mới: `pg_dump` |
 
-Biến môi trường (server): `DATABASE_URL`, `SESSION_SECRET`, `PORT`, `HOST`, `NODE_ENV`, `MATCH_MIN_DURATION_SEC` (mặc định 360; test đặt nhỏ), `ENABLE_DEV_ROUTES` (chỉ bật route `/api/v1/dev/*` khi `=1`; mặc định tắt — không suy ra từ `NODE_ENV`), `DATABASE_URL_TEST` (DB cho test), `TRUST_PROXY` (`=1` chỉ khi chạy sau Caddy — đọc IP thật từ `X-Forwarded-For`), `GOOGLE_CLIENT_ID` (thiếu thì tắt đăng nhập Google). Production bắt buộc đặt `DATABASE_URL` và `SESSION_SECRET` (`config/env.ts`).
+Biến môi trường (server): `DATABASE_URL`, `SESSION_SECRET`, `PORT`, `HOST`, `NODE_ENV`, `MATCH_MIN_DURATION_SEC` (mặc định 360; test đặt nhỏ), `ENABLE_DEV_ROUTES` (chỉ bật route `/api/v1/dev/*` khi `=1`; mặc định tắt — không suy ra từ `NODE_ENV`), `DATABASE_URL_TEST` (DB cho test), `TRUST_PROXY` (`=1` chỉ khi chạy sau Caddy — đọc IP thật từ `X-Forwarded-For`), `GOOGLE_CLIENT_ID` (thiếu thì tắt đăng nhập Google), `REPLAY_TEST_HALF_LENGTH_SEC` và `REPLAY_TEST_AUTOPILOT` (chỉ cho e2e: server replay trận `?half=…&autopilot=1`; cấm ở production, `config/env.ts`). Production bắt buộc đặt `DATABASE_URL` và `SESSION_SECRET` (`config/env.ts`).
 Quyền admin: cột `users.is_admin`, bật bằng script `pnpm --filter @pitch/server admin:grant <username>` (không có API cấp quyền).
 
 ## 9. Quyết định mở (chưa cần ADR)
 
 - ~~Animation lật thẻ~~ → CSS 3D + Web Animations API ([ADR-0008](adr/0008-card-reveal-css-waapi.md)).
-- ~~Cách sinh ảnh đại diện thẻ~~ → avatar vector SVG sinh từ `avatar_seed` (DESIGN.md §4).
+- ~~Cách sinh ảnh đại diện thẻ~~ → avatar vector SVG sinh từ `avatar_seed` (`apps/web/src/components/card/Avatar.tsx`).
 - Có cần cursor pagination cho kho thẻ → khi kho > 500 thẻ.

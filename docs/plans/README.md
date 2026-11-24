@@ -18,7 +18,7 @@ _Tạo ở Giai đoạn 3 (2026-10-10) bằng `ecc:blueprint`. Nguồn: `docs/PR
 4. Chạy mục **Kiểm chứng**. Tất cả phải xanh, cộng với các bất biến chung bên dưới.
 5. Tick `[x]` task trong plan, commit **một commit cho một task**: `feat(<phạm vi>): <task id> <tóm tắt>`. Dừng lại báo cáo.
 
-**Chế độ:** trực tiếp trên `main` (máy chưa có GitHub CLI). Nếu sau này dùng PR: mỗi task một nhánh `task/<id>-<slug>`, một PR.
+**Chế độ:** trực tiếp trên `main` (máy chưa có GitHub CLI; đã đổi từ 11/2026 sang nhánh + merge, xem CLAUDE.md). Nếu sau này dùng PR: mỗi task một nhánh `task/<id>-<slug>`, một PR.
 **Rollback mặc định:** `git revert <commit của task>`; task có migration DB ghi rõ cách rollback riêng.
 **Model:** `strongest` = task khó/rủi ro (luật, AI, gacha, ví, bảo mật) — nên dùng model mạnh nhất; `default` = còn lại.
 

@@ -26,7 +26,7 @@ sửa client gửi 20-0 là ăn thưởng và nhiệm vụ (SEC-07, `docs/QA-REP
    chỉ ra 8 hướng nên `move` mã hoá bằng chỉ số hướng, lossless; `move` ngoài 8 hướng chuẩn thì không ghi
    được (ném lỗi). `decodeLog` chặn log hỏng/quá dài (trần 64.800 tick, trận đo dài nhất 27.352, ≤ 3 lượt thay người, không
    thừa byte). `MatchSetup` dựng bằng một hàm chung `buildMatchSetup` cho web và server; server không
-   bao giờ bật `autopilot`/đổi `halfLengthSec`.
+   bao giờ bật `autopilot`/đổi `halfLengthSec` (ngoại lệ: biến test `REPLAY_TEST_*` cho e2e, cấm ở production). Log v2 (PvP) cho phép 3 lượt thay MỖI ĐỘI.
 3. **Tất định số học giữa engine JS**: bỏ `Math.log/cos` khỏi đường state (chỉ còn `nextGaussian`
    dùng Box–Muller) bằng `ln`/`cos2pi` thuần số học trong `packages/sim/src/math/det.ts` (+ − × ÷ là chính
    xác theo IEEE-754, như `sqrt`). ESLint chặn `Math.sin/cos/log/hypot/pow/exp…` và toán tử `**` trong
