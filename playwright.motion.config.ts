@@ -7,4 +7,9 @@ export default defineConfig({
   testIgnore: undefined,
   testMatch: 'motion.spec.ts',
   reporter: [['list']],
+  // GPU thật (mặc định headless dùng SwiftShader ~1 FPS: sim chậm theo, log vô nghĩa).
+  use: {
+    ...base.use,
+    launchOptions: { args: ['--use-angle=d3d11', '--ignore-gpu-blocklist', '--enable-gpu'] },
+  },
 });

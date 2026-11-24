@@ -6,7 +6,7 @@
 
 /** Một khung hình đã vẽ. Toạ độ Three: x, z mặt sân (m), y cao; `rot` = rotation.y (rad). */
 export interface MotionFrame {
-  /** Giờ tường (ms, Date.now) — để khớp với video Playwright. */
+  /** Giờ tường (ms, Date.now) — chỉ để khớp video (lệch vài ms, không dùng tính tốc độ: dùng `ms`). */
   t: number;
   /** Thời gian khung hình (ms) đo bằng requestAnimationFrame. */
   ms: number;
@@ -101,7 +101,7 @@ export type MotionThresholds = typeof DEFAULT_THRESHOLDS;
 
 /** Hai khung liền nhau mà người xem thấy chuyển động liên tục (cùng chế độ, không che, cùng pha). */
 const continuous = (a: MotionFrame, b: MotionFrame): boolean =>
-  a.mode === b.mode && !a.covered && !b.covered && a.phase === b.phase && b.t > a.t;
+  a.mode === b.mode && !a.covered && !b.covered && a.phase === b.phase && b.ms > 0;
 
 const wrap = (a: number): number => Math.atan2(Math.sin(a), Math.cos(a));
 
@@ -184,7 +184,7 @@ export function analyzeMotion(
     const a = f[i - 1]!;
     const b = f[i]!;
     if (!continuous(a, b)) continue;
-    const sec = (b.t - a.t) / 1000;
+    const sec = b.ms / 1000;
     const bs = Math.hypot(b.ball[0] - a.ball[0], b.ball[2] - a.ball[2]) / sec;
     if (bs > th.ballTeleportMps) issue('teleport', 'ball', i, b.t, bs, `bóng ${bs.toFixed(1)} m/s`);
     for (const [id, p] of Object.entries(b.players)) {
@@ -206,7 +206,7 @@ export function analyzeMotion(
           const p = pos(i);
           const q = pos(i - 1);
           if (!p || !q) return null;
-          const sec = (f[i]!.t - f[i - 1]!.t) / 1000;
+          const sec = f[i]!.ms / 1000;
           if (Math.hypot(p[0] - q[0], p[1] - q[1]) / sec < th.zigzagMinSpeed) return null;
           return p[axis] - q[axis];
         },
