@@ -46,13 +46,23 @@ export function useClaimMission() {
 
 /**
  * Lần gọi lại (qua nửa đêm, quay lại tab) trả rỗng thì giữ danh sách cũ: bảng thông báo đang mở
- * không tự biến mất khi chưa đọc (đã đóng thì vẫn đóng — AppLayout so theo tham chiếu).
+ * không tự biến mất khi chưa đọc. Đóng bảng thì `dismissExpiredClaims` đặt items rỗng trong cache, nên
+ * quay lại từ /play, /pvp (AppLayout gắn lại) không hiện lại.
  */
 export function keepUnreadClaims(
   prev: ExpiredClaimResult | undefined,
   next: ExpiredClaimResult,
 ): ExpiredClaimResult {
   return next.items.length === 0 && prev ? prev : next;
+}
+
+// Khoá theo người chơi: đổi tài khoản trong cùng tab không thấy thông báo của người trước.
+const expiredClaimKey = (userId: string | undefined) => ['missions', 'expired-claim', userId];
+
+export function useDismissExpiredClaims(userId: string | undefined) {
+  const qc = useQueryClient();
+  return () =>
+    qc.setQueryData<ExpiredClaimResult>(expiredClaimKey(userId), (d) => d && { ...d, items: [] });
 }
 
 /**
@@ -62,8 +72,7 @@ export function keepUnreadClaims(
  */
 export function useExpiredMissionClaims(userId: string | undefined) {
   const qc = useQueryClient();
-  // Khoá theo người chơi: đổi tài khoản trong cùng tab không thấy thông báo của người trước.
-  const queryKey = ['missions', 'expired-claim', userId];
+  const queryKey = expiredClaimKey(userId);
   return useQuery({
     queryKey,
     queryFn: async () => {

@@ -124,7 +124,7 @@ export function ShopPage() {
       </div>
     );
   }
-  if (packs.isError || catalog.isError) {
+  if (packs.isLoadingError || catalog.isLoadingError) {
     return (
       <div className="shop-page">
         {head}

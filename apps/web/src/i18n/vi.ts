@@ -519,6 +519,7 @@ export const vi = {
   'squad.warn.gk_not_keeper': 'Ô GK phải là thẻ thủ môn',
   'squad.warn.missing_starters': 'Mới có {count}/{total} người đá chính',
   'squad.warn.misposition': 'Ô {slot} cần {role}, thẻ là {cardRole} (−15% chỉ số)',
+  'squad.warn.misposition_short': 'Ô {slot} lệch vị trí (−15% chỉ số)',
   'squad.collapseWarns': 'Thu gọn cảnh báo vị trí',
   'squad.moreWarns': 'Xem thêm {count} cảnh báo vị trí',
   'squad.benchTitle': 'Dự bị',

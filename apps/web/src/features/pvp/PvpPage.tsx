@@ -78,12 +78,21 @@ export function PvpPage() {
   useEffect(() => {
     if (needKeyboard) return;
     let disposed = false;
+    let wasConnected = false;
     const pvpClient = createPvpClient({
       connect: () => wrapWebSocket(new WebSocket(wsUrl())),
       onStatus: (next) => {
         if (disposed) return;
         setStatus(next);
         if (next.connected) setClient(pvpClient);
+        const lost = wasConnected && !next.connected;
+        wasConnected = next.connected;
+        if (lost) {
+          // Mất kết nối: server đã bỏ phòng/hàng chờ; phiên hết hạn thì RequireAuth đưa về /login.
+          setRoom(null);
+          setQueue(null);
+          void qc.invalidateQueries({ queryKey: ['me'] });
+        }
       },
       onMessage: (m: PvpServerMessage) => {
         if (disposed) return;

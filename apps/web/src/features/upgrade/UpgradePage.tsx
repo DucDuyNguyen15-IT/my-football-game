@@ -113,7 +113,7 @@ export function UpgradePage() {
       </div>
     );
   }
-  if (list.isError || catalog.isError || economy.isError) {
+  if (list.isLoadingError || catalog.isLoadingError || economy.isLoadingError) {
     return (
       <div className="screen-msg" role="alert">
         <p>{t('upg.loadError')}</p>

@@ -1,7 +1,6 @@
-import { useState } from 'react';
 import { Link, Navigate, NavLink, Outlet, useLocation } from 'react-router';
 import { useLogout, useMe } from '../api/auth';
-import { useExpiredMissionClaims } from '../api/missions';
+import { useDismissExpiredClaims, useExpiredMissionClaims } from '../api/missions';
 import { CountUp } from '../components/CountUp';
 import { ExpiredMissionsNotice } from '../features/missions/ExpiredMissionsNotice';
 import { formatNumber } from '../i18n/i18n';
@@ -38,7 +37,8 @@ export function RequireAuth() {
   const location = useLocation();
   const { t } = useI18n();
   if (me.isPending) return <AuthSkeleton />;
-  if (me.isError) {
+  // Refetch nền hỏng mà còn dữ liệu cũ thì giữ trang (không unmount trận PvP đang đá).
+  if (me.isLoadingError) {
     return (
       <div className="screen-msg" role="alert">
         <p>{t('common.serverConnectError')}</p>
@@ -126,15 +126,12 @@ export function Topbar() {
 export function AppLayout() {
   const me = useMe().data;
   const expired = useExpiredMissionClaims(me?.id);
-  // Nhớ đã đóng thông báo nào, để lượt tự nhận của ngày/tài khoản khác vẫn hiện.
-  const [closedData, setClosedData] = useState<unknown>(null);
+  const dismiss = useDismissExpiredClaims(me?.id);
   const items = expired.data?.items ?? [];
   return (
     <div className="shell">
       <Topbar />
-      {items.length > 0 && closedData !== expired.data && (
-        <ExpiredMissionsNotice items={items} onClose={() => setClosedData(expired.data)} />
-      )}
+      {items.length > 0 && <ExpiredMissionsNotice items={items} onClose={dismiss} />}
       <main className="page">
         <Outlet />
       </main>

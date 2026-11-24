@@ -19,8 +19,16 @@ import { OnboardingFlowBanner } from '../onboarding/OnboardingFlowBanner';
 import { slotLayout } from '../squad/squad';
 import './home.css';
 
-function translateSquadWarning(w: SquadWarning, t: ReturnType<typeof useI18n>['t']): string {
+function translateSquadWarning(
+  w: SquadWarning,
+  starters: number,
+  t: ReturnType<typeof useI18n>['t'],
+): string {
   switch (w.code) {
+    case 'missing_starters':
+      return t('squad.warn.missing_starters', { count: starters, total: STARTER_SLOTS.length });
+    case 'misposition':
+      return t('squad.warn.misposition_short', { slot: w.slot ?? '' });
     case 'missing_gk':
       return t('squad.warn.missing_gk');
     case 'gk_not_keeper':
@@ -169,7 +177,11 @@ export function HomePage() {
                   )}
             </div>
             {squad.data && squad.data.warnings.length > 0 && (
-              <p className="home__warn">⚠ {translateSquadWarning(squad.data.warnings[0]!, t)}</p>
+              <p className="home__warn">⚠ {translateSquadWarning(
+                  squad.data.warnings[0]!,
+                  STARTER_SLOTS.filter((s) => squad.data.slots[s]).length,
+                  t,
+                )}</p>
             )}
           </section>
         </div>
