@@ -6,6 +6,7 @@ import { readDevOptions } from '../play/hud';
 import { isTouchOnly, NeedKeyboard } from '../play/PreMatch';
 import { PvpLobby, type LobbyQueue, type LobbyRoom } from './PvpLobby';
 import { PvpMatchPage, type EndMessage, type MatchedMessage } from './PvpMatchPage';
+import { expiryDelayMs } from './netCore';
 import {
   createPvpClient,
   type NetSocket,
@@ -50,6 +51,7 @@ const INITIAL_STATUS: PvpClientStatus = {
   busyRetrying: false,
   rebuilding: false,
   rebuildSlowMs: null,
+  gaveUp: false,
 };
 
 export function PvpPage() {
@@ -67,6 +69,7 @@ export function PvpPage() {
   const [room, setRoom] = useState<LobbyRoom | null>(null);
   const [queue, setQueue] = useState<LobbyQueue | null>(null);
   const [queueTimeout, setQueueTimeout] = useState(false);
+  const [roomExpired, setRoomExpired] = useState(false);
   const [error, setError] = useState<PvpErrorCode | null>(null);
   const [matched, setMatched] = useState<MatchedMessage | null>(null);
   const [countdownMs, setCountdownMs] = useState<number | null>(null);
@@ -74,6 +77,18 @@ export function PvpPage() {
   const [ended, setEnded] = useState<EndMessage | null>(null);
   const [subRejectedSeq, setSubRejectedSeq] = useState(0);
   const [connSeq, setConnSeq] = useState(0);
+
+  // Phòng hết hạn (10 phút): server đã xoá, chủ phòng không còn mã dùng được (C3-02).
+  useEffect(() => {
+    if (!room) return;
+    const ms = expiryDelayMs(room.expiresAt, Date.now());
+    if (!Number.isFinite(ms)) return;
+    const id = window.setTimeout(() => {
+      setRoom(null);
+      setRoomExpired(true);
+    }, ms);
+    return () => window.clearTimeout(id);
+  }, [room]);
 
   useEffect(() => {
     if (needKeyboard) return;
@@ -86,6 +101,8 @@ export function PvpPage() {
         setStatus(next);
         if (next.connected) setClient(pvpClient);
         const lost = wasConnected && !next.connected;
+        // Nối lại được: lỗi `busy` cũ (từ socket trước) không còn đúng nữa.
+        if (next.connected && !wasConnected) setError((prev) => (prev === 'busy' ? null : prev));
         wasConnected = next.connected;
         if (lost) {
           // Mất kết nối: server đã bỏ phòng/hàng chờ; phiên hết hạn thì RequireAuth đưa về /login.
@@ -99,6 +116,7 @@ export function PvpPage() {
         switch (m.t) {
           case 'room_created':
             setError(null);
+            setRoomExpired(false);
             setQueue(null);
             setQueueTimeout(false);
             setRoom({ code: m.code, expiresAt: m.expiresAt });
@@ -115,6 +133,13 @@ export function PvpPage() {
           case 'error':
             if (m.code === 'sub_rejected') {
               setSubRejectedSeq((n) => n + 1);
+            } else if (m.code === 'not_in_match') {
+              // Server không còn trận này (mất sau crash): về sảnh kèm thông báo, không treo ở màn trận (C3-08).
+              setMatched(null);
+              setCountdownMs(null);
+              setOppDisconnectedUntil(null);
+              setEnded(null);
+              setError(m.code);
             } else if (m.code !== 'busy') {
               setError(m.code);
             } else {
@@ -167,6 +192,7 @@ export function PvpPage() {
     setRoom(null);
     setQueue(null);
     setQueueTimeout(false);
+    setRoomExpired(false);
     setError(null);
     setConnSeq((n) => n + 1);
   }, []);
@@ -197,7 +223,10 @@ export function PvpPage() {
     <PvpLobby
       connected={status.connected}
       reconnecting={status.reconnecting}
+      gaveUp={status.gaveUp}
+      onRetry={handleBackLobby}
       room={room}
+      roomExpired={roomExpired}
       queue={queue}
       queueTimeout={queueTimeout}
       error={error}
@@ -217,6 +246,7 @@ export function PvpPage() {
       }}
       onCreateRoom={() => {
         setError(null);
+        setRoomExpired(false);
         client?.send({ t: 'room_create' });
       }}
       onJoinRoom={(code) => {

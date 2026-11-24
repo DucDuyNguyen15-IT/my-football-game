@@ -31,8 +31,22 @@ export interface PlayerModel {
   speeds: ClipSpeeds;
 }
 
-/** Nạp model; null nếu chưa có file (máy chưa chạy `pnpm assets`) hoặc file hỏng. */
-export async function loadPlayerModel(): Promise<PlayerModel | null> {
+let cached: Promise<PlayerModel | null> | null = null;
+
+/**
+ * Nạp model; null nếu chưa có file (máy chưa chạy `pnpm assets`) hoặc file hỏng. Kết quả dùng chung
+ * giữa các trận trong cùng tab (tải + parse + `tagBodyRegions` chỉ một lần); mỗi trận `cloneSkinned`
+ * từ bản này và không dispose nó. Kết quả null không cache để lần sau thử lại.
+ */
+export function loadPlayerModel(): Promise<PlayerModel | null> {
+  cached ??= fetchPlayerModel().then((m) => {
+    if (!m) cached = null;
+    return m;
+  });
+  return cached;
+}
+
+async function fetchPlayerModel(): Promise<PlayerModel | null> {
   const res = await fetch(PLAYER_MODEL_URL).catch(() => null);
   if (!res?.ok) return null;
   const buf = await res.arrayBuffer();
@@ -271,6 +285,7 @@ export class ModelActor {
   private readonly isKeeper: boolean;
   private readonly playerId: string;
   private readonly materials: ModelMaterials;
+  private plate: THREE.Mesh | null = null;
 
   constructor(model: PlayerModel, p: PlayerState, materials: ModelMaterials, avatarSeed?: string) {
     this.root = cloneSkinned(model.scene);
@@ -307,6 +322,23 @@ export class ModelActor {
     });
   }
 
+  /** Giải phóng phần riêng của cầu thủ rời sân: số áo, skeleton, mixer (geometry/material dùng chung). */
+  dispose(): void {
+    this.mixer.stopAllAction();
+    this.mixer.uncacheRoot(this.root);
+    this.root.traverse((o) => {
+      if (o instanceof THREE.SkinnedMesh) o.skeleton.dispose();
+    });
+    const plate = this.plate;
+    if (plate) {
+      this.plate = null;
+      plate.geometry.dispose();
+      const mat = plate.material as THREE.MeshBasicMaterial;
+      mat.map?.dispose();
+      mat.dispose();
+    }
+  }
+
   /** Cập nhật màu da/tóc theo `avatar_seed` của thẻ (hoặc theo id nếu chưa có thẻ). */
   setAvatarSeed(avatarSeed?: string): void {
     const material = this.materials.kit(
@@ -334,6 +366,7 @@ export class ModelActor {
     plate.position.set(0, 6, -16);
     plate.rotation.y = Math.PI;
     spine.add(plate);
+    this.plate = plate;
   }
 
   /** Clip đang chủ đạo (một lần nếu có, không thì clip lặp) — cho công cụ soi chuyển động. */

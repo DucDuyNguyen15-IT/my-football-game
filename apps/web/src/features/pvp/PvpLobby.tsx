@@ -21,7 +21,12 @@ export interface LobbyQueue {
 export interface PvpLobbyProps {
   connected: boolean;
   reconnecting: boolean;
+  /** Đã thôi tự nối lại (nối hỏng liên tiếp): hiện nút Thử lại. */
+  gaveUp: boolean;
+  onRetry: () => void;
   room: LobbyRoom | null;
+  /** Phòng của chủ phòng vừa hết hạn. */
+  roomExpired: boolean;
   queue: LobbyQueue | null;
   queueTimeout: boolean;
   error: PvpErrorCode | null;
@@ -42,7 +47,10 @@ export function pvpErrorKey(code: PvpErrorCode): TranslationKey {
 export function PvpLobby({
   connected,
   reconnecting,
+  gaveUp,
+  onRetry,
   room,
+  roomExpired,
   queue,
   queueTimeout,
   error,
@@ -83,8 +91,17 @@ export function PvpLobby({
           </Link>
           {!connected && (
             <span className="pvp-status-pill" role="status">
-              {reconnecting ? t('pvp.disconnected') : t('pvp.connecting')}
+              {gaveUp
+                ? t('pvp.connectionLost')
+                : reconnecting
+                  ? t('pvp.disconnected')
+                  : t('pvp.connecting')}
             </span>
+          )}
+          {!connected && gaveUp && (
+            <button type="button" className="btn btn--secondary btn--sm" onClick={onRetry}>
+              {t('common.retry')}
+            </button>
           )}
         </div>
 
@@ -127,7 +144,7 @@ export function PvpLobby({
                 <div className="pvp-code-box" role="status">
                   <div>
                     <div className="display">{t('pvp.searching')}</div>
-                    <span className="muted num">
+                    <span className="muted num" aria-hidden="true">
                       {t('pvp.waitedTime', { seconds: queue.waitedSec })}
                     </span>
                   </div>
@@ -167,6 +184,11 @@ export function PvpLobby({
               </span>
             </div>
 
+            {roomExpired && !room && (
+              <div className="banner" role="status">
+                <span>{t('pvp.err.room_expired')}</span>
+              </div>
+            )}
             {room ? (
               <>
                 <div className="pvp-code-box">

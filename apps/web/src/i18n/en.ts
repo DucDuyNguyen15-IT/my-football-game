@@ -102,7 +102,8 @@ export const en: Record<TranslationKey, string> = {
   'card.ariaLabel': '{rarity}, {name}, {position}, OVR {ovr}',
   'card.ariaLevel': ', level +{level}',
 
-  'match.webglError': 'Your browser could not start 3D graphics (WebGL). Turn on hardware acceleration or try another browser.',
+  'match.webglError':
+    'Your browser could not start 3D graphics (WebGL). Turn on hardware acceleration or try another browser.',
 
   // Intro 3D
   'intro.skip': 'Press any key to skip',
@@ -892,6 +893,7 @@ export const en: Record<TranslationKey, string> = {
   // Live PvP
   'pvp.title': 'Live Match · PvP',
   'pvp.connecting': 'Connecting to PvP server…',
+  'pvp.connectionLost': 'Could not connect to the PvP server.',
   'pvp.disconnected': 'Disconnected from PvP server. Reconnecting…',
   'pvp.friendlyTag': 'Friendly match, no reward',
   'pvp.friendlyDesc':
@@ -929,7 +931,8 @@ export const en: Record<TranslationKey, string> = {
   'pvp.youSub': '{side} · you',
   'pvp.oppSub': '{side} · opponent',
   'pvp.halfTime': 'Half-time · both press S to start 2nd half (auto in {seconds}s)',
-  'pvp.halfTimeWaiting': 'You are ready · waiting for your opponent to press S (auto in {seconds}s)',
+  'pvp.halfTimeWaiting':
+    'You are ready · waiting for your opponent to press S (auto in {seconds}s)',
   'pvp.oppDisconnected': 'Opponent disconnected · {seconds}s remaining',
   'pvp.reconnecting': 'Reconnecting to match…',
   'pvp.busyRetrying': 'Previous session still closing, retrying shortly…',
@@ -951,7 +954,8 @@ export const en: Record<TranslationKey, string> = {
   'pvp.rewardReason.friendly': 'Friendly match, no reward.',
   'pvp.rewardReason.forfeit': 'Forfeit loss — no reward.',
   'pvp.rewardReason.daily_cap': 'Daily rewarded match limit reached.',
-  'pvp.rewardReason.same_opponent_limit': 'Reached 3 rewarded ranked matches vs this opponent today.',
+  'pvp.rewardReason.same_opponent_limit':
+    'Reached 3 rewarded ranked matches vs this opponent today.',
   'pvp.rewardReason.void': 'Match voided, no reward.',
   'pvp.backLobby': 'Back to PvP lobby',
   'pvp.subsBtn': 'Subs · {count}',

@@ -100,7 +100,8 @@ export const vi = {
   'card.ariaLabel': '{rarity}, {name}, {position}, OVR {ovr}',
   'card.ariaLevel': ', cấp +{level}',
 
-  'match.webglError': 'Trình duyệt không mở được đồ hoạ 3D (WebGL). Hãy bật tăng tốc phần cứng hoặc thử trình duyệt khác.',
+  'match.webglError':
+    'Trình duyệt không mở được đồ hoạ 3D (WebGL). Hãy bật tăng tốc phần cứng hoặc thử trình duyệt khác.',
 
   // Intro 3D
   'intro.skip': 'Bấm phím bất kỳ để bỏ qua',
@@ -890,6 +891,7 @@ export const vi = {
   // PvP đá trực tiếp
   'pvp.title': 'Đá trực tiếp · PvP',
   'pvp.connecting': 'Đang kết nối máy chủ PvP…',
+  'pvp.connectionLost': 'Không kết nối được tới máy chủ PvP.',
   'pvp.disconnected': 'Mất kết nối tới máy chủ PvP. Đang thử kết nối lại…',
   'pvp.friendlyTag': 'Giao hữu, không có thưởng',
   'pvp.friendlyDesc':
