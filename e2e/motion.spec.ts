@@ -41,7 +41,8 @@ const KIND_VI: Record<MotionIssue['kind'], string> = {
 const sec = (ms: number) => (ms / 1000).toFixed(1);
 
 test('soi chuyển động: trận autopilot → log + báo cáo + clip', async ({ browser }) => {
-  test.setTimeout((HALF * 2 + 300) * 1000 * 3);
+  // Sim chạy theo FPS (khung dài bị kẹp) nên máy chậm thì trận dài hơn giờ thật.
+  test.setTimeout((HALF * 2 + 300) * 1000 * 4);
   mkdirSync(OUT, { recursive: true });
   const context = await browser.newContext({
     viewport: VIEW,
@@ -83,7 +84,7 @@ test('soi chuyển động: trận autopilot → log + báo cáo + clip', async 
       return f?.[f.length - 1]?.phase === 'full_time';
     },
     undefined,
-    { timeout: (HALF * 2 + 240) * 1000, polling: 1000 },
+    { timeout: 0, polling: 1000 },
   );
   await page.waitForTimeout(1500);
 
