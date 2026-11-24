@@ -318,3 +318,76 @@ export function clipWindows(
   }
   return out;
 }
+
+// ---------- So sánh hai bên PvP ----------
+
+export interface PvpCompare {
+  /** Số tick có mặt ở cả hai log. */
+  ticks: number;
+  /** Lệch vị trí cầu thủ (m) cùng tick: p95, max, số (tick, cầu thủ) vượt `posTol`, ví dụ tệ nhất. */
+  pos: { p95: number; max: number; over: number; worst: string };
+  /** Camera: trung điểm hai camera (x,z) phải trùng điểm nhìn (≈ bóng); `y` lệch độ cao hai bên. */
+  cam: { midToBallP95: number; yDiffMax: number; flipOk: boolean };
+}
+
+const lastPerTick = (log: MotionLog): Map<number, MotionFrame> => {
+  const m = new Map<number, MotionFrame>();
+  for (const f of log.frames) m.set(f.tick, f); // khung cuối của tick (alpha gần 1)
+  return m;
+};
+
+/**
+ * Đội nhà vs đội khách cùng một trận lockstep: vị trí cầu thủ cùng tick phải gần nhau (sai số do nội suy
+ * khung vẽ, `posTol`), camera khách = camera nhà lật 180° quanh điểm nhìn (`flipCamera`) nên trung điểm
+ * x,z của hai camera nằm gần bóng (`camTol` m) và cùng độ cao.
+ */
+export function compareMotion(
+  home: MotionLog,
+  away: MotionLog,
+  posTol = 0.6,
+  camTol = 12,
+): PvpCompare {
+  const h = lastPerTick(home);
+  const a = lastPerTick(away);
+  const diffs: number[] = [];
+  const mids: number[] = [];
+  let over = 0;
+  let max = 0;
+  let worst = '—';
+  let yMax = 0;
+  let ticks = 0;
+  for (const [tick, fh] of h) {
+    const fa = a.get(tick);
+    if (!fa) continue;
+    ticks++;
+    for (const [id, p] of Object.entries(fh.players)) {
+      const q = fa.players[id];
+      if (!q) continue;
+      const d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+      diffs.push(d);
+      if (d > posTol) over++;
+      if (d > max) {
+        max = d;
+        worst = `${id} tick ${tick} (${d.toFixed(2)} m)`;
+      }
+    }
+    mids.push(
+      Math.hypot(
+        (fh.cam[0] + fa.cam[0]) / 2 - fh.ball[0],
+        (fh.cam[2] + fa.cam[2]) / 2 - fh.ball[2],
+      ),
+    );
+    yMax = Math.max(yMax, Math.abs(fh.cam[1] - fa.cam[1]));
+  }
+  const p95 = (xs: number[]) => [...xs].sort((x, y) => x - y)[Math.floor(xs.length * 0.95)] ?? 0;
+  const midP95 = p95(mids);
+  return {
+    ticks,
+    pos: { p95: p95(diffs), max, over, worst },
+    cam: {
+      midToBallP95: midP95,
+      yDiffMax: yMax,
+      flipOk: ticks > 0 && midP95 <= camTol && yMax < 0.5,
+    },
+  };
+}
