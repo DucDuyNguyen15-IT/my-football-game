@@ -169,7 +169,9 @@ test('soi chuyển động: trận autopilot → log + báo cáo + clip', async 
             `[ảnh ghép](${clips[i]!.sheet}) — ${clips[i]!.labelled ? 'nhãn vàng = giây trong video' : 'không có nhãn: ô đọc trái→phải, trên→dưới, ~7 khung/giây từ đầu đoạn'}`,
           ]
         : []),
-      ...w.issues.map((x) => `- ${KIND_VI[x.kind]} · \`${x.who}\`${posAt(x.who, w.from)} · ${x.detail}`),
+      ...w.issues.map(
+        (x) => `- ${KIND_VI[x.kind]} · \`${x.who}\`${posAt(x.who, w.from)} · ${x.detail}`,
+      ),
       '',
     ]),
     consoleErrors.length

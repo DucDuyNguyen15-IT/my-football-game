@@ -22,13 +22,31 @@ export interface ClipResult {
  * Cắt `video` từ giây `from` đến `to` thành `<base>.mp4` trong `outDir`, rồi (nếu bật) ghép khung
  * hình lấy mẫu ~7 khung/giây thành lưới 4 cột `<base>.png`. Ném lỗi nếu ffmpeg lỗi.
  */
-export function cutClip(video: string, outDir: string, base: string, from: number, to: number): ClipResult {
+export function cutClip(
+  video: string,
+  outDir: string,
+  base: string,
+  from: number,
+  to: number,
+): ClipResult {
   const clipName = `${base}.mp4`;
   const clipPath = join(outDir, clipName);
   const ff = (args: string[]) => execFileSync('ffmpeg', ['-loglevel', 'error', '-y', ...args]);
   ff([
-    '-ss', from.toFixed(2), '-to', to.toFixed(2), '-i', video,
-    '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '26', '-an', clipPath,
+    '-ss',
+    from.toFixed(2),
+    '-to',
+    to.toFixed(2),
+    '-i',
+    video,
+    '-c:v',
+    'libx264',
+    '-preset',
+    'veryfast',
+    '-crf',
+    '26',
+    '-an',
+    clipPath,
   ]);
   if (!sheetsEnabled()) return { clip: clipName };
 
@@ -40,9 +58,13 @@ export function cutClip(video: string, outDir: string, base: string, from: numbe
     : '';
   const sheetName = `${base}.png`;
   ff([
-    '-i', clipPath,
-    '-vf', `fps=${(n / dur).toFixed(3)},scale=480:-2${label},tile=4x${rows}`,
-    '-frames:v', '1', join(outDir, sheetName),
+    '-i',
+    clipPath,
+    '-vf',
+    `fps=${(n / dur).toFixed(3)},scale=480:-2${label},tile=4x${rows}`,
+    '-frames:v',
+    '1',
+    join(outDir, sheetName),
   ]);
   return { clip: clipName, sheet: sheetName, labelled: hasFont };
 }

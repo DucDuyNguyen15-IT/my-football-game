@@ -17,6 +17,8 @@ export interface MotionFrame {
   /** Màn chuyển cảnh đang che sân (vị trí nhảy lúc này người xem không thấy). */
   covered: boolean;
   cam: [number, number, number];
+  /** Điểm camera nhìn vào. */
+  look: [number, number, number];
   ball: [number, number, number];
   /** id → [x, z, rot, clip]. */
   players: Record<string, [number, number, number, string]>;
@@ -45,6 +47,7 @@ export class MotionRecorder implements MotionLog {
       ...f,
       ms: r3(f.ms),
       cam: f.cam.map(r3) as MotionFrame['cam'],
+      look: f.look.map(r3) as MotionFrame['look'],
       ball: f.ball.map(r3) as MotionFrame['ball'],
       players,
     });
@@ -167,8 +170,10 @@ export function analyzeMotion(
     .sort((a, b) => a - b);
   const median = sorted[Math.floor(sorted.length / 2)] ?? 16.7;
   const hitch = Math.max(th.hitchMs, th.hitchFactor * median);
+  // Bỏ 3 s đầu: tải model / biên dịch shader lúc vào trận, không phải lỗi gameplay.
+  const warm = (f[0]?.t ?? 0) + 3000;
   f.forEach((x, i) => {
-    if (x.ms > hitch)
+    if (x.ms > hitch && x.t >= warm)
       issue(
         'hitch',
         'frame',
@@ -326,8 +331,8 @@ export interface PvpCompare {
   ticks: number;
   /** Lệch vị trí cầu thủ (m) cùng tick: p95, max, số (tick, cầu thủ) vượt `posTol`, ví dụ tệ nhất. */
   pos: { p95: number; max: number; over: number; worst: string };
-  /** Camera: trung điểm hai camera (x,z) phải trùng điểm nhìn (≈ bóng); `y` lệch độ cao hai bên. */
-  cam: { midToBallP95: number; yDiffMax: number; flipOk: boolean };
+  /** Camera: trung điểm hai camera (x,z) phải trùng điểm nhìn; `y` lệch độ cao hai bên. */
+  cam: { midToLookP95: number; yDiffMax: number; flipOk: boolean };
 }
 
 const lastPerTick = (log: MotionLog): Map<number, MotionFrame> => {
@@ -339,13 +344,13 @@ const lastPerTick = (log: MotionLog): Map<number, MotionFrame> => {
 /**
  * Đội nhà vs đội khách cùng một trận lockstep: vị trí cầu thủ cùng tick phải gần nhau (sai số do nội suy
  * khung vẽ, `posTol`), camera khách = camera nhà lật 180° quanh điểm nhìn (`flipCamera`) nên trung điểm
- * x,z của hai camera nằm gần bóng (`camTol` m) và cùng độ cao.
+ * x,z của hai camera trùng điểm nhìn (p95 ≤ `camTol` m; góc đá phạt sau lưng một bên làm lệch vài tick) và cùng độ cao.
  */
 export function compareMotion(
   home: MotionLog,
   away: MotionLog,
   posTol = 0.6,
-  camTol = 12,
+  camTol = 1,
 ): PvpCompare {
   const h = lastPerTick(home);
   const a = lastPerTick(away);
@@ -373,8 +378,8 @@ export function compareMotion(
     }
     mids.push(
       Math.hypot(
-        (fh.cam[0] + fa.cam[0]) / 2 - fh.ball[0],
-        (fh.cam[2] + fa.cam[2]) / 2 - fh.ball[2],
+        (fh.cam[0] + fa.cam[0]) / 2 - fh.look[0],
+        (fh.cam[2] + fa.cam[2]) / 2 - fh.look[2],
       ),
     );
     yMax = Math.max(yMax, Math.abs(fh.cam[1] - fa.cam[1]));
@@ -385,7 +390,7 @@ export function compareMotion(
     ticks,
     pos: { p95: p95(diffs), max, over, worst },
     cam: {
-      midToBallP95: midP95,
+      midToLookP95: midP95,
       yDiffMax: yMax,
       flipOk: ticks > 0 && midP95 <= camTol && yMax < 0.5,
     },

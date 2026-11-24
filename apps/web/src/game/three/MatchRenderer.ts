@@ -221,6 +221,7 @@ export class MatchRenderer {
   /** Soi chuyển động (`?motion=1`, review C5): ghi từng khung đã vẽ vào `window.__motionLog`. */
   private motion: MotionRecorder | null = null;
   private frameMs = 0;
+  private camLook = { x: 0, y: 0, z: 0 };
   private readonly stingerEnabled =
     typeof window === 'undefined' ||
     new URLSearchParams(window.location.search).get('stinger') !== '0';
@@ -871,6 +872,7 @@ export class MatchRenderer {
           : 'live',
       covered: covered || this.transition.isHidingPlay(),
       cam: [c.x, c.y, c.z],
+      look: [this.camLook.x, this.camLook.y, this.camLook.z],
       ball: [b.x, b.y, b.z],
       players,
     });
@@ -1155,6 +1157,7 @@ export class MatchRenderer {
     this.boards.update(timeSec);
     this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + flip * dolly.z);
     this.camera.lookAt(look.x, look.y, look.z);
+    this.camLook = look;
     this.drawCountdown(cameraOverride || this.cutHold ? null : countdownRing(this.curr, this.side));
     // Điểm chạm: chỉ khi sân không bị chuyển cảnh che / giữ khung.
     const contact =

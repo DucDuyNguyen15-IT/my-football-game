@@ -23,6 +23,7 @@ function makeLog(
       mode: 'live',
       covered: false,
       cam: [0, 20, 30 + i * 0.05],
+      look: [0, 0, 0],
       ball: [i * 0.1, 0.11, 0],
       players: { p: player(i) },
       ...extra(i),
@@ -79,12 +80,13 @@ describe('analyzeMotion', () => {
       }),
     );
     expect(kinds(shake)).toContain('camera_shake');
+    // Khung dài trong 3 s đầu (tải model) bỏ qua; sau đó thì báo.
     const hitch = makeLog(
-      60,
+      300,
       () => [0, 0, 0, 'idle'],
-      (i) => (i === 30 ? { ms: 120 } : {}),
+      (i) => (i === 30 || i === 240 ? { ms: 120 } : {}),
     );
-    expect(kinds(hitch)).toEqual(['hitch']);
+    expect(analyzeMotion(hitch).map((x) => [x.kind, x.tick])).toEqual([['hitch', 240]]);
   });
 });
 
@@ -127,6 +129,7 @@ describe('compareMotion', () => {
     mode: 'live',
     covered: false,
     cam: [camX, 20, camZ],
+    look: [5, 0, 0],
     ball: [5, 0.1, 0],
     players: { p: [x, 0, 0, 'run'] },
   });

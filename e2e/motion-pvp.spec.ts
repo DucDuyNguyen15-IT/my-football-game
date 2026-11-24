@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { expect, test, type Page } from '@playwright/test';
@@ -10,6 +9,7 @@ import {
   type MotionIssue,
   type MotionLog,
 } from '../apps/web/src/game/render/motionLog';
+import { cutClip } from './motionMedia';
 
 /**
  * Soi chuyển động bản PvP (review C5): hai context (nhà + khách) đá trận giao hữu qua phòng, mỗi trang
@@ -74,34 +74,18 @@ async function analyzeSide(s: Side, log: MotionLog, video: string | undefined, l
   const windows = clipWindows(issues);
   const toVideo = (t: number) => Math.max(0, (t - s.videoStart) / 1000);
   const clips: string[] = [];
+  const sheets: string[] = [];
   const ranked = windows
     .map((w, i) => ({ ...w, i }))
     .sort((a, b) => b.issues.length - a.issues.length)
     .slice(0, MAX_CLIPS);
   if (video) {
     for (const w of ranked) {
-      const name = `clip-${String(w.i + 1).padStart(2, '0')}-${sec(w.from - s.videoStart)}s.mp4`;
+      const name = `clip-${String(w.i + 1).padStart(2, '0')}-${sec(w.from - s.videoStart)}s`;
       try {
-        execFileSync('ffmpeg', [
-          '-loglevel',
-          'error',
-          '-y',
-          '-ss',
-          toVideo(w.from).toFixed(2),
-          '-to',
-          toVideo(w.to).toFixed(2),
-          '-i',
-          video,
-          '-c:v',
-          'libx264',
-          '-preset',
-          'veryfast',
-          '-crf',
-          '26',
-          '-an',
-          join(s.dir, name),
-        ]);
-        clips[w.i] = name;
+        const r = cutClip(video, s.dir, name, toVideo(w.from), toVideo(w.to));
+        clips[w.i] = r.clip;
+        if (r.sheet) sheets[w.i] = r.sheet;
       } catch (e) {
         s.errors.push(`ffmpeg lỗi (${name}): ${String(e)}`);
       }
@@ -127,7 +111,7 @@ async function analyzeSide(s: Side, log: MotionLog, video: string | undefined, l
     '## Đoạn nghi (giây tính theo video)',
     '',
     ...windows.flatMap((w, i) => [
-      `### ${i + 1}. ${sec(w.from - s.videoStart)}–${sec(w.to - s.videoStart)} s · tick ${w.issues[0]!.tick} · ${w.issues[0]!.phase}${clips[i] ? ` · [${clips[i]}](${clips[i]})` : ''}`,
+      `### ${i + 1}. ${sec(w.from - s.videoStart)}–${sec(w.to - s.videoStart)} s · tick ${w.issues[0]!.tick} · ${w.issues[0]!.phase}${clips[i] ? ` · [${clips[i]}](${clips[i]})` : ''}${sheets[i] ? ` · [ảnh ghép](${sheets[i]})` : ''}`,
       ...w.issues.map((x) => `- ${KIND_VI[x.kind]} · \`${x.who}\` · ${x.detail}`),
       '',
     ]),
@@ -207,12 +191,12 @@ test('soi chuyển động PvP: hai bên đá autopilot → log + báo cáo + so
         '',
         `- Tick có ở cả hai log: ${cmp.ticks}`,
         `- Vị trí cầu thủ cùng tick (khung cuối mỗi tick): lệch p95 ${cmp.pos.p95.toFixed(2)} m, max ${cmp.pos.max.toFixed(2)} m, ${cmp.pos.over} mẫu vượt ngưỡng 0.6 m (tệ nhất: ${cmp.pos.worst}) → ${cmp.pos.over === 0 ? 'TRÙNG' : 'LỆCH'}`,
-        `- Camera khách = lật camera nhà: trung điểm x,z hai camera cách bóng p95 ${cmp.cam.midToBallP95.toFixed(1)} m, lệch độ cao max ${cmp.cam.yDiffMax.toFixed(2)} m → ${cmp.cam.flipOk ? 'LẬT ĐÚNG' : 'KHÔNG KHỚP'}`,
+        `- Camera khách = lật camera nhà: trung điểm x,z hai camera cách điểm nhìn p95 ${cmp.cam.midToLookP95.toFixed(1)} m, lệch độ cao max ${cmp.cam.yDiffMax.toFixed(2)} m → ${cmp.cam.flipOk ? 'LẬT ĐÚNG' : 'KHÔNG KHỚP'}`,
         '',
       ].join('\n'),
     );
     console.info(
-      `[motion-pvp] nhà ${rh.frames} khung/${rh.issues} phát hiện, khách ${ra.frames} khung/${ra.issues}; vị trí over=${cmp.pos.over} max=${cmp.pos.max.toFixed(2)}; cam flipOk=${cmp.cam.flipOk} (midToBall p95 ${cmp.cam.midToBallP95.toFixed(1)}, yDiff ${cmp.cam.yDiffMax.toFixed(2)}) → ${join(OUT, 'report.md')}`,
+      `[motion-pvp] nhà ${rh.frames} khung/${rh.issues} phát hiện, khách ${ra.frames} khung/${ra.issues}; vị trí over=${cmp.pos.over} max=${cmp.pos.max.toFixed(2)}; cam flipOk=${cmp.cam.flipOk} (midToLook p95 ${cmp.cam.midToLookP95.toFixed(1)}, yDiff ${cmp.cam.yDiffMax.toFixed(2)}) → ${join(OUT, 'report.md')}`,
     );
   } finally {
     await Promise.all([home.ctx.close().catch(() => {}), away.ctx.close().catch(() => {})]);
