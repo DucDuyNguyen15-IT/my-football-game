@@ -894,6 +894,13 @@ export const en: Record<TranslationKey, string> = {
   'pvp.friendlyDesc':
     'Friendly matches award no coins, do not count toward missions, and do not use daily rewarded matches.',
   'pvp.roomTitle': 'Play with a friend by room code',
+  'pvp.queueTitle': 'Random match (Ranked)',
+  'pvp.queueDesc': 'Match with another player in queue; awards Hard-difficulty coin rewards.',
+  'pvp.findMatch': 'Find match',
+  'pvp.searching': 'Finding opponent…',
+  'pvp.waitedTime': 'Waited {seconds}s',
+  'pvp.playCpu': 'Play vs AI',
+  'pvp.queueTimeout': 'No opponent found, please try again later.',
   'pvp.createRoom': 'Create room',
   'pvp.roomCodeLabel': 'Your room code',
   'pvp.copyCode': 'Copy code',

@@ -892,6 +892,13 @@ export const vi = {
   'pvp.friendlyDesc':
     'Trận giao hữu với bạn bè không cộng xu, không tính nhiệm vụ và không trừ lượt ngày.',
   'pvp.roomTitle': 'Đá với bạn bằng mã phòng',
+  'pvp.queueTitle': 'Tìm trận ngẫu nhiên (Xếp hạng)',
+  'pvp.queueDesc': 'Ghép đối thủ ngẫu nhiên, thưởng xu theo bảng đấu máy mức Khó.',
+  'pvp.findMatch': 'Tìm trận',
+  'pvp.searching': 'Đang tìm đối thủ…',
+  'pvp.waitedTime': 'Đã chờ {seconds}s',
+  'pvp.playCpu': 'Đá với máy',
+  'pvp.queueTimeout': 'Chưa tìm được đối thủ, thử lại sau.',
   'pvp.createRoom': 'Tạo phòng',
   'pvp.roomCodeLabel': 'Mã phòng của bạn',
   'pvp.copyCode': 'Sao chép mã',

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Link } from 'react-router';
 import { ROOM_CODE_ALPHABET, type PvpErrorCode } from '@pitch/shared';
+import { useMe } from '../../api/auth';
 import { Topbar } from '../../app/AppLayout';
 import { useI18n } from '../../i18n/I18nContext';
 import type { TranslationKey } from '../../i18n/vi';
@@ -12,11 +13,21 @@ export interface LobbyRoom {
   expiresAt: string;
 }
 
+export interface LobbyQueue {
+  waitedSec: number;
+  offerCpu: boolean;
+}
+
 export interface PvpLobbyProps {
   connected: boolean;
   reconnecting: boolean;
   room: LobbyRoom | null;
+  queue: LobbyQueue | null;
+  queueTimeout: boolean;
   error: PvpErrorCode | null;
+  onJoinQueue: () => void;
+  onLeaveQueue: () => void;
+  onPlayCpu: () => void;
   onCreateRoom: () => void;
   onJoinRoom: (code: string) => void;
   onLeaveRoom: () => void;
@@ -32,17 +43,24 @@ export function PvpLobby({
   connected,
   reconnecting,
   room,
+  queue,
+  queueTimeout,
   error,
+  onJoinQueue,
+  onLeaveQueue,
+  onPlayCpu,
   onCreateRoom,
   onJoinRoom,
   onLeaveRoom,
 }: PvpLobbyProps) {
   const { t } = useI18n();
+  const me = useMe().data;
   const [codeInput, setCodeInput] = useState('');
   const [copied, setCopied] = useState(false);
 
   const normalizedCode = codeInput.trim().toUpperCase();
   const codeValid = VALID_CODE_RE.test(normalizedCode);
+  const capReached = !!me && me.rewardedMatchesToday >= me.rewardedMatchesLimit;
 
   const handleCopy = async () => {
     if (!room) return;
@@ -86,6 +104,59 @@ export function PvpLobby({
         )}
 
         <div className="pvp-grid">
+          <section className="panel pvp-card" aria-labelledby="pvp-queue-title">
+            <h2 id="pvp-queue-title" className="h3">
+              {t('pvp.queueTitle')}
+            </h2>
+            <p className="muted">{t('pvp.queueDesc')}</p>
+            {capReached && (
+              <div className="banner" role="note">
+                <span>
+                  <b>{t('pm.capBannerBold')}</b>{' '}
+                  {t('pm.capBannerText', { limit: me.rewardedMatchesLimit })}
+                </span>
+              </div>
+            )}
+            {queueTimeout && !queue && (
+              <div className="banner" role="status">
+                <span>{t('pvp.queueTimeout')}</span>
+              </div>
+            )}
+            {queue ? (
+              <>
+                <div className="pvp-code-box" role="status">
+                  <div>
+                    <div className="display">{t('pvp.searching')}</div>
+                    <span className="muted num">
+                      {t('pvp.waitedTime', { seconds: queue.waitedSec })}
+                    </span>
+                  </div>
+                </div>
+                <div className="pvp-actions">
+                  <button type="button" className="btn btn--danger" onClick={onLeaveQueue}>
+                    {t('common.cancel')}
+                  </button>
+                  {queue.offerCpu && (
+                    <button type="button" className="btn btn--secondary" onClick={onPlayCpu}>
+                      {t('pvp.playCpu')}
+                    </button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="pvp-actions">
+                <button
+                  type="button"
+                  className="btn btn--primary btn--lg"
+                  disabled={!connected || room !== null}
+                  onClick={onJoinQueue}
+                >
+                  {t('pvp.findMatch')}
+                </button>
+              </div>
+            )}
+          </section>
+
           <section className="panel pvp-card" aria-labelledby="pvp-room-title">
             <h2 id="pvp-room-title" className="h3">
               {t('pvp.roomTitle')}
@@ -128,7 +199,7 @@ export function PvpLobby({
                   <button
                     type="button"
                     className="btn btn--primary btn--lg"
-                    disabled={!connected}
+                    disabled={!connected || queue !== null}
                     onClick={onCreateRoom}
                   >
                     {t('pvp.createRoom')}
@@ -139,7 +210,7 @@ export function PvpLobby({
                   className="pvp-join-form"
                   onSubmit={(e) => {
                     e.preventDefault();
-                    if (connected && codeValid) onJoinRoom(normalizedCode);
+                    if (connected && codeValid && queue === null) onJoinRoom(normalizedCode);
                   }}
                 >
                   <label htmlFor="pvp-room-input" className="sr-only">
@@ -162,7 +233,7 @@ export function PvpLobby({
                   <button
                     type="submit"
                     className="btn btn--secondary btn--lg"
-                    disabled={!connected || !codeValid}
+                    disabled={!connected || !codeValid || queue !== null}
                   >
                     {t('pvp.joinBtn')}
                   </button>

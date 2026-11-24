@@ -1,10 +1,10 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useSearchParams } from 'react-router';
+import { useNavigate, useSearchParams } from 'react-router';
 import { useQueryClient } from '@tanstack/react-query';
 import type { PvpErrorCode, PvpServerMessage } from '@pitch/shared';
 import { readDevOptions } from '../play/hud';
 import { isTouchOnly, NeedKeyboard } from '../play/PreMatch';
-import { PvpLobby, type LobbyRoom } from './PvpLobby';
+import { PvpLobby, type LobbyQueue, type LobbyRoom } from './PvpLobby';
 import { PvpMatchPage, type EndMessage, type MatchedMessage } from './PvpMatchPage';
 import {
   createPvpClient,
@@ -54,6 +54,7 @@ const INITIAL_STATUS: PvpClientStatus = {
 
 export function PvpPage() {
   const [params] = useSearchParams();
+  const navigate = useNavigate();
   const qc = useQueryClient();
   const dev =
     import.meta.env.DEV || import.meta.env.MODE === 'test'
@@ -64,6 +65,8 @@ export function PvpPage() {
   const [client, setClient] = useState<PvpClient | null>(null);
   const [status, setStatus] = useState<PvpClientStatus>(INITIAL_STATUS);
   const [room, setRoom] = useState<LobbyRoom | null>(null);
+  const [queue, setQueue] = useState<LobbyQueue | null>(null);
+  const [queueTimeout, setQueueTimeout] = useState(false);
   const [error, setError] = useState<PvpErrorCode | null>(null);
   const [matched, setMatched] = useState<MatchedMessage | null>(null);
   const [countdownMs, setCountdownMs] = useState<number | null>(null);
@@ -86,7 +89,18 @@ export function PvpPage() {
         switch (m.t) {
           case 'room_created':
             setError(null);
+            setQueue(null);
+            setQueueTimeout(false);
             setRoom({ code: m.code, expiresAt: m.expiresAt });
+            break;
+          case 'queue_status':
+            setError(null);
+            setQueueTimeout(false);
+            setQueue({ waitedSec: m.waitedSec, offerCpu: m.offerCpu });
+            break;
+          case 'queue_timeout':
+            setQueue(null);
+            setQueueTimeout(true);
             break;
           case 'error':
             if (m.code !== 'busy') setError(m.code);
@@ -95,6 +109,8 @@ export function PvpPage() {
           case 'matched':
             setError(null);
             setRoom(null);
+            setQueue(null);
+            setQueueTimeout(false);
             setCountdownMs(null);
             setOppDisconnectedUntil(null);
             setEnded(null);
@@ -132,6 +148,8 @@ export function PvpPage() {
     setOppDisconnectedUntil(null);
     setEnded(null);
     setRoom(null);
+    setQueue(null);
+    setQueueTimeout(false);
     setError(null);
     setConnSeq((n) => n + 1);
   }, []);
@@ -162,7 +180,23 @@ export function PvpPage() {
       connected={status.connected}
       reconnecting={status.reconnecting}
       room={room}
+      queue={queue}
+      queueTimeout={queueTimeout}
       error={error}
+      onJoinQueue={() => {
+        setError(null);
+        setQueueTimeout(false);
+        client?.send({ t: 'queue_join' });
+      }}
+      onLeaveQueue={() => {
+        client?.send({ t: 'queue_leave' });
+        setQueue(null);
+      }}
+      onPlayCpu={() => {
+        client?.send({ t: 'queue_leave' });
+        setQueue(null);
+        void navigate('/play');
+      }}
       onCreateRoom={() => {
         setError(null);
         client?.send({ t: 'room_create' });

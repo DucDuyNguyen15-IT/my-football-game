@@ -78,3 +78,69 @@ test('kịch bản phòng (US1): tạo phòng, nhập mã, đá autopilot hết 
     await Promise.all([a.ctx.close(), b.ctx.close()]);
   }
 });
+
+async function walletCoins(page: Page): Promise<number> {
+  const label = await page.locator('.topbar .coin').getAttribute('aria-label');
+  const coins = Number(label?.replace(/\D/g, ''));
+  expect(Number.isFinite(coins), `không đọc được số xu từ "${label}"`).toBe(true);
+  return coins;
+}
+
+test('kịch bản hàng chờ (US2): hai tài khoản cùng Tìm trận, đá hết trận và số dư xu tăng đúng', async ({
+  browser,
+}) => {
+  const a = await setupPlayer(browser, 'pvpqa');
+  const b = await setupPlayer(browser, 'pvpqb');
+
+  try {
+    await Promise.all([a.page.goto('/pvp'), b.page.goto('/pvp')]);
+    await expect(a.page.getByRole('button', { name: 'Tìm trận' })).toBeEnabled({ timeout: 15_000 });
+    await expect(b.page.getByRole('button', { name: 'Tìm trận' })).toBeEnabled({ timeout: 15_000 });
+
+    const startCoinsA = await walletCoins(a.page);
+    const startCoinsB = await walletCoins(b.page);
+
+    await a.page.getByRole('button', { name: 'Tìm trận' }).click();
+    await b.page.getByRole('button', { name: 'Tìm trận' }).click();
+
+    await Promise.all([
+      expect(a.page.locator('.hud-score')).toBeVisible({ timeout: 20_000 }),
+      expect(b.page.locator('.hud-score')).toBeVisible({ timeout: 20_000 }),
+    ]);
+
+    await Promise.all([
+      expect(a.page.locator('#result-title')).toBeVisible({ timeout: 180_000 }),
+      expect(b.page.locator('#result-title')).toBeVisible({ timeout: 180_000 }),
+    ]);
+
+    const scoreA = (await a.page.locator('.result__goals').innerText()).trim();
+    const scoreB = (await b.page.locator('.result__goals').innerText()).trim();
+    expect(scoreA).toBe(scoreB);
+
+    const readGain = async (page: Page) => {
+      const txt = (await page.locator('.result-reward').innerText()).replace(/\s+/g, ' ');
+      const m = /\+\s*([\d.]+)/.exec(txt);
+      const gain = Number(m?.[1]?.replace(/\./g, ''));
+      expect(gain, `thưởng trong "${txt}"`).toBeGreaterThan(0);
+      return gain;
+    };
+    const gainA = await readGain(a.page);
+    const gainB = await readGain(b.page);
+
+    await Promise.all([
+      a.page.getByRole('link', { name: 'Về trang chủ' }).click(),
+      b.page.getByRole('link', { name: 'Về trang chủ' }).click(),
+    ]);
+
+    await expect(a.page.locator('.topbar .coin')).toHaveAttribute(
+      'aria-label',
+      `${startCoinsA + gainA} xu`,
+    );
+    await expect(b.page.locator('.topbar .coin')).toHaveAttribute(
+      'aria-label',
+      `${startCoinsB + gainB} xu`,
+    );
+  } finally {
+    await Promise.all([a.ctx.close(), b.ctx.close()]);
+  }
+});

@@ -251,12 +251,12 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - nếu cặp hai user đã có quá 3 trận `ranked` `finished` trong ngày (tính theo `finished_at`, GMT+7) thì `reward = 0`, `rewardReason='same_opponent_limit'` (FR-017);
   - người hết giới hạn 15 trận/ngày thì `reward = 0`, `rewardReason='daily_cap'`.
 - [x] T037 [P] [US2] Test `apps/server/src/services/pvp/queue.test.ts`: ghép đúng thứ tự FIFO; huỷ chờ; `offerCpu` sau 60 s; hết hạn sau 5 phút; người đang `busy` bị từ chối; trùng cặp từ trận thứ 4 không thưởng; thưởng đúng bảng `MATCH_REWARD.hard`; trận ranked tính nhiệm vụ chung nhưng **không** tính `match_hard`.
-- [ ] T038 [US2] Trong `apps/web/src/features/pvp/PvpLobby.tsx`:
+- [x] T038 [US2] Trong `apps/web/src/features/pvp/PvpLobby.tsx`:
   - nút Tìm trận, trạng thái "Đang tìm đối thủ…" kèm thời gian chờ và nút Huỷ;
   - sau 60 s hiện nút "Đá với máy" (gửi `queue_leave` rồi điều hướng sang `/play`);
   - báo khi hết 5 phút;
   - chuỗi vi/en.
-- [ ] T039 [US2] Thêm kịch bản hàng chờ vào `e2e/pvp.spec.ts`: hai context cùng Tìm trận, trận kết thúc, số dư xu của cả hai tăng đúng.
+- [x] T039 [US2] Thêm kịch bản hàng chờ vào `e2e/pvp.spec.ts`: hai context cùng Tìm trận, trận kết thúc, số dư xu của cả hai tăng đúng.
 
 ---
 
