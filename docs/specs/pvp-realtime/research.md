@@ -95,7 +95,7 @@ Mỗi mục ghi: Quyết định, Lý do, Phương án đã cân nhắc.
   - Thêm `MatchSetup.humans?: TeamSide[]`, mặc định `['home']`.
   - Các trường điều khiển (`controlledId`, `shotChargeTicks`, `passCharge`, `input`, `actionDeadline`, `passReceiver`) thành `Record<TeamSide, …>`.
   - Hàm mới `stepBoth(state, {home, away})`. Hàm `step(state, input)` cũ gọi `stepBoth` với away là `NO_INPUT`.
-  - Nghỉ giữa hiệp: một trong hai người bấm chuyền là đá tiếp, hoặc hết giờ.
+  - Nghỉ giữa hiệp: cả hai người bấm chuyền mới đá tiếp, không thì tự đá sau 30 s.
   - Hai đội người đều dùng AI profile `teammate`.
 - **Lý do:** code đấu máy không phải sửa. Golden hash một người chơi phải giữ nguyên (SC-007).
 - **Rủi ro:** `match.ts` dài 1778 dòng, có khoảng 20 chỗ dùng `HUMAN_TEAM`. Đổi kiểu dữ liệu có thể làm đổi thứ tự khoá JSON và làm đổi golden hash. Phải giữ thứ tự khoá cũ cho trường hợp một người chơi, hoặc đổi cách băm thành băm theo các trường có thứ tự cố định.
