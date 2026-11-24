@@ -1,9 +1,10 @@
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { MatchSetup } from '@pitch/sim';
 import type { GraphicsSettings, MatchBridge } from './bridge';
 import { DEFAULT_GRAPHICS } from './render/quality';
 import { MatchRenderer } from './three/MatchRenderer';
 import type { NetMatch } from '../features/pvp/useNetMatch';
+import { useI18n } from '../i18n/I18nContext';
 
 /**
  * Ranh giới React ↔ Three.js (ADR-0003, ADR-0009): tạo renderer khi mount, huỷ hẳn (canvas, WebGL
@@ -28,18 +29,29 @@ export function MatchCanvas({
   const rendererRef = useRef<MatchRenderer | null>(null);
   const graphicsRef = useRef(graphics);
   const avatarSeedsRef = useRef(avatarSeeds);
+  const [failed, setFailed] = useState(false);
+  const { t } = useI18n();
 
   useEffect(() => {
     const parent = hostRef.current;
     if (!parent) return;
-    const renderer = new MatchRenderer(
-      parent,
-      setup,
-      bridge,
-      graphicsRef.current,
-      avatarSeedsRef.current,
-      net,
-    );
+    let renderer: MatchRenderer;
+    try {
+      renderer = new MatchRenderer(
+        parent,
+        setup,
+        bridge,
+        graphicsRef.current,
+        avatarSeedsRef.current,
+        net,
+      );
+    } catch (err) {
+      // Không có WebGL (tắt tăng tốc phần cứng, hết context): báo lỗi thay vì trắng cả app (C4 G4).
+      console.error(err);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- lỗi từ hệ ngoài (WebGL), chỉ một lần
+      setFailed(true);
+      return;
+    }
     rendererRef.current = renderer;
     return () => {
       rendererRef.current = null;
@@ -57,6 +69,13 @@ export function MatchCanvas({
     rendererRef.current?.setAvatarSeeds(avatarSeeds);
   }, [avatarSeeds]);
 
+  if (failed) {
+    return (
+      <div className="screen-msg" role="alert">
+        <p>{t('match.webglError')}</p>
+      </div>
+    );
+  }
   return (
     <div
       ref={hostRef}

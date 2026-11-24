@@ -100,6 +100,8 @@ export const vi = {
   'card.ariaLabel': '{rarity}, {name}, {position}, OVR {ovr}',
   'card.ariaLevel': ', cấp +{level}',
 
+  'match.webglError': 'Trình duyệt không mở được đồ hoạ 3D (WebGL). Hãy bật tăng tốc phần cứng hoặc thử trình duyệt khác.',
+
   // Intro 3D
   'intro.skip': 'Bấm phím bất kỳ để bỏ qua',
   'intro.tagline': 'My Football Game',

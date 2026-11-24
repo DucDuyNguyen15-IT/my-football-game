@@ -102,6 +102,8 @@ export const en: Record<TranslationKey, string> = {
   'card.ariaLabel': '{rarity}, {name}, {position}, OVR {ovr}',
   'card.ariaLevel': ', level +{level}',
 
+  'match.webglError': 'Your browser could not start 3D graphics (WebGL). Turn on hardware acceleration or try another browser.',
+
   // Intro 3D
   'intro.skip': 'Press any key to skip',
   'intro.tagline': 'My Football Game',

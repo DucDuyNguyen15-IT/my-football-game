@@ -67,6 +67,8 @@ export interface NetMatch {
   /** Vòng vẽ: state trễ theo bộ đệm jitter, đã nội suy. null khi chưa có trận. */
   display(dtSec: number): { prev: MatchState; curr: MatchState; alpha: number } | null;
   delayFrames(): number;
+  /** State đã nhận ở `tick` (kẹp về khoảng còn giữ), để vòng vẽ xét sự kiện của tick bị nhảy qua. */
+  stateAt(tick: number): MatchState | null;
   send(msg: PvpClientMessage): void;
   /** Gửi `input` chỉ khi mã đổi. */
   sendInput(code: number): void;
@@ -206,6 +208,7 @@ export function createNetMatch(opts: NetMatchOptions): NetMatch {
     },
     state: () => state,
     delayFrames: () => jitter.delayFrames(),
+    stateAt: (tick) => history.at(tick),
     display(dtSec) {
       if (!state || queue) return null;
       const c = cursor.advance(dtSec, history.latestTick(), jitter.delayFrames());
