@@ -39,6 +39,8 @@ function canSubstituteNow(state: MatchState): boolean;   // bóng chết?
 
 **Thay người (server):** mỗi đội tối đa 1 lệnh chờ, lệnh mới thay lệnh cũ. Tới bóng chết mà `checkSubStructure` lại sai (ví dụ cầu thủ vừa nhận thẻ đỏ) thì `sub_rejected` muộn và bỏ lệnh.
 
+**Trần luân lưu (C1-5):** mỗi đội tối đa `SHOOTOUT_MAX_KICKS` = 10 lượt (5 thường + 5 sudden death) để tổng tick một trận (~26.000 + 20 x ~1.000) luôn nhỏ hơn `MAX_LOG_TICKS` = 64.800 của `InputRecorder2`. Hoà sau 10 lượt: bốc thăm tất định bằng `nextFloat(state.rng)` (chỉ tiêu rng ở đúng lúc này), đội thắng được ghi thêm một lượt vào (true) nên mọi nơi vẫn suy ra đội thắng từ số bàn. Replay: lượt thay người ở tick đúng bằng tổng tick vẫn được áp; log có thay người của đội không thuộc `humans` bị `ReplayLogError`.
+
 **Test bắt buộc:**
 - Golden hash của `step` một người chơi giữ nguyên (ghi trước refactor, xem trên).
 - Task tách hai người phải phủ thêm `stepShootout` (`match.ts:854`), `humanRestart` (`match.ts:927`, đang dùng `HUMAN_TEAM`) và `nearestHuman` (`match.ts:200`), kèm test luân lưu với hai người chơi.

@@ -6,7 +6,7 @@ import { TICK_RATE } from '../tick';
 import { NO_INPUT, type MatchState, type PlayerInput } from '../types';
 import { PENALTY_RUNUP_TICKS } from './setPieceAim';
 import { PENALTY_STANDOFF } from './restarts';
-import { nextShooter, shooterFor, shootoutWinner, type ShootoutTally } from './shootout';
+import { capTally, nextShooter, shooterFor, shootoutWinner, type ShootoutTally } from './shootout';
 
 const T = true;
 const F = false;
@@ -179,5 +179,20 @@ describe('luân lưu trong trận', () => {
     s = runUntil(s, (x) => x.shootout!.home.length === 1, 5 * TICK_RATE);
     expect(s.shootout!.home).toHaveLength(1);
     expect(s.restart?.team).toBe('away');
+  });
+});
+
+describe('trần sudden death', () => {
+  const lvl = (n: number, g: number) => Array.from({ length: n }, (_, i) => i < g);
+  it('capTally: không đổi khi chưa chạm trần hoặc đã phân thắng bại', () => {
+    const a = tally(lvl(9, 5), lvl(9, 5));
+    expect(capTally(a, 0.1)).toBe(a);
+    const b = tally(lvl(10, 6), lvl(10, 5));
+    expect(capTally(b, 0.1)).toBe(b);
+  });
+  it('capTally: hoà sau 10 lượt thì bốc thăm cho một đội thêm một bàn', () => {
+    const t = tally(lvl(10, 5), lvl(10, 5));
+    expect(shootoutWinner(capTally(t, 0.2))).toBe('home');
+    expect(shootoutWinner(capTally(t, 0.7))).toBe('away');
   });
 });

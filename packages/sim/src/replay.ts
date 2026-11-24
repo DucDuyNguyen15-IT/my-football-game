@@ -382,20 +382,28 @@ function fromV1(encoded: string): InputLog2 {
 function runLog(setup: MatchSetup, encoded: string): MatchState {
   const log = encoded.startsWith(LOG_V2_PREFIX) ? decodeLog2(encoded) : fromV1(encoded);
   let s = createMatch(setup);
+  // Giống luồng live: đội máy không có thay người do người chơi gửi.
+  if (log.subs.some((x) => !s.humans.includes(x.team))) {
+    throw new ReplayLogError('Log có thay người của đội không do người chơi');
+  }
   let nextSub = 0;
+  const applySubs = () => {
+    while (log.subs[nextSub]?.tick === s.tick) {
+      const sub = log.subs[nextSub++]!;
+      const r = substitute(s, sub.team, `${sub.team}-${sub.out}`, sub.bench);
+      if (!r.ok) throw new ReplayLogError(`Thay người bị từ chối: ${r.reason}`);
+      s = r.state;
+    }
+  };
   for (const [ticks, home, away] of log.runs) {
     const inputs = { home: decodeInput(home), away: decodeInput(away) };
     for (let i = 0; i < ticks; i++) {
-      while (log.subs[nextSub]?.tick === s.tick) {
-        const sub = log.subs[nextSub++]!;
-        const r = substitute(s, sub.team, `${sub.team}-${sub.out}`, sub.bench);
-        if (!r.ok) throw new ReplayLogError(`Thay người bị từ chối: ${r.reason}`);
-        s = r.state;
-      }
+      applySubs();
       if (s.phase === 'full_time') return s;
       s = stepBoth(s, inputs);
     }
   }
+  applySubs(); // lượt thay ở tick đúng bằng tổng tick (live ghi sub rồi mới tick)
   return s;
 }
 

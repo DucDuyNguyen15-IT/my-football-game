@@ -175,3 +175,32 @@ describe('nhật ký v1 cũ vẫn đọc được', () => {
     }
   });
 });
+
+describe('runLog: thay người ở biên và đội máy (C1-2)', () => {
+  it('thay người ở tick đúng bằng tổng tick vẫn được áp, hash khớp live', () => {
+    const setup = setup2(7);
+    const rec = new InputRecorder2();
+    let s = createMatch(setup);
+    const idle = { home: decodeInput(0), away: decodeInput(0) };
+    for (let i = 0; i < 5; i++) {
+      rec.tick(idle);
+      s = stepBoth(s, idle);
+    }
+    const out = s.players.find((p) => p.team === 'home' && p.position !== 'GK')!;
+    const r = substitute(s, 'home', out.id, 'B1');
+    if (!r.ok) throw new Error(r.reason);
+    s = r.state;
+    rec.sub(s.tick, 'home', out.id, 'B1');
+    const replayed = replayToState(setup, rec.encode());
+    expect(replayed.substitutions.length).toBe(1);
+    expect(stateHash(replayed)).toBe(stateHash(s));
+  });
+
+  it('log v2 có thay người của đội máy bị từ chối khi replay trận một người', () => {
+    const setup = buildMatchSetup({ seed: 3, difficulty: 'easy', home: starterLikeTeam, away: cpuEasyTeam });
+    const rec = new InputRecorder2();
+    rec.tick({ home: decodeInput(0), away: decodeInput(0) });
+    rec.sub(1, 'away', 'away-P3', 'B2');
+    expect(() => replayToState(setup, rec.encode())).toThrow(ReplayLogError);
+  });
+});
