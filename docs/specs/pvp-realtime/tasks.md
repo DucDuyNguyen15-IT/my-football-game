@@ -242,15 +242,15 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 **Mục tiêu:** ghép trận FIFO, có thưởng như đấu máy Khó.
 **Kiểm thử độc lập:** hai tài khoản cùng bấm Tìm trận, vào trận và nhận thưởng.
 
-- [ ] T035 [US2] Tạo `apps/server/src/services/pvp/queue.ts`:
+- [x] T035 [US2] Tạo `apps/server/src/services/pvp/queue.ts`:
   - hàng chờ FIFO; socket đóng thì xoá mục chờ của user (A15); `queue_status` mỗi giây (`waitedSec`, `offerCpu` chuyển true sau 60 s);
   - quá 5 phút thì gửi `queue_timeout` và loại khỏi hàng;
   - `queue_leave`;
   - ghép hai người đầu hàng thành `kind='ranked'`, người vào trước là home, dùng hàm dựng trận chung từ T024.
-- [ ] T036 [US2] Trong `apps/server/src/services/pvp/finish.ts`:
+- [x] T036 [US2] Trong `apps/server/src/services/pvp/finish.ts`:
   - nếu cặp hai user đã có quá 3 trận `ranked` `finished` trong ngày (tính theo `finished_at`, GMT+7) thì `reward = 0`, `rewardReason='same_opponent_limit'` (FR-017);
   - người hết giới hạn 15 trận/ngày thì `reward = 0`, `rewardReason='daily_cap'`.
-- [ ] T037 [P] [US2] Test `apps/server/src/services/pvp/queue.test.ts`: ghép đúng thứ tự FIFO; huỷ chờ; `offerCpu` sau 60 s; hết hạn sau 5 phút; người đang `busy` bị từ chối; trùng cặp từ trận thứ 4 không thưởng; thưởng đúng bảng `MATCH_REWARD.hard`; trận ranked tính nhiệm vụ chung nhưng **không** tính `match_hard`.
+- [x] T037 [P] [US2] Test `apps/server/src/services/pvp/queue.test.ts`: ghép đúng thứ tự FIFO; huỷ chờ; `offerCpu` sau 60 s; hết hạn sau 5 phút; người đang `busy` bị từ chối; trùng cặp từ trận thứ 4 không thưởng; thưởng đúng bảng `MATCH_REWARD.hard`; trận ranked tính nhiệm vụ chung nhưng **không** tính `match_hard`.
 - [ ] T038 [US2] Trong `apps/web/src/features/pvp/PvpLobby.tsx`:
   - nút Tìm trận, trạng thái "Đang tìm đối thủ…" kèm thời gian chờ và nút Huỷ;
   - sau 60 s hiện nút "Đá với máy" (gửi `queue_leave` rồi điều hướng sang `/play`);

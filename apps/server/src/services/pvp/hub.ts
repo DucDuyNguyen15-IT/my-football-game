@@ -11,6 +11,7 @@ import type { Rng } from '../../domain/rng';
 import { track } from '../analytics';
 import type { CardCatalog } from '../cards';
 import { loadStoredPvpResult } from './finish';
+import { QUEUE_TICK_MS, handleQueueJoin, tickQueue, type QueueEntry } from './queue';
 import {
   ROOM_TTL_MS,
   handleRoomCreate,
@@ -66,7 +67,7 @@ export interface Participant {
  */
 export class PvpHub {
   readonly ticker: PvpTicker;
-  readonly queue = new Map<number, { conn: HubConn; enqueuedAt: number }>();
+  readonly queue = new Map<number, QueueEntry>();
   readonly rooms = new Map<string, Room>();
   private readonly byId = new Map<number, PvpSession>();
   /** Phiên đang `live` của mỗi user. */
@@ -74,6 +75,7 @@ export class PvpHub {
   private readonly conns = new Map<number, Set<HubConn>>();
   private readonly closedConns = new WeakSet<HubConn>();
   private readonly pendingUsers = new Set<number>();
+  private queueTimer: (() => void) | null = null;
   private readonly maxSessions: number;
   private readonly sessionDeps: SessionDeps;
 
@@ -284,8 +286,7 @@ export class PvpHub {
         }
         if (this.hasEntry(uid)) return conn.send({ t: 'error', code: 'busy' });
         if (msg.t === 'queue_join') {
-          this.queue.set(uid, { conn, enqueuedAt: this.o.time.now() });
-          // US2: ghép cặp FIFO + `queue_status`/`queue_timeout`.
+          handleQueueJoin(this, conn);
         } else if (msg.t === 'room_create') {
           handleRoomCreate(this, conn);
         } else {
@@ -321,7 +322,22 @@ export class PvpHub {
     }
   }
 
+  ensureQueueTimer(): void {
+    if (this.queue.size === 0 || this.queueTimer) return;
+    this.queueTimer = this.o.time.after(QUEUE_TICK_MS, () => {
+      this.queueTimer = null;
+      tickQueue(this);
+      this.ensureQueueTimer();
+    });
+  }
+
+  tickQueue(): void {
+    tickQueue(this);
+  }
+
   stop(): void {
+    this.queueTimer?.();
+    this.queueTimer = null;
     this.ticker.stop();
   }
 

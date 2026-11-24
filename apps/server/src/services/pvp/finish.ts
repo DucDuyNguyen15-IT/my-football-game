@@ -1,12 +1,12 @@
 import { createHash, randomBytes } from 'node:crypto';
-import { and, eq, inArray } from 'drizzle-orm';
+import { and, count, eq, gte, inArray, lt, or } from 'drizzle-orm';
 import type { MatchOutcome, MatchTeamSetup, PvpEndReason, PvpRewardReason } from '@pitch/shared';
 import type { TeamSide } from '@pitch/sim';
 import { MATCH_REWARD_DAILY_CAP } from '../../config/economy';
 import type { Db, Tx } from '../../db/client';
 import { matches, pvpMatches } from '../../db/schema';
 import { gameDay, judgeMatchResult, matchReward } from '../../domain/rewards';
-import { track } from '../analytics';
+import { addDays, gmt7DayStartUtc, track } from '../analytics';
 import { countRewardedMatches } from '../matches';
 import { applyMissionEvent } from '../missions';
 import { applyCoinDelta, lockUser } from '../wallet';
@@ -36,6 +36,8 @@ export interface FinishResult {
   away: number;
   sides: Record<TeamSide, SideResult>;
 }
+
+export const PVP_SAME_OPPONENT_DAILY_CAP = 3;
 
 const isCancel = (r: PvpEndReason) =>
   r === 'void_desync' || r === 'void_both_left' || r === 'void_not_ready' || r === 'server_restart';
@@ -78,6 +80,28 @@ export async function finishPvpMatch(db: Db, input: FinishInput): Promise<Finish
 
     for (const id of [uid.home, uid.away].sort((a, b) => a - b)) await lockUser(tx, id);
 
+    let sameOpponentLimited = false;
+    if (!cancelled && ranked) {
+      const dayStart = gmt7DayStartUtc(day);
+      const dayEnd = gmt7DayStartUtc(addDays(day, 1));
+      const [pairRow] = await tx
+        .select({ n: count() })
+        .from(pvpMatches)
+        .where(
+          and(
+            eq(pvpMatches.kind, 'ranked'),
+            eq(pvpMatches.status, 'finished'),
+            gte(pvpMatches.finishedAt, dayStart),
+            lt(pvpMatches.finishedAt, dayEnd),
+            or(
+              and(eq(pvpMatches.homeUserId, uid.home), eq(pvpMatches.awayUserId, uid.away)),
+              and(eq(pvpMatches.homeUserId, uid.away), eq(pvpMatches.awayUserId, uid.home)),
+            ),
+          ),
+        );
+      sameOpponentLimited = (pairRow?.n ?? 0) >= PVP_SAME_OPPONENT_DAILY_CAP;
+    }
+
     const sides = {} as Record<TeamSide, SideResult>;
     for (const side of ['home', 'away'] as const) {
       const me = uid[side];
@@ -99,8 +123,13 @@ export async function finishPvpMatch(db: Db, input: FinishInput): Promise<Finish
       else if (lost) rewardReason = 'forfeit';
       else {
         const rewarded = await countRewardedMatches(tx, me, day);
-        reward = matchReward('hard', outcome!, rewarded);
-        if (rewarded >= MATCH_REWARD_DAILY_CAP) rewardReason = 'daily_cap';
+        if (rewarded >= MATCH_REWARD_DAILY_CAP) {
+          rewardReason = 'daily_cap';
+        } else if (sameOpponentLimited) {
+          rewardReason = 'same_opponent_limit';
+        } else {
+          reward = matchReward('hard', outcome!, rewarded);
+        }
       }
       const [row] = await tx
         .insert(matches)
