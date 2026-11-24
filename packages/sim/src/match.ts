@@ -69,7 +69,6 @@ import { advanceClock, regulationTicks, RESTART_GRACE_TICKS } from './rules/cloc
 import { isKeeperHandling, judgeFoul } from './rules/fouls';
 import {
   HALF_TIME_MAX_TICKS,
-  HALF_TIME_PVP_MAX_TICKS,
   KEEPER_HOLD_MAX_TICKS,
   SET_PIECE_MAX_TICKS,
   WHISTLE_PENALTY_WAIT_TICKS,
@@ -860,10 +859,7 @@ function whistle(state: MatchState, phase: 'half_time' | 'full_time'): MatchStat
     lastShot: null,
     shotInFlight: null,
     setPieceThreat: null,
-    halfTimeEndTick:
-      phase === 'half_time'
-        ? state.tick + (state.humans.length > 1 ? HALF_TIME_PVP_MAX_TICKS : HALF_TIME_MAX_TICKS)
-        : null,
+    halfTimeEndTick: phase === 'half_time' ? state.tick + HALF_TIME_MAX_TICKS : null,
     halfTimeReady: [],
     ball: restingBall(state.ball.pos),
   };

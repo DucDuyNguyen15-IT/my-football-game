@@ -14,10 +14,8 @@ export const KEEPER_HOLD_MAX_TICKS = 10 * TICK_RATE;
  * đã đứng trước bóng và chuyển cảnh đã xong (luật 3).
  */
 export const SET_PIECE_MAX_TICKS = 15 * TICK_RATE;
-/** Nghỉ giữa hiệp: không bấm gì thì tự đá hiệp 2 sau chừng này tick (30 s). */
+/** Nghỉ giữa hiệp: chưa đủ mọi đội người bấm chuyền thì tự đá hiệp 2 sau chừng này tick (30 s, cả PvP). */
 export const HALF_TIME_MAX_TICKS = 30 * TICK_RATE;
-/** Nghỉ giữa hiệp PvP (hai đội người): cả hai bấm chuyền mới đá tiếp, không thì tự đá sau 15 s. */
-export const HALF_TIME_PVP_MAX_TICKS = 15 * TICK_RATE;
 /** Hết giờ khi cú sút đang bay: chờ kết quả tối đa chừng này tick (3 s) kể từ lúc sút rồi thổi còi. */
 export const WHISTLE_SHOT_WAIT_TICKS = 3 * TICK_RATE;
 /**
