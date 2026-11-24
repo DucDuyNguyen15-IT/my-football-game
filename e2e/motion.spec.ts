@@ -1,4 +1,3 @@
-import { execFileSync } from 'node:child_process';
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { expect, test } from '@playwright/test';
@@ -9,6 +8,7 @@ import {
   type MotionIssue,
   type MotionLog,
 } from '../apps/web/src/game/render/motionLog';
+import { cutClip, sheetsEnabled, type ClipResult } from './motionMedia';
 
 /**
  * Soi chuyển động (review C5): đá một trận autopilot có quay video + ghi từng khung (`?motion=1`),
@@ -17,7 +17,7 @@ import {
  *
  * Biến môi trường: MOTION_HALF (giây/hiệp, mặc định 30), MOTION_GFX (low|medium|high, mặc định high),
  * MOTION_REPLAY=0 tắt phát lại bàn thắng, MOTION_THRESHOLDS='{"spinReversals":5}' chỉnh ngưỡng,
- * MOTION_MAX_CLIPS (mặc định 20).
+ * MOTION_MAX_CLIPS (mặc định 20), MOTION_SHEETS=0 tắt ảnh ghép, MOTION_OUT thư mục ra.
  */
 const HALF = Number(process.env.MOTION_HALF ?? 30);
 const GFX = process.env.MOTION_GFX ?? 'high';
@@ -102,40 +102,30 @@ test('soi chuyển động: trận autopilot → log + báo cáo + clip', async 
   const toVideo = (t: number) => Math.max(0, (t - videoStart) / 1000);
 
   // Clip ffmpeg (ưu tiên đoạn có nhiều phát hiện nhất).
-  const clips: string[] = [];
+  const clips: ClipResult[] = [];
   const ranked = windows
     .map((w, i) => ({ ...w, i }))
     .sort((a, b) => b.issues.length - a.issues.length)
     .slice(0, MAX_CLIPS);
   if (video) {
     for (const w of ranked) {
-      const name = `clip-${String(w.i + 1).padStart(2, '0')}-${sec(w.from - videoStart)}s.mp4`;
+      const base = `clip-${String(w.i + 1).padStart(2, '0')}-${sec(w.from - videoStart)}s`;
       try {
-        execFileSync('ffmpeg', [
-          '-loglevel',
-          'error',
-          '-y',
-          '-ss',
-          toVideo(w.from).toFixed(2),
-          '-to',
-          toVideo(w.to).toFixed(2),
-          '-i',
-          video,
-          '-c:v',
-          'libx264',
-          '-preset',
-          'veryfast',
-          '-crf',
-          '26',
-          '-an',
-          join(OUT, name),
-        ]);
-        clips[w.i] = name;
+        clips[w.i] = cutClip(video, OUT, base, toVideo(w.from), toVideo(w.to));
       } catch (e) {
-        consoleErrors.push(`ffmpeg lỗi (${name}): ${String(e)}`);
+        consoleErrors.push(`ffmpeg lỗi (${base}): ${String(e)}`);
       }
     }
   }
+  /** Vị trí (x,z) các đối tượng lúc bắt đầu đoạn nghi, để tìm trên ảnh. */
+  const posAt = (who: string, t: number): string => {
+    const f = frames.find((x) => x.t >= t) ?? frames[frames.length - 1]!;
+    const p = who === 'ball' ? f.ball : who === 'camera' ? f.cam : f.players[who];
+    if (!p) return '';
+    return who === 'ball' || who === 'camera'
+      ? ` @(${p[0].toFixed(1)}, ${p[2].toFixed(1)})`
+      : ` @(${p[0].toFixed(1)}, ${p[1].toFixed(1)})`;
+  };
 
   // Báo cáo.
   const ms = frames
@@ -170,11 +160,16 @@ test('soi chuyển động: trận autopilot → log + báo cáo + clip', async 
         .join(', ') || '—'
     }`,
     '',
-    '## Đoạn nghi (giây tính theo video)',
+    `## Đoạn nghi (giây tính theo video; \`@(x, z)\` = vị trí trên sân lúc bắt đầu đoạn${sheetsEnabled() ? '' : '; ảnh ghép tắt'})`,
     '',
     ...windows.flatMap((w, i) => [
-      `### ${i + 1}. ${sec(w.from - videoStart)}–${sec(w.to - videoStart)} s · tick ${w.issues[0]!.tick} · ${w.issues[0]!.phase}${clips[i] ? ` · [${clips[i]}](${clips[i]})` : ''}`,
-      ...w.issues.map((x) => `- ${KIND_VI[x.kind]} · \`${x.who}\` · ${x.detail}`),
+      `### ${i + 1}. ${sec(w.from - videoStart)}–${sec(w.to - videoStart)} s · tick ${w.issues[0]!.tick} · ${w.issues[0]!.phase}${clips[i] ? ` · [${clips[i]!.clip}](${clips[i]!.clip})` : ''}`,
+      ...(clips[i]?.sheet
+        ? [
+            `[ảnh ghép](${clips[i]!.sheet}) — ${clips[i]!.labelled ? 'nhãn vàng = giây trong video' : 'không có nhãn: ô đọc trái→phải, trên→dưới, ~7 khung/giây từ đầu đoạn'}`,
+          ]
+        : []),
+      ...w.issues.map((x) => `- ${KIND_VI[x.kind]} · \`${x.who}\`${posAt(x.who, w.from)} · ${x.detail}`),
       '',
     ]),
     consoleErrors.length
