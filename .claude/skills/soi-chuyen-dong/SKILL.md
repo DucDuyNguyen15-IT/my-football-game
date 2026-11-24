@@ -31,3 +31,5 @@ Biến env: `MOTION_HALF` (giây/hiệp, mặc định 30) · `MOTION_GFX` (low|
 2. Mở từng ảnh ghép bằng Read tool (video thì agent không xem được). Checklist: cầu thủ xuyên nhau, bóng lệch chân/tay, HUD đè, camera giật, sai màu đội, chữ tràn.
 3. Nhờ người dùng xem vài clip mp4 để chốt ngưỡng (báo nhầm nhiều thì nâng ngưỡng bằng `MOTION_THRESHOLDS`, rồi sửa `DEFAULT_THRESHOLDS`).
 4. Lỗi thật ghi vào `.claude/collab/review-c-gameplay.md` (kèm đường dẫn clip/ảnh, giây, id cầu thủ).
+
+Lưu ý GPU: `playwright.motion.config.ts` bật GPU thật (ANGLE D3D11) vì SwiftShader mặc định chỉ ~1 FPS. Máy không có GPU thì bỏ cờ đó trong config và chấp nhận chạy chậm (dùng `MOTION_GFX=low`).
