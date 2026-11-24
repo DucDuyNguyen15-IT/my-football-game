@@ -15,6 +15,7 @@ import {
   type PlayerState,
   type TeamSide,
 } from '@pitch/sim';
+import { eventPairs } from '../../features/pvp/netCore';
 import type { NetMatch } from '../../features/pvp/useNetMatch';
 import { motionEnabled, MotionRecorder } from '../render/motionLog';
 import type { GraphicsSettings, MatchBridge } from '../bridge';
@@ -861,12 +862,7 @@ export class MatchRenderer {
     if (d && d.curr.tick !== this.curr.tick) {
       // Khung vẽ chậm hơn 1/60 s hoặc con trỏ đuổi kịp thì nhảy qua vài tick: xét sự kiện từng cặp
       // để không mất clip sút/chuyền và hiệu ứng bàn thắng (C4 G1). Nhảy xa (rejoin) thì chỉ cặp cuối.
-      const gap = d.curr.tick - this.curr.tick;
-      const from = gap > 0 && gap <= 30 ? this.curr.tick + 1 : d.curr.tick;
-      for (let t = from; t <= d.curr.tick; t++) {
-        const a = t === d.curr.tick ? d.prev : net.stateAt(t - 1);
-        const b = t === d.curr.tick ? d.curr : net.stateAt(t);
-        if (!a || !b || b.tick !== a.tick + 1) continue;
+      for (const [a, b] of eventPairs(this.curr.tick, d, (t) => net.stateAt(t))) {
         for (const e of animationEvents(a, b)) this.models.get(e.playerId)?.trigger(e.clip);
         if (isGoal(a, b)) this.goalFx(a, b);
       }

@@ -130,3 +130,31 @@ export function displayPair(
   if (!prev || !curr) return null;
   return { prev, curr, alpha: Math.min(1, Math.max(0, cursor - base)) };
 }
+
+/** Số ms tới khi phòng hết hạn (`expiresAt` ISO của server); Infinity nếu chuỗi không đọc được. */
+export function expiryDelayMs(expiresAt: string, nowMs: number): number {
+  const t = Date.parse(expiresAt);
+  return Number.isNaN(t) ? Number.POSITIVE_INFINITY : Math.max(0, t - nowMs);
+}
+
+/**
+ * Các cặp state kề nhau (tick t-1 → t) mà vòng vẽ phải xét sự kiện khi con trỏ nhảy từ `lastTick`
+ * tới `d.curr`. Chỉ giữ cặp có `b.tick === a.tick + 1`: sau catchup nhỏ `stateAt` kẹp về state mới
+ * nhất cho tick còn thiếu, tạo cặp ngược thứ tự (F6). Nhảy xa (rejoin, > 30 tick) thì chỉ cặp cuối.
+ */
+export function eventPairs(
+  lastTick: number,
+  d: { prev: MatchState; curr: MatchState },
+  stateAt: (tick: number) => MatchState | null,
+): [MatchState, MatchState][] {
+  const gap = d.curr.tick - lastTick;
+  const from = gap > 0 && gap <= 30 ? lastTick + 1 : d.curr.tick;
+  const out: [MatchState, MatchState][] = [];
+  for (let t = from; t <= d.curr.tick; t++) {
+    const last = t === d.curr.tick;
+    const a = last ? d.prev : stateAt(t - 1);
+    const b = last ? d.curr : stateAt(t);
+    if (a && b && b.tick === a.tick + 1) out.push([a, b]);
+  }
+  return out;
+}

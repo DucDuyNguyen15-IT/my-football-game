@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { createMatch, starterLikeTeam, cpuHardTeam, NO_INPUT, stepBoth, stateHash, InputRecorder2, replayToState } from '@pitch/sim';
 import {
-  DisplayCursor, FrameGate, JitterEstimator, StateHistory, displayPair, hashDue, shouldSendInput, FRAME_MS,
+  DisplayCursor, FrameGate, JitterEstimator, StateHistory, displayPair, hashDue, shouldSendInput, FRAME_MS, expiryDelayMs, eventPairs,
 } from './netCore';
 import {
   BUSY_RETRY_MS,
+  MAX_LOBBY_FAILURES,
   FRAME_WATCHDOG_MS,
   createNetMatch,
   createPvpClient,
@@ -301,5 +302,105 @@ describe('createPvpClient (T034)', () => {
     // R6 yêu cầu < 3 s (đo riêng file); chạy cả bộ song song chậm hơn (~3,4 s) nên để 2× tránh đỏ ngẫu nhiên.
     expect(elapsedMs).toBeLessThan(6000);
     console.info(`[bench] replayToState 21600 ticks: ${elapsedMs.toFixed(1)} ms`);
+  });
+});
+
+describe('createPvpClient: sảnh nối lại hỏng (F5) và not_in_match (C3-08)', () => {
+  function setupClient() {
+    const clock = { t: 0 };
+    const { timers, advance } = makeFakeTimers(clock);
+    const sockets: ReturnType<typeof fakeSocket>[] = [];
+    const statuses: { connected: boolean; reconnecting: boolean; gaveUp: boolean }[] = [];
+    const client = createPvpClient({
+      now: () => clock.t,
+      timers,
+      onStatus: (st) => statuses.push(st),
+      connect: () => {
+        const s = fakeSocket();
+        sockets.push(s);
+        return s;
+      },
+    });
+    return { clock, advance, sockets, statuses, client };
+  }
+
+  it('ở sảnh: nối thất bại liên tiếp tới ngưỡng thì dừng, báo gaveUp', () => {
+    const { advance, sockets, statuses } = setupClient();
+    for (let i = 0; i < MAX_LOBBY_FAILURES; i++) {
+      sockets[i]!.onclose?.({ code: 1006 }); // chưa từng mở
+      advance(10_000);
+    }
+    expect(sockets).toHaveLength(MAX_LOBBY_FAILURES);
+    expect(statuses.at(-1)).toMatchObject({ gaveUp: true, reconnecting: false });
+  });
+
+  it('socket mở rồi đóng ngay với mã 4xxx: không đặt lại backoff, vẫn tính là thất bại', () => {
+    const { advance, sockets } = setupClient();
+    sockets[0]!.onclose?.({ code: 1006 });
+    advance(500); // lần 1: 500 ms
+    sockets[1]!.onopen?.();
+    sockets[1]!.onclose?.({ code: 4429 });
+    advance(500);
+    expect(sockets).toHaveLength(2); // backoff tăng lên 1000 ms
+    advance(500);
+    expect(sockets).toHaveLength(3);
+  });
+
+  it('kết nối tốt rồi rớt (mã 1006) thì đặt lại bộ đếm, không bỏ cuộc', () => {
+    const { advance, sockets, statuses } = setupClient();
+    for (let i = 0; i < MAX_LOBBY_FAILURES * 2; i++) {
+      sockets[i]!.onopen?.();
+      sockets[i]!.onclose?.({ code: 1006 });
+      advance(500);
+    }
+    expect(statuses.every((st) => !st.gaveUp)).toBe(true);
+  });
+
+  it('rejoin nhận not_in_match: thôi rejoin/nối lại kiểu trong trận, báo lên lớp trên', () => {
+    const { advance, sockets, client } = setupClient();
+    const s0 = sockets[0]!;
+    s0.onopen?.();
+    s0.recv(matched);
+    s0.recv({ t: 'start', countdownMs: 3000 });
+    s0.onclose?.({});
+    advance(500);
+    const s1 = sockets[1]!;
+    s1.onopen?.();
+    expect(s1.sent).toEqual([{ t: 'rejoin', pvpId: 1 }]);
+    s1.recv({ t: 'error', code: 'not_in_match' });
+    // watchdog 5 s không còn kích hoạt đóng socket + rejoin lặp
+    advance(20_000);
+    expect(sockets).toHaveLength(2);
+    expect(s1.sent).toEqual([{ t: 'rejoin', pvpId: 1 }]);
+    client.dispose();
+  });
+});
+
+describe('expiryDelayMs (C3-02)', () => {
+  it('còn bao nhiêu ms, đã quá hạn thì 0, chuỗi sai thì không hẹn giờ', () => {
+    const exp = '2026-11-25T10:10:00.000Z';
+    const now = Date.parse('2026-11-25T10:00:00.000Z');
+    expect(expiryDelayMs(exp, now)).toBe(600_000);
+    expect(expiryDelayMs(exp, now + 700_000)).toBe(0);
+    expect(expiryDelayMs('khong-phai-ngay', now)).toBe(Number.POSITIVE_INFINITY);
+  });
+});
+
+describe('eventPairs (F6)', () => {
+  const st = (tick: number) => ({ tick }) as unknown as ReturnType<typeof createMatch>;
+  it('nhảy 3 tick: ba cặp liền kề', () => {
+    const d = { prev: st(12), curr: st(13) };
+    const pairs = eventPairs(10, d, (t) => st(t));
+    expect(pairs.map(([a, b]) => [a.tick, b.tick])).toEqual([[10, 11], [11, 12], [12, 13]]);
+  });
+  it('sau catchup tick thiếu bị kẹp về state mới nhất: bỏ cặp ngược thứ tự', () => {
+    const d = { prev: st(12), curr: st(13) };
+    // lịch sử chỉ còn từ tick 12; tick 10, 11 trả về state mới nhất (13)
+    const pairs = eventPairs(10, d, (t) => (t < 12 ? st(13) : st(t)));
+    expect(pairs.map(([a, b]) => [a.tick, b.tick])).toEqual([[12, 13]]);
+  });
+  it('nhảy xa: chỉ cặp cuối', () => {
+    const d = { prev: st(99), curr: st(100) };
+    expect(eventPairs(10, d, (t) => st(t))).toHaveLength(1);
   });
 });

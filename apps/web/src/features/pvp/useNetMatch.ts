@@ -42,6 +42,10 @@ export const BUSY_RETRY_MS = 2000;
 export const REJOIN_DEADLINE_MS = 30_000;
 export const FRAME_WATCHDOG_MS = 5000;
 export const RECONNECT_BACKOFF_MS = [500, 1000, 2000, 4000] as const;
+/** Ở sảnh: bỏ cuộc sau chừng này lần nối thất bại liên tiếp (hiện nút Thử lại). */
+export const MAX_LOBBY_FAILURES = 5;
+/** Socket mở rồi đóng sớm hơn mức này với mã 4xxx (server từ chối) không tính là kết nối tốt. */
+export const HEALTHY_OPEN_MS = 3000;
 
 export interface NetMatchOptions {
   socket: NetSocket;
@@ -50,7 +54,8 @@ export interface NetMatchOptions {
   onMessage?: (msg: PvpServerMessage) => void;
   /** Hụt khung / tụt quá 300 khung: xin `catchup` qua `rejoin`. */
   onGap?: () => void;
-  onClose?: () => void;
+  /** `code`: mã đóng của WebSocket (nếu có). */
+  onClose?: (code?: number) => void;
   onRebuildStart?: () => void;
   onRebuildDone?: (durationMs: number) => void;
   /** Dựng lại state từ `catchup` (đặt được để test). */
@@ -187,7 +192,8 @@ export function createNetMatch(opts: NetMatchOptions): NetMatch {
     opts.onMessage?.(parsed);
   };
 
-  const handleClose = () => opts.onClose?.();
+  const handleClose = (ev: unknown) =>
+    opts.onClose?.((ev as { code?: number } | null | undefined)?.code);
 
   function attach(sock: NetSocket): void {
     sock.onmessage = handleMessage;
@@ -245,6 +251,8 @@ export interface PvpClientStatus {
   busyRetrying: boolean;
   rebuilding: boolean;
   rebuildSlowMs: number | null;
+  /** Ở sảnh: đã thôi tự nối lại sau `MAX_LOBBY_FAILURES` lần thất bại; UI hiện nút Thử lại. */
+  gaveUp: boolean;
 }
 
 export interface TimerApi {
@@ -295,6 +303,9 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
   let disconnectAt: number | null = null;
   let reconnectAttempt = 0;
   let lastFrameAt = 0;
+  let gaveUp = false;
+  let lobbyFailures = 0;
+  let openedAt: number | null = null;
 
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   let busyTimer: ReturnType<typeof setTimeout> | null = null;
@@ -306,6 +317,7 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
       busyRetrying,
       rebuilding,
       rebuildSlowMs,
+      gaveUp,
     });
   };
 
@@ -406,6 +418,18 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
         disconnectAt = null;
         clearTimers();
         emitStatus();
+      } else if (m.t === 'error' && m.code === 'not_in_match' && inMatch) {
+        // Server không còn trận (mất sau crash): thôi rejoin, lớp trên đưa người chơi về sảnh (C3-08).
+        inMatch = false;
+        matchRunning = false;
+        rejoining = false;
+        busyRetrying = false;
+        disconnectAt = null;
+        if (busyTimer !== null) {
+          timers.clearTimeout(busyTimer);
+          busyTimer = null;
+        }
+        emitStatus();
       } else if (m.t === 'error' && m.code === 'busy' && rejoining && !matchEnded) {
         busyRetrying = true;
         emitStatus();
@@ -419,14 +443,32 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
       }
       opts.onMessage?.(m);
     },
-    onClose: () => {
+    onClose: (code) => {
       connected = false;
       if (disposed || matchEnded) {
         reconnecting = false;
         emitStatus();
         return;
       }
+      const lived = openedAt === null ? null : now() - openedAt;
+      openedAt = null;
+      const rejected = code !== undefined && code >= 4000 && code < 5000;
+      // Kết nối tốt = đã mở và (không bị server từ chối bằng mã 4xxx ngay): mới đặt lại backoff.
+      const healthy = lived !== null && !(rejected && lived < HEALTHY_OPEN_MS);
+      if (healthy) {
+        reconnectAttempt = 0;
+        lobbyFailures = 0;
+      } else if (!inMatch) {
+        lobbyFailures++;
+      }
       // Cả ở sảnh (C3-01): server đã bỏ phòng/hàng chờ, PvpPage xoá room/queue khi mất kết nối.
+      // Ở sảnh nối hỏng liên tiếp thì dừng, chờ người chơi bấm Thử lại (F5); trong trận thì thử mãi.
+      if (!inMatch && lobbyFailures >= MAX_LOBBY_FAILURES) {
+        gaveUp = true;
+        reconnecting = false;
+        emitStatus();
+        return;
+      }
       scheduleReconnect();
     },
   });
@@ -436,7 +478,7 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
       if (disposed) return;
       connected = true;
       reconnecting = false;
-      reconnectAttempt = 0;
+      openedAt = now();
       lastFrameAt = now();
       emitStatus();
       if (inMatch && !matchEnded && net.pvpId !== null) {
@@ -464,6 +506,7 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
       currentSocket.close(4000);
       if (connected) {
         connected = false;
+        reconnectAttempt = 0; // đã nhận khung được ≥ 5 s: kết nối tốt
         scheduleReconnect();
       }
     }
