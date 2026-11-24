@@ -119,6 +119,8 @@ const CHARGE_COLORS = {
 const DEBUG_REFRESH_MS = 250;
 /** Bóng trượt giữa tay và vị trí sim trong chừng này giây (lúc bắt / ném), không nhảy cóc. */
 const BALL_BLEND_SEC = 0.12;
+/** Bóng vừa có người khống chế mà cách chỗ vẽ quá mức này (m) là đặt lại bóng: nhảy luôn, không trượt. */
+const BALL_CAPTURE_BLEND_MAX = 3;
 /** Thời gian lướt giữa góc truyền hình và góc sau lưng người đá. */
 const SET_PIECE_BLEND_SEC = 0.6;
 /** Cầu thủ khối (chưa có model): bóng cầm tay trước người chừng này mét, cao ngang ngực / trên đầu. */
@@ -197,6 +199,7 @@ export class MatchRenderer {
   private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
   /** Bóng chuyển giữa tay và vị trí sim: trượt từ `ballBlendFrom` trong BALL_BLEND_SEC. */
   private ballInHands = false;
+  private ballOwner: string | null = null;
   private ballBlend = 0;
   private readonly ballBlendFrom = new THREE.Vector3();
   private readonly ballTarget = new THREE.Vector3();
@@ -1112,7 +1115,15 @@ export class MatchRenderer {
     const held = heldBall(curr);
     const inHands = held !== null && this.handBall(curr, held, this.ballTarget);
     if (!inHands) this.ballTarget.set(ground.x, BALL_DRAW_RADIUS + z, ground.y);
-    if (inHands !== this.ballInHands) {
+    // Sim đặt bóng thẳng vào chân người vừa khống chế (cách tới ~1 m, rơi từ trên cao xuống): trượt
+    // vào thay vì giật trong một tick (C5 G2). Nhảy xa (đặt lại bóng sau màn che) thì không trượt.
+    const owner = curr.ballOwnerId;
+    const captured =
+      owner !== this.ballOwner &&
+      owner !== null &&
+      this.ball.position.distanceTo(this.ballTarget) < BALL_CAPTURE_BLEND_MAX;
+    this.ballOwner = owner;
+    if (inHands !== this.ballInHands || captured) {
       this.ballInHands = inHands;
       this.ballBlendFrom.copy(this.ball.position);
       this.ballBlend = BALL_BLEND_SEC;

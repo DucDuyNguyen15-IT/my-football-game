@@ -123,7 +123,19 @@ export class CutHold {
   private readonly ballPos: MutableVec2;
   private readonly ballVel: MutableVec2;
   private readonly ball: { pos: MutableVec2; vel: MutableVec2; z: number; vz: number };
-  private readonly ball0: { x: number; y: number; z: number; vz: number; dx: number; dy: number; v0: number };
+  /** Bóng qua vạch cuối có lọt khung thành không: chốt một lần lúc qua vạch (C5 G3). */
+  private mouth: boolean | null = null;
+  /** Vị trí bóng đã dừng (lưới / biển quảng cáo): giữ nguyên, không trượt ngang tiếp. */
+  private stopAt: { x: number; y: number } | null = null;
+  private readonly ball0: {
+    x: number;
+    y: number;
+    z: number;
+    vz: number;
+    dx: number;
+    dy: number;
+    v0: number;
+  };
 
   constructor(prev: MatchState, curr: MatchState, spec: TransitionSpec) {
     this.spec = spec;
@@ -225,11 +237,16 @@ export class CutHold {
     const b = this.ball0;
     const d = glideDistance(b.v0, BALL_ROLL_DECEL, t);
     const z = Math.max(0, b.z + b.vz * t - 0.5 * GRAVITY * t * t);
-    const y = clamp(b.y + b.dy * d, HALF_WIDTH + BALL_OUT_LIMIT);
-    // Qua vạch cuối giữa hai cột dọc, dưới xà → dừng ở lưới; còn lại dừng trước biển quảng cáo.
-    const inMouth = Math.abs(y) <= GOAL_WIDTH / 2 && z <= GOAL_HEIGHT;
-    const x = clamp(b.x + b.dx * d, HALF_LENGTH + (inMouth ? NET_DEPTH : BALL_OUT_LIMIT));
-    const stopped = x !== b.x + b.dx * d;
+    const freeX = b.x + b.dx * d;
+    const y = this.stopAt?.y ?? clamp(b.y + b.dy * d, HALF_WIDTH + BALL_OUT_LIMIT);
+    // Qua vạch cuối giữa hai cột dọc, dưới xà → dừng ở lưới; còn lại dừng trước biển quảng cáo. Chốt
+    // lúc qua vạch: tính lại mỗi khung thì bóng trượt ngang trong lưới ra ngoài cột sẽ nhảy ra biển.
+    if (this.mouth === null && Math.abs(freeX) > HALF_LENGTH)
+      this.mouth = Math.abs(y) <= GOAL_WIDTH / 2 && z <= GOAL_HEIGHT;
+    const x =
+      this.stopAt?.x ?? clamp(freeX, HALF_LENGTH + (this.mouth ? NET_DEPTH : BALL_OUT_LIMIT));
+    const stopped = this.stopAt !== null || x !== freeX;
+    if (stopped) this.stopAt ??= { x, y };
     this.ballPos.x = x;
     this.ballPos.y = y;
     const v = stopped ? 0 : glideSpeed(b.v0, BALL_ROLL_DECEL, t);

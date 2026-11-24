@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  GOAL_WIDTH,
   HALF_LENGTH,
   cpuEasyTeam,
   createMatch,
@@ -59,7 +60,9 @@ describe('CutHold — diễn tiếp pha bóng trước khi khép stinger', () =>
       ...prev,
       ballOwnerId: victim.id,
       players: prev.players.map((p) =>
-        p.id === victim.id || p.id === runner.id ? { ...p, vel: { x: 5, y: 0 } } : { ...p, vel: { x: 0, y: 0 } },
+        p.id === victim.id || p.id === runner.id
+          ? { ...p, vel: { x: 5, y: 0 } }
+          : { ...p, vel: { x: 0, y: 0 } },
       ),
       ball: { pos: { x: victim.pos.x + 0.4, y: victim.pos.y }, vel: { x: 5, y: 0 }, z: 0, vz: 0 },
     };
@@ -67,7 +70,13 @@ describe('CutHold — diễn tiếp pha bóng trước khi khép stinger', () =>
     const spec = buildTransitionSpec('free_kick', {
       team: 'home',
       delaySec: FOUL_DELAY_SEC,
-      foul: { victimId: victim.id, tacklerId: runner.id, slide: false, card: null, bookedNumber: null },
+      foul: {
+        victimId: victim.id,
+        tacklerId: runner.id,
+        slide: false,
+        card: null,
+        bookedNumber: null,
+      },
     });
     const hold = new CutHold(withVel, curr, spec);
     const v = () => hold.state.players.find((p) => p.id === victim.id)!;
@@ -152,9 +161,40 @@ describe('CutHold — diễn tiếp pha bóng trước khi khép stinger', () =>
     expect(snap.players[0]!.pos).not.toBe(hold.state.players[0]!.pos);
   });
 
+  it('sút chéo vào góc lưới (C5 G3): bóng dừng trong lưới, không trượt ngang rồi nhảy ra biển quảng cáo', () => {
+    const prev: MatchState = {
+      ...live(),
+      ballOwnerId: null,
+      ball: {
+        pos: { x: HALF_LENGTH - 0.5, y: GOAL_WIDTH / 2 - 0.4 },
+        vel: { x: 20, y: 6 },
+        z: 0.2,
+        vz: 0,
+      },
+    };
+    const hold = new CutHold(
+      prev,
+      { ...prev, tick: 501 },
+      buildTransitionSpec('goal_kick', { delaySec: 1 }),
+    );
+    let last = { ...hold.state.ball.pos };
+    for (let i = 0; i < 90; i++) {
+      hold.advance(1 / 60);
+      const p = hold.state.ball.pos;
+      expect(Math.hypot(p.x - last.x, p.y - last.y)).toBeLessThan(0.6);
+      last = { ...p };
+    }
+    expect(last.x).toBe(HALF_LENGTH + NET_DEPTH);
+    expect(Math.abs(last.y)).toBeLessThan(GOAL_WIDTH / 2 + 0.5);
+  });
+
   it('tạm dừng (dt = 0) không tiến cảnh giữ', () => {
     const prev = live();
-    const hold = new CutHold(prev, { ...prev, tick: 501 }, buildTransitionSpec('corner', { delaySec: 0.6 }));
+    const hold = new CutHold(
+      prev,
+      { ...prev, tick: 501 },
+      buildTransitionSpec('corner', { delaySec: 0.6 }),
+    );
     hold.advance(0);
     hold.advance(0);
     expect(hold.elapsed).toBe(0);

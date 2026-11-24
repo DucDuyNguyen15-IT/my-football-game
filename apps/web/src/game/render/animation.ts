@@ -90,6 +90,20 @@ const DEFAULT_SPEEDS = { jog: JOG_CLIP_SPEED, jog_back: 2.3, strafe_left: 2.6, s
 export type ClipSpeeds = Partial<Record<ClipName, number>>;
 /** Chậm hơn mức này (m/s) thì coi như đứng. */
 const IDLE_SPEED = 0.4;
+/** Đang đứng thì phải nhanh hơn mức này mới chạy: thủ môn nhích 0,2–0,5 m/s lật idle↔jog liên tục (C5 G1). */
+const IDLE_EXIT_SPEED = 0.8;
+/** Vùng đệm quanh ranh giới hướng ±0,5 (tới / ngang / lùi) để chạy chéo không lật clip qua lại. */
+const DIR_MARGIN = 0.15;
+const FORWARD = new Set<ClipName | undefined>(['walk', 'jog', 'run']);
+const SIDEWAYS = new Set<ClipName | undefined>(['strafe_left', 'strafe_right']);
+/** Vùng đệm hướng cho clip đang phát: giữ nhóm của mình (âm), khó vào nhóm khác (dương), đứng yên thì 0. */
+const dirBias = (current: ClipName | undefined, own: ReadonlySet<ClipName | undefined>): number =>
+  own.has(current)
+    ? -DIR_MARGIN
+    : FORWARD.has(current) || SIDEWAYS.has(current) || current === 'jog_back'
+      ? DIR_MARGIN
+      : 0;
+const BACK = new Set<ClipName | undefined>(['jog_back']);
 /** Chậm hơn mức này thì đi bộ (khi có clip `walk`). */
 export const WALK_MAX_SPEED = 2.2;
 /**
@@ -134,7 +148,8 @@ export function locomotionFor(
   current?: ClipName,
 ): Locomotion {
   const speed = speedOf(p);
-  if (speed < IDLE_SPEED) {
+  const idle = current === 'idle' || current === 'gk_idle';
+  if (speed < (idle ? IDLE_EXIT_SPEED : IDLE_SPEED)) {
     return { clip: p.position === 'GK' ? 'gk_idle' : 'idle', timeScale: 1, lean: 0 };
   }
   const at = (clip: ClipName, lo: number, hi: number, lean = 0): Locomotion => {
@@ -145,7 +160,7 @@ export function locomotionFor(
   const dy = p.vel.y / speed;
   const forward = dx * p.facing.x + dy * p.facing.y;
   const left = leftOf(p.facing);
-  if (forward >= 0.5) {
+  if (forward >= 0.5 + dirBias(current, FORWARD)) {
     const walkMax = WALK_MAX_SPEED + (current === 'walk' ? SWITCH_MARGIN : -SWITCH_MARGIN);
     const runMin = RUN_MIN_SPEED + (current === 'run' ? -SWITCH_MARGIN : SWITCH_MARGIN);
     if (speed < walkMax && speeds.walk) return at('walk', 0.5, 2);
@@ -153,7 +168,8 @@ export function locomotionFor(
     const lean = MAX_SPRINT_LEAN * clamp((speed - SPRINT_LEAN_MIN_SPEED + 1) / 3, 0, 1);
     return at('jog', 0.6, 2.6, lean);
   }
-  if (forward <= -0.5) return at('jog_back', 0.6, 2);
+  const backMax = -0.5 - dirBias(current, BACK);
+  if (forward <= backMax) return at('jog_back', 0.6, 2);
   return at(dx * left.x + dy * left.y > 0 ? 'strafe_left' : 'strafe_right', 0.6, 2);
 }
 
