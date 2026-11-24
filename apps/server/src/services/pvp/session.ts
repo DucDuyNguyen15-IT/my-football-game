@@ -145,7 +145,10 @@ export class PvpSession implements Tickable {
     if (this.sockets[side] !== conn) return;
     delete this.sockets[side];
     this.setInput(side, 0);
-    if ((this.phase === 'countdown' || this.phase === 'running') && this.disconnectedSince[side] === null) {
+    if (
+      (this.phase === 'countdown' || this.phase === 'running') &&
+      this.disconnectedSince[side] === null
+    ) {
       const now = this.deps.time.now();
       this.disconnectedSince[side] = now;
       const remainingMs = Math.ceil(this.remainingDisconnectMs(side, now));
@@ -187,7 +190,8 @@ export class PvpSession implements Tickable {
     if (this.phase !== 'running') return;
     const now = this.deps.time.now();
     this.lastHashAt[side] = now;
-    if (tick === 0) return;
+    // Đang dựng lại sau `catchup`: mã băm của các khung còn tồn trong socket vẫn là state cũ đã lệch, không tính.
+    if (tick === 0 || this.catchingUpSince[side] !== null) return;
     const oldest = this.serverHashes.keys().next().value;
     if (oldest !== undefined && tick < oldest) {
       // Mã băm cũ hơn cửa sổ 30 s: bỏ qua, không phạt (R5).

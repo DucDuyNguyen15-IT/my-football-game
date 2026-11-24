@@ -115,7 +115,10 @@ async function startRunning(kind: 'ranked' | 'friendly' = 'ranked') {
   return { s, ca, cb };
 }
 
-function run(ms: number, keepAlive: { s: NonNullable<ReturnType<PvpHub['session']>>; conns: FakeConn[] } | null = null) {
+function run(
+  ms: number,
+  keepAlive: { s: NonNullable<ReturnType<PvpHub['session']>>; conns: FakeConn[] } | null = null,
+) {
   const steps = Math.ceil(ms / TICK_MS);
   for (let i = 0; i < steps; i++) {
     time.t += TICK_MS;
@@ -301,6 +304,21 @@ describe('PvP US3: rớt mạng, bỏ trận và phân xử lệch', () => {
     expect(mRows.every((m) => m.status === 'expired' && m.reward === 0)).toBe(true);
   });
 
+  it('mã băm cũ còn tồn trước khi client đọc catchup không bị tính lệch lần 2', async () => {
+    const { s, ca, cb } = await startRunning('ranked');
+    run(2200);
+    const [t1, t2] = [...s.serverHashes.keys()];
+    hub.handle(cb, { t: 'hash', tick: t1!, h: (s.serverHashes.get(t1!)! + 1) >>> 0 });
+    expect(cb.of('catchup')).toHaveLength(1);
+    // Khung t2 đã tồn trong socket, client tính hash trên state lệch trước khi xử lý catchup.
+    hub.handle(cb, { t: 'hash', tick: t2!, h: (s.serverHashes.get(t2!)! + 1) >>> 0 });
+    expect(s.done).toBe(false);
+    hub.handle(cb, { t: 'catchup_done' });
+    run(1200, { s, conns: [ca, cb] });
+    expect(s.done).toBe(false);
+    expect(ca.of('end')).toHaveLength(0);
+  });
+
   it('hai tab (A1): socket thứ 2 nhận busy, không đóng socket cũ; socket cũ chết heartbeat → rejoin thành công', async () => {
     const { s, ca, cb } = await startRunning('ranked');
     const tab2 = new FakeConn(ids[0]!);
@@ -372,7 +390,7 @@ describe('PvP US3: rớt mạng, bỏ trận và phân xử lệch', () => {
       for (let sec = 0; sec < 20; sec++) {
         run(1000);
         // Sau 5 s đầu, gửi hash trễ 5 s (tick của 5 s trước, vẫn nằm trong cửa sổ 30 s)
-        const targetTick = (Math.max(1, sec - 4)) * 60;
+        const targetTick = Math.max(1, sec - 4) * 60;
         const h = s.serverHashes.get(targetTick);
         if (h !== undefined) {
           hub.handle(ca, { t: 'hash', tick: targetTick, h });
@@ -458,7 +476,13 @@ describe('PvP US3: rớt mạng, bỏ trận và phân xử lệch', () => {
   });
 
   it('stateHash hàm chiếu vẫn khớp stepBoth khi không input', () => {
-    let ref = createMatch({ home: starterLikeTeam, away: cpuHardTeam, seed: 7, difficulty: 'hard', humans: ['home', 'away'] });
+    let ref = createMatch({
+      home: starterLikeTeam,
+      away: cpuHardTeam,
+      seed: 7,
+      difficulty: 'hard',
+      humans: ['home', 'away'],
+    });
     for (let i = 0; i < 60; i++) ref = stepBoth(ref, { home: NO_INPUT, away: NO_INPUT });
     expect(stateHash(ref)).toBeGreaterThan(0);
   });
