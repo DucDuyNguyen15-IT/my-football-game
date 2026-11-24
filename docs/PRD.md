@@ -3,6 +3,7 @@
 _Phiên bản 1.0 — 2026-10-09 — Trạng thái: DRAFT, cần kiểm chứng bằng playtest._
 _Nguồn: `docs/research.md` (Giai đoạn 1), phương án MVP **B — Cân bằng** (`docs/PROGRESS.md`), hỏi đáp với chủ dự án._
 _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm trong file config phía server, được cân chỉnh sau playtest mà không cần sửa PRD (trừ khi đổi cơ chế)._
+_Cập nhật 2026-11-24: thêm **PvP đá trực tiếp** (§4.2a, ADR-0012; chi tiết yêu cầu ở `docs/specs/pvp-realtime/spec.md`)._
 
 ---
 
@@ -32,7 +33,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 
 **Không nhắm tới:**
 - Người chơi mobile (MVP chỉ hỗ trợ bàn phím PC).
-- Người chơi cạnh tranh hardcore, cần PvP thời gian thực.
+- Người chơi cạnh tranh hardcore, cần xếp hạng ELO, ghép theo trình độ, netcode rollback. _(PvP đá trực tiếp đã có từ 20/11/2026 nhưng chỉ ghép ngẫu nhiên + giao hữu, chưa có xếp hạng — §4.2a, BACKLOG.)_
 - Người thích quản lý thuần không điều khiển (kiểu Hattrick).
 - Người muốn nạp tiền thật để mạnh nhanh (game không có thanh toán thật).
 
@@ -79,7 +80,23 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 3. Điều khiển cảm ứng/mobile, tay cầm.
 4. CLB/quốc tịch hư cấu + bonus "team color".
 5. Xếp hạng mùa.
-6. PvP thời gian thực (netcode server authoritative).
+6. ~~PvP thời gian thực (netcode server authoritative).~~ **Đã đưa vào làm từ 20/11/2026** (người dùng giao trực tiếp), xem §4.2a. Phần chưa làm (ELO, rollback, nhiều instance, trang lịch sử trận) nằm ở `docs/BACKLOG.md`.
+
+### 4.2a PvP đá trực tiếp (đang làm từ 2026-11-20)
+
+Hai người chơi đá với nhau theo thời gian thực, mỗi người điều khiển đội mình bằng bộ phím và luật như đá với máy (§5). Yêu cầu đầy đủ: `docs/specs/pvp-realtime/spec.md`; quyết định kỹ thuật: [ADR-0012](adr/0012-pvp-lockstep.md).
+
+| Mục | Quy định |
+|---|---|
+| Hai kiểu trận | **Giao hữu** (tạo phòng, nhận mã 6 ký tự, bạn nhập mã; phòng hết hạn sau 10 phút): không xu, không tính nhiệm vụ, không tính vào 15 trận/ngày, UI báo trước khi đá. **Ghép ngẫu nhiên** (bấm "Tìm trận", ai vào hàng chờ trước được ghép trước, không xét sức đội hình): có thưởng |
+| Hàng chờ | Sau 60 s hiện thêm nút "Đá với máy"; quá 5 phút tự rời hàng chờ. Mỗi tài khoản chỉ một lượt chờ hoặc một trận tại một thời điểm |
+| Nhịp trận | Server giữ nhịp 60 tick/s và chạy sim bóng của riêng nó; tỉ số chính thức do server chốt, không tin tỉ số trình duyệt báo. Mỗi người dùng đội hình đã lưu, không có bước chọn đội riêng |
+| Khác với đá máy | **Không có tạm dừng**. Mất focus/chuyển tab thì cầu thủ của người đó nhận phím rỗng. Nghỉ giữa hiệp: **cả hai** bấm chuyền mới đá tiếp, không thì tự đá sau 30 s. Thay người gửi qua server, chỉ có hiệu lực khi bóng chết. Điện thoại bị chặn như đá máy |
+| Rớt mạng / bỏ trận | Cầu thủ người rớt đứng yên, trận vẫn chạy. Mỗi lần rớt được chờ tối đa 30 s, tổng rớt cả trận quá 60 s thì **xử thua**: tỉ số 3-0 cho người ở lại (giữ tỉ số nếu họ đang dẫn hơn 3 bàn). Đóng tab / bấm rời trận tính như rớt mạng. Cả hai cùng rớt quá 30 s thì huỷ trận, không thưởng |
+| Lệch đồng bộ | Hai trình duyệt gửi mã băm trạng thái mỗi 60 tick để server đối chiếu. Lần lệch đầu của một bên: dựng lại màn hình theo diễn biến đúng của server. Lệch lần hai của cùng bên: bị xử thua. Cả hai cùng lệch lần hai: huỷ trận, không thưởng |
+| Thưởng (chỉ ghép ngẫu nhiên) | Theo bảng thưởng máy **Khó** (§7.1), cộng đúng một lần mỗi người mỗi trận. Tính vào 15 trận/ngày và nhiệm vụ chung (chơi trận, thắng trận, ghi bàn, giữ sạch lưới), **không** tính nhiệm vụ "đá trận máy Khó". Người bị xử thua không nhận xu, không tính nhiệm vụ nhưng vẫn mất 1 lượt trong 15 trận/ngày. Hai tài khoản gặp nhau quá 3 trận ngẫu nhiên trong ngày thì các trận sau không thưởng (chống cày xu) |
+| Giới hạn | Tối đa 50 phiên đồng thời (`PVP_MAX_SESSIONS`, quá thì báo máy chủ bận); 4 kết nối PvP mỗi IP; kết nối phải cùng nguồn (`Origin`) và đã đăng nhập; đăng xuất / xoá tài khoản ngắt mọi kết nối PvP |
+| Ngoài phạm vi | ELO, bảng xếp hạng, ghép theo trình độ, rollback, nhiều máy chủ, điều khiển cảm ứng, xem trận, chat/bạn bè, trang lịch sử trận (không làm trong đợt này; phần có ý định làm sau nằm ở BACKLOG, chat/bạn bè thuộc §4.3) |
 
 ### 4.3 Không làm (kể cả khi người chơi yêu cầu)
 - **Thanh toán bằng tiền thật dưới mọi hình thức**: ràng buộc cố định, gacha chỉ dùng xu.
@@ -253,6 +270,8 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 
 **Giới hạn:** tối đa **15 trận có thưởng/ngày**. Từ trận 16 vẫn đá được nhưng thưởng = 0, và UI báo trước khi vào trận.
 
+**PvP ghép ngẫu nhiên (§4.2a):** dùng đúng bảng thưởng máy **Khó** ở trên (thắng / hòa / thua 120 / 60 / 30), tính chung vào 15 trận/ngày với đá máy. Người bị xử thua không nhận xu nhưng vẫn bị trừ 1 lượt; trận giao hữu không có xu và không tính lượt.
+
 ### 7.2 Nơi tiêu (sink)
 - Mua gói (sink chính về số lượng).
 - Phí ép thẻ (sink tăng theo độ hiếm và cấp, hút xu của người chơi lâu năm).
@@ -278,7 +297,7 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 
 - Đăng ký bằng tên đăng nhập + mật khẩu (email để khôi phục là tuỳ chọn). Mật khẩu băm bằng thuật toán chậm (bcrypt/argon2). Phiên đăng nhập dùng cookie httpOnly.
 - Không có chế độ khách trong MVP.
-- Analytics ghi sự kiện: `register`, `login`, `session_seen` (1 lần/ngày/người, khi gọi API đã đăng nhập), `match_start`, `match_end`, `pack_open`, `upgrade`, `mission_claim`. Dữ liệu này đủ để tính D1/D7 retention, số trận/ngày, số gói mở/ngày.
+- Analytics ghi sự kiện: `register`, `login`, `session_seen` (1 lần/ngày/người, khi gọi API đã đăng nhập), `match_start`, `match_end`, `pack_open`, `upgrade`, `mission_claim`, và sáu sự kiện PvP `pvp_matched`, `pvp_start`, `pvp_end`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync`. Dữ liệu này đủ để tính D1/D7 retention, số trận/ngày, số gói mở/ngày.
 - Người chơi **"quay lại ngày N"** = có ít nhất 1 sự kiện bất kỳ vào ngày thứ N (GMT+7) sau ngày đăng ký.
 
 **Tiêu chí chấp nhận F8, F13**
@@ -314,15 +333,18 @@ _Mọi con số kinh tế/tỉ lệ là **giá trị khởi điểm**, nằm tro
 **Khả thi: TRUNG BÌNH.** Gacha, kinh tế và tài khoản là CRUD + transaction, dễ làm. Phần khó là trận 7v7 với AI "có cảm giác" và thể lực/thay người, trong khi chỉ có một người làm trong 3–4 tháng.
 
 Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2, PRD không quyết định):
-- Render 3D bằng Three.js (ADR-0009, thay Phaser 3 của ADR-0002), vật lý bóng tự viết, **module mô phỏng dùng chung client/server** (cần cho PvP bất đồng bộ sau MVP).
+- Render 3D bằng Three.js (ADR-0009, thay Phaser 3 của ADR-0002), vật lý bóng tự viết, **module mô phỏng dùng chung client/server** (xác minh log input ở MVP; PvP đá trực tiếp dùng lockstep, ADR-0012; PvP bất đồng bộ để sau MVP).
 - AI 2 tầng + steering behaviors (research.md §2).
 - Trận vs máy chạy ở client. Server chỉ phát match token và kiểm tra kết quả.
+- Trận PvP đá trực tiếp: server giữ nhịp 60 Hz qua WebSocket, chạy sim bóng riêng làm nguồn sự thật cho tỉ số và phân xử; hai trình duyệt chạy cùng sim theo khung input do server phát (ADR-0012, `docs/ARCHITECTURE.md` §5.4).
 
 | Rủi ro | Khả năng | Giảm thiểu |
 |---|---|---|
 | Ôm phạm vi B (thể lực, thay người, thẻ phạt, luân lưu) không kịp 3–4 tháng khi làm một mình | Cao | Làm theo thứ tự Must → Should. Thể lực/thay người/luân lưu làm sau khi trận cơ bản đã vui. Có thể lùi F10 (ép thẻ) và F12 (nhiệm vụ) nếu trễ |
 | AI 7v7 khó cân bằng, trận nhàm | Cao | Prototype AI sớm; dùng test mô phỏng AI-vs-AI để chỉnh tham số |
 | Gian lận kết quả trận vs máy (trận chạy ở client) | Thấp | Client gửi log input theo tick; server chạy lại sim (worker thread) và tự tính tỉ số (ADR-0011, 19/11/2026), cộng match token, thời lượng tối thiểu, giới hạn 15 trận/ngày. Còn lại: bot/macro điều khiển input hợp lệ |
+| Hai tài khoản của một người cày xu ở PvP ghép ngẫu nhiên | Thấp–TB | Giới hạn 3 trận/ngày cho mỗi cặp tài khoản, 15 trận/ngày chung với đá máy, thưởng đúng một lần mỗi trận. Còn lại: nhiều tài khoản luân phiên nhiều đối tượng |
+| Sim bóng của server làm nặng luồng chính, hoặc hai màn hình lệch nhau | Thấp–TB | `PVP_MAX_SESSIONS` = 50 theo số đo p99; so mã băm mỗi 60 tick, lệch thì dựng lại hoặc xử thua; test tất định trên 3 trình duyệt |
 | Lạm phát xu | Thấp–TB | Có trần thu nhập/ngày, có sink (ép thẻ); theo dõi tổng xu toàn server |
 | Tên hư cấu không đủ "quen" với fan | Trung bình | Biệt danh lối chơi, tên đúng chất quốc tịch; kiểm tra lại trong playtest |
 
@@ -332,7 +354,8 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 - [ ] Phím điều khiển chi tiết. Chốt ở Giai đoạn 4 sau khi thử prototype.
 - [x] Ảnh đại diện thẻ: avatar vector sinh từ `avatar_seed` (DESIGN.md §4).
 - [ ] OVR đội máy (~60 / ~78) và độ trễ phản ứng AI cần cân chỉnh qua playtest.
-- [x] Xác minh trận bằng log input: **làm ngay trong MVP** — server chạy lại sim từ seed + đội đã lưu + log input (chốt 2026-11-19, ADR-0011). PvP để sau.
+- [x] Xác minh trận bằng log input: **làm ngay trong MVP** — server chạy lại sim từ seed + đội đã lưu + log input (chốt 2026-11-19, ADR-0011). PvP bất đồng bộ để sau.
+- [x] PvP thời gian thực: lockstep do server giữ nhịp, server có sim bóng, không dùng Colyseus (chốt 2026-11-20, ADR-0012). Các chi tiết ghép trận / thưởng / rớt mạng đã chốt cùng ngày ở phần Clarifications của `docs/specs/pvp-realtime/spec.md`.
 - [ ] Hosting và chi phí vận hành khi phát hành thật. Chốt ở ADR hosting.
 - [ ] Chính sách quyền riêng tư/điều khoản khi thu thập analytics lúc phát hành.
 
@@ -363,7 +386,9 @@ Hướng kỹ thuật (sẽ chốt bằng ADR ở bước 2 của Giai đoạn 2
 | Ép thất bại | Giữ cấp + điểm may mắn +10% | Tụt cấp; mất trắng | Ít ức chế cho người chơi casual |
 | Chống cày | 15 trận có thưởng/ngày | Giảm dần; không giới hạn | Dễ hiểu, giới hạn lạm phát |
 | Quà tân thủ | 11 thẻ Đồng + 1 gói 5 | Chỉ tặng xu; chỉ đội | Có đội đủ vị trí ngay, được trải nghiệm mở thẻ |
-| Ưu tiên sau MVP | PvP bất đồng bộ | Chợ, mobile, PvP realtime | Rủi ro thấp, tái dùng module mô phỏng |
+| Ưu tiên sau MVP | PvP bất đồng bộ | Chợ, mobile, PvP realtime | Rủi ro thấp, tái dùng module mô phỏng _(đổi 2026-11-20: người dùng giao làm PvP realtime trước, xem dòng dưới)_ |
+| PvP thời gian thực (2026-11-20) | Lockstep, server giữ nhịp + sim bóng | Colyseus gửi state, server chỉ chuyển tiếp, P2P WebRTC, rollback | Sim đã tất định nên chỉ cần gửi input; server vẫn biết tỉ số và lúc hết trận (ADR-0012) |
+| Kết quả trận PvP ghép ngẫu nhiên (2026-11-20) | Thưởng như máy Khó, tính vào 15 trận/ngày; giao hữu không thưởng | Bảng thưởng riêng; mọi trận đều thưởng | Không đẻ thêm nguồn xu mới, chống cày bằng hai tài khoản |
 | Chỉ số thành công | Retention D7 ≥ 15% | Số tài khoản; chỉ cần demo | Đo đúng giả thuyết "giữ chân" |
 
 ## 14. Liên kết tới các giai đoạn triển khai
@@ -372,4 +397,5 @@ Không lập lịch riêng, các phần dùng theo `docs/ROADMAP.md`:
 - Giai đoạn 5 → F1–F3 (+F14)
 - Giai đoạn 6 → F4–F6, F10, F11
 - Giai đoạn 7 → F7–F9, F12, F13 (PvP bất đồng bộ là sau MVP)
+- PvP đá trực tiếp (§4.2a) → `docs/specs/pvp-realtime/tasks.md` (ngoài các giai đoạn trên, người dùng giao riêng)
 - Giai đoạn 8 → kiểm các tiêu chí chấp nhận và chỉ số hiệu năng

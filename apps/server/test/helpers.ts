@@ -77,7 +77,7 @@ export const claimRunner: ReplayRunner = async (_setup, log) => {
  */
 export function createTestApp(
   clock: FakeClock = new FakeClock(),
-  opts: Pick<BuildAppOptions, 'enableDevRoutes' | 'rng' | 'rateLimit'> & { replay?: 'real' } = {},
+  opts: Pick<BuildAppOptions, 'enableDevRoutes' | 'rng' | 'rateLimit' | 'pvp'> & { replay?: 'real' } = {},
 ) {
   const { replay, ...rest } = opts;
   const fake = replay !== 'real';

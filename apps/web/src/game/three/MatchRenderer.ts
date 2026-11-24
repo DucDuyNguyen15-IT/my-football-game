@@ -7,12 +7,16 @@ import * as THREE from 'three';
 import {
   TICK_DT,
   createMatch,
+  encodeInput,
   step,
   substitute,
   type MatchSetup,
   type MatchState,
   type PlayerState,
+  type TeamSide,
 } from '@pitch/sim';
+import type { NetMatch } from '../../features/pvp/useNetMatch';
+import { motionEnabled, MotionRecorder } from '../render/motionLog';
 import type { GraphicsSettings, MatchBridge } from '../bridge';
 import {
   CONTROL_KEYS,
@@ -23,10 +27,12 @@ import {
   isActionKey,
   keyForCode,
   keysToInput,
+  mirrorKeys,
   type KeyState,
 } from '../input/keyboard';
 import {
   blendCamera,
+  flipCamera,
   followCamera,
   initialCamera,
   setPieceAim,
@@ -113,6 +119,8 @@ const CHARGE_COLORS = {
 const DEBUG_REFRESH_MS = 250;
 /** Bóng trượt giữa tay và vị trí sim trong chừng này giây (lúc bắt / ném), không nhảy cóc. */
 const BALL_BLEND_SEC = 0.12;
+/** Bóng vừa có người khống chế mà cách chỗ vẽ quá mức này (m) là đặt lại bóng: nhảy luôn, không trượt. */
+const BALL_CAPTURE_BLEND_MAX = 3;
 /** Thời gian lướt giữa góc truyền hình và góc sau lưng người đá. */
 const SET_PIECE_BLEND_SEC = 0.6;
 /** Cầu thủ khối (chưa có model): bóng cầm tay trước người chừng này mét, cao ngang ngực / trên đầu. */
@@ -191,6 +199,7 @@ export class MatchRenderer {
   private readonly chargeBar: ReturnType<ActorKit['createChargeBar']>;
   /** Bóng chuyển giữa tay và vị trí sim: trượt từ `ballBlendFrom` trong BALL_BLEND_SEC. */
   private ballInHands = false;
+  private ballOwner: string | null = null;
   private ballBlend = 0;
   private readonly ballBlendFrom = new THREE.Vector3();
   private readonly ballTarget = new THREE.Vector3();
@@ -200,6 +209,10 @@ export class MatchRenderer {
   private ghostHold = false;
   private readonly taps = createTapLatch();
   private readonly blindGuard = createBlindGuard();
+  /** Đội của người chơi này: PvP lấy từ `matched.side`, đấu máy luôn là `home`. */
+  private get side(): TeamSide {
+    return this.net?.side ?? 'home';
+  }
   private readonly resizeObserver: ResizeObserver;
   private dprQuery: MediaQueryList | null = null;
   private debug: { el: HTMLElement; frames: number; at: number } | null = null;
@@ -208,6 +221,10 @@ export class MatchRenderer {
   /** Đo riêng thời gian khung hình trong lúc chuyển cảnh khi bật `?perf=1`. */
   private transitionPerf: FrameStats | null = null;
   private perfReported = false;
+  /** Soi chuyển động (`?motion=1`, review C5): ghi từng khung đã vẽ vào `window.__motionLog`. */
+  private motion: MotionRecorder | null = null;
+  private frameMs = 0;
+  private camLook = { x: 0, y: 0, z: 0 };
   private readonly stingerEnabled =
     typeof window === 'undefined' ||
     new URLSearchParams(window.location.search).get('stinger') !== '0';
@@ -244,6 +261,8 @@ export class MatchRenderer {
     private readonly bridge?: MatchBridge,
     graphics: GraphicsSettings = DEFAULT_GRAPHICS,
     private avatarSeeds?: ReadonlyMap<string, string>,
+    /** Chế độ PvP: không chạy sim ở đây, chỉ vẽ state từ `net` (lockstep chạy trong onmessage của WS). */
+    private readonly net?: NetMatch,
   ) {
     this.curr = createMatch(setup);
     bridge?.recorder?.reset();
@@ -301,12 +320,17 @@ export class MatchRenderer {
     window.addEventListener('keydown', this.onKeyDown);
     window.addEventListener('keyup', this.onKeyUp);
     window.addEventListener('blur', this.onBlur);
+    document.addEventListener('visibilitychange', this.onVisibility);
     this.watchDpr();
     if (perfEnabled(window.location.search)) {
       this.perf = new FrameStats();
       this.transitionPerf = new FrameStats();
     }
     if (import.meta.env.DEV || this.perf) this.createDebugOverlay();
+    if (motionEnabled(window.location.search)) {
+      this.motion = new MotionRecorder();
+      (window as Window & { __motionLog?: MotionRecorder }).__motionLog = this.motion;
+    }
 
     this.draw(this.prev, this.curr, 1, 0);
     this.render();
@@ -353,6 +377,8 @@ export class MatchRenderer {
 
   /** Lệnh từ React (thay người) áp vào sim; lệnh sai luật bị sim từ chối, bỏ qua. */
   private applyCommands(): void {
+    // PvP: thay người đi qua WS (server áp ở khung có tick), client không tự áp.
+    if (this.net) return;
     const commands = this.bridge?.takeCommands?.() ?? [];
     if (commands.length === 0) return;
     for (const c of commands) {
@@ -454,6 +480,7 @@ export class MatchRenderer {
     window.removeEventListener('keydown', this.onKeyDown);
     window.removeEventListener('keyup', this.onKeyUp);
     window.removeEventListener('blur', this.onBlur);
+    document.removeEventListener('visibilitychange', this.onVisibility);
     this.dprQuery?.removeEventListener('change', this.onDprChange);
     this.resizeObserver.disconnect();
     this.postFx.dispose();
@@ -524,7 +551,7 @@ export class MatchRenderer {
         this.endCutHold();
         this.cam = followCamera(this.cam, this.curr.ball.pos, 100);
         // Sân đang bị che: vào thẳng góc sau lưng, không lướt.
-        this.setPieceW = setPieceAim(this.curr) ? 1 : 0;
+        this.setPieceW = setPieceAim(this.curr, this.side) ? 1 : 0;
       },
     });
     this.frozen = { state: holdState, cam: holdCam };
@@ -589,13 +616,18 @@ export class MatchRenderer {
     };
     el.replaceChildren(
       span('foul-call__whistle'),
-      span('display foul-call__text', spec.kind === 'penalty' ? t('hud.foulPenalty') : t('hud.foul')),
+      span(
+        'display foul-call__text',
+        spec.kind === 'penalty' ? t('hud.foulPenalty') : t('hud.foul'),
+      ),
     );
     if (foul.card) {
       const label = foul.card === 'red' ? t('hud.cardRedUpper') : t('hud.cardYellowUpper');
-      const num =
-        foul.bookedNumber !== null ? t('hud.bookedNum', { num: foul.bookedNumber }) : '';
-      el.append(span(`foul-call__card foul-call__card--${foul.card}`), span('foul-call__who', label + num));
+      const num = foul.bookedNumber !== null ? t('hud.bookedNum', { num: foul.bookedNumber }) : '';
+      el.append(
+        span(`foul-call__card foul-call__card--${foul.card}`),
+        span('foul-call__who', label + num),
+      );
     }
     el.hidden = false;
   }
@@ -608,11 +640,11 @@ export class MatchRenderer {
     const name = keyForCode(e.code);
     // Tạm dừng: để mũi tên điều khiển menu (nhóm radio thay người), không chặn. Phím di chuyển vẫn
     // ghi là đang giữ (trình duyệt chỉ lặp phím bấm sau cùng) để "Tiếp tục" không phải bấm lại.
-    if (this.bridge?.isPaused()) {
+    if (!this.net && this.bridge?.isPaused()) {
       if (name && MOVE_KEYS.has(name)) this.held = { ...this.held, [name]: true };
       return;
     }
-    if (this.replay || this.pendingReplay) {
+    if (!this.net && (this.replay || this.pendingReplay)) {
       // Đang phát lại (hoặc đang vào phát lại): S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
       if (e.code === CONTROL_KEYS.pass) this.skipReplay = true;
       if (name) {
@@ -635,7 +667,7 @@ export class MatchRenderer {
     const name = keyForCode(e.code);
     if (!name) return;
     // Đang nạp lực (S/A/D) mà nhả phím trong menu tạm dừng: không tính là nhả, kẻo mở lại là bóng đi.
-    if (this.bridge?.isPaused() && isActionKey(name) && this.isCharging()) {
+    if (!this.net && this.bridge?.isPaused() && isActionKey(name) && this.isCharging()) {
       this.ghostHold = true;
       return;
     }
@@ -644,11 +676,18 @@ export class MatchRenderer {
   };
 
   private isCharging(): boolean {
-    return this.curr.passCharge !== null || this.curr.shotChargeTicks > 0;
+    return this.curr.passCharge[this.side] !== null || this.curr.shotChargeTicks[this.side] > 0;
   }
 
   /** Mất focus (Alt+Tab) thì trình duyệt không gửi keyup — coi như nhả hết phím. */
   private readonly onBlur = (): void => {
+    if (this.net) {
+      // Không có sự kiện nhả phím: bỏ hết phím và báo server đứng yên (research R2).
+      this.held = { ...NO_KEYS };
+      this.taps.consume();
+      this.net.releaseInput();
+      return;
+    }
     // Đang nạp lực thì giữ nút hành động (mất focus cũng tự tạm dừng; lý do như ở onKeyUp).
     this.ghostHold = this.isCharging();
     this.held = this.ghostHold ? actionKeysOnly(this.held) : { ...NO_KEYS };
@@ -656,9 +695,14 @@ export class MatchRenderer {
     this.blindGuard.clear();
   };
 
+  private readonly onVisibility = (): void => {
+    if (document.hidden) this.onBlur();
+  };
+
   private readonly frame = (now: number): void => {
     this.raf = requestAnimationFrame(this.frame);
     const frameMs = this.lastTime === 0 ? 0 : now - this.lastTime;
+    this.frameMs = frameMs;
     const dt = this.lastTime === 0 ? 0 : Math.min(frameMs / 1000, MAX_FRAME_SEC);
     if (frameMs > 0 && !this.bridge?.isPaused()) {
       this.transition.recordFrame(frameMs);
@@ -674,6 +718,11 @@ export class MatchRenderer {
       this.reportPerf();
     }
     this.lastTime = now;
+    if (this.net) {
+      this.frameNet(dt);
+      if (this.debug) this.refreshDebug(now);
+      return;
+    }
     this.applyCommands();
 
     const activeDt = this.bridge?.isPaused() ? 0 : dt;
@@ -772,6 +821,32 @@ export class MatchRenderer {
     if (this.debug) this.refreshDebug(now);
   };
 
+  /**
+   * Vòng vẽ PvP: gửi input khi đổi, lấy state trễ từ `net` rồi vẽ. Không accumulator, không tạm dừng,
+   * không replay/stinger/giữ cảnh (cutHold, goalHold), không ghostHold/blindGuard (A12): sim chạy
+   * liên tục ở server nên không có lúc nào "chưa nhìn thấy sân".
+   */
+  private frameNet(dt: number): void {
+    const net = this.net!;
+    // Góc sau lưng người đá không đảo (sim hiểu phím theo hướng nhìn người đá), chỉ camera trận đảo.
+    const mirror = this.side === 'away' && !setPieceAim(this.curr, this.side);
+    const input = keysToInput(mirrorKeys(this.taps.sample(this.held), mirror));
+    this.taps.consume();
+    net.sendInput(encodeInput(input));
+    const d = net.display(dt);
+    if (d && d.curr.tick !== this.curr.tick) {
+      for (const e of animationEvents(d.prev, d.curr)) this.models.get(e.playerId)?.trigger(e.clip);
+      if (isGoal(d.prev, d.curr)) this.goalFx(d.prev, d.curr);
+      this.bridge?.onState(d.curr);
+    }
+    if (d) {
+      this.prev = d.prev;
+      this.curr = d.curr;
+    }
+    this.draw(this.prev, this.curr, d ? d.alpha : 1, dt);
+    this.render();
+  }
+
   private render(): void {
     const covered = this.transition.isFullyCovering();
     if (!covered) {
@@ -779,6 +854,31 @@ export class MatchRenderer {
       else this.renderer.render(this.scene, this.camera);
     }
     this.transition.render(covered);
+    if (this.motion) this.recordMotion(covered);
+  }
+
+  private recordMotion(covered: boolean): void {
+    const players: Record<string, [number, number, number, string]> = {};
+    for (const [id, a] of this.actors)
+      players[id] = [a.position.x, a.position.z, a.rotation.y, this.models.get(id)?.clipName ?? ''];
+    const c = this.camera.position;
+    const b = this.ball.position;
+    this.motion!.record({
+      t: Date.now(),
+      ms: this.frameMs,
+      tick: this.curr.tick,
+      phase: this.curr.phase,
+      mode: this.replay
+        ? 'replay'
+        : this.frozen || this.cutHold || this.goalHold || this.pendingReplay
+          ? 'hold'
+          : 'live',
+      covered: covered || this.transition.isHidingPlay(),
+      cam: [c.x, c.y, c.z],
+      look: [this.camLook.x, this.camLook.y, this.camLook.z],
+      ball: [b.x, b.y, b.z],
+      players,
+    });
   }
 
   /** Bắt đầu phát lại quay chậm: khép stinger "XEM LẠI", khi che kín (`onCovered`) mới mở cảnh replay. */
@@ -917,19 +1017,24 @@ export class MatchRenderer {
     this.replayLabel = el;
   }
 
+  /** Lưới rung + khán giả reo (dùng chung đấu máy và PvP); `prev` cho vị trí bóng trước khi sim đặt lại. */
+  private goalFx(prev: MatchState, curr: MatchState): void {
+    const prevBall = prev.ball;
+    const side: 1 | -1 = prevBall.pos.x >= 0 ? 1 : -1;
+    this.goalSide = side;
+    this.goalScoredTeam = curr.score.home > prev.score.home ? 'home' : 'away';
+    const netY = Math.max(-2.7, Math.min(2.7, prevBall.pos.y));
+    this.nets.hit(side, new THREE.Vector3(side * 30, BALL_DRAW_RADIUS + prevBall.z, netY));
+    this.crowd.cheer();
+  }
+
   /**
    * Bàn thắng vừa được ghi (tick này): ở `this.curr` sim đã đặt ngay bóng và 14 cầu thủ về giữa sân,
    * nên lấy vị trí bóng từ `this.prev` để rung đúng lưới và giữ khung hình cầu môn tới khi chuyển cảnh.
    */
   private onGoal(): void {
     this.endCutHold();
-    const prevBall = this.prev.ball;
-    const side: 1 | -1 = prevBall.pos.x >= 0 ? 1 : -1;
-    this.goalSide = side;
-    this.goalScoredTeam = this.curr.score.home > this.prev.score.home ? 'home' : 'away';
-    const netY = Math.max(-2.7, Math.min(2.7, prevBall.pos.y));
-    this.nets.hit(side, new THREE.Vector3(side * 30, BALL_DRAW_RADIUS + prevBall.z, netY));
-    this.crowd.cheer();
+    this.goalFx(this.prev, this.curr);
 
     // Diễn tiếp thay vì đứng hình: bóng bay vào lưới rồi dừng, cầu thủ chạy chậm dần (review M2).
     this.goalCut = new CutHold(this.prev, this.curr, buildTransitionSpec('kickoff'));
@@ -979,7 +1084,7 @@ export class MatchRenderer {
       this.models.delete(id);
     }
 
-    const controlled = this.actors.get(curr.controlledId);
+    const controlled = this.actors.get(curr.controlledId[this.side]);
     this.marker.visible =
       controlled !== undefined && !curr.autopilot && !cameraOverride && this.setPieceW === 0;
     if (controlled) {
@@ -987,7 +1092,7 @@ export class MatchRenderer {
       this.marker.position.set(controlled.position.x, MARKER_Y + bob, controlled.position.z);
     }
 
-    const meter = controlled && !cameraOverride ? chargeMeter(curr) : null;
+    const meter = controlled && !cameraOverride ? chargeMeter(curr, this.side) : null;
     const bar = this.chargeBar;
     bar.group.visible = meter !== null;
     if (meter && controlled) {
@@ -1010,7 +1115,15 @@ export class MatchRenderer {
     const held = heldBall(curr);
     const inHands = held !== null && this.handBall(curr, held, this.ballTarget);
     if (!inHands) this.ballTarget.set(ground.x, BALL_DRAW_RADIUS + z, ground.y);
-    if (inHands !== this.ballInHands) {
+    // Sim đặt bóng thẳng vào chân người vừa khống chế (cách tới ~1 m, rơi từ trên cao xuống): trượt
+    // vào thay vì giật trong một tick (C5 G2). Nhảy xa (đặt lại bóng sau màn che) thì không trượt.
+    const owner = curr.ballOwnerId;
+    const captured =
+      owner !== this.ballOwner &&
+      owner !== null &&
+      this.ball.position.distanceTo(this.ballTarget) < BALL_CAPTURE_BLEND_MAX;
+    this.ballOwner = owner;
+    if (inHands !== this.ballInHands || captured) {
       this.ballInHands = inHands;
       this.ballBlendFrom.copy(this.ball.position);
       this.ballBlend = BALL_BLEND_SEC;
@@ -1035,15 +1148,17 @@ export class MatchRenderer {
 
     if (dt > 0 && !cameraOverride) this.cam = followCamera(this.cam, ground, dt);
     // Góc sau lưng người đá: lướt vào/ra trong SET_PIECE_BLEND_SEC; `this.cam` vẫn bám bóng để quay về mượt.
-    const setPiece = cameraOverride ? null : setPieceAim(curr);
+    const setPiece = cameraOverride ? null : setPieceAim(curr, this.side);
     this.setPieceW = Math.min(
       1,
       Math.max(0, this.setPieceW + (setPiece ? dt : -dt) / SET_PIECE_BLEND_SEC),
     );
     if (setPiece) this.setPieceCam = setPieceCamera(setPiece.spot, setPiece.aim);
+    const flip = this.side === 'away' ? -1 : 1;
+    const match = flip < 0 ? flipCamera(this.cam) : this.cam;
     const view =
       cameraOverride ??
-      (this.setPieceW > 0 ? blendCamera(this.cam, this.setPieceCam, this.setPieceW) : this.cam);
+      (this.setPieceW > 0 ? blendCamera(match, this.setPieceCam, this.setPieceW) : match);
     const { pos, look } = view;
     const dolly = cameraOverride ? { y: 0, z: 0 } : this.transition.currentDollyOffset();
     this.nets.update(animDt);
@@ -1051,18 +1166,19 @@ export class MatchRenderer {
     if (this.grass.object.visible) this.grass.update(look.x, look.z, timeSec);
     this.crowd.update(animDt, timeSec, this.q.crowd);
     this.boards.update(timeSec);
-    this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + dolly.z);
+    this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + flip * dolly.z);
     this.camera.lookAt(look.x, look.y, look.z);
-    this.drawCountdown(cameraOverride || this.cutHold ? null : countdownRing(this.curr));
+    this.camLook = look;
+    this.drawCountdown(cameraOverride || this.cutHold ? null : countdownRing(this.curr, this.side));
     // Điểm chạm: chỉ khi sân không bị chuyển cảnh che / giữ khung.
     const contact =
       cameraOverride || this.cutHold || this.frozen || this.transition.isActive()
         ? null
-        : setPieceContact(this.curr);
+        : setPieceContact(this.curr, this.side);
     if (contact) this.contactWidget.show(contact, setPieceFoot(this.curr));
     else this.contactWidget.hide();
     this.drawPenaltyRing(
-      cameraOverride || this.cutHold || this.frozen ? null : penaltyRing(this.curr),
+      cameraOverride || this.cutHold || this.frozen ? null : penaltyRing(this.curr, this.side),
     );
   }
 

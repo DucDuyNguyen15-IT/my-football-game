@@ -55,7 +55,7 @@ describe('toHudSnapshot / sameHud', () => {
   it('lấy cầu thủ đang điều khiển, thể lực làm tròn', () => {
     const s = match();
     const hud = toHudSnapshot(s);
-    expect(hud.controlled?.id).toBe(s.controlledId);
+    expect(hud.controlled?.id).toBe(s.controlledId.home);
     expect(hud.controlled?.stamina).toBe(100);
     expect(hud.clock).toBe("0'");
     expect(hud.score).toEqual({ home: 0, away: 0 });
@@ -64,9 +64,16 @@ describe('toHudSnapshot / sameHud', () => {
   it('thay đổi lẻ trong một tick không làm HUD vẽ lại', () => {
     const s = match();
     const a = toHudSnapshot(s);
-    const players = s.players.map((p) => (p.id === s.controlledId ? { ...p, stamina: 99.8 } : p));
+    const players = s.players.map((p) => (p.id === s.controlledId.home ? { ...p, stamina: 99.8 } : p));
     expect(sameHud(a, toHudSnapshot({ ...s, players, tick: s.tick + 1 }))).toBe(true);
     expect(sameHud(a, toHudSnapshot({ ...s, score: { home: 1, away: 0 } }))).toBe(false);
+  });
+
+  it('halfTimeReady theo đội của người xem', () => {
+    const s = { ...match(), halfTimeReady: ['away' as const] };
+    expect(toHudSnapshot(s, undefined, 'away').halfTimeReady).toBe(true);
+    expect(toHudSnapshot(s, undefined, 'home').halfTimeReady).toBe(false);
+    expect(sameHud(toHudSnapshot(match(), undefined, 'away'), toHudSnapshot(s, undefined, 'away'))).toBe(false);
   });
 });
 

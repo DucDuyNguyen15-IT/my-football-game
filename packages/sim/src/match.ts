@@ -140,6 +140,7 @@ import {
   type MatchState,
   type PassReceiver,
   type PlayerInput,
+  type TeamInputs,
   type PlayerState,
   type Restart,
   type RestartType,
@@ -150,8 +151,20 @@ import {
 
 const DEFAULT_HALF_LENGTH_SEC = 180;
 
-/** Người chơi luôn điều khiển đội nhà; đội khách là máy. */
-const HUMAN_TEAM: TeamSide = 'home';
+const TEAMS: readonly TeamSide[] = ['home', 'away'];
+
+/** Đội do người chơi điều khiển (mặc định chỉ đội nhà; PvP: cả hai). Không xét autopilot. */
+const isHuman = (state: Pick<MatchState, 'humans'>, team: TeamSide): boolean =>
+  state.humans.includes(team);
+
+type Pressed = (team: TeamSide, b: Button) => boolean;
+
+const noReceivers = (): MatchState['passReceiver'] => ({ home: null, away: null });
+/** Mỗi cú đá mới thay hẳn người nhận cũ (kể cả của đội kia). */
+const receiverOf = (team: TeamSide, r: PassReceiver | null): MatchState['passReceiver'] => ({
+  ...noReceivers(),
+  [team]: r,
+});
 
 const other = (team: TeamSide): TeamSide => (team === 'home' ? 'away' : 'home');
 
@@ -197,9 +210,9 @@ const benchOf = (team: MatchTeamSetup): MatchPlayerSetup[] =>
  * Cầu thủ ngoài sân của người chơi gần `point` nhất (dùng khi đội máy được hưởng bóng chết).
  * Hết cầu thủ ngoài sân (thẻ đỏ) thì lấy thủ môn.
  */
-function nearestHuman(players: readonly PlayerState[], point: Vec2): string {
+function nearestHuman(players: readonly PlayerState[], point: Vec2, side: TeamSide): string {
   const dist = (p: PlayerState) => length(sub(p.pos, point));
-  const team = players.filter((p) => p.team === HUMAN_TEAM);
+  const team = players.filter((p) => p.team === side);
   const outfield = team.filter((p) => p.position !== 'GK');
   const pool = outfield.length > 0 ? outfield : team;
   return pool.reduce((best, p) => (dist(p) < dist(best) ? p : best)).id;
@@ -262,6 +275,12 @@ function enterDeadBall(
     holdTicks,
     takerId,
   );
+  const controlOf = (t: TeamSide) =>
+    !isHuman(state, t)
+      ? ''
+      : plan.team === t
+        ? restart.takerId
+        : nearestHuman(placed, plan.spot, t);
   return {
     ...state,
     phase: plan.type === 'kickoff' ? 'kickoff' : 'dead_ball',
@@ -275,14 +294,14 @@ function enterDeadBall(
     ownerSinceTick: tick,
     kickLock: null,
     lastShot: null,
-    shotChargeTicks: 0,
-    passCharge: null,
+    shotChargeTicks: { home: 0, away: 0 },
+    passCharge: { home: null, away: null },
     tackleRecovery: {},
     standTackleCooldown: {},
     windup: null,
-    passReceiver: null,
+    passReceiver: noReceivers(),
     backPass: null,
-    controlledId: plan.team === HUMAN_TEAM ? restart.takerId : nearestHuman(placed, plan.spot),
+    controlledId: { home: controlOf('home'), away: controlOf('away') },
   };
 }
 
@@ -325,6 +344,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     shots: { home: 0, away: 0 },
     lastShot: null,
     autopilot: setup.autopilot ?? false,
+    humans: setup.humans ? TEAMS.filter((t) => setup.humans!.includes(t)) : ['home'],
     homeAi: setup.homeAi ?? 'teammate',
     formations: { home: home.formation, away: away.formation },
     kickoffTeam,
@@ -337,21 +357,22 @@ export function createMatch(setup: MatchSetup): MatchState {
     bench: { home: benchOf(home), away: benchOf(away) },
     subsUsed: { home: 0, away: 0 },
     substitutions: [],
-    actionDeadline: null,
+    actionDeadline: { home: null, away: null },
     halfTimeEndTick: null,
+    halfTimeReady: [],
     shotInFlight: null,
     setPieceThreat: null,
     shootout: null,
     ballOwnerId: null,
     ownerSinceTick: 0,
     kickLock: null,
-    shotChargeTicks: 0,
-    passCharge: null,
-    controlledId: '',
+    shotChargeTicks: { home: 0, away: 0 },
+    passCharge: { home: null, away: null },
+    controlledId: { home: '', away: '' },
     windup: null,
-    passReceiver: null,
+    passReceiver: noReceivers(),
     backPass: null,
-    input: NO_INPUT,
+    input: { home: NO_INPUT, away: NO_INPUT },
     ai: { home: null, away: null },
   };
   return enterKickoff(blank, kickoffTeam, 0);
@@ -557,11 +578,16 @@ const ownGoalOf = (team: TeamSide, half: 1 | 2): Vec2 =>
 
 /** Đội máy theo mức độ khó; cầu thủ AI cùng đội người chơi dùng profile đồng đội. */
 const aiProfile = (state: MatchState, team: TeamSide): AiProfile =>
-  team === HUMAN_TEAM ? AI_PROFILES[state.homeAi] : AI_PROFILES[state.difficulty];
+  isHuman(state, team) ? AI_PROFILES[state.homeAi] : AI_PROFILES[state.difficulty];
 
-/** Cầu thủ đang nhận input của người chơi; null khi autopilot (AI điều khiển cả đội). */
-const humanOf = (state: MatchState, controlledId: string): string | null =>
-  state.autopilot ? null : controlledId;
+/** Cầu thủ đang nhận input của từng đội; null với đội máy và khi autopilot (AI điều khiển cả đội). */
+const humansOf = (
+  state: MatchState,
+  controlledId: Record<TeamSide, string>,
+): Record<TeamSide, string | null> => ({
+  home: state.autopilot || !isHuman(state, 'home') ? null : controlledId.home,
+  away: state.autopilot || !isHuman(state, 'away') ? null : controlledId.away,
+});
 
 /** AI chuyền/sút theo quyết định, sai số nhân theo profile. `shot`: có tính là cú sút không. */
 function performKick(
@@ -591,7 +617,7 @@ const addShot = (shots: Record<TeamSide, number>, team: TeamSide): Record<TeamSi
 
 /**
  * AI tầng đội cho tick này: lập lại kế hoạch hai đội nếu tới hạn, trả kế hoạch mới và hàm cho input
- * di chuyển của từng cầu thủ AI (người do người chơi điều khiển `humanId` và mọi người khi tắt AI:
+ * di chuyển của từng cầu thủ AI (người do người chơi điều khiển `humanIds` và mọi người khi tắt AI:
  * đứng yên).
  */
 function runTeamAi(
@@ -600,7 +626,7 @@ function runTeamAi(
   ball: BallState,
   ballOwnerId: string | null,
   restartTeam: TeamSide | null,
-  humanId: string | null,
+  humanIds: Record<TeamSide, string | null>,
   tick: number,
 ): { ai: MatchState['ai']; moveOf: (p: PlayerState) => { move: Vec2; sprint: boolean } } {
   const still = { move: ZERO, sprint: false };
@@ -619,7 +645,7 @@ function runTeamAi(
         ballOwnerId,
         restartTeam,
         aggression: profile.aggression,
-        controlledId: team === HUMAN_TEAM ? humanId : null,
+        controlledId: humanIds[team],
       },
       tick,
       profile.reactionDelayTicks,
@@ -627,7 +653,7 @@ function runTeamAi(
   };
   const ai = { home: think('home'), away: think('away') };
   const moveOf = (p: PlayerState) =>
-    p.id === humanId
+    p.id === humanIds[p.team]
       ? still
       : aiMove(
           p,
@@ -650,10 +676,19 @@ function runTeamAi(
  * Đồng hồ chạy ở mọi phase trừ `half_time`/`full_time`.
  */
 export function step(state: MatchState, rawInput: PlayerInput): MatchState {
+  return stepBoth(state, { home: rawInput, away: NO_INPUT });
+}
+
+/** Như `step`, nhưng mỗi đội người có input riêng (PvP). Đội máy bỏ qua input của mình. */
+export function stepBoth(state: MatchState, inputs: TeamInputs): MatchState {
   if (state.phase === 'full_time') return state;
-  const next = advance(state, rawInput);
-  const actionDeadline = nextDeadline(state.actionDeadline, next);
-  return actionDeadline === next.actionDeadline ? next : { ...next, actionDeadline };
+  const next = advance(state, inputs);
+  const prev = state.actionDeadline;
+  const home = nextDeadline(prev.home, next, 'home');
+  const away = nextDeadline(prev.away, next, 'away');
+  return home === next.actionDeadline.home && away === next.actionDeadline.away
+    ? next
+    : { ...next, actionDeadline: { home, away } };
 }
 
 /**
@@ -662,11 +697,15 @@ export function step(state: MatchState, rawInput: PlayerInput): MatchState {
  * đứng trước bóng, chuyển cảnh đã xong — luật 3); thủ môn do người chơi cầm đang ôm bóng bằng tay
  * tính từ lúc bắt đầu ôm. Autopilot thì không có.
  */
-function nextDeadline(prev: ActionDeadline | null, s: MatchState): ActionDeadline | null {
-  if (s.autopilot) return null;
+function nextDeadline(
+  prev: ActionDeadline | null,
+  s: MatchState,
+  team: TeamSide,
+): ActionDeadline | null {
+  if (s.autopilot || !isHuman(s, team)) return null;
   const r = s.restart;
   if (r) {
-    if (r.team !== HUMAN_TEAM) return null;
+    if (r.team !== team) return null;
     const deadlineTick = r.readyTick + SET_PIECE_MAX_TICKS;
     return prev?.kind === r.type &&
       prev.playerId === r.takerId &&
@@ -678,8 +717,8 @@ function nextDeadline(prev: ActionDeadline | null, s: MatchState): ActionDeadlin
   if (
     s.phase !== 'play' ||
     !holder ||
-    holder.team !== HUMAN_TEAM ||
-    holder.id !== s.controlledId ||
+    holder.team !== team ||
+    holder.id !== s.controlledId[team] ||
     !isKeeperHandling(holder, s.half, s.backPass)
   ) {
     return null;
@@ -712,25 +751,32 @@ function trackShot(prev: MatchState['shotInFlight'], s: MatchState): MatchState 
   return shotInFlight === s.shotInFlight ? s : { ...s, shotInFlight };
 }
 
-function advance(state: MatchState, rawInput: PlayerInput): MatchState {
-  const input = state.autopilot ? NO_INPUT : sanitizeInput(rawInput);
-  const pressed = (b: Button) => input[b] && !state.input[b];
+function advance(state: MatchState, rawInputs: TeamInputs): MatchState {
+  const pick = (t: TeamSide) =>
+    state.autopilot || !isHuman(state, t) ? NO_INPUT : sanitizeInput(rawInputs[t]);
+  const inputs: TeamInputs = { home: pick('home'), away: pick('away') };
+  const pressed: Pressed = (t, b) => inputs[t][b] && !state.input[t][b];
   const tick = state.tick + 1;
 
   if (state.phase === 'half_time') {
-    const waiting = { ...state, tick, input };
+    const ready = state.humans.filter((t) => state.halfTimeReady.includes(t) || pressed(t, 'pass'));
+    const waiting = { ...state, tick, input: inputs, halfTimeReady: ready };
     const timeUp = state.halfTimeEndTick !== null && tick >= state.halfTimeEndTick;
-    return pressed('pass') || state.autopilot || timeUp ? startSecondHalf(waiting, tick) : waiting;
+    const allReady = ready.length > 0 && ready.length === state.humans.length;
+    return allReady || state.autopilot || timeUp ? startSecondHalf(waiting, tick) : waiting;
   }
-  if (state.phase === 'shootout') return stepShootout(state, input, pressed, tick);
+  if (state.phase === 'shootout') return stepShootout(state, inputs, pressed, tick);
   const played = state.restart
-    ? stepDeadBall(state, input, pressed, tick)
-    : stepPlay(state, input, pressed, tick);
+    ? stepDeadBall(state, inputs, pressed, tick)
+    : stepPlay(state, inputs, pressed, tick);
   const next = runClock(trackSetPiece(state, trackShot(state.shotInFlight, played)));
   if (!next.ballDead || state.ballDead) return next;
   // Bóng vừa chết: đội máy (và đội người chơi khi tự đá) thay cầu thủ kiệt sức.
-  const cpu = autoSubstitute(next, other(HUMAN_TEAM));
-  return next.autopilot ? autoSubstitute(cpu, HUMAN_TEAM) : cpu;
+  const cpuTeams = TEAMS.filter((t) => !isHuman(next, t));
+  return (next.autopilot ? [...cpuTeams, ...next.humans] : cpuTeams).reduce(
+    (s, t) => autoSubstitute(s, t),
+    next,
+  );
 }
 
 /** Phạt góc, hoặc đá phạt trong SET_PIECE_THREAT_DIST tính từ khung thành bị tấn công. */
@@ -805,15 +851,16 @@ function whistle(state: MatchState, phase: 'half_time' | 'full_time'): MatchStat
     restart: null,
     ballOwnerId: null,
     kickLock: null,
-    shotChargeTicks: 0,
-    passCharge: null,
+    shotChargeTicks: { home: 0, away: 0 },
+    passCharge: { home: null, away: null },
     windup: null,
-    passReceiver: null,
+    passReceiver: noReceivers(),
     backPass: null,
     lastShot: null,
     shotInFlight: null,
     setPieceThreat: null,
     halfTimeEndTick: phase === 'half_time' ? state.tick + HALF_TIME_MAX_TICKS : null,
+    halfTimeReady: [],
     ball: restingBall(state.ball.pos),
   };
 }
@@ -853,13 +900,13 @@ function setupShootoutKick(state: MatchState, tick: number): MatchState {
  */
 function stepShootout(
   state: MatchState,
-  input: PlayerInput,
-  pressed: (b: Button) => boolean,
+  inputs: TeamInputs,
+  pressed: Pressed,
   tick: number,
 ): MatchState {
   const so = state.shootout!;
   if (state.restart) {
-    const next = stepDeadBall(state, input, pressed, tick);
+    const next = stepDeadBall(state, inputs, pressed, tick);
     const kicked = next.restart === null;
     return {
       ...next,
@@ -868,7 +915,7 @@ function stepShootout(
       shootout: kicked ? { ...so, kickTick: tick } : so,
     };
   }
-  const next = stepPlay(state, input, pressed, tick);
+  const next = stepPlay(state, inputs, pressed, tick);
   const team = so.kicking;
   const scored = next.score[team] > state.score[team];
   // Hỏng: bóng ra ngoài (sang bóng chết), thủ môn chạm/bắt (đội kia chạm cuối), có người khống
@@ -904,6 +951,7 @@ function startSecondHalf(state: MatchState, tick: number): MatchState {
     stoppage: { overrunTicks: 0, goals: 0 },
     addedMinutes: null,
     halfTimeEndTick: null,
+    halfTimeReady: [],
   };
   return enterKickoff(second, other(state.kickoffTeam), tick);
 }
@@ -918,13 +966,16 @@ function startSecondHalf(state: MatchState, tick: number): MatchState {
  */
 function stepDeadBall(
   state: MatchState,
-  input: PlayerInput,
-  pressed: (b: Button) => boolean,
+  inputs: TeamInputs,
+  pressedBy: Pressed,
   tick: number,
 ): MatchState {
   const restart = state.restart!;
+  // Nút của đội thực hiện (chỉ dùng khi đội đó là người chơi; đội máy có NO_INPUT).
+  const input = inputs[restart.team];
+  const pressed = (b: Button) => pressedBy(restart.team, b);
   const taker = state.players.find((p) => p.id === restart.takerId)!;
-  const humanRestart = restart.team === HUMAN_TEAM && !state.autopilot;
+  const humanRestart = isHuman(state, restart.team) && !state.autopilot;
   const canShoot = restart.type === 'free_kick' || restart.type === 'penalty';
   const canPass = restart.type !== 'penalty';
   const goalSign = attackSign(restart.team, state.half);
@@ -997,11 +1048,11 @@ function stepDeadBall(
   } | null = null;
   let { rng, windup } = state;
   let shotChargeTicks = 0;
-  let passCharge: MatchState['passCharge'] = null;
+  let passCharge: MatchState['passCharge'][TeamSide] = null;
   // Phát bóng: thủ môn lấy đà rồi bóng mới đi.
   const goalKick = restart.type === 'goal_kick';
   // Chuyền bóng chết như bóng sống: bấm S/A bắt đầu nạp lực, giữ thì lực tăng, nhả mới đá.
-  const releasePass = (charge: NonNullable<MatchState['passCharge']>) => {
+  const releasePass = (charge: NonNullable<MatchState['passCharge'][TeamSide]>) => {
     const dir = setAim ?? (length(input.move) > 0 ? input.move : charge.dir);
     const power = passPower(charge.ticks);
     if (goalKick) {
@@ -1018,7 +1069,8 @@ function stepDeadBall(
       shot: false,
     });
   };
-  const charging = state.passCharge;
+  const charging = state.passCharge[restart.team];
+  const ownCharge = state.shotChargeTicks[restart.team];
   const cpuKick = () => {
     const decided = decideRestartKick(restart, state.players, state.half, state.rng);
     if (decided.action.type !== 'dribble' && goalKick) {
@@ -1047,8 +1099,8 @@ function stepDeadBall(
     }
   } else if (targets.size > 0) {
     // Còn người đang đi về vị trí.
-  } else if (expired && state.shotChargeTicks > 0) {
-    kicked = release(state.shotChargeTicks);
+  } else if (expired && ownCharge > 0) {
+    kicked = release(ownCharge);
   } else if (expired && charging) {
     kicked = releasePass(charging);
   } else if (humanRestart && !expired) {
@@ -1066,10 +1118,10 @@ function stepDeadBall(
       // Giao bóng, ném biên (camera TV) vẫn bấm là đá.
       if (aimed) passCharge = { kind, ticks: 1, dir, through: false };
       else kicked = { ...pass(kind, dir), shot: false };
-    } else if (canShoot && input.shoot && (state.shotChargeTicks > 0 || pressed('shoot'))) {
-      shotChargeTicks = state.shotChargeTicks + 1;
-    } else if (canShoot && !input.shoot && state.shotChargeTicks > 0) {
-      kicked = release(state.shotChargeTicks);
+    } else if (canShoot && input.shoot && (ownCharge > 0 || pressed('shoot'))) {
+      shotChargeTicks = ownCharge + 1;
+    } else if (canShoot && !input.shoot && ownCharge > 0) {
+      kicked = release(ownCharge);
     }
   } else if (penalty && !humanRestart && cpuRestartDue(restart, tick)) {
     penaltyRunUp = { power: 0, y: 0, releaseTick: tick + PENALTY_RUNUP_TICKS };
@@ -1104,25 +1156,31 @@ function stepDeadBall(
       ballOwnerId: null,
       ownerSinceTick: tick,
       // Người chơi chuyền bóng chết: đổi ngay sang người nhận, người nhận tự chạy đón (5.17).
-      controlledId: humanRestart && receiver ? receiver.playerId : state.controlledId,
-      passReceiver: humanRestart ? receiver : null,
+      controlledId:
+        humanRestart && receiver
+          ? { ...state.controlledId, [restart.team]: receiver.playerId }
+          : state.controlledId,
+      passReceiver: humanRestart ? receiverOf(restart.team, receiver) : noReceivers(),
       windup: null,
       backPass: kickedBy(taker),
       kickLock: { playerId: taker.id, untilTick: tick + KICK_LOCK_TICKS },
       lastTouchTeam: restart.team,
-      shotChargeTicks: 0,
-      passCharge: null,
+      shotChargeTicks: { home: 0, away: 0 },
+      passCharge: { home: null, away: null },
       shots: kicked.shot ? addShot(state.shots, restart.team) : state.shots,
       lastShot,
-      input,
+      input: inputs,
     };
   }
 
-  let { controlledId } = state;
-  if (!humanRestart && (pressed('switch') || pressed('pass'))) {
-    controlledId = chooseSwitchTarget(state.players, HUMAN_TEAM, restart.spot, controlledId);
+  const controlledId = { ...state.controlledId };
+  for (const t of state.humans) {
+    if (humanRestart && t === restart.team) continue;
+    if (pressedBy(t, 'switch') || pressedBy(t, 'pass')) {
+      controlledId[t] = chooseSwitchTarget(state.players, t, restart.spot, controlledId[t]);
+    }
   }
-  const human = humanOf(state, controlledId);
+  const human = humansOf(state, controlledId);
   // Đội hình giữ nguyên lúc chờ giao bóng; phạt đền thì mọi người đứng ngoài vòng cấm chờ.
   const aiActive = restart.type !== 'kickoff' && restart.type !== 'penalty';
   const { ai, moveOf } = aiActive
@@ -1136,7 +1194,7 @@ function stepDeadBall(
         return stepPlayer(p, m.move, m.sprint);
       }
       if (p.id === taker.id) return stepPlayer(p, ZERO, false);
-      if (p.id === human) return stepPlayer(p, input.move, input.sprint);
+      if (p.id === human[p.team]) return stepPlayer(p, inputs[p.team].move, inputs[p.team].sprint);
       const m = moveOf(p);
       return stepPlayer(p, m.move, m.sprint);
     }),
@@ -1158,10 +1216,10 @@ function stepDeadBall(
     players,
     controlledId,
     ai,
-    shotChargeTicks,
-    passCharge,
+    shotChargeTicks: { home: 0, away: 0, [restart.team]: shotChargeTicks },
+    passCharge: { home: null, away: null, [restart.team]: passCharge },
     stoppage: { ...state.stoppage, overrunTicks: state.stoppage.overrunTicks + overrun },
-    input,
+    input: inputs,
   };
 }
 
@@ -1175,12 +1233,15 @@ function stepDeadBall(
  */
 function stepPlay(
   state: MatchState,
-  input: PlayerInput,
-  pressed: (b: Button) => boolean,
+  inputs: TeamInputs,
+  pressedBy: Pressed,
   tick: number,
 ): MatchState {
-  let { ball, rng, kickLock, controlledId, ballOwnerId, shotChargeTicks, passCharge, shots } =
-    state;
+  let { ball, rng, kickLock, ballOwnerId, shots } = state;
+  // Mỗi đội người có trạng thái nạp lực/người đang cầm riêng; sửa tại chỗ trên bản sao.
+  const controlledId = { ...state.controlledId };
+  const shotChargeTicks = { ...state.shotChargeTicks };
+  const passCharge = { ...state.passCharge };
   let { lastShot, lastTouchTeam, lastTackle } = state;
   const byId = (id: string) => state.players.find((p) => p.id === id);
   const lock = (playerId: string) => ({ playerId, untilTick: tick + KICK_LOCK_TICKS });
@@ -1192,6 +1253,7 @@ function stepPlay(
   );
   let slidingId: string | null = null;
   let { windup, passReceiver, backPass } = state;
+  const humanTeams = state.humans;
 
   // 0. Thủ môn lấy đà xong: bóng rời tay/chân (đội người chơi: đổi sang người nhận, người đó chạy đón).
   if (windup && ballOwnerId !== windup.playerId) windup = null;
@@ -1203,8 +1265,8 @@ function stepPlay(
     kickLock = lock(keeper.id);
     if (kick.receiver) {
       // Thủ môn đội người chơi ném/phát cho đồng đội: người chơi điều khiển luôn người nhận.
-      if (keeper.team === HUMAN_TEAM) controlledId = kick.receiver.playerId;
-      passReceiver = kick.receiver;
+      if (isHuman(state, keeper.team)) controlledId[keeper.team] = kick.receiver.playerId;
+      passReceiver = receiverOf(keeper.team, kick.receiver);
     }
     if (kick.shot) shots = addShot(shots, keeper.team);
     lastShot = shotFrom(kick.shot, keeper.team, tick);
@@ -1213,215 +1275,250 @@ function stepPlay(
   }
 
   // 1. Đổi người: nút đổi người, hoặc J khi người đang điều khiển không có bóng.
-  if (ballOwnerId !== controlledId && (pressed('switch') || pressed('pass'))) {
-    const carrier = ballOwnerId === null ? undefined : byId(ballOwnerId);
-    // Đối thủ dẫn bóng: chọn người chắn trước mặt họ, không chọn người đã bị vượt qua (5.17).
-    controlledId =
-      carrier && carrier.team !== HUMAN_TEAM
-        ? chooseDefensiveSwitchTarget(
-            state.players,
-            HUMAN_TEAM,
-            carrier,
-            ownGoalOf(HUMAN_TEAM, state.half),
-            controlledId,
-          )
-        : chooseSwitchTarget(state.players, HUMAN_TEAM, ball.pos, controlledId);
+  for (const team of humanTeams) {
+    if (
+      ballOwnerId !== controlledId[team] &&
+      (pressedBy(team, 'switch') || pressedBy(team, 'pass'))
+    ) {
+      const carrier = ballOwnerId === null ? undefined : byId(ballOwnerId);
+      // Đối thủ dẫn bóng: chọn người chắn trước mặt họ, không chọn người đã bị vượt qua (5.17).
+      controlledId[team] =
+        carrier && carrier.team !== team
+          ? chooseDefensiveSwitchTarget(
+              state.players,
+              team,
+              carrier,
+              ownGoalOf(team, state.half),
+              controlledId[team],
+            )
+          : chooseSwitchTarget(state.players, team, ball.pos, controlledId[team]);
+    }
   }
 
   // Thủ môn đang ôm bóng thì không ai tranh được (người chơi lẫn máy).
-  const ballHolder = ballOwnerId === null ? undefined : byId(ballOwnerId);
-  const keeperHolds =
-    ballHolder !== undefined && isKeeperHandling(ballHolder, state.half, backPass);
+  const keeperHoldsNow = () => {
+    const holder = ballOwnerId === null ? undefined : byId(ballOwnerId);
+    return holder !== undefined && isKeeperHandling(holder, state.half, backPass);
+  };
 
-  // 2. Hành động của người dẫn bóng do người chơi điều khiển.
-  const humanBefore = humanOf(state, controlledId);
-  const me = humanBefore === null ? undefined : byId(humanBefore);
-  if (me && ballOwnerId === me.id && !windup) {
-    // S/A/W: bấm bắt đầu nạp lực chuyền/chọc khe, giữ thì lực tăng, nhả mới đá (đang nạp sút thì bỏ
-    // qua). Thủ môn ôm bóng không chọc khe.
-    const canStart = !passCharge && shotChargeTicks === 0;
-    const startThrough = canStart && !keeperHolds && pressed('through');
-    const startKind: PassKind | null = !canStart
-      ? null
-      : startThrough
-        ? input.modifier
-          ? 'lob'
-          : 'ground'
-        : pressed('pass')
-          ? 'ground'
-          : pressed('lob')
+  // 2. Hành động của người dẫn bóng do người chơi điều khiển (lần lượt từng đội người).
+  const humanBefore = humansOf(state, controlledId);
+  const shotCharge = shotChargeTicks;
+  const passCharges = passCharge;
+  // Hai đội người cùng tranh một tick: đổi lượt ai xử trước theo tick chẵn/lẻ để đội nhà không luôn thắng.
+  const actOrder = tick % 2 === 1 ? [...humanTeams].reverse() : humanTeams;
+  for (const team of actOrder) {
+    const input = inputs[team];
+    const pressed = (b: Button) => pressedBy(team, b);
+    const keeperHolds = keeperHoldsNow();
+    const myId = humanBefore[team];
+    const me = myId === null ? undefined : byId(myId);
+    let shotChargeTicks = shotCharge[team];
+    let passCharge = passCharges[team];
+    if (me && ballOwnerId === me.id && !windup) {
+      // S/A/W: bấm bắt đầu nạp lực chuyền/chọc khe, giữ thì lực tăng, nhả mới đá (đang nạp sút thì bỏ
+      // qua). Thủ môn ôm bóng không chọc khe.
+      const canStart = !passCharge && shotChargeTicks === 0;
+      const startThrough = canStart && !keeperHolds && pressed('through');
+      const startKind: PassKind | null = !canStart
+        ? null
+        : startThrough
+          ? input.modifier
             ? 'lob'
-            : null;
-    const holding =
-      passCharge !== null &&
-      input[passCharge.through ? 'through' : passCharge.kind === 'ground' ? 'pass' : 'lob'];
-    const moveDir = length(input.move) > 0 ? normalize(input.move) : null;
-    const releasedShot = !input.shoot && shotChargeTicks > 0;
-    const hold = state.actionDeadline;
-    const holdExpired =
-      keeperHolds &&
-      hold?.kind === 'keeper_hold' &&
-      hold.playerId === me.id &&
-      tick >= hold.deadlineTick;
-    // Ôm bóng quá hạn: tự phát bóng như thủ môn AI (chuyền cho người trống nhất, không có thì phát dài).
-    const forced = holdExpired
-      ? decideCarrier({
-          carrier: me,
-          players: state.players,
-          half: state.half,
-          heldTicks: KEEPER_HOLD_MAX_TICKS,
-          minHoldTicks: 0,
-        })
-      : null;
-    if (forced && forced.type !== 'dribble') {
-      const style = forced.type === 'pass' && forced.kind === 'ground' ? 'throw' : 'kick';
-      windup = startWindup(me.id, tick, style, forced);
-      shotChargeTicks = 0;
-      passCharge = null;
-    } else if (!keeperHolds && losesBallOnTurn(me, input.move)) {
-      // Thủ môn ôm bóng bằng tay thì xoay gắt cũng không tuột.
-      // Bóng tuột chân, giữ vận tốc đang chạy.
-      ballOwnerId = null;
-      kickLock = lock(me.id);
-      shotChargeTicks = 0;
-      passCharge = null;
-      backPass = null;
-    } else if (startKind) {
-      passCharge = { kind: startKind, ticks: 1, dir: moveDir ?? me.facing, through: startThrough };
-    } else if (passCharge && holding) {
-      passCharge = {
-        ...passCharge,
-        ticks: Math.min(PASS_FULL_CHARGE_TICKS, passCharge.ticks + 1),
-        dir: moveDir ?? passCharge.dir,
-      };
-    } else if (passCharge) {
-      // Chuẩn hoá: độ lớn cần analog chỉ chọn hướng, không làm ngắn đường chuyền vào khoảng trống.
-      const dir = moveDir ?? passCharge.dir;
-      const power = passPower(passCharge.ticks);
-      const { kind } = passCharge;
-      if (passCharge.through) {
-        const attack = attackSign(me.team, state.half);
-        const kick = throughPass(
-          state.players,
-          asKicker(me),
-          ball.pos,
-          dir,
-          kind,
-          attack,
-          rng,
-          tick,
-          power,
-        );
-        ({ ball, rng } = kick);
-        if (kick.receiver) controlledId = kick.receiver.playerId;
-        passReceiver = kick.receiver;
+            : 'ground'
+          : pressed('pass')
+            ? 'ground'
+            : pressed('lob')
+              ? 'lob'
+              : null;
+      const holding =
+        passCharge !== null &&
+        input[passCharge.through ? 'through' : passCharge.kind === 'ground' ? 'pass' : 'lob'];
+      const moveDir = length(input.move) > 0 ? normalize(input.move) : null;
+      const releasedShot = !input.shoot && shotChargeTicks > 0;
+      const hold = state.actionDeadline[team];
+      const holdExpired =
+        keeperHolds &&
+        hold?.kind === 'keeper_hold' &&
+        hold.playerId === me.id &&
+        tick >= hold.deadlineTick;
+      // Ôm bóng quá hạn: tự phát bóng như thủ môn AI (chuyền cho người trống nhất, không có thì phát dài).
+      const forced = holdExpired
+        ? decideCarrier({
+            carrier: me,
+            players: state.players,
+            half: state.half,
+            heldTicks: KEEPER_HOLD_MAX_TICKS,
+            minHoldTicks: 0,
+          })
+        : null;
+      if (forced && forced.type !== 'dribble') {
+        const style = forced.type === 'pass' && forced.kind === 'ground' ? 'throw' : 'kick';
+        windup = startWindup(me.id, tick, style, forced);
+        shotChargeTicks = 0;
+        passCharge = null;
+      } else if (!keeperHolds && losesBallOnTurn(me, input.move)) {
+        // Thủ môn ôm bóng bằng tay thì xoay gắt cũng không tuột.
+        // Bóng tuột chân, giữ vận tốc đang chạy.
         ballOwnerId = null;
         kickLock = lock(me.id);
-        lastShot = null;
-        backPass = kickedBy(me);
-      } else if (keeperHolds) {
-        // Thủ môn ôm bóng: lấy đà ném (chuyền sệt) / phát bóng (bổng), bóng còn trong tay.
-        const style = kind === 'ground' ? 'throw' : 'kick';
-        windup = startWindup(me.id, tick, style, { type: 'assisted', kind, dir, power });
-      } else {
-        const kick = kickPass(state.players, asKicker(me), ball.pos, dir, kind, rng, tick, power);
-        rng = kick.rng;
-        ball = kick.ball;
-        // Đổi ngay sang người nhận như FC Online, không chờ bắt được bóng (5.17); người nhận tự
-        // chạy tới chỗ bóng tới.
-        if (kick.receiver) controlledId = kick.receiver.playerId;
-        passReceiver = kick.receiver;
-        ballOwnerId = null;
-        kickLock = lock(me.id);
-        lastShot = null;
-        backPass = kickedBy(me);
-      }
-      shotChargeTicks = 0;
-      passCharge = null;
-    } else if (input.shoot && (shotChargeTicks > 0 || pressed('shoot'))) {
-      // Chỉ nạp lực khi bấm nút sút lúc đang có bóng: giữ nút từ lúc chưa có bóng không thành sút.
-      shotChargeTicks += 1;
-    } else if (releasedShot) {
-      const sign = attackSign(me.team, state.half);
-      const power = shotPower(shotChargeTicks);
-      ({ ball, rng } = input.finesse
-        ? finesseShot(asKicker(me), ball.pos, sign, power, rng)
-        : shootBall(asKicker(me), ball.pos, shotTarget(sign, input.move.y), power, rng));
-      ballOwnerId = null;
-      kickLock = lock(me.id);
-      shotChargeTicks = 0;
-      shots = addShot(shots, me.team);
-      lastShot = shotFrom(true, me.team, tick);
-      backPass = kickedBy(me);
-    }
-  } else {
-    shotChargeTicks = 0;
-    passCharge = null;
-    // Nút chuyền bổng (A) khi không có bóng = xoạc.
-    if (me && !keeperHolds && pressed('lob') && tackleRecovery[me.id] === undefined) {
-      const tackle = resolveTackle(state.players, me, ball, ballOwnerId, rng, CONTROL_HEIGHT);
-      rng = tackle.rng;
-      const { outcome } = tackle;
-      const victimId = outcome.type === 'miss' ? null : outcome.victimId;
-      const tackleOf = (reaction: 'fall' | 'stumble' | null): MatchState['lastTackle'] => ({
-        tick,
-        tacklerId: me.id,
-        victimId,
-        outcome: outcome.type,
-        victimReaction: reaction,
-      });
-      if (outcome.type === 'foul') {
-        const victim = byId(outcome.victimId)!;
-        const fouled = enterFoul({ ...state, tick, rng, input }, me, victim, outcome, tick);
-        return { ...fouled, lastTackle: tackleOf(null) };
-      }
-      // Trúng bóng hay hụt đều nằm trượt; trúng bóng thì bóng bật ra, người bị xoạc ngã hoặc vấp.
-      slidingId = me.id;
-      tackleRecovery[me.id] = tick + TACKLE_RECOVERY_TICKS;
-      let reaction: 'fall' | 'stumble' | null = null;
-      if (outcome.type === 'won') {
-        ball = pokeBall(me, ball);
-        ballOwnerId = null;
-        lastTouchTeam = me.team;
+        shotChargeTicks = 0;
+        passCharge = null;
         backPass = null;
-        if (outcome.victimId !== null) {
-          const hit = victimReaction(rng);
-          rng = hit.rng;
-          reaction = hit.reaction;
-          kickLock = lock(outcome.victimId);
-          tackleRecovery[outcome.victimId] =
-            tick + (reaction === 'fall' ? VICTIM_FALL_TICKS : VICTIM_STUMBLE_TICKS);
+      } else if (startKind) {
+        passCharge = {
+          kind: startKind,
+          ticks: 1,
+          dir: moveDir ?? me.facing,
+          through: startThrough,
+        };
+      } else if (passCharge && holding) {
+        passCharge = {
+          ...passCharge,
+          ticks: Math.min(PASS_FULL_CHARGE_TICKS, passCharge.ticks + 1),
+          dir: moveDir ?? passCharge.dir,
+        };
+      } else if (passCharge) {
+        // Chuẩn hoá: độ lớn cần analog chỉ chọn hướng, không làm ngắn đường chuyền vào khoảng trống.
+        const dir = moveDir ?? passCharge.dir;
+        const power = passPower(passCharge.ticks);
+        const { kind } = passCharge;
+        if (passCharge.through) {
+          const attack = attackSign(me.team, state.half);
+          const kick = throughPass(
+            state.players,
+            asKicker(me),
+            ball.pos,
+            dir,
+            kind,
+            attack,
+            rng,
+            tick,
+            power,
+          );
+          ({ ball, rng } = kick);
+          if (kick.receiver) controlledId[team] = kick.receiver.playerId;
+          passReceiver = receiverOf(team, kick.receiver);
+          ballOwnerId = null;
+          kickLock = lock(me.id);
+          lastShot = null;
+          backPass = kickedBy(me);
+        } else if (keeperHolds) {
+          // Thủ môn ôm bóng: lấy đà ném (chuyền sệt) / phát bóng (bổng), bóng còn trong tay.
+          const style = kind === 'ground' ? 'throw' : 'kick';
+          windup = startWindup(me.id, tick, style, { type: 'assisted', kind, dir, power });
+        } else {
+          const kick = kickPass(state.players, asKicker(me), ball.pos, dir, kind, rng, tick, power);
+          rng = kick.rng;
+          ball = kick.ball;
+          // Đổi ngay sang người nhận như FC Online, không chờ bắt được bóng (5.17); người nhận tự
+          // chạy tới chỗ bóng tới.
+          if (kick.receiver) controlledId[team] = kick.receiver.playerId;
+          passReceiver = receiverOf(team, kick.receiver);
+          ballOwnerId = null;
+          kickLock = lock(me.id);
+          lastShot = null;
+          backPass = kickedBy(me);
+        }
+        shotChargeTicks = 0;
+        passCharge = null;
+      } else if (input.shoot && (shotChargeTicks > 0 || pressed('shoot'))) {
+        // Chỉ nạp lực khi bấm nút sút lúc đang có bóng: giữ nút từ lúc chưa có bóng không thành sút.
+        shotChargeTicks += 1;
+      } else if (releasedShot) {
+        const sign = attackSign(me.team, state.half);
+        const power = shotPower(shotChargeTicks);
+        ({ ball, rng } = input.finesse
+          ? finesseShot(asKicker(me), ball.pos, sign, power, rng)
+          : shootBall(asKicker(me), ball.pos, shotTarget(sign, input.move.y), power, rng));
+        ballOwnerId = null;
+        kickLock = lock(me.id);
+        shotChargeTicks = 0;
+        shots = addShot(shots, me.team);
+        lastShot = shotFrom(true, me.team, tick);
+        backPass = kickedBy(me);
+      }
+    } else {
+      shotChargeTicks = 0;
+      passCharge = null;
+      // Nút chuyền bổng (A) khi không có bóng = xoạc.
+      if (me && !keeperHolds && pressed('lob') && tackleRecovery[me.id] === undefined) {
+        const tackle = resolveTackle(state.players, me, ball, ballOwnerId, rng, CONTROL_HEIGHT);
+        rng = tackle.rng;
+        const { outcome } = tackle;
+        const victimId = outcome.type === 'miss' ? null : outcome.victimId;
+        const tackleOf = (reaction: 'fall' | 'stumble' | null): MatchState['lastTackle'] => ({
+          tick,
+          tacklerId: me.id,
+          victimId,
+          outcome: outcome.type,
+          victimReaction: reaction,
+        });
+        if (outcome.type === 'foul') {
+          const victim = byId(outcome.victimId)!;
+          const fouled = enterFoul(
+            { ...state, tick, rng, input: inputs },
+            me,
+            victim,
+            outcome,
+            tick,
+          );
+          return { ...fouled, lastTackle: tackleOf(null) };
+        }
+        // Trúng bóng hay hụt đều nằm trượt; trúng bóng thì bóng bật ra, người bị xoạc ngã hoặc vấp.
+        slidingId = me.id;
+        tackleRecovery[me.id] = tick + TACKLE_RECOVERY_TICKS;
+        let reaction: 'fall' | 'stumble' | null = null;
+        if (outcome.type === 'won') {
+          ball = pokeBall(me, ball);
+          ballOwnerId = null;
+          lastTouchTeam = me.team;
+          backPass = null;
+          if (outcome.victimId !== null) {
+            const hit = victimReaction(rng);
+            rng = hit.rng;
+            reaction = hit.reaction;
+            kickLock = lock(outcome.victimId);
+            tackleRecovery[outcome.victimId] =
+              tick + (reaction === 'fall' ? VICTIM_FALL_TICKS : VICTIM_STUMBLE_TICKS);
+          }
+        }
+        lastTackle = tackleOf(reaction);
+      } else if (
+        me &&
+        !keeperHolds &&
+        input.shoot &&
+        tackleRecovery[me.id] === undefined &&
+        standTackleCooldown[me.id] === undefined
+      ) {
+        // Giữ D (nút sút) khi không có bóng: bóng vào tầm thì tắc bóng đứng.
+        const tackle = resolveStandTackle(state.players, me, ball, ballOwnerId, rng);
+        rng = tackle.rng;
+        const { outcome } = tackle;
+        if (outcome.type === 'foul') {
+          const victim = byId(outcome.victimId)!;
+          return enterFoul({ ...state, tick, rng, input: inputs }, me, victim, outcome, tick);
+        }
+        if (outcome.type === 'won') {
+          ballOwnerId = me.id;
+          kickLock = outcome.victimId === null ? null : lock(outcome.victimId);
+        } else if (outcome.type === 'failed') {
+          standTackleCooldown[me.id] = tick + STAND_TACKLE_COOLDOWN_TICKS;
         }
       }
-      lastTackle = tackleOf(reaction);
-    } else if (
-      me &&
-      !keeperHolds &&
-      input.shoot &&
-      tackleRecovery[me.id] === undefined &&
-      standTackleCooldown[me.id] === undefined
-    ) {
-      // Giữ D (nút sút) khi không có bóng: bóng vào tầm thì tắc bóng đứng.
-      const tackle = resolveStandTackle(state.players, me, ball, ballOwnerId, rng);
-      rng = tackle.rng;
-      const { outcome } = tackle;
-      if (outcome.type === 'foul') {
-        const victim = byId(outcome.victimId)!;
-        return enterFoul({ ...state, tick, rng, input }, me, victim, outcome, tick);
-      }
-      if (outcome.type === 'won') {
-        ballOwnerId = me.id;
-        kickLock = outcome.victimId === null ? null : lock(outcome.victimId);
-      } else if (outcome.type === 'failed') {
-        standTackleCooldown[me.id] = tick + STAND_TACKLE_COOLDOWN_TICKS;
-      }
     }
+    shotCharge[team] = shotChargeTicks;
+    passCharges[team] = passCharge;
   }
 
   // 2b. Người dẫn bóng do AI điều khiển: sút / chuyền, hoặc rê (hướng rê dùng ở bước 3).
   let carrierMove: { id: string; move: Vec2; sprint: boolean } | null = null;
   const aiCarrier =
-    state.ai && ballOwnerId !== null && ballOwnerId !== humanBefore && !windup
+    state.ai &&
+    ballOwnerId !== null &&
+    ballOwnerId !== humanBefore.home &&
+    ballOwnerId !== humanBefore.away &&
+    !windup
       ? byId(ballOwnerId)
       : undefined;
   if (aiCarrier) {
@@ -1447,7 +1544,7 @@ function stepPlay(
         const kick = performKick(aiCarrier, ball.pos, action, rng, profile);
         rng = kick.rng;
         ball = kick.ball;
-        passReceiver = aiReceiver(action, aiCarrier.pos, tick);
+        passReceiver = receiverOf(aiCarrier.team, aiReceiver(action, aiCarrier.pos, tick));
         ballOwnerId = null;
         kickLock = lock(aiCarrier.id);
         if (kick.shot) shots = addShot(shots, aiCarrier.team);
@@ -1469,7 +1566,8 @@ function stepPlay(
   if (
     victim &&
     presser &&
-    presser.id !== humanBefore &&
+    presser.id !== humanBefore.home &&
+    presser.id !== humanBefore.away &&
     presser.id !== kickLock?.playerId &&
     tackleRecovery[presser.id] === undefined &&
     standTackleCooldown[presser.id] === undefined &&
@@ -1479,25 +1577,32 @@ function stepPlay(
     rng = tackle.rng;
     const { outcome } = tackle;
     if (outcome.type === 'foul') {
-      return enterFoul({ ...state, tick, rng, shots, input }, presser, victim, outcome, tick);
+      return enterFoul(
+        { ...state, tick, rng, shots, input: inputs },
+        presser,
+        victim,
+        outcome,
+        tick,
+      );
     }
     if (outcome.type === 'won') {
       ballOwnerId = presser.id;
       kickLock = lock(victim.id);
       carrierMove = null;
-      if (presser.team === HUMAN_TEAM) controlledId = presser.id;
+      if (isHuman(state, presser.team)) controlledId[presser.team] = presser.id;
     } else if (outcome.type === 'failed') {
       const delay = aiProfile(state, presser.team).reactionDelayTicks;
       standTackleCooldown[presser.id] = tick + AI_STAND_TACKLE_COOLDOWN_TICKS + delay;
     }
   }
-  const human = humanOf(state, controlledId);
+  const human = humansOf(state, controlledId);
 
   // Giữ D khi đối phương dẫn bóng: tự chạy tới điểm chắn giữa người đó và khung thành nhà,
   // hướng bấm cộng thêm để chỉnh.
   const opponentOwner =
     ballOwnerId === null ? undefined : state.players.find((p) => p.id === ballOwnerId);
   const controlledMove = (p: PlayerState): Vec2 => {
+    const input = inputs[p.team];
     if (!input.shoot || !opponentOwner || opponentOwner.team === p.team) return input.move;
     const spot = goalSidePoint(opponentOwner.pos, p.team, state.half, CONTAIN_DIST);
     const auto = arrive(p, spot, false).move;
@@ -1521,17 +1626,19 @@ function stepPlay(
   };
   // Người nhận đường chuyền tự chạy theo đường bóng thật tới chỗ đón, tới khi có người giữ bóng.
   // Đường chuyền đội người chơi: thôi khi người chơi đổi sang điều khiển người khác.
+  const pending = passReceiver.home ?? passReceiver.away;
+  const pendingTeam = pending ? byId(pending.playerId)?.team : undefined;
   if (
-    passReceiver &&
+    pending &&
     (ballOwnerId !== null ||
-      tick > passReceiver.untilTick ||
-      (human !== null &&
-        byId(passReceiver.playerId)?.team === HUMAN_TEAM &&
-        passReceiver.playerId !== human))
+      tick > pending.untilTick ||
+      (pendingTeam !== undefined &&
+        human[pendingTeam] !== null &&
+        pending.playerId !== human[pendingTeam]))
   ) {
-    passReceiver = null;
+    passReceiver = noReceivers();
   }
-  const receiving = passReceiver;
+  const receiving = passReceiver.home ?? passReceiver.away;
   let players = separatePlayers(
     state.players.map((p) => {
       if (p.id === slidingId) return slideStep(slideTackle(p));
@@ -1541,7 +1648,7 @@ function stepPlay(
         const m = arrive(p, interceptPoint(ball, p, CONTROL_HEIGHT), true);
         return stepPlayer(p, m.move, m.sprint);
       }
-      if (p.id === human) return stepPlayer(p, controlledMove(p), input.sprint);
+      if (p.id === human[p.team]) return stepPlayer(p, controlledMove(p), inputs[p.team].sprint);
       if (p.id === carrierMove?.id) return stepPlayer(p, carrierMove.move, carrierMove.sprint);
       const dive = diving(p);
       if (dive) return diveStep(p, dive);
@@ -1577,7 +1684,7 @@ function stepPlay(
         // Ôm bóng quay mặt ra sân để bóng không lọt qua vạch.
         const facing = vec2(attackSign(keeper.team, state.half), 0);
         players = players.map((p) => (p.id === keeper.id ? { ...p, facing } : p));
-        if (keeper.team === HUMAN_TEAM) controlledId = keeper.id;
+        if (isHuman(state, keeper.team)) controlledId[keeper.team] = keeper.id;
       } else {
         ball = save.ball;
         kickLock = lock(keeper.id);
@@ -1620,7 +1727,7 @@ function stepPlay(
     shots,
     lastShot,
     lastTouchTeam,
-    input,
+    input: inputs,
     ai,
   };
 
@@ -1649,7 +1756,9 @@ function stepPlay(
     const aerialLocked = kickLock?.touch !== undefined;
     // Người đang điều khiển chỉ đánh đầu / móc bóng khi giữ D; không bấm thì để bóng rơi xuống chân đỡ.
     const aerialOk = (p: PlayerState) =>
-      !aerialLocked && p.id !== kickLock?.playerId && (p.id !== human || input.shoot);
+      !aerialLocked &&
+      p.id !== kickLock?.playerId &&
+      (p.id !== human[p.team] || inputs[p.team].shoot);
     // Bóng bổng ngang hông–vai sát cầu thủ tấn công giỏi trong vòng cấm: có thể móc bóng.
     const volley = tryScissor(
       players,
@@ -1669,7 +1778,7 @@ function stepPlay(
         backPass: null,
         ball: volley.ball,
         kickLock: { ...lock(k.id), touch: 'scissor' },
-        passReceiver: null,
+        passReceiver: noReceivers(),
         lastTouchTeam: k.team,
         shots: addShot(shots, k.team),
         lastShot: shotFrom(true, k.team, tick),
@@ -1688,7 +1797,8 @@ function stepPlay(
           ball,
           state.half,
           aerialOk,
-          (p) => (p.id === human && length(input.move) > 0 ? input.move : null),
+          (p) =>
+            p.id === human[p.team] && length(inputs[p.team].move) > 0 ? inputs[p.team].move : null,
           rng,
         );
     if (header) {
@@ -1699,7 +1809,7 @@ function stepPlay(
         backPass: null,
         ball: header.ball,
         kickLock: { ...lock(h.id), touch: 'header' },
-        passReceiver: null,
+        passReceiver: noReceivers(),
         lastTouchTeam: h.team,
         shots: header.shot ? addShot(shots, h.team) : shots,
         lastShot: shotFrom(header.shot, h.team, tick),
@@ -1735,7 +1845,7 @@ function stepPlay(
       ballOwnerId = captured.id;
       lastShot = null;
       ball = dribbled;
-      if (captured.team === HUMAN_TEAM) controlledId = captured.id;
+      if (isHuman(state, captured.team)) controlledId[captured.team] = captured.id;
     }
   }
   const holder = ballOwnerId === null ? undefined : players.find((p) => p.id === ballOwnerId);
@@ -1751,7 +1861,7 @@ function stepPlay(
     ownerSinceTick: ballOwnerId === state.ballOwnerId ? state.ownerSinceTick : tick,
     kickLock,
     controlledId,
-    passReceiver: ballOwnerId === null ? passReceiver : null,
+    passReceiver: ballOwnerId === null ? passReceiver : noReceivers(),
     lastTouchTeam: holder ? holder.team : lastTouchTeam,
     lastShot,
   };

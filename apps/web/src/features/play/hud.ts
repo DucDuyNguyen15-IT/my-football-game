@@ -67,6 +67,8 @@ export interface HudSnapshot {
   substitutions: HudSub[];
   /** Luân lưu: kết quả từng lượt, đội đang chờ sút (null khi bóng đang bay / đã xong). */
   shootout: { home: boolean[]; away: boolean[]; turn: TeamSide | null } | null;
+  /** Nghỉ giữa hiệp: đội mình đã bấm sẵn sàng đá hiệp 2 (PvP: đang chờ đối thủ). */
+  halfTimeReady: boolean;
 }
 
 export interface HudEvent {
@@ -110,8 +112,12 @@ export function matchOutcome(score: Score): Outcome {
  * `prev` để giữ phút đã ghi của thẻ cũ (thẻ trong sim chỉ có `tick`, không có phút hiển thị);
  * thẻ mới lấy phút hiện tại.
  */
-export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapshot {
-  const c = state.players.find((p) => p.id === state.controlledId);
+export function toHudSnapshot(
+  state: MatchState,
+  prev?: HudSnapshot,
+  side: TeamSide = 'home',
+): HudSnapshot {
+  const c = state.players.find((p) => p.id === state.controlledId[side]);
   const clock = formatClock(matchClock(state));
   const r = state.restart;
   return {
@@ -142,14 +148,15 @@ export function toHudSnapshot(state: MatchState, prev?: HudSnapshot): HudSnapsho
       clock: prev?.substitutions[i]?.clock ?? clock,
     })),
     ballDead: state.ballDead,
-    subWindow: substitutionWindow(state, 'home'),
-    subsLeft: MAX_SUBS - state.subsUsed.home,
+    subWindow: substitutionWindow(state, side),
+    subsLeft: MAX_SUBS - state.subsUsed[side],
     shootout: state.shootout && {
       home: state.shootout.home,
       away: state.shootout.away,
       turn: state.restart ? state.shootout.kicking : null,
     },
     shots: state.shots,
+    halfTimeReady: state.halfTimeReady.includes(side),
     foulRestart:
       r && (r.type === 'free_kick' || r.type === 'penalty')
         ? { type: r.type, team: r.team, startTick: r.startTick }
@@ -173,7 +180,8 @@ export function sameHud(a: HudSnapshot, b: HudSnapshot): boolean {
     a.subWindow === b.subWindow &&
     a.substitutions.length === b.substitutions.length &&
     kicksTaken(a) === kicksTaken(b) &&
-    a.shootout?.turn === b.shootout?.turn
+    a.shootout?.turn === b.shootout?.turn &&
+    a.halfTimeReady === b.halfTimeReady
   );
 }
 
@@ -368,19 +376,20 @@ function resolveSubCardMeta(
   };
 }
 
-/** Người trên sân và dự bị của đội nhà cho menu thay người, kèm thông tin thẻ nếu có. */
+/** Người trên sân và dự bị của đội `side` cho menu thay người, kèm thông tin thẻ nếu có. */
 export function subOptions(
   state: MatchState,
-  homePlayers?: readonly MatchPlayerSetup[],
+  teamPlayers?: readonly MatchPlayerSetup[],
   catalog?: ReadonlyMap<string, Card>,
+  side: TeamSide = 'home',
 ): SubOptions {
   const bySlot = new Map<SquadSlot, MatchPlayerSetup>();
-  if (homePlayers) {
-    for (const p of homePlayers) bySlot.set(p.slot, p);
+  if (teamPlayers) {
+    for (const p of teamPlayers) bySlot.set(p.slot, p);
   }
   return {
     onPitch: state.players
-      .filter((p) => p.team === 'home')
+      .filter((p) => p.team === side)
       .map((p) => ({
         id: p.id,
         number: playerNumber(p.id),
@@ -388,7 +397,7 @@ export function subOptions(
         stamina: Math.round(p.stamina),
         ...resolveSubCardMeta(bySlot.get(originSlot(p.id)), p.position, p.stats, catalog),
       })),
-    bench: state.bench.home.map((b) => ({
+    bench: state.bench[side].map((b) => ({
       slot: b.slot,
       number: shirtNumber(b.slot),
       position: b.position,

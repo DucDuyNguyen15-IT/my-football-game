@@ -91,9 +91,14 @@ describe('substitute — luật thay người (F3)', () => {
   it('người ra đang được điều khiển / đang thực hiện bóng chết → chuyển sang người vào', () => {
     const s0 = base();
     const takerId = s0.restart!.takerId;
-    const r = substitute({ ...s0, controlledId: takerId }, 'home', takerId, 'B2');
+    const r = substitute(
+      { ...s0, controlledId: { home: takerId, away: '' } },
+      'home',
+      takerId,
+      'B2',
+    );
     if (!r.ok) throw new Error('phải hợp lệ');
-    expect(r.state.controlledId).toBe('home-B2');
+    expect(r.state.controlledId.home).toBe('home-B2');
     expect(r.state.restart!.takerId).toBe('home-B2');
   });
 
@@ -196,7 +201,14 @@ describe('thay người lúc chờ phạt đền / thủ môn dự bị (B1-11)'
   const pending = (s: MatchState, type: 'free_kick' | 'penalty'): MatchState => ({
     ...s,
     phase: 'dead_ball',
-    restart: { type, team: 'away', spot: { x: -22, y: 0 }, takerId: 'away-P6', startTick: s.tick, readyTick: s.tick },
+    restart: {
+      type,
+      team: 'away',
+      spot: { x: -22, y: 0 },
+      takerId: 'away-P6',
+      startTick: s.tick,
+      readyTick: s.tick,
+    },
   });
 
   it('đang chờ phạt đền → từ chối; đang chờ đá phạt → được thay', () => {

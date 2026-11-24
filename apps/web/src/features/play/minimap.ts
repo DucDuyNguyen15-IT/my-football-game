@@ -34,13 +34,15 @@ export function toMinimap(pos: Vec2, w = MINIMAP_W, h = MINIMAP_H, pad = MINIMAP
 
 export function minimapFrame(
   state: Pick<MatchState, 'players' | 'ball' | 'controlledId' | 'autopilot'>,
+  side: TeamSide = 'home',
 ): MinimapFrame {
+  const flip = side === 'away' ? -1 : 1;
   return {
     players: state.players.map((p) => ({
-      ...toMinimap(p.pos),
+      ...toMinimap({ x: flip * p.pos.x, y: flip * p.pos.y }),
       team: p.team,
-      controlled: !state.autopilot && p.id === state.controlledId,
+      controlled: !state.autopilot && p.id === state.controlledId[side],
     })),
-    ball: toMinimap(state.ball.pos),
+    ball: toMinimap({ x: flip * state.ball.pos.x, y: flip * state.ball.pos.y }),
   };
 }

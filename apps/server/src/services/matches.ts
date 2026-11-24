@@ -1,6 +1,6 @@
 // Trận vs máy (ARCHITECTURE §4.3 #15–16, §5.2): bắt đầu trận (match token) + nộp kết quả & thưởng.
 import { createHash, randomBytes, timingSafeEqual } from 'node:crypto';
-import { and, count, eq, gt } from 'drizzle-orm';
+import { and, count, eq, gt, or } from 'drizzle-orm';
 import { buildMatchSetup, TICK_RATE, type MatchSetup } from '@pitch/sim';
 import {
   SquadSlot,
@@ -38,7 +38,7 @@ function tokenMatches(token: string, storedHash: string): boolean {
   return a.length === b.length && timingSafeEqual(a, b);
 }
 
-/** Số trận đã nhận thưởng (> 0 xu) của người chơi trong ngày GMT+7 `day` (`YYYY-MM-DD`). */
+/** Số trận đã nhận thưởng (> 0 xu, hoặc ván ranked bị xử thua tốn suất) của người chơi trong ngày GMT+7 `day` (`YYYY-MM-DD`). */
 export async function countRewardedMatches(
   db: Db | Tx,
   userId: number,
@@ -47,7 +47,9 @@ export async function countRewardedMatches(
   const [row] = await db
     .select({ n: count() })
     .from(matches)
-    .where(and(eq(matches.userId, userId), eq(matches.rewardDay, day), gt(matches.reward, 0)));
+    .where(and(eq(matches.userId, userId), eq(matches.rewardDay, day), or(gt(matches.reward, 0), eq(matches.consumesDailyCap, true)),
+      ),
+    );
   return row?.n ?? 0;
 }
 
@@ -270,6 +272,7 @@ export async function submitMatchResult(
       .where(eq(matches.id, matchId));
     const missions = await applyMissionEvent(tx, userId, day, {
       type: 'match_finished',
+      mode: 'cpu',
       difficulty: again.match.difficulty,
       outcome: judged.outcome,
       homeGoals: r.score.home,

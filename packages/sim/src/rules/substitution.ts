@@ -35,6 +35,41 @@ export function substitutionWindow(state: MatchState, team: TeamSide): 'open' | 
   return state.restart?.type === 'penalty' ? 'closed' : 'open';
 }
 
+/**
+ * Kiểm cấu trúc lệnh thay người (không xét thời điểm): lượt còn lại, người ra đang trên sân (người bị
+ * thẻ đỏ đã rời sân nên không thay được), ô dự bị hợp lệ, thủ môn đổi thủ môn. Trả lý do (server gửi
+ * `sub_rejected` ngay) hoặc null nếu hợp lệ.
+ */
+export function checkSubStructure(
+  state: MatchState,
+  team: TeamSide,
+  outId: string,
+  benchSlot: SquadSlot,
+): SubRejection | null {
+  if (state.subsUsed[team] >= MAX_SUBS) return 'no_subs_left';
+  const out = state.players.find((p) => p.id === outId && p.team === team);
+  if (!out) return 'not_on_pitch';
+  const incoming = state.bench[team].find((p) => p.slot === benchSlot);
+  if (!incoming) return 'not_on_bench';
+  // Thủ môn đổi thủ môn, cầu thủ ngoài sân đổi cầu thủ ngoài sân (ô GK luôn là thủ môn, thủ môn không
+  // bị đỏ nên đội không bao giờ mất thủ môn).
+  if ((out.position === 'GK') !== (incoming.position === 'GK')) return 'keeper_mismatch';
+  return null;
+}
+
+/**
+ * Lúc này áp lệnh thay người được không (bóng chết, không luân lưu, không chờ phạt đền). Không phải
+ * lỗi: false thì lệnh hợp lệ chỉ xếp chờ tới bóng chết gần nhất.
+ */
+export function canSubstituteNow(state: MatchState): boolean {
+  return (
+    !state.shootout &&
+    state.ballDead &&
+    state.phase !== 'full_time' &&
+    state.restart?.type !== 'penalty'
+  );
+}
+
 /** Lý do không cho thay (null = hợp lệ). */
 function rejection(
   state: MatchState,
@@ -45,14 +80,8 @@ function rejection(
   // Luân lưu không thay người (cả lúc chờ sút, bóng vẫn chết).
   if (state.shootout) return 'shootout';
   if (!state.ballDead || state.phase === 'full_time') return 'ball_live';
-  if (state.subsUsed[team] >= MAX_SUBS) return 'no_subs_left';
-  const out = state.players.find((p) => p.id === outId && p.team === team);
-  if (!out) return 'not_on_pitch';
-  const incoming = state.bench[team].find((p) => p.slot === benchSlot);
-  if (!incoming) return 'not_on_bench';
-  // Thủ môn đổi thủ môn, cầu thủ ngoài sân đổi cầu thủ ngoài sân (ô GK luôn là thủ môn, thủ môn không
-  // bị đỏ nên đội không bao giờ mất thủ môn).
-  if ((out.position === 'GK') !== (incoming.position === 'GK')) return 'keeper_mismatch';
+  const structure = checkSubStructure(state, team, outId, benchSlot);
+  if (structure) return structure;
   if (state.restart?.type === 'penalty') return 'penalty_pending';
   return null;
 }
@@ -104,7 +133,7 @@ export function substitute(
       bench: { ...state.bench, [team]: state.bench[team].filter((p) => p.slot !== benchSlot) },
       subsUsed: { ...state.subsUsed, [team]: state.subsUsed[team] + 1 },
       substitutions: [...state.substitutions, { team, outId, inId, tick: state.tick }],
-      controlledId: swap(state.controlledId),
+      controlledId: { home: swap(state.controlledId.home), away: swap(state.controlledId.away) },
       restart: state.restart && { ...state.restart, takerId: swap(state.restart.takerId) },
       // Thủ môn đang lấy đà phát bóng (bóng vẫn chết) bị thay: người vào phát bóng tiếp.
       windup: state.windup && swapWindup(state.windup, swap),

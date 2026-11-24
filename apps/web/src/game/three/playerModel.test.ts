@@ -31,6 +31,23 @@ describe('ModelActor', () => {
     for (let i = 0; i < 120; i++) actor.update(1 / 60, p, state, 0);
     expect(hips.position.y).toBeCloseTo(1, 3);
   });
+
+  it('đang chạy mà tốc độ tụt về 0 thoáng qua (quay đầu) thì giữ clip chạy; đứng hẳn mới về idle (C5 G1)', () => {
+    const state: MatchState = {
+      ...createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 1 }),
+      phase: 'play',
+    };
+    const base = state.players[2]!;
+    const run = { ...base, vel: { x: 3, y: 0 }, facing: { x: 1, y: 0 } };
+    const stop = { ...run, vel: { x: 0, y: 0 } };
+    const actor = new ModelActor(fakeModel(), run, new ModelMaterials());
+    for (let i = 0; i < 30; i++) actor.update(1 / 60, run, state, 0);
+    expect(actor.clipName).toBe('jog');
+    for (let i = 0; i < 9; i++) actor.update(1 / 60, stop, state, 0); // 150 ms
+    expect(actor.clipName).toBe('jog');
+    for (let i = 0; i < 30; i++) actor.update(1 / 60, stop, state, 0);
+    expect(actor.clipName).toBe('idle');
+  });
 });
 
 describe('ModelActor — bóng trong tay', () => {
@@ -63,7 +80,14 @@ describe('ModelActor — bóng trong tay', () => {
 
   it('chờ ném biên: đứng yên ở tư thế giơ bóng, hết cảnh thì nhả về clip lặp', () => {
     const p = match.players[2]!;
-    const restart = { type: 'throw_in', team: p.team, spot: p.pos, takerId: p.id, startTick: 0, readyTick: 0 };
+    const restart = {
+      type: 'throw_in',
+      team: p.team,
+      spot: p.pos,
+      takerId: p.id,
+      startTick: 0,
+      readyTick: 0,
+    };
     const waiting = { ...match, phase: 'dead_ball', restart } as MatchState;
     const actor = new ModelActor(handsModel(0.3), p, new ModelMaterials());
     const hips = actor.root.getObjectByName('mixamorigHips')!;
@@ -94,8 +118,14 @@ describe('ModelActor — màu da/tóc từ avatar_seed', () => {
     root.name = 'mixamorigHips';
     const geo = new THREE.BufferGeometry();
     geo.setAttribute('position', new THREE.Float32BufferAttribute([0, 0, 0, 1, 0, 0, 0, 1, 0], 3));
-    geo.setAttribute('skinIndex', new THREE.Uint16BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4));
-    geo.setAttribute('skinWeight', new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4));
+    geo.setAttribute(
+      'skinIndex',
+      new THREE.Uint16BufferAttribute([0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 4),
+    );
+    geo.setAttribute(
+      'skinWeight',
+      new THREE.Float32BufferAttribute([1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0], 4),
+    );
     const mesh = new THREE.SkinnedMesh(geo, new THREE.MeshStandardMaterial());
     const skeleton = new THREE.Skeleton([root]);
     mesh.add(root);
@@ -105,7 +135,12 @@ describe('ModelActor — màu da/tóc từ avatar_seed', () => {
   }
 
   it('gán material theo avatarSeed và cập nhật khi setAvatarSeed, dùng chung material cùng bảng màu', () => {
-    const state = createMatch({ home: starterLikeTeam, away: cpuEasyTeam, difficulty: 'easy', seed: 1 });
+    const state = createMatch({
+      home: starterLikeTeam,
+      away: cpuEasyTeam,
+      difficulty: 'easy',
+      seed: 1,
+    });
     const p1 = state.players[1]!;
     const p2 = state.players[2]!;
     const materials = new ModelMaterials();

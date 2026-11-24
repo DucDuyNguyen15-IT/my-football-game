@@ -1,5 +1,5 @@
 export { TICK_RATE, TICK_DT } from './tick';
-export { createMatch, step } from './match';
+export { createMatch, step, stepBoth } from './match';
 export * from './types';
 export * from './rng';
 export * from './pitch';
@@ -29,4 +29,5 @@ export * from './ai/difficulty';
 export * from './ai/player';
 export * from './ai/goalkeeper';
 export * from './replay';
+export * from './hash';
 export * from './fixtures/scriptedMatch';

@@ -4,7 +4,7 @@
  */
 import { useEffect, useRef, type CSSProperties } from 'react';
 import { HALF_LENGTH, HALF_WIDTH, PENALTY_AREA_DEPTH, PENALTY_AREA_WIDTH } from '@pitch/sim';
-import type { MatchState } from '@pitch/sim';
+import type { MatchState, TeamSide } from '@pitch/sim';
 import { COLORS } from '../../game/render/colors';
 import { positionName } from '../../components/card/rarity';
 import { useI18n } from '../../i18n/I18nContext';
@@ -20,7 +20,13 @@ import {
 } from './minimap';
 
 /** Bảng tỉ số giữa trên (match.html): vạch màu đội, số bàn, hàng dưới là hiệp + phút / luân lưu. */
-export function Scoreboard({ hud }: { hud: HudSnapshot }) {
+export function Scoreboard({
+  hud,
+  names,
+}: {
+  hud: HudSnapshot;
+  names?: { home: string; away: string };
+}) {
   const { locale, t } = useI18n();
   const pens = hud.shootout && shootoutScore(hud.shootout);
   const stoppageText =
@@ -38,10 +44,10 @@ export function Scoreboard({ hud }: { hud: HudSnapshot }) {
       })}
     >
       <span className="hud-score__sw hud-score__sw--home" aria-hidden="true" />
-      <span className="hud-score__team">{t('hud.homeUpper')}</span>
+      <span className="hud-score__team">{names?.home ?? t('hud.homeUpper')}</span>
       <span className="hud-score__goals">{hud.score.home}</span>
       <span className="hud-score__goals hud-score__goals--away">{hud.score.away}</span>
-      <span className="hud-score__team">{t('hud.awayUpper')}</span>
+      <span className="hud-score__team">{names?.away ?? t('hud.awayUpper')}</span>
       <span className="hud-score__sw hud-score__sw--away" aria-hidden="true" />
       <span className="hud-score__clock">
         {pens ? (
@@ -295,7 +301,13 @@ function drawFrame(ctx: CanvasRenderingContext2D, frame: MinimapFrame): void {
  * Minimap góc trên-phải: 14 chấm màu đội + bóng trắng, vẽ trên canvas 2D nhỏ ~10 lần/giây từ state
  * mới nhất (`stateRef`, renderer cập nhật mỗi khung hình) — không qua React state.
  */
-export function Minimap({ stateRef }: { stateRef: { readonly current: MatchState | null } }) {
+export function Minimap({
+  stateRef,
+  side = 'home',
+}: {
+  stateRef: { readonly current: MatchState | null };
+  side?: TeamSide;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -307,12 +319,12 @@ export function Minimap({ stateRef }: { stateRef: { readonly current: MatchState
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     const draw = () => {
       const state = stateRef.current;
-      if (state) drawFrame(ctx, minimapFrame(state));
+      if (state) drawFrame(ctx, minimapFrame(state, side));
     };
     draw();
     const id = window.setInterval(draw, 1000 / MINIMAP_HZ);
     return () => window.clearInterval(id);
-  }, [stateRef]);
+  }, [stateRef, side]);
   return (
     <div className="hud-panel hud-minimap">
       <canvas ref={canvasRef} style={{ width: MINIMAP_W, height: MINIMAP_H }} aria-hidden="true" />

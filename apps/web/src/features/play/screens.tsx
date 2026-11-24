@@ -95,7 +95,7 @@ export function ControlsTable() {
 }
 
 /** Lượt sút luân lưu của người chơi: nhắc cách sút (match-shootout.html). */
-export function ShootoutHint() {
+export function ShootoutHint({ showPause = true }: { showPause?: boolean }) {
   const { t } = useI18n();
   return (
     <p className="hud-panel hud-keys" role="status">
@@ -107,10 +107,12 @@ export function ShootoutHint() {
         <kbd className="kbd">D</kbd>
         {t('hint.soShoot')}
       </span>
-      <span className="keyhint">
-        <kbd className="kbd">Esc</kbd>
-        {t('ctrl.pause')}
-      </span>
+      {showPause && (
+        <span className="keyhint">
+          <kbd className="kbd">Esc</kbd>
+          {t('ctrl.pause')}
+        </span>
+      )}
     </p>
   );
 }
@@ -128,11 +130,12 @@ const KEY_HINTS: ReadonlyArray<readonly [string, TranslationKey]> = [
 ];
 
 /** Dải gợi ý phím ở cạnh dưới trong những giây đầu trận. */
-export function KeyHints() {
+export function KeyHints({ showPause = true }: { showPause?: boolean }) {
   const { t } = useI18n();
+  const hints = showPause ? KEY_HINTS : KEY_HINTS.filter(([k]) => k !== 'Esc');
   return (
     <p className="hud-panel hud-keys">
-      {KEY_HINTS.map(([k, key]) => (
+      {hints.map(([k, key]) => (
         <span key={k} className="keyhint">
           <kbd className="kbd">{k}</kbd>
           {t(key)}

@@ -81,6 +81,35 @@ describe('locomotionFor', () => {
     expect(at(RUN_MIN_SPEED + 0.5, 'jog')).toBe('run');
     expect(at(RUN_MIN_SPEED - 0.5, 'run')).toBe('jog');
   });
+
+  it('nhích chậm quanh ngưỡng đứng (C5 G1): đang đứng thì vẫn đứng, đang chạy thì chạy tiếp tới khi dừng hẳn', () => {
+    const gk = (speed: number, current?: 'gk_idle' | 'jog') =>
+      locomotionFor(p(v(speed, 0), v(1, 0), 'GK'), {}, current).clip;
+    expect(gk(0.5, 'gk_idle')).toBe('gk_idle');
+    expect(gk(0.55, 'gk_idle')).toBe('gk_idle');
+    expect(gk(0.7, 'gk_idle')).toBe('jog');
+    expect(gk(0.5, 'jog')).toBe('jog');
+    expect(gk(0.3, 'jog')).toBe('gk_idle');
+  });
+
+  it('chạy chéo quanh ranh giới tới/ngang: giữ clip đang phát', () => {
+    // forward = cos(góc) ≈ 0,45 và 0,55: nằm trong vùng đệm quanh 0,5.
+    const dir = (fwd: number, current: 'jog' | 'strafe_right') =>
+      locomotionFor(p(v(3 * fwd, 3 * Math.sqrt(1 - fwd * fwd))), {}, current).clip;
+    expect(dir(0.45, 'jog')).toBe('jog');
+    expect(dir(0.55, 'strafe_right')).toBe('strafe_right');
+    expect(dir(0.2, 'jog')).toBe('strafe_right');
+    expect(dir(0.8, 'strafe_right')).toBe('jog');
+  });
+
+  it('chạy lùi chéo quanh ranh giới lùi/ngang: giữ clip đang phát', () => {
+    const back = (fwd: number, current: 'jog_back' | 'strafe_right') =>
+      locomotionFor(p(v(3 * fwd, 3 * Math.sqrt(1 - fwd * fwd))), {}, current).clip;
+    expect(back(-0.45, 'jog_back')).toBe('jog_back');
+    expect(back(-0.55, 'strafe_right')).toBe('strafe_right');
+    expect(back(-0.2, 'jog_back')).toBe('strafe_right');
+    expect(back(-0.8, 'strafe_right')).toBe('jog_back');
+  });
 });
 
 describe('heldBall', () => {

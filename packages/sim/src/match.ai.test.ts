@@ -26,7 +26,7 @@ const setup: MatchSetup = {
  * thì đổi người, bóng chết/nghỉ giữa hiệp thì thực hiện tiếp).
  */
 function botInput(s: MatchState): PlayerInput {
-  const me = s.players.find((p) => p.id === s.controlledId);
+  const me = s.players.find((p) => p.id === s.controlledId.home);
   const move = me ? normalize(sub(s.ball.pos, me.pos)) : ZERO;
   return { ...NO_INPUT, move, pass: s.tick % 45 === 0 };
 }
@@ -76,7 +76,7 @@ describe('AI đội trong trận', () => {
     const before = new Map(s.players.map((p) => [p.id, p.pos]));
     for (let i = 0; i < 2 * TICK_RATE; i++) s = step(s, NO_INPUT);
     const moved = s.players.filter(
-      (p) => p.id !== s.controlledId && length(sub(p.pos, before.get(p.id)!)) > 1,
+      (p) => p.id !== s.controlledId.home && length(sub(p.pos, before.get(p.id)!)) > 1,
     );
     expect(moved.length).toBeGreaterThanOrEqual(6);
   });
@@ -95,7 +95,7 @@ describe('AI đội trong trận', () => {
         ball: dribbleBall(players.find((p) => p.id === 'away-P6')!),
       };
       for (let i = 0; i < 3 * TICK_RATE; i++) s = step(s, NO_INPUT);
-      const home = s.players.filter((p) => p.team === 'home' && p.id !== s.controlledId);
+      const home = s.players.filter((p) => p.team === 'home' && p.id !== s.controlledId.home);
       return home.reduce((sum, p) => sum + p.pos.x, 0) / home.length;
     };
     expect(avgHomeX(vec2(-18, 4))).toBeLessThan(avgHomeX(vec2(10, 4)) - 3);

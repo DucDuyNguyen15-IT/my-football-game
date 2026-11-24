@@ -5,7 +5,7 @@
  * sim −y/+y như bản 2D.
  */
 import { HALF_LENGTH, restartAim } from '@pitch/sim';
-import type { MatchState, RestartType, Vec2 } from '@pitch/sim';
+import type { MatchState, RestartType, TeamSide, Vec2 } from '@pitch/sim';
 
 export interface Vec3 {
   x: number;
@@ -76,9 +76,10 @@ const SET_PIECE_LOOK_Y = 1;
  */
 export function setPieceAim(
   state: Pick<MatchState, 'restart' | 'half' | 'autopilot'>,
+  team: TeamSide = 'home',
 ): { spot: Vec2; aim: Vec2 } | null {
   const r = state.restart;
-  if (!r || r.team !== 'home' || state.autopilot || !SET_PIECE_TYPES.has(r.type)) return null;
+  if (!r || r.team !== team || state.autopilot || !SET_PIECE_TYPES.has(r.type)) return null;
   return { spot: r.spot, aim: restartAim(r, state.half) };
 }
 
@@ -99,6 +100,17 @@ const lerp3 = (a: Vec3, b: Vec3, t: number): Vec3 => ({
   y: a.y + (b.y - a.y) * t,
   z: a.z + (b.z - a.z) * t,
 });
+
+/**
+ * Quay camera 180° quanh trục đứng qua điểm nhìn: đội khách (PvP) nhìn cùng chỗ nhưng từ phía
+ * khán đài đối diện, sân nhà của mình ở dưới màn hình.
+ */
+export function flipCamera(cam: CameraState): CameraState {
+  return {
+    pos: { x: 2 * cam.look.x - cam.pos.x, y: cam.pos.y, z: 2 * cam.look.z - cam.pos.z },
+    look: cam.look,
+  };
+}
 
 /** Trộn hai góc máy, `t` 0 → `a`, 1 → `b` (có làm mượt hai đầu). */
 export function blendCamera(a: CameraState, b: CameraState, t: number): CameraState {

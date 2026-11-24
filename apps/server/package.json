@@ -17,11 +17,13 @@
     "admin:grant": "tsx scripts/admin-grant.ts",
     "ledger:check": "tsx scripts/ledger-check.ts",
     "bench:packs": "tsx scripts/bench-pack-open.ts",
-    "bench:analytics": "tsx scripts/bench-analytics.ts"
+    "bench:analytics": "tsx scripts/bench-analytics.ts",
+    "bench:pvp-sim": "tsx scripts/perf-pvp-sim.ts"
   },
   "dependencies": {
     "@fastify/cookie": "^11.1.3",
     "@fastify/rate-limit": "^11.2.1",
+    "@fastify/websocket": "^11.3.7",
     "@pitch/shared": "workspace:*",
     "@pitch/sim": "workspace:*",
     "argon2": "^0.45.1",

@@ -9,9 +9,10 @@
 | [0003](0003-react-vite-ui.md) | React + Vite cho UI ngoài trận | accepted | 2026-10-09 |
 | [0004](0004-fastify-backend.md) | Node.js + Fastify cho backend | accepted | 2026-10-09 |
 | [0005](0005-postgresql-drizzle.md) | PostgreSQL + Drizzle ORM | accepted | 2026-10-09 |
-| [0006](0006-no-realtime-in-mvp.md) | Không dùng realtime trong MVP | accepted | 2026-10-09 |
+| [0006](0006-no-realtime-in-mvp.md) | Không dùng realtime trong MVP | superseded by 0012 | 2026-10-09 |
 | [0007](0007-hosting-docker-compose.md) | Hosting bằng Docker Compose | proposed | 2026-10-09 |
 | [0008](0008-card-reveal-css-waapi.md) | Animation lật thẻ bằng CSS 3D + Web Animations API | accepted | 2026-10-10 |
 | [0009](0009-threejs-3d-match-render.md) | Three.js render trận 3D (thay ADR-0002) | accepted | 2026-10-14 |
 | [0010](0010-google-sign-in.md) | Đăng nhập Google bằng Google Identity Services, server tự giữ phiên | accepted | 2026-10-28 |
 | [0011](0011-server-replay-verification.md) | Server xác minh trận vs máy bằng replay log input | accepted | 2026-11-19 |
+| [0012](0012-pvp-lockstep.md) | PvP đá trực tiếp: lockstep do server giữ nhịp, sim bóng trên server (thay phần Colyseus của ADR-0006) | accepted | 2026-11-20 |

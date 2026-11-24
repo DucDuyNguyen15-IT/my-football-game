@@ -8,6 +8,7 @@ import type { Db } from './db/client';
 import { cryptoRng, type Rng } from './domain/rng';
 import { createGoogleVerifier } from './services/google';
 import type { ReplayOptions } from './services/matches';
+import { cancelLiveMatches } from './services/pvp/finish';
 import { runReplayInWorker } from './services/replay';
 import { pingDb, registerDb } from './plugins/db';
 import { AppError, registerErrors } from './plugins/errors';
@@ -22,6 +23,7 @@ import { registerMatchRoutes } from './routes/matches';
 import { registerMissionRoutes } from './routes/missions';
 import { registerPackRoutes } from './routes/packs';
 import { registerPlayerCardRoutes } from './routes/player-cards';
+import { registerPvpRoutes, type PvpRouteOptions } from './routes/pvp';
 import { registerSquadRoutes } from './routes/squad';
 
 declare module 'fastify' {
@@ -59,6 +61,8 @@ export interface BuildAppOptions {
   googleClientId?: string | null;
   /** Bộ khoá kiểm ID token Google; mặc định JWKS từ xa của Google (test tiêm khoá cục bộ). */
   googleKeys?: JWTVerifyGetKey;
+  /** Tuỳ chọn PvP (test tiêm nguồn thời gian giả, trần phiên, trần kết nối/IP). */
+  pvp?: PvpRouteOptions;
   /** Gọi cho mỗi route được đăng ký (test rà soát: mọi route ghi phải yêu cầu đăng nhập). */
   onRoute?: (route: RouteOptions) => void;
 }
@@ -125,6 +129,19 @@ export function buildApp(opts: BuildAppOptions = {}) {
       replay: opts.replay ?? { run: runReplayInWorker },
     });
     registerMissionRoutes(app);
+    registerPvpRoutes(app, {
+      ...opts.pvp,
+      ...(opts.pvp?.dev || opts.replay?.dev
+        ? { dev: opts.pvp?.dev ?? opts.replay?.dev }
+        : {}),
+    });
+    // shortcut: trạng thái trong bộ nhớ một tiến trình, nâng cấp khi chạy nhiều instance.
+    // Khởi động lại làm mất mọi phiên đang đá: huỷ các trận `live` (server_restart).
+    app.addHook('onReady', async () => {
+      const onError = (err: unknown) => app.log.error({ err }, 'huỷ trận live thất bại');
+      // DB chưa sẵn sàng không được chặn khởi động (health vẫn báo 503).
+      await cancelLiveMatches(app.db, app.clock.now(), onError).catch(onError);
+    });
     registerAdminRoutes(app);
     if (opts.enableDevRoutes) registerDevRoutes(app);
   }

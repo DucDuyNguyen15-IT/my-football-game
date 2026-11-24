@@ -180,6 +180,16 @@ Trạng thái: ⬜ chưa làm · 🟡 đang làm · ✅ xong
 
 ---
 
+## PvP đá trực tiếp (sau GĐ9, bắt đầu 20/11/2026)
+Spec, plan, tasks: `docs/specs/pvp-realtime/`. Lockstep do server giữ nhịp, sim bóng trên server ([ADR-0012](adr/0012-pvp-lockstep.md)).
+
+**Hoàn thành khi:**
+- [ ] Hai người chơi đá trực tiếp được qua WebSocket, kết quả do sim server quyết định
+- [ ] Test tất định chromium/firefox/webkit xanh (`pnpm e2e:determinism`)
+- [ ] `pnpm check` xanh
+
+---
+
 ## Khi gặp sự cố (dùng ở mọi giai đoạn)
 | Tình huống | Skill |
 |---|---|

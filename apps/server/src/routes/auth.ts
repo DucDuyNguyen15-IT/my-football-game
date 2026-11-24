@@ -190,6 +190,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
   app.post('/api/v1/auth/logout', { preHandler: requireAuth }, async (req, reply) => {
     const token = req.cookies[SESSION_COOKIE];
     if (token) await destroySession(app.db, token);
+    app.pvp.closeUser(req.user!.id);
     clearSessionCookie(reply);
     return reply.code(204).send();
   });
@@ -234,6 +235,7 @@ export function registerAuthRoutes(app: FastifyInstance, google: GoogleAuthConfi
       }
     }
     await anonymizeUser(app.db, user.id);
+    app.pvp.closeUser(user.id);
     clearSessionCookie(reply);
     return reply.code(204).send();
   });

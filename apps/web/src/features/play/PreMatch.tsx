@@ -254,7 +254,7 @@ function LevelOption({
 }
 
 /** OVR trung bình 7 người đá chính (chỉ số đã hiệu lực server gửi). */
-function teamOvr(team: MatchTeamSetup): number {
+export function teamOvr(team: MatchTeamSetup): number {
   const starters = team.players.filter((p) =>
     (STARTER_SLOTS as readonly string[]).includes(p.slot),
   );
@@ -350,7 +350,7 @@ export function Versus({
   );
 }
 
-function TeamSide({
+export function TeamSide({
   side,
   name,
   sub,

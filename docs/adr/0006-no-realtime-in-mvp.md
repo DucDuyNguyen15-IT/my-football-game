@@ -1,7 +1,7 @@
 # ADR-0006: Không dùng realtime (WebSocket) trong MVP
 
 **Date**: 2026-10-09
-**Status**: accepted
+**Status**: superseded by ADR-0012 (phần "Colyseus cho PvP realtime"; phần MVP chỉ REST vẫn đúng)
 **Deciders**: Chủ dự án + Claude
 
 ## Context

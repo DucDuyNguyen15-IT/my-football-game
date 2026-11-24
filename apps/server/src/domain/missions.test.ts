@@ -46,6 +46,7 @@ describe('missionDelta & advanceProgress', () => {
   it('match_finished: thắng thường & thắng luân lưu tính win; ghi bàn, Khó, sạch lưới', () => {
     const winEasyClean = {
       type: 'match_finished' as const,
+      mode: 'cpu' as const,
       difficulty: 'easy' as const,
       outcome: 'win' as const,
       homeGoals: 3,
@@ -60,6 +61,7 @@ describe('missionDelta & advanceProgress', () => {
 
     const shootoutWinHard = {
       type: 'match_finished' as const,
+      mode: 'cpu' as const,
       difficulty: 'hard' as const,
       outcome: 'shootout_win' as const,
       homeGoals: 2,
@@ -75,6 +77,7 @@ describe('missionDelta & advanceProgress', () => {
       expect(
         missionDelta('match_win', {
           type: 'match_finished',
+          mode: 'cpu',
           difficulty: 'easy',
           outcome,
           homeGoals: 0,
@@ -82,6 +85,23 @@ describe('missionDelta & advanceProgress', () => {
         }),
       ).toBe(0);
     }
+  });
+
+  it('match_hard chỉ đếm trận đấu máy; trận pvp vẫn tính win/goals/play', () => {
+    const pvp = {
+      type: 'match_finished' as const,
+      mode: 'pvp' as const,
+      difficulty: 'hard' as const,
+      outcome: 'win' as const,
+      homeGoals: 2,
+      awayGoals: 0,
+    };
+    expect(missionDelta('match_hard', pvp)).toBe(0);
+    expect(missionDelta('match_hard', { ...pvp, mode: 'cpu' })).toBe(1);
+    expect(missionDelta('match_win', pvp)).toBe(1);
+    expect(missionDelta('match_goals', pvp)).toBe(2);
+    expect(missionDelta('match_play', pvp)).toBe(1);
+    expect(missionDelta('match_clean_sheet', pvp)).toBe(1);
   });
 
   it('advanceProgress kẹp trần tại target và bỏ qua delta <= 0', () => {

@@ -224,6 +224,9 @@ const TWO_HAND_GRIP = 0.45;
 const PALM_OFFSET = 0.12;
 /** Tốc độ xoay người về hướng mặt (1/s), tránh giật khi sim đổi hướng tức thì. */
 const TURN_RATE = 12;
+/** Đang chạy: tốc độ phải ở mức đứng liên tục chừng này (s) mới đổi sang idle — quay đầu làm vận tốc qua 0 trong 80–270 ms (C5 G1). */
+const IDLE_ENTER_SEC = 0.3;
+const IDLE_CLIPS = new Set<ClipName | undefined>(['idle', 'gk_idle']);
 
 /** Material dùng chung cho mọi cầu thủ cùng bộ màu (áo, quần, tất, da, tóc). */
 export class ModelMaterials {
@@ -262,17 +265,14 @@ export class ModelActor {
   private readonly hands: readonly [THREE.Object3D, THREE.Object3D] | null;
   /** Đếm số lần phát clip một lần: chọn bản thay thế và độ dao động tốc độ (tất định theo người). */
   private variant: number;
+  /** Số giây liên tục sim báo đứng yên trong lúc clip lặp vẫn là clip di chuyển. */
+  private slowSec = 0;
   private readonly team: TeamSide;
   private readonly isKeeper: boolean;
   private readonly playerId: string;
   private readonly materials: ModelMaterials;
 
-  constructor(
-    model: PlayerModel,
-    p: PlayerState,
-    materials: ModelMaterials,
-    avatarSeed?: string,
-  ) {
+  constructor(model: PlayerModel, p: PlayerState, materials: ModelMaterials, avatarSeed?: string) {
     this.root = cloneSkinned(model.scene);
     this.team = p.team;
     this.isKeeper = p.position === 'GK';
@@ -334,6 +334,11 @@ export class ModelActor {
     plate.position.set(0, 6, -16);
     plate.rotation.y = Math.PI;
     spine.add(plate);
+  }
+
+  /** Clip đang chủ đạo (một lần nếu có, không thì clip lặp) — cho công cụ soi chuyển động. */
+  get clipName(): string {
+    return this.oneShot?.clip ?? this.loop?.getClip().name ?? '';
   }
 
   /** Phát clip một lần (chuyền, sút, xoạc…), đè lên clip lặp đang chạy. */
@@ -427,11 +432,18 @@ export class ModelActor {
       if (dive) this.trigger(dive);
     }
     let lean = 0;
+    // Clip một lần (bắt bóng, sút…) chen vào thì đếm lại thời gian đứng từ đầu.
+    if (this.oneShot) this.slowSec = 0;
     if (!this.oneShot) {
       const current = this.loop?.getClip().name as ClipName | undefined;
       const loco = locomotionFor(p, this.speeds, current);
       lean = loco.lean;
-      const action = this.actions.get(loco.clip);
+      const stopping =
+        IDLE_CLIPS.has(loco.clip) && current !== undefined && !IDLE_CLIPS.has(current);
+      this.slowSec = stopping ? this.slowSec + dt : 0;
+      // Dừng thoáng qua: giữ clip đang chạy (không đổi tốc độ phát) tới khi đứng đủ lâu.
+      const action =
+        stopping && this.slowSec < IDLE_ENTER_SEC ? this.loop : this.actions.get(loco.clip);
       if (action && action !== this.loop) {
         action.reset().setLoop(THREE.LoopRepeat, Infinity);
         // Đi ↔ chạy ↔ chạy nhanh: giữ nhịp bước (cùng pha chu kỳ) để chân không giật khi trộn.
@@ -443,7 +455,7 @@ export class ModelActor {
         this.loop?.fadeOut(FADE_SEC);
         this.loop = action;
       }
-      if (action) action.timeScale = loco.timeScale;
+      if (action && action === this.actions.get(loco.clip)) action.timeScale = loco.timeScale;
     }
     this.mixer.update(dt);
     // Mixer ghi đè xoay xương mỗi khung nên cộng thêm sau đó; +X cục bộ của Spine = cúi về trước.

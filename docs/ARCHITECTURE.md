@@ -1,6 +1,6 @@
 # Kiến trúc — MFG (My Football Game)
 
-_Phiên bản 1.1 — 2026-11-16 (rà B6 khớp code) — bản đầu 2026-10-10, Giai đoạn 3. Nguồn: `docs/PRD.md`, ADR-0001…0010._
+_Phiên bản 1.2 — 2026-11-24 (thêm PvP đá trực tiếp, ADR-0012) — 1.1 2026-11-16 (rà B6 khớp code) — bản đầu 2026-10-10, Giai đoạn 3. Nguồn: `docs/PRD.md`, ADR-0001…0012._
 _Tài liệu này mô tả **hình dạng** hệ thống. Số liệu kinh tế (giá, tỉ lệ, thưởng) nằm trong PRD và file config server, không lặp lại ở đây._
 
 ---
@@ -10,7 +10,7 @@ _Tài liệu này mô tả **hình dạng** hệ thống. Số liệu kinh tế 
 Ba nguyên tắc chi phối mọi quyết định bên dưới:
 
 1. **Server quyết định mọi thứ có giá trị**: gacha, ép thẻ, ví xu, thưởng trận. Client chỉ gửi ý định ("mua gói X") và hiển thị kết quả.
-2. **Mô phỏng trận là code thuần, tất định** (`packages/sim`, 60 tick/s, PRNG có seed). Three.js chỉ vẽ lại state (ADR-0009); server có thể chạy lại cùng code sau MVP.
+2. **Mô phỏng trận là code thuần, tất định** (`packages/sim`, 60 tick/s, PRNG có seed). Three.js chỉ vẽ lại state (ADR-0009); server chạy lại cùng code để xác minh trận vs máy (ADR-0011) và chạy sim bóng riêng cho PvP đá trực tiếp (ADR-0012).
 3. **Một contract cho mỗi ranh giới**: schema Zod trong `packages/shared/src/api` là nguồn sự thật duy nhất cho request/response giữa web và server.
 
 ## 2. Sơ đồ module
@@ -29,15 +29,19 @@ flowchart LR
     ROUTES["routes/* — HTTP + Zod validate"]
     DOMAIN["domain/* — logic thuần<br/>(gacha, upgrade, rewards, missions)"]
     SERVICES["services/* — transaction DB,<br/>khoá dòng, ghi ledger"]
-    SIM_S["packages/sim<br/>(sau MVP: PvP bất đồng bộ,<br/>xác minh log input)"]
+    SIM_S["packages/sim<br/>(xác minh log input ADR-0011,<br/>sim bóng PvP ADR-0012)"]
+    PVP["routes/pvp + services/pvp<br/>(WebSocket, hàng chờ, phòng,<br/>phiên lockstep 60 Hz)"]
     ROUTES --> SERVICES --> DOMAIN
     SERVICES -.-> SIM_S
+    PVP --> SIM_S
+    PVP --> SERVICES
   end
 
   SHARED["packages/shared<br/>(contract API Zod, enum,<br/>công thức OVR, sơ đồ chiến thuật)"]
   DB[("PostgreSQL 16<br/>Drizzle ORM")]
 
   UI -- "REST /api/v1 (JSON, cookie phiên)" --> ROUTES
+  GAME <-- "WebSocket /api/v1/pvp/ws<br/>(chỉ PvP: input ↑, khung f ↓)" --> PVP
   SERVICES --> DB
   UI -.import.-> SHARED
   ROUTES -.import.-> SHARED
@@ -50,10 +54,10 @@ flowchart LR
 | `apps/web/src/game` (client game) | Render trận 3D bằng Three.js (camera truyền hình), đọc input, nội suy giữa 2 tick | `sim`, Three.js | Logic vật lý/luật (phải nằm trong `sim`) |
 | `packages/sim` | `createMatch(setup)`, `step(state, inputs)` thuần; vật lý, luật, AI, thể lực | `shared` | Three.js/Phaser, React, DOM, `node:*`, `Math.random` (lint chặn) |
 | `packages/shared` | Contract API (Zod), enum, công thức OVR/hệ số sai vị trí, sơ đồ | `zod` | Code chạy I/O |
-| `apps/server` | REST API, session, transaction, CSPRNG | `shared`, `sim`, Fastify, Drizzle, argon2 | `Math.random` (lint chặn) |
+| `apps/server` | REST API, WebSocket PvP (`routes/pvp.ts`, `services/pvp/`), session, transaction, CSPRNG | `shared`, `sim`, Fastify, Drizzle, argon2 | `Math.random` (lint chặn) |
 | PostgreSQL | Lưu trữ, ràng buộc toàn vẹn cuối cùng (`CHECK`, `FK`, `UNIQUE`) | — | — |
 
-**Không có "game server" riêng trong MVP** (ADR-0006): trận vs máy chạy ở client; vai trò "game server" do `apps/server` đảm nhận qua match token + kiểm tra kết quả (§5.2). Khi làm PvP thời gian thực sẽ thêm Colyseus và một ADR mới.
+**Không có "game server" riêng** (ADR-0006): trận vs máy chạy ở client; vai trò "game server" do `apps/server` đảm nhận qua match token + kiểm tra kết quả (§5.2). PvP đá trực tiếp (ADR-0012) cũng nằm trong cùng tiến trình `apps/server` (WebSocket qua `@fastify/websocket`, §5.4), **không dùng Colyseus** — ADR-0012 thay phần realtime của ADR-0006.
 
 ### 2.1 Cấu trúc thư mục dự kiến
 
@@ -62,18 +66,19 @@ apps/
   web/src/
     app/            router, providers (QueryClient), layout
     api/            fetch wrapper: parse response bằng schema trong @pitch/shared
-    features/       auth/ inventory/ packs/ squad/ upgrade/ missions/ match-setup/
+    features/       auth/ inventory/ packs/ squad/ upgrade/ missions/ match-setup/ pvp/ (sảnh, useNetMatch — client WS)
     game/           MatchCanvas.tsx, scenes/MatchScene.ts, render/, input/
   server/src/
     app.ts          buildApp() — đăng ký plugin + routes (test bằng inject)
     server.ts       listen
     config/         economy.ts (giá, tỉ lệ, thưởng — PRD §6–7), env.ts
     plugins/        db, session/auth, error-handler, rate-limit
-    routes/         auth, cards, player-cards, packs, squad, matches, missions, admin
+    routes/         auth, cards, player-cards, packs, squad, matches, missions, admin, pvp (WS)
     services/       transaction + khoá dòng; gọi domain
+    services/pvp/   hub (hàng chờ, phòng, phiên trong bộ nhớ), session (sim bóng), ticker (nhịp 60 Hz), finish (ghi kết quả + thưởng)
     domain/         gacha.ts, upgrade.ts, rewards.ts, missions.ts — thuần, nhận rng làm tham số
     db/             schema.ts, migrate.ts, seed/
-  drizzle/          migration SQL 0000…0006 (+ meta/): 0004 `cards.foot`, 0005 `cards.weak_foot`, 0006 `users.terms_accepted_at`
+  drizzle/          migration SQL 0000…0008 (+ meta/): 0004 `cards.foot`, 0005 `cards.weak_foot`, 0006 `users.terms_accepted_at`, 0007 khoá thiết bị quen, 0008 `pvp_matches` + cột PvP của `matches`
 packages/
   sim/src/          math/ rng/ physics/ rules/ ai/ stats/ match.ts
   shared/src/       domain.ts (enum, OVR, formation) · api/*.ts (contract từng nhóm endpoint)
@@ -83,7 +88,7 @@ packages/
 
 Quy ước (theo `postgres-patterns`): khoá chính `bigint generated always as identity`; chuỗi dùng `text`; thời gian `timestamptz`; xu là **số nguyên** (`bigint` cho số dư, `integer` cho biến động); tên bảng số nhiều, `snake_case`. Mọi FK đều có index.
 
-Ánh xạ tên trong đề bài → bảng: `user`→`users`, `card`→`cards`, `player_card`→`player_cards`, `pack`→`pack_boxes` + `pack_openings` (danh mục gói nằm trong config, §3.3), `squad`→`squads` + `squad_slots`, `match`→`matches`, `transaction`→`coin_transactions`.
+Ánh xạ tên trong đề bài → bảng (PvP thêm `pvp_matches`, §3.2): `user`→`users`, `card`→`cards`, `player_card`→`player_cards`, `pack`→`pack_boxes` + `pack_openings` (danh mục gói nằm trong config, §3.3), `squad`→`squads` + `squad_slots`, `match`→`matches`, `transaction`→`coin_transactions`.
 
 ```mermaid
 erDiagram
@@ -96,6 +101,8 @@ erDiagram
   squads ||--o{ squad_slots : contains
   player_cards ||--o| squad_slots : "placed in"
   users ||--o{ matches : plays
+  users ||--o{ pvp_matches : "plays (home/away)"
+  pvp_matches ||--o{ matches : "1 dòng mỗi người"
   users ||--o{ coin_transactions : ledger
   users ||--o{ card_upgrades : performs
   users ||--o{ daily_missions : has
@@ -112,6 +119,10 @@ erDiagram
 | `difficulty` | `easy`, `hard` |
 | `match_status` | `started`, `finished`, `expired` |
 | `match_outcome` | `win`, `draw`, `loss`, `shootout_win`, `shootout_loss` |
+| `match_mode` | `cpu`, `pvp_ranked`, `pvp_friendly` (cột `matches.mode`) |
+| `pvp_kind` | `ranked` (ghép ngẫu nhiên), `friendly` (mã phòng) |
+| `pvp_status` | `live`, `finished`, `cancelled` |
+| `pvp_end_reason` | `full_time`, `forfeit_disconnect`, `forfeit_desync`, `void_desync`, `void_both_left`, `void_not_ready`, `server_restart` |
 | `card_source` | `starter`, `pack` |
 | `coin_tx_type` | `starter_grant`, `pack_purchase`, `card_sale`, `upgrade_fee`, `match_reward`, `mission_reward`, `admin_adjust` |
 
@@ -203,7 +214,7 @@ Bán thẻ / làm nguyên liệu ép → **xoá dòng**. Lịch sử nằm ở `
 
 `ON DELETE RESTRICT` là chốt chặn cuối ở DB cho luật "thẻ trong đội hình không được bán/ép" (PRD §6.4); service vẫn kiểm trước để trả lỗi `card_in_squad` rõ ràng.
 
-**`matches`** — trận vs máy, match token
+**`matches`** — mỗi người chơi một dòng cho mỗi trận: trận vs máy (match token) hoặc trận PvP (cột PvP ở cuối bảng)
 | Cột | Kiểu | Ghi chú |
 |---|---|---|
 | id | bigint identity | PK |
@@ -218,7 +229,28 @@ Bán thẻ / làm nguyên liệu ép → **xoá dòng**. Lịch sử nằm ở `
 | home_goals, away_goals | smallint | `CHECK BETWEEN 0 AND 20` (PRD §7) |
 | outcome | match_outcome | NULL khi chưa xong |
 | reward | integer | NOT NULL DEFAULT 0 |
-| reward_day | date | Ngày GMT+7 **của lúc nộp kết quả**; partial index `(user_id, reward_day) WHERE reward > 0` để đếm trần 15 trận |
+| reward_day | date | Ngày GMT+7 **của lúc nộp kết quả**; partial index `(user_id, reward_day) WHERE reward > 0 OR consumes_daily_cap` để đếm trần 15 trận |
+| mode | match_mode | NOT NULL DEFAULT `cpu`. `pvp_ranked` / `pvp_friendly` cho dòng PvP |
+| pvp_match_id | bigint | FK → `pvp_matches`, NULL với `cpu`; `UNIQUE (pvp_match_id, user_id)` — mỗi người một dòng mỗi trận nên thưởng đúng một lần |
+| opponent_user_id | bigint | FK → `users`, NULL với `cpu` (lưu sẵn cho trang lịch sử trận, đang ở BACKLOG) |
+| consumes_daily_cap | boolean | NOT NULL DEFAULT false; true cho người bị xử thua ở trận ranked (không xu nhưng vẫn mất 1 lượt/ngày) |
+
+Dòng PvP: `token_hash` là SHA-256 của 32 byte ngẫu nhiên không bao giờ phát ra; `difficulty` luôn `hard` (dùng chung `matchReward`); `home_goals/away_goals` ghi theo góc nhìn của người đó. Trận bị huỷ vẫn tạo đủ hai dòng `expired`, thưởng 0.
+
+**`pvp_matches`** — mỗi trận PvP một dòng (xem `docs/specs/pvp-realtime/data-model.md`)
+| Cột | Kiểu | Ghi chú |
+|---|---|---|
+| id | bigint identity | PK |
+| kind | pvp_kind | |
+| home_user_id, away_user_id | bigint | FK → `users`; `CHECK (home_user_id <> away_user_id)`. Home = người tạo phòng / vào hàng chờ trước |
+| seed | bigint | `node:crypto` |
+| squad_snapshot | jsonb | `{formation_home, formation_away, home, away}` chụp lúc vào trận |
+| status | pvp_status | `live` → `finished` / `cancelled`; khi server khởi động mọi dòng `live` thành `cancelled/server_restart` |
+| end_reason | pvp_end_reason | NULL khi `live` |
+| forfeit_user_id | bigint | FK → `users`, chỉ có khi có người bị xử thua |
+| home_goals, away_goals | smallint | `CHECK BETWEEN 0 AND 20`; NULL khi `live` hoặc bị huỷ |
+| input_log | text | Nhật ký v2 (base64url) do **server** ghi, để kiểm lại |
+| started_at, finished_at | timestamptz | Index `(home_user_id, started_at)`, `(away_user_id, started_at)`, và partial `(kind, finished_at) WHERE kind='ranked' AND status='finished'` (đếm trùng cặp/ngày) |
 
 **`coin_transactions`** — sổ cái, **append-only**
 | Cột | Kiểu | Ghi chú |
@@ -346,6 +378,7 @@ Công thức OVR, danh sách sơ đồ, hệ số phạt sai vị trí (−15%),
 | 21 | `GET /config/auth` | — | — | `{ googleClientId \| null }` | null → ẩn nút Google. ADR-0010 |
 | 22 | `POST /auth/google` | — | `{ idToken, username?, acceptTerms? }` (có `username` thì bắt buộc `acceptTerms: true`) | `{ status: 'signed_in', me } \| { status: 'needs_username', suggestedUsername }` | 404 khi chưa cấu hình Google. 201 khi vừa tạo tài khoản. ADR-0010 |
 | 23 | `POST /dev/grant-coins` | ✔ | `{ amount }` | `{ balance }` | **Chỉ đăng ký khi `ENABLE_DEV_ROUTES=1`** (dev/E2E) |
+| 24 | `GET /pvp/ws` (WebSocket upgrade) | ✔ cookie + `Origin` cùng `Host` | tin nhắn JSON `{ t, … }` | tin nhắn JSON | Không theo khuôn `data` của REST. Giao thức đầy đủ: `docs/specs/pvp-realtime/contracts/ws-protocol.md`, schema Zod `packages/shared/src/api/pvp.ts`. Thiếu/sai `Origin` 403, chưa đăng nhập 401 (trước upgrade). Tối đa 4 kết nối/IP, 512 byte/tin client→server, 120 tin/s. §5.4 |
 
 `MatchTeam = { formation, players: [{ slot, cardId, level, position, stats (đã áp cấp + và phạt sai vị trí) }] }` — sim nhận thẳng cấu trúc này, client không tự tính chỉ số hiệu lực.
 
@@ -408,6 +441,47 @@ sequenceDiagram
 
 Cùng khuôn với §5.1: `BEGIN` → khoá `users` → khoá `player_cards` của thẻ đích + nguyên liệu (theo `id` tăng dần) → kiểm sở hữu/không trong đội hình/cùng độ hiếm trở lên/chưa +5 → `domain/upgrade.ts` quay tỉ lệ bằng `crypto.randomInt(0, 100) < rate` → xoá nguyên liệu, cập nhật `level`/`luck`, trừ phí, ghi `coin_transactions` + `card_upgrades` → `COMMIT`.
 
+### 5.4 PvP đá trực tiếp (lockstep, ADR-0012)
+
+_Trạng thái 24/11/2026: khung WebSocket, phiên có sim bóng, ghi kết quả/thưởng, client `useNetMatch` đã có; ghép cặp + phòng (US1/US2), rớt mạng + lệch mã băm (US3), thay người (US4) đang làm — các mục đó mô tả theo spec/contracts._
+
+Nguồn sự thật là **sim bóng của server** (`services/pvp/session.ts`). Server không gửi state xuống client, chỉ gửi **input của hai đội theo từng tick**; hai trình duyệt chạy cùng `stepBoth` tất định nên thấy cùng diễn biến.
+
+```mermaid
+sequenceDiagram
+  participant A as Trình duyệt A (home)
+  participant S as apps/server (hub + phiên + sim bóng)
+  participant B as Trình duyệt B (away)
+  A->>S: room_create / queue_join
+  B->>S: room_join(code) / queue_join
+  S-->>A: matched (side, opponent, setup)
+  S-->>B: matched
+  A->>S: ready (đã tải sân)
+  B->>S: ready
+  S-->>A: start (countdownMs 3000)
+  S-->>B: start
+  loop mỗi tick 60 Hz (một vòng lặp chung cho mọi phiên)
+    A->>S: input c (chỉ khi đổi; mất focus gửi c=0)
+    B->>S: input c
+    S->>S: stepBoth(state, {home, away}) — input cuối nhận được
+    S-->>A: f [tick, homeCode, awayCode, subs?]
+    S-->>B: f [tick, homeCode, awayCode, subs?]
+    Note over A,B: client chạy stepBoth trong onmessage, vòng vẽ trễ 3–6 khung
+  end
+  A->>S: hash (tick bội số 60, h) — so với stateHash của sim bóng
+  S-->>A: end (reason, home, away, you: {outcome, reward}) khi sim tới full_time
+  S-->>B: end
+```
+
+- **Nhịp:** MỘT `PvpTicker` chung (`services/pvp/ticker.ts`), tick theo mốc tuyệt đối `t0 + n·1000/60`, trễ thì chạy bù tối đa 5 tick/lượt (`MAX_CATCHUP_TICKS`), trễ hơn thì bỏ nhịp và ghi analytics. Trận không bao giờ đứng chờ người mạng chậm: chưa có input mới thì giữ input cũ. Giới hạn `PVP_MAX_SESSIONS` = 50 (`services/pvp/hub.ts`, theo số đo p99 của `stepBoth`, research R11); quá thì `server_busy`.
+- **Phòng và hàng chờ:** nằm trong bộ nhớ một tiến trình (`shortcut:` trong `hub.ts`, nâng cấp khi chạy nhiều instance — BACKLOG). Phòng: mã 6 ký tự không có 0/O/1/I, hạn 10 phút. Hàng chờ FIFO, 60 s thì `offerCpu`, 5 phút thì `queue_timeout`. Mỗi user tối đa một mục trong (hàng chờ ∪ phòng đang chờ ∪ phiên live); socket thứ hai không đẩy socket cũ ra mà chỉ được `rejoin` (`busy` nếu socket cũ còn sống).
+- **Rớt mạng:** heartbeat ping mỗi 2 s, quá 5 s không pong là rớt. Cầu thủ người rớt đứng yên, trận chạy tiếp; mỗi lần rớt tối đa 30 s, cộng dồn tối đa 60 s, quá thì xử thua 3-0 (giữ tỉ số nếu người ở lại dẫn hơn). Vào lại bằng `rejoin` và nhận `catchup` (setup + nhật ký v2) để client dựng lại state.
+- **Lệch đồng bộ:** client gửi `hash` mỗi 60 tick, server so với `serverHashes`. Lần lệch đầu của một bên thì ép dựng lại bằng `catchup`; lần hai của cùng bên thì `forfeit_desync`; cả hai cùng lần hai thì `void_desync` (huỷ, không thưởng).
+- **Thay người:** client gửi `sub`, server kiểm cấu trúc bằng `checkSubStructure` rồi xếp lệnh chờ tới bóng chết và phát kèm khung `f` ở tick đó; client không tự áp dụng.
+- **Nghỉ giữa hiệp:** như đá máy nhưng cả hai đội phải bấm chuyền mới đá tiếp, không thì tự đá sau `HALF_TIME_MAX_TICKS` (30 s).
+- **Kết thúc:** `services/pvp/finish.ts` chạy cho mọi cách kết thúc, idempotent, trong một transaction: khoá `pvp_matches` (`FOR UPDATE`) rồi hai `users` theo id tăng dần (như §3.4), cập nhật `pvp_matches`, tạo hai dòng `matches`, cộng thưởng đúng một lần (`UNIQUE (pvp_match_id, user_id)`), nhiệm vụ (`applyMissionEvent`, `mode: 'pvp'`), analytics `pvp_end`. Năm sự kiện analytics còn lại (`pvp_matched`, `pvp_start`, `pvp_disconnect`, `pvp_forfeit`, `pvp_desync`) ghi ở hub/phiên. Khi server khởi động, mọi `pvp_matches` còn `live` bị huỷ `server_restart`.
+- **Bảo mật WS:** hook `preValidation` kiểm cookie phiên và `Origin` cùng `Host` TRƯỚC khi upgrade (chống CSWSH); tối đa 4 kết nối/IP (`WS_MAX_PER_IP`), tin client→server ≤ 512 byte (`WS_MAX_PAYLOAD`), 120 tin/s (`WS_MAX_MSG_PER_SEC`), bộ đệm gửi > 256 KB thì đóng 4408 (`WS_MAX_BUFFERED`); đăng xuất / xoá tài khoản đóng mọi WS PvP của user. Tin hỏng thì `error` + đóng 4400.
+
 ## 6. Mô phỏng trận (`packages/sim`)
 
 - API: `createMatch(setup: { home, away, seed, difficulty, halfLengthSec }) → MatchState`; `step(state, inputs: PlayerInput) → MatchState` (thuần, không đọc đồng hồ); `getEvents(state)` cho HUD/âm thanh.
@@ -415,6 +489,7 @@ Cùng khuôn với §5.1: `BEGIN` → khoá `users` → khoá `player_cards` c�
 - PRNG: mulberry32 (hoặc tương đương) có seed, nằm trong state → cùng seed + cùng chuỗi input = cùng kết quả (PRD §5 tiêu chí).
 - Tầng: `physics/` (bóng có độ cao z, ma sát, va chạm cột) · `rules/` (biên, góc, phát bóng, phạm lỗi, thẻ, luân lưu, đồng hồ) · `ai/` (tầng đội: đội hình/trạng thái tấn–thủ; tầng cầu thủ: steering + quyết định chuyền/sút/rê) · `stats/` (chỉ số thẻ → tham số gameplay, thể lực).
 - Test mô phỏng headless bằng Vitest: AI-vs-AI 100 trận, 1.000 cú sút — chạy trong Node, không cần trình duyệt.
+- **PvP (ADR-0012, chỉ thêm, đường chạy một người chơi giữ nguyên):** `stepBoth(state, { home, away })` chạy một tick với input riêng của mỗi đội người (`step` = `stepBoth` với đội khách không input); `MatchState` có `humans` cho biết đội nào do người điều khiển; `stateHash(state)` (`hash.ts`, FNV-1a 32-bit) băm một phép chiếu cố định (tick, tỉ số, phase, bóng, từng cầu thủ id/pos/vel) nên đổi cấu trúc state không đổi hash; nhật ký replay v2 (tiền tố `v2.`) ghi input của cả hai đội + thay người, đọc được cả v1; `checkSubStructure` tách phần kiểm cấu trúc khỏi `substitute`. Golden hash của trận một người (`golden-hash.json`) giữ nguyên, kiểm tất định trên Chromium/Firefox/WebKit bằng `pnpm e2e:determinism`.
 
 ## 7. Bảo mật (tóm tắt)
 
@@ -423,7 +498,9 @@ Cùng khuôn với §5.1: `BEGIN` → khoá `users` → khoá `player_cards` c�
 | Sửa request để tự cộng xu/thẻ | Client không gửi số xu/thẻ; server tính từ config + DB. Response không chứa gì client có thể "gửi lại" để có lợi |
 | Mở gói 2 lần (double click, retry) | `Idempotency-Key` + `UNIQUE` + khoá `users` |
 | Race làm âm xu | `FOR UPDATE` + `CHECK (coins >= 0)` |
-| Gian lận kết quả trận | Match token 1 lần, ≥ 6 phút, tỉ số ≤ 20, trần 15 trận/ngày; sau MVP: xác minh bằng log input (BACKLOG) |
+| Gian lận kết quả trận vs máy | Match token 1 lần, ≥ 6 phút, tỉ số ≤ 20, trần 15 trận/ngày; server chạy lại sim từ log input và tự tính tỉ số (SEC-07, ADR-0011, §5.2) |
+| Gian lận trận PvP (báo tỉ số sai, cố ý lệch mã băm, thoát để né thua) | Tỉ số do sim bóng của server chốt, client không báo kết quả; so mã băm mỗi 60 tick, lệch lần hai bị xử thua; rớt > 30 s/lần hoặc > 60 s/trận bị xử thua; thưởng đúng một lần (`UNIQUE (pvp_match_id, user_id)`), trần 15 trận/ngày, tối đa 3 trận/ngày cho mỗi cặp tài khoản |
+| Chiếm kết nối WebSocket từ trang khác (CSWSH), làm ngập WS | `Origin` bắt buộc trùng `Host` + cookie phiên kiểm trước upgrade; 4 kết nối/IP, 512 byte/tin, 120 tin/s, `PVP_MAX_SESSIONS` = 50 (§5.4) |
 | Đoán tỉ lệ / RNG | `node:crypto`; lint cấm `Math.random` ở server |
 | Chiếm phiên | Cookie HttpOnly/Secure/SameSite=Lax, lưu hash token, xoay token khi đăng nhập |
 | Dò mật khẩu | argon2id, khoá 15' sau 5 lần sai, rate limit `/auth/*` |
@@ -433,9 +510,9 @@ Cùng khuôn với §5.1: `BEGIN` → khoá `users` → khoá `player_cards` c�
 
 | Môi trường | Thành phần |
 |---|---|
-| Dev | `pnpm dev`: Vite :5173 (proxy `/api` → :3000) + Fastify :3000 (`tsx watch`). Postgres 16 chạy bằng Docker (`docker compose -f docker-compose.dev.yml up -d`, thêm ở task 6.1) |
+| Dev | `pnpm dev`: Vite :5173 (proxy `/api` → :3000, có `ws: true` cho WebSocket PvP) + Fastify :3000 (`tsx watch`). Postgres 16 chạy bằng Docker (`docker compose -f docker-compose.dev.yml up -d`, thêm ở task 6.1) |
 | Test | Vitest. Test DB-integration dùng Postgres thật qua `DATABASE_URL_TEST`; mỗi test chạy trong transaction rồi rollback, hoặc truncate giữa các file |
-| Prod | `docker compose up -d --build` (`docker-compose.yml`, `Dockerfile`, `deploy/`, ADR-0007): Caddy (HTTPS tự động, file tĩnh web, reverse proxy `/api`, header bảo mật + CSP) + server (user `node`, healthcheck `/api/v1/health`) + Postgres (không mở cổng ra ngoài). Dịch vụ một lần `migrate` chạy migration + seed thẻ bằng role chủ `pitch_owner` rồi mới bật server; server dùng role `pitch_app` chỉ có SELECT/INSERT/UPDATE/DELETE (`deploy/postgres-init/01-app-role.sh`). Trước khi cập nhật bản có migration mới: `pg_dump` |
+| Prod | `docker compose up -d --build` (`docker-compose.yml`, `Dockerfile`, `deploy/`, ADR-0007): Caddy (HTTPS tự động, file tĩnh web, reverse proxy `/api`, header bảo mật + CSP có `connect-src … wss:` cho WebSocket PvP) + server (user `node`, healthcheck `/api/v1/health`) + Postgres (không mở cổng ra ngoài). Dịch vụ một lần `migrate` chạy migration + seed thẻ bằng role chủ `pitch_owner` rồi mới bật server; server dùng role `pitch_app` chỉ có SELECT/INSERT/UPDATE/DELETE (`deploy/postgres-init/01-app-role.sh`). Trước khi cập nhật bản có migration mới: `pg_dump` |
 
 Biến môi trường (server): `DATABASE_URL`, `SESSION_SECRET`, `PORT`, `HOST`, `NODE_ENV`, `MATCH_MIN_DURATION_SEC` (mặc định 360; test đặt nhỏ), `ENABLE_DEV_ROUTES` (chỉ bật route `/api/v1/dev/*` khi `=1`; mặc định tắt — không suy ra từ `NODE_ENV`), `DATABASE_URL_TEST` (DB cho test), `TRUST_PROXY` (`=1` chỉ khi chạy sau Caddy — đọc IP thật từ `X-Forwarded-For`), `GOOGLE_CLIENT_ID` (thiếu thì tắt đăng nhập Google). Production bắt buộc đặt `DATABASE_URL` và `SESSION_SECRET` (`config/env.ts`).
 Quyền admin: cột `users.is_admin`, bật bằng script `pnpm --filter @pitch/server admin:grant <username>` (không có API cấp quyền).
