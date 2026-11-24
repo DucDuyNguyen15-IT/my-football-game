@@ -154,7 +154,7 @@
 **Mục tiêu:** A tạo phòng, B nhập mã, cả hai đá hết trận cùng tỉ số, không có thưởng.
 **Kiểm thử độc lập:** quickstart, kịch bản tự động #4 (phần phòng) và kiểm tra bằng tay bước 2.
 
-- [ ] T024 [US1] Tạo `apps/server/src/services/pvp/rooms.ts`:
+- [x] T024 [US1] Tạo `apps/server/src/services/pvp/rooms.ts`:
   - `room_create` sinh `code` 6 ký tự từ bảng chữ `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` bằng `node:crypto`, không trùng phòng đang mở, hạn 10 phút;
   - `room_join` trả lỗi `room_not_found`/`room_full`/`room_expired`/`self_join`;
   - mỗi user tối đa một mục trong hàng chờ, phòng hoặc phiên (`busy`, FR-004; gồm cả `room_*` từ socket thứ hai, A1);
@@ -163,18 +163,18 @@
   - đặt `MatchSetup.autopilot` từ env `REPLAY_TEST_AUTOPILOT` và `halfLengthSec` từ `REPLAY_TEST_HALF_LENGTH_SEC` (chỉ khi test), để sim bóng và sim client dùng cùng giá trị;
   - khi đủ người: dựng `MatchSetup` bằng `buildHomeTeam` (`domain/match-teams.ts:45`) cho cả hai người, `humans: ['home','away']`, `kind='friendly'`, tạo dòng `pvp_matches`, gửi `matched`, ghi sự kiện `pvp_matched`;
   - viết phần "dựng trận" thành hàm dùng chung để T035 dùng lại.
-- [ ] T025 [P] [US1] Test `apps/server/src/services/pvp/rooms.test.ts`: mã không có ký tự 0/O/1/I; mọi mã lỗi; phòng hết hạn sau 10 phút; trận friendly cho `reward = 0` và không tính vào giới hạn ngày (FR-022).
-- [ ] T026 [US1] Tạo `apps/web/src/features/pvp/PvpLobby.tsx`:
+- [x] T025 [P] [US1] Test `apps/server/src/services/pvp/rooms.test.ts`: mã không có ký tự 0/O/1/I; mọi mã lỗi; phòng hết hạn sau 10 phút; trận friendly cho `reward = 0` và không tính vào giới hạn ngày (FR-022).
+- [x] T026 [US1] Tạo `apps/web/src/features/pvp/PvpLobby.tsx`:
   - nút Tạo phòng hiện mã (có nút sao chép) và dòng "Giao hữu, không có thưởng";
   - ô Nhập mã viết hoa, đúng 6 ký tự;
   - báo lỗi theo `error.code`;
   - khi `matched` thì hiện tên và đội hình đối thủ (FR-005).
-- [ ] T027 [US1] Tạo `apps/web/src/features/pvp/PvpMatchPage.tsx`:
+- [x] T027 [US1] Tạo `apps/web/src/features/pvp/PvpMatchPage.tsx`:
   - nhúng `MatchCanvas` với `driver='net'`, HUD theo `side` (FR-008);
   - màn kết quả dùng tỉ số trong `end` và hiện lý do khi `reward = 0` theo `rewardReason`;
   - tách phần dùng chung từ `apps/web/src/features/play/PlayPage.tsx` thay vì sao chép.
-- [ ] T028 [US1] Thêm route `/pvp` (có `RequireAuth`) vào `apps/web/src/app/router.tsx`, mục PvP vào Topbar, chuỗi vi/en vào file i18n hiện có. Chặn trận trên điện thoại giống `/play`.
-- [ ] T029 [US1] Tạo `e2e/pvp.spec.ts` kịch bản phòng:
+- [x] T028 [US1] Thêm route `/pvp` (có `RequireAuth`) vào `apps/web/src/app/router.tsx`, mục PvP vào Topbar, chuỗi vi/en vào file i18n hiện có. Chặn trận trên điện thoại giống `/play`.
+- [x] T029 [US1] Tạo `e2e/pvp.spec.ts` kịch bản phòng:
   - hai `browser.newContext()` hai tài khoản; A tạo phòng, B nhập mã;
   - autopilot hai đội (T009), hiệp 10 s;
   - hai màn kết quả cùng tỉ số và có dòng "Giao hữu";
@@ -191,7 +191,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 **Mục tiêu:** trận không đứng vì một người. Xử thua công bằng. Không né thua được bằng cách cố tình làm lệch.
 **Kiểm thử độc lập:** quickstart, kiểm tra bằng tay bước 4, và test session.
 
-- [ ] T030 [US3] Trong `apps/server/src/services/pvp/session.ts`:
+- [x] T030 [US3] Trong `apps/server/src/services/pvp/session.ts`:
   - socket đóng hoặc nhận `leave` thì bắt đầu đếm rớt mạng: input của bên đó thành 0 (đứng yên), gửi `opp_disconnected {remainingMs}` cho bên kia, ghi sự kiện `pvp_disconnect`;
   - giới hạn 30 s mỗi lần, 60 s cộng dồn cả trận (FR-011);
   - `rejoin`: kiểm `userId ∈ {home, away}` của trận, sai → `error not_in_match`; trận đã `finished`/`cancelled` (phiên còn trong bộ nhớ hoặc chỉ còn dòng DB) → gửi lại `end` với kết quả đã lưu, không gửi `catchup` (A2);
@@ -199,12 +199,12 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - trận xử thua chỉ tính nhiệm vụ `match_play`/`match_win` (người thắng do đối thủ bị xử thua), không tính goals/clean_sheet (A14);
   - bên nào hết hạn trước thì bên đó bị xử thua; chỉ `finish('void_both_left')` khi lúc một bên hết hạn thì bên kia cũng đang rớt;
   - người chơi xoá tài khoản (`anonymizeUser`, `services/auth.ts:53`) khi đang chờ, trong phòng hoặc đang đá thì xử lý như `leave` (gọi hook từ route xoá tài khoản).
-- [ ] T031 [US3] Trong `apps/server/src/services/pvp/finish.ts`, hàm xử thua (FR-023):
+- [x] T031 [US3] Trong `apps/server/src/services/pvp/finish.ts`, hàm xử thua (FR-023):
   - lấy tỉ số hiện tại từ sim bóng; người ở lại thắng 3-0, hoặc giữ tỉ số hiện tại nếu đang dẫn cách biệt hơn 3 bàn;
   - ranked: người thua có `reward = 0`, `consumes_daily_cap = true`, không tính nhiệm vụ, `rewardReason='forfeit'`; người thắng nhận thưởng thắng và chỉ tính nhiệm vụ `match_play`/`match_win`, không tính goals/clean_sheet (A14);
   - dòng `matches` của cả hai có `reward_day = gameDay(finished_at)` (A6);
   - ghi `forfeit_user_id` và sự kiện `pvp_forfeit`.
-- [ ] T032 [US3] Phân xử lệch (FR-010, research.md R5) trong `apps/server/src/services/pvp/session.ts`:
+- [x] T032 [US3] Phân xử lệch (FR-010, research.md R5) trong `apps/server/src/services/pvp/session.ts`:
   - nhận `hash {tick, h}` và so ngay với `serverHashes[tick]`;
   - một bên sai **lần đầu** thì server ép bên đó dựng lại: gửi `catchup` (miễn hạn mã băm 10 s như `rejoin`), chưa xử thua (A3);
   - bên đó sai **lần thứ hai** trong cùng trận thì `finish('forfeit_desync')`, bên đó thua (A3);
@@ -212,7 +212,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - giữ mã băm 30 s; mã băm cũ hơn thì bỏ qua, không phạt;
   - bên **đang kết nối**, không đang dựng lại (chưa nhận `catchup_done` thì coi là đang dựng lại, nhưng miễn tối đa 10 s kể từ `catchup`), mà quá **15 s thời gian thật** không gửi hash thì bị coi là sai (R5);
   - ghi sự kiện `pvp_desync` (props: tick, bên lệch).
-- [ ] T033 [P] [US3] Test `apps/server/src/services/pvp/disconnect.test.ts`:
+- [x] T033 [P] [US3] Test `apps/server/src/services/pvp/disconnect.test.ts`:
   - rớt 29 s rồi vào lại thì đá tiếp; rớt 31 s thì xử thua;
   - rớt 25 s + 25 s + 11 s thì xử thua do quá 60 s cộng dồn;
   - đang dẫn 5-0 khi đối thủ bỏ thì giữ 5-0;
@@ -226,7 +226,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - nhận `catchup` mà không bao giờ gửi `catchup_done` thì sau 10 s + 15 s bị coi là lệch;
   - rớt lệch giờ: bên hết hạn trước thua; cả hai cùng đang rớt thì huỷ;
   - mất pong 5 s thì tính là rớt mạng.
-- [ ] T034 [US3] Trong `apps/web/src/features/pvp/useNetMatch.ts` và `PvpMatchPage.tsx`:
+- [x] T034 [US3] Trong `apps/web/src/features/pvp/useNetMatch.ts` và `PvpMatchPage.tsx`:
   - tự kết nối lại theo backoff, gửi `rejoin`;
   - nhận `error busy` thì thử `rejoin` lại mỗi 2 s trong hạn 30 s (A1); nhận `end` thay `catchup` thì hiện kết quả luôn (A2);
   - với `catchup` thì dựng lại state bằng `replayToState` trên `log` (không vẽ), hiện "Đang vào lại…", xếp hàng khung `f` tới, bỏ khung tick ≤ `catchup.tick`, khung đầu áp dụng là `catchup.tick + 1` (A13), xong thì gửi `catchup_done`;
@@ -242,21 +242,21 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 **Mục tiêu:** ghép trận FIFO, có thưởng như đấu máy Khó.
 **Kiểm thử độc lập:** hai tài khoản cùng bấm Tìm trận, vào trận và nhận thưởng.
 
-- [ ] T035 [US2] Tạo `apps/server/src/services/pvp/queue.ts`:
+- [x] T035 [US2] Tạo `apps/server/src/services/pvp/queue.ts`:
   - hàng chờ FIFO; socket đóng thì xoá mục chờ của user (A15); `queue_status` mỗi giây (`waitedSec`, `offerCpu` chuyển true sau 60 s);
   - quá 5 phút thì gửi `queue_timeout` và loại khỏi hàng;
   - `queue_leave`;
   - ghép hai người đầu hàng thành `kind='ranked'`, người vào trước là home, dùng hàm dựng trận chung từ T024.
-- [ ] T036 [US2] Trong `apps/server/src/services/pvp/finish.ts`:
+- [x] T036 [US2] Trong `apps/server/src/services/pvp/finish.ts`:
   - nếu cặp hai user đã có quá 3 trận `ranked` `finished` trong ngày (tính theo `finished_at`, GMT+7) thì `reward = 0`, `rewardReason='same_opponent_limit'` (FR-017);
   - người hết giới hạn 15 trận/ngày thì `reward = 0`, `rewardReason='daily_cap'`.
-- [ ] T037 [P] [US2] Test `apps/server/src/services/pvp/queue.test.ts`: ghép đúng thứ tự FIFO; huỷ chờ; `offerCpu` sau 60 s; hết hạn sau 5 phút; người đang `busy` bị từ chối; trùng cặp từ trận thứ 4 không thưởng; thưởng đúng bảng `MATCH_REWARD.hard`; trận ranked tính nhiệm vụ chung nhưng **không** tính `match_hard`.
-- [ ] T038 [US2] Trong `apps/web/src/features/pvp/PvpLobby.tsx`:
+- [x] T037 [P] [US2] Test `apps/server/src/services/pvp/queue.test.ts`: ghép đúng thứ tự FIFO; huỷ chờ; `offerCpu` sau 60 s; hết hạn sau 5 phút; người đang `busy` bị từ chối; trùng cặp từ trận thứ 4 không thưởng; thưởng đúng bảng `MATCH_REWARD.hard`; trận ranked tính nhiệm vụ chung nhưng **không** tính `match_hard`.
+- [x] T038 [US2] Trong `apps/web/src/features/pvp/PvpLobby.tsx`:
   - nút Tìm trận, trạng thái "Đang tìm đối thủ…" kèm thời gian chờ và nút Huỷ;
   - sau 60 s hiện nút "Đá với máy" (gửi `queue_leave` rồi điều hướng sang `/play`);
   - báo khi hết 5 phút;
   - chuỗi vi/en.
-- [ ] T039 [US2] Thêm kịch bản hàng chờ vào `e2e/pvp.spec.ts`: hai context cùng Tìm trận, trận kết thúc, số dư xu của cả hai tăng đúng.
+- [x] T039 [US2] Thêm kịch bản hàng chờ vào `e2e/pvp.spec.ts`: hai context cùng Tìm trận, trận kết thúc, số dư xu của cả hai tăng đúng.
 
 ---
 
@@ -265,17 +265,17 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 **Mục tiêu:** mỗi người thay người cho đội mình, cả hai màn hình cùng cập nhật.
 **Kiểm thử độc lập:** quickstart, kiểm tra bằng tay bước 5.
 
-- [ ] T040 [US4] Trong `apps/server/src/services/pvp/session.ts`:
+- [x] T040 [US4] Trong `apps/server/src/services/pvp/session.ts`:
   - nhận `sub`, kiểm cấu trúc bằng `checkSubStructure(state, team, out, bench)` trên sim bóng; sai thì gửi `error sub_rejected` ngay (A10);
   - kiểm thời điểm không gây lỗi: bóng đang lăn thì xếp lệnh chờ trong `pendingSubs`, mỗi đội tối đa 1 lệnh chờ (lệnh mới thay lệnh cũ), áp ở tick bóng chết gần nhất (A10);
   - tới bóng chết mà kiểm cấu trúc lại sai (ví dụ cầu thủ vừa nhận thẻ đỏ) thì gửi `sub_rejected` muộn và bỏ lệnh (A10);
   - hợp lệ thì áp `substitute` lên sim bóng, phát kèm khung, ghi `recorder.sub(tick, team, out, bench)`.
-- [ ] T041 [US4] Trong `apps/web/src/game/three/MatchRenderer.ts`, `useNetMatch.ts` và panel thay người hiện có:
+- [x] T041 [US4] Trong `apps/web/src/game/three/MatchRenderer.ts`, `useNetMatch.ts` và panel thay người hiện có:
   - ở chế độ `net`, panel gửi `sub` qua WS thay vì đẩy vào `applyCommands`;
   - client áp `subs` từ khung trước khi `stepBoth`;
   - bóng đang lăn thì hiện "Chờ bóng chết";
   - báo lỗi khi nhận `sub_rejected` (vi/en).
-- [ ] T042 [P] [US4] Test trong `apps/server/src/services/pvp/session.test.ts`: lệnh thay người lúc bóng lăn chỉ có hiệu lực ở tick bóng chết; lệnh chờ thứ hai của cùng đội thay lệnh đầu; cấu trúc sai (quá số lượt, cầu thủ không trên sân) bị `sub_rejected` ngay; cầu thủ nhận thẻ đỏ trong lúc chờ thì `sub_rejected` muộn và bỏ lệnh (A10); `replayMatch` trên `input_log` có thay người hai đội khớp với sim bóng.
+- [x] T042 [P] [US4] Test trong `apps/server/src/services/pvp/session.test.ts`: lệnh thay người lúc bóng lăn chỉ có hiệu lực ở tick bóng chết; lệnh chờ thứ hai của cùng đội thay lệnh đầu; cấu trúc sai (quá số lượt, cầu thủ không trên sân) bị `sub_rejected` ngay; cầu thủ nhận thẻ đỏ trong lúc chờ thì `sub_rejected` muộn và bỏ lệnh (A10); `replayMatch` trên `input_log` có thay người hai đội khớp với sim bóng.
 
 ---
 

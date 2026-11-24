@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { Link, useBlocker, useNavigate, useSearchParams } from 'react-router';
+import { Link, useNavigate, useSearchParams } from 'react-router';
 import type { Difficulty, StartedMatch } from '@pitch/shared';
-import { buildMatchSetup, InputRecorder, type MatchSetup, type MatchState } from '@pitch/sim';
+import { buildMatchSetup, InputRecorder, type MatchSetup } from '@pitch/sim';
 import { ApiClientError } from '../../api/client';
 import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
@@ -10,20 +10,16 @@ import { useClaimMission, useTodayMissions } from '../../api/missions';
 import { MatchCanvas } from '../../game/MatchCanvas';
 import type { GraphicsSettings, MatchBridge, MatchCommand } from '../../game/bridge';
 import { avatarSeedsForMatch } from '../../game/render/kit';
-import { DEFAULT_GRAPHICS, parseGraphicsSettings } from '../../game/render/quality';
 import { MatchTutorialOverlay } from '../onboarding/MatchTutorialOverlay';
 import { markTutorialSeen, readTutorialSeen, resetTutorialSeen } from '../onboarding/onboarding';
 import { errorMessageFor } from '../../i18n/i18n';
 import { useI18n } from '../../i18n/I18nContext';
 import {
-  hudEvents,
   loadSavedDifficulty,
   readDevOptions,
   resultBody,
-  sameHud,
   saveDifficulty,
   subOptions,
-  toHudSnapshot,
   type SubOptions,
   type DevOptions,
   type HudSnapshot,
@@ -36,8 +32,15 @@ import {
   Scoreboard,
   StoppageBoard,
   ShootoutPanel,
-  type ShownEvent,
 } from './MatchHud';
+import {
+  FULL_TIME_HOLD_MS,
+  HINTS_SHOW_MS,
+  loadGraphics,
+  saveGraphics,
+  useLeaveGuard,
+  useMatchHud,
+} from './matchShared';
 import { isTouchOnly, NeedKeyboard, PreMatch, Versus } from './PreMatch';
 import {
   HalfTimeStrip,
@@ -50,32 +53,6 @@ import {
 } from './screens';
 import '../../styles/tokens.css';
 import './play.css';
-
-const EVENT_SHOW_MS = 3000;
-const GOAL_BANNER_MS = 1200;
-/** Bảng bù giờ hiện nổi bật chừng này ms lúc hiệp bước vào bù giờ. */
-const STOPPAGE_BOARD_MS = 4000;
-const HINTS_SHOW_MS = 10_000;
-/** Dừng lại một chút sau tiếng còi hết trận rồi mới sang màn kết quả. */
-const FULL_TIME_HOLD_MS = 1500;
-const QUALITY_KEY = 'pitch.gfx';
-
-/** Cài đặt đồ hoạ nhớ theo trình duyệt (tiện ích riêng của người chơi; bị chặn storage thì dùng mặc định). */
-function loadGraphics(): GraphicsSettings {
-  try {
-    return parseGraphicsSettings(localStorage.getItem(QUALITY_KEY));
-  } catch {
-    return DEFAULT_GRAPHICS;
-  }
-}
-
-function saveGraphics(g: GraphicsSettings): void {
-  try {
-    localStorage.setItem(QUALITY_KEY, JSON.stringify(g));
-  } catch {
-    // Không lưu được thì chỉ áp dụng cho trận này.
-  }
-}
 
 type Stage =
   | { kind: 'select' }
@@ -208,25 +185,6 @@ interface MatchResultViewProps {
 }
 
 /**
- * Hỏi trước khi rời màn lúc `active`: link/Back trong ứng dụng (`useBlocker`) và đóng tab, tải lại,
- * Back ra ngoài trang (`beforeunload` — trình duyệt hiện câu hỏi mặc định của nó).
- */
-function useLeaveGuard(active: boolean, message: string): void {
-  const blocker = useBlocker(active);
-  useEffect(() => {
-    if (blocker.state !== 'blocked') return;
-    if (window.confirm(message)) blocker.proceed();
-    else blocker.reset();
-  }, [blocker, message]);
-  useEffect(() => {
-    if (!active) return;
-    const warn = (e: BeforeUnloadEvent) => e.preventDefault();
-    window.addEventListener('beforeunload', warn);
-    return () => window.removeEventListener('beforeunload', warn);
-  }, [active]);
-}
-
-/**
  * Màn kết quả + nộp tỉ số lên server một lần khi mở. Lỗi mạng/5xx: hook tự thử lại, rồi cho bấm
  * "Gửi lại" — luôn cùng token nên server không cộng xu hai lần.
  */
@@ -349,20 +307,14 @@ interface MatchViewProps {
 }
 
 function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit }: MatchViewProps) {
-  const { locale, t } = useI18n();
-  const localeRef = useRef(locale);
-  useEffect(() => {
-    localeRef.current = locale;
-  }, [locale]);
+  const { t } = useI18n();
   const setup = useMemo<MatchSetup>(
     () => buildMatchSetup({ ...match, difficulty }, { halfLengthSec, autopilot }),
     [difficulty, match, halfLengthSec, autopilot],
   );
 
-  const [hud, setHud] = useState<HudSnapshot | null>(null);
-  const [events, setEvents] = useState<ShownEvent[]>([]);
-  const [goalBanner, setGoalBanner] = useState(0);
-  const [stoppageBoard, setStoppageBoard] = useState(false);
+  const { hud, events, goalBanner, stoppageBoard, lastHud, latestState, later, updateHud } =
+    useMatchHud('home');
   const [hints, setHints] = useState(true);
   const [paused, setPausedState] = useState(false);
   const [showTutorial, setShowTutorial] = useState(
@@ -373,31 +325,12 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
   const [graphics, setGraphics] = useState<GraphicsSettings>(loadGraphics);
   // Scene đọc cờ tạm dừng mỗi khung hình nên giữ thêm bản ref (không chờ React render).
   const pausedRef = useRef(false);
-  const lastHud = useRef<HudSnapshot | null>(null);
-  // State mới nhất cho minimap (tự vẽ ~10 Hz, không qua React state).
-  const latestState = useRef<MatchState | null>(null);
   // Lệnh thay người chờ renderer áp vào sim ở khung hình kế tiếp.
   const commands = useRef<MatchCommand[]>([]);
   const onEndRef = useRef(onEnd);
   useEffect(() => {
     onEndRef.current = onEnd;
   });
-
-  const timers = useRef(new Set<number>());
-  const later = useCallback((ms: number, fn: () => void) => {
-    const id = window.setTimeout(() => {
-      timers.current.delete(id);
-      fn();
-    }, ms);
-    timers.current.add(id);
-  }, []);
-  useEffect(() => {
-    const pending = timers.current;
-    return () => {
-      for (const id of pending) window.clearTimeout(id);
-      pending.clear();
-    };
-  }, []);
 
   // Đếm giờ gợi ý phím từ lúc trận hiện lên (tải cảnh 3D có thể mất vài giây).
   const started = hud !== null;
@@ -419,15 +352,18 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
     if (pausedRef.current && latestState.current) {
       setSubs(subOptions(latestState.current, match.home.players, catalog));
     }
-  }, [catalog, match.home.players]);
-  const setPaused = useCallback((value: boolean) => {
-    pausedRef.current = value;
-    setPausedState(value);
-    // Menu thay người đọc đội hình lúc mở (trận đứng yên khi tạm dừng).
-    if (value && latestState.current) {
-      setSubs(subOptions(latestState.current, homePlayersRef.current, catalogRef.current));
-    }
-  }, []);
+  }, [catalog, match.home.players, latestState]);
+  const setPaused = useCallback(
+    (value: boolean) => {
+      pausedRef.current = value;
+      setPausedState(value);
+      // Menu thay người đọc đội hình lúc mở (trận đứng yên khi tạm dừng).
+      if (value && latestState.current) {
+        setSubs(subOptions(latestState.current, homePlayersRef.current, catalogRef.current));
+      }
+    },
+    [latestState],
+  );
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -446,44 +382,27 @@ function MatchView({ difficulty, match, halfLengthSec, autopilot, onEnd, onQuit 
       window.removeEventListener('keydown', onKey);
       window.removeEventListener('blur', onBlur);
     };
-  }, [setPaused, autopilot]);
+  }, [setPaused, autopilot, lastHud]);
 
   const bridge = useMemo<MatchBridge>(() => {
-    let nextId = 1;
     const recorder = new InputRecorder();
     return {
       recorder,
       isPaused: () => pausedRef.current,
       takeCommands: () => commands.current.splice(0),
       onState: (state) => {
-        latestState.current = state;
-        const last = lastHud.current;
-        const snap = toHudSnapshot(state, last ?? undefined);
-        if (last && sameHud(last, snap)) return;
-        lastHud.current = snap;
-        // Vừa thay người trong menu: cập nhật danh sách.
-        if (pausedRef.current) {
-          setSubs(subOptions(state, homePlayersRef.current, catalogRef.current));
-        }
-        setHud(snap);
-        if (snap.stoppage !== null && last && last.stoppage === null) {
-          setStoppageBoard(true);
-          later(STOPPAGE_BOARD_MS, () => setStoppageBoard(false));
-        }
-        for (const e of last ? hudEvents(last, snap, localeRef.current) : []) {
-          const shown = { ...e, id: nextId++ };
-          setEvents((list) => [...list, shown]);
-          later(EVENT_SHOW_MS, () => setEvents((list) => list.filter((x) => x.id !== shown.id)));
-          if (e.kind === 'goal') {
-            setGoalBanner(shown.id);
-            later(GOAL_BANNER_MS, () => setGoalBanner((b) => (b === shown.id ? 0 : b)));
+        updateHud(state, (snap) => {
+          // Vừa thay người trong menu: cập nhật danh sách.
+          if (pausedRef.current) {
+            setSubs(subOptions(state, homePlayersRef.current, catalogRef.current));
           }
-        }
-        if (snap.phase === 'full_time')
-          later(FULL_TIME_HOLD_MS, () => onEndRef.current(snap, recorder.encode()));
+          if (snap.phase === 'full_time') {
+            later(FULL_TIME_HOLD_MS, () => onEndRef.current(snap, recorder.encode()));
+          }
+        });
       },
     };
-  }, [later]);
+  }, [later, updateHud]);
 
   return (
     <>

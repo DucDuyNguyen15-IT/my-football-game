@@ -1,6 +1,5 @@
 import { buildMatchSetup, type MatchSetup } from '@pitch/sim';
 import {
-  ROOM_CODE_ALPHABET,
   type MatchTeamSetup,
   type PvpClientMessage,
   type PvpMatchSetup,
@@ -10,12 +9,24 @@ import type { Db } from '../../db/client';
 import { pvpMatches } from '../../db/schema';
 import type { Rng } from '../../domain/rng';
 import { track } from '../analytics';
+import type { CardCatalog } from '../cards';
+import { loadStoredPvpResult } from './finish';
+import { QUEUE_TICK_MS, handleQueueJoin, tickQueue, type QueueEntry } from './queue';
+import {
+  ROOM_TTL_MS,
+  handleRoomCreate,
+  handleRoomJoin,
+  loadPlayerSquad,
+  type LoadedPlayer,
+  type PvpDevOptions,
+  type Room,
+} from './rooms';
 import { PvpSession, type PvpConn, type SessionDeps } from './session';
 import { PvpTicker, type TimeSource } from './ticker';
 
 /** Số phiên đồng thời tối đa (research R11: đo 20/11, dư ~2,6 lần theo p99). */
 export const PVP_MAX_SESSIONS = 50;
-export const ROOM_TTL_MS = 10 * 60_000;
+export { ROOM_TTL_MS };
 /** Phiên đã xong còn giữ trong bộ nhớ để `rejoin` trả lại `end`. */
 export const ENDED_KEEP_MS = 60_000;
 export const HEARTBEAT_MS = 2000;
@@ -36,15 +47,9 @@ export interface HubOptions {
   rng: Rng;
   time: TimeSource;
   maxSessions?: number;
+  cardCatalog?: () => Promise<CardCatalog>;
+  dev?: PvpDevOptions;
   onError?: (err: unknown) => void;
-}
-
-interface Room {
-  code: string;
-  host: HubConn;
-  hostUserId: number;
-  expiresAt: number;
-  status: 'waiting' | 'full' | 'closed';
 }
 
 export interface Participant {
@@ -57,17 +62,20 @@ export interface Participant {
 /**
  * Trạng thái PvP trong bộ nhớ của MỘT tiến trình (hàng chờ, phòng, phiên) + bộ giữ nhịp chung.
  * shortcut: trạng thái trong bộ nhớ một tiến trình, nâng cấp khi chạy nhiều instance (R8).
- * Ghép cặp (US1) và phân xử rớt mạng/lệch mã băm (US2, US3) là task sau: chỗ móc ở `queue_join`,
- * `room_join`, `hash`, `catchup_done`, `leave`.
+ * Hàng chờ (US2) và phân xử rớt mạng/lệch mã băm (US3) là task sau: chỗ móc ở `queue_join`,
+ * `hash`, `catchup_done`, `leave`.
  */
 export class PvpHub {
   readonly ticker: PvpTicker;
-  readonly queue = new Map<number, { conn: HubConn; enqueuedAt: number }>();
+  readonly queue = new Map<number, QueueEntry>();
   readonly rooms = new Map<string, Room>();
   private readonly byId = new Map<number, PvpSession>();
   /** Phiên đang `live` của mỗi user. */
   private readonly byUser = new Map<number, PvpSession>();
   private readonly conns = new Map<number, Set<HubConn>>();
+  private readonly closedConns = new WeakSet<HubConn>();
+  private readonly pendingUsers = new Set<number>();
+  private queueTimer: (() => void) | null = null;
   private readonly maxSessions: number;
   private readonly sessionDeps: SessionDeps;
 
@@ -90,6 +98,49 @@ export class PvpHub {
     };
   }
 
+  get rng(): Rng {
+    return this.o.rng;
+  }
+
+  get dev(): PvpDevOptions | undefined {
+    return this.o.dev;
+  }
+
+  get hasCardCatalog(): boolean {
+    return this.o.cardCatalog !== undefined;
+  }
+
+  now(): number {
+    return this.o.time.now();
+  }
+
+  clockNow(): Date {
+    return this.o.clock.now();
+  }
+
+  reportError(err: unknown): void {
+    this.o.onError?.(err);
+  }
+
+  beginPending(userId: number): void {
+    this.pendingUsers.add(userId);
+  }
+
+  endPending(userId: number): void {
+    this.pendingUsers.delete(userId);
+  }
+
+  isClosed(conn: HubConn): boolean {
+    return this.closedConns.has(conn);
+  }
+
+  async loadPlayer(
+    userId: number,
+  ): Promise<{ ok: true; player: LoadedPlayer } | { ok: false; code: 'invalid_squad' }> {
+    const catalog = await this.o.cardCatalog!();
+    return loadPlayerSquad(this.o.db, catalog, userId);
+  }
+
   get sessionCount(): number {
     return [...this.byId.values()].filter((s) => s.live).length;
   }
@@ -110,7 +161,10 @@ export class PvpHub {
 
   /** Đăng xuất / xoá tài khoản (session bị thu hồi): đóng mọi WS PvP của user (A18). */
   closeUser(userId: number): void {
-    for (const c of [...(this.conns.get(userId) ?? [])]) c.close(4401);
+    for (const c of [...(this.conns.get(userId) ?? [])]) {
+      c.close(4401);
+      this.onClosed(c);
+    }
   }
 
   /** Mỗi 2 s: ping, và cắt socket quá 5 s không có pong (coi như rớt mạng; `onClosed` lo phần còn lại). */
@@ -118,14 +172,19 @@ export class PvpHub {
     const now = this.o.time.now();
     for (const set of this.conns.values()) {
       for (const c of [...set]) {
-        if (now - c.lastPongAt > PONG_TIMEOUT_MS) c.terminate();
-        else c.ping();
+        if (now - c.lastPongAt > PONG_TIMEOUT_MS) {
+          c.terminate();
+          this.onClosed(c);
+        } else {
+          c.ping();
+        }
       }
     }
   }
 
   /** Socket đã đóng (hoặc bị coi là chết). Idempotent. */
   onClosed(conn: HubConn): void {
+    this.closedConns.add(conn);
     const set = this.conns.get(conn.userId);
     set?.delete(conn);
     if (set?.size === 0) this.conns.delete(conn.userId);
@@ -144,7 +203,7 @@ export class PvpHub {
     seed: number;
     home: Participant;
     away: Participant;
-    dev?: { halfLengthSec?: number; autopilot?: boolean };
+    dev?: PvpDevOptions;
   }): Promise<PvpSession | null> {
     if (this.full) {
       for (const p of [args.home, args.away]) p.conn.send({ t: 'error', code: 'server_busy' });
@@ -219,14 +278,19 @@ export class PvpHub {
       case 'room_create':
       case 'room_join':
         if (this.full) return conn.send({ t: 'error', code: 'server_busy' });
+        if (msg.t === 'room_join') {
+          const own = this.rooms.get(msg.code);
+          if (own && own.status !== 'closed' && own.hostUserId === uid) {
+            return conn.send({ t: 'error', code: 'self_join' });
+          }
+        }
         if (this.hasEntry(uid)) return conn.send({ t: 'error', code: 'busy' });
         if (msg.t === 'queue_join') {
-          this.queue.set(uid, { conn, enqueuedAt: this.o.time.now() });
-          // US1: ghép cặp FIFO + `queue_status`/`queue_timeout`.
+          handleQueueJoin(this, conn);
         } else if (msg.t === 'room_create') {
-          this.createRoom(conn);
+          handleRoomCreate(this, conn);
         } else {
-          this.joinRoom(conn, msg.code);
+          handleRoomJoin(this, conn, msg.code);
         }
         return;
       case 'queue_leave':
@@ -252,76 +316,102 @@ export class PvpHub {
         if (holder) holder.sess.detach(holder.side, conn);
         return conn.close(1000);
       case 'hash':
+        return holder?.sess.onHash(holder.side, msg.tick, msg.h);
       case 'catchup_done':
-        return; // US2: so mã băm với `serverHashes`, ép `catchup`, xử `forfeit_desync`.
+        return holder?.sess.onCatchupDone(holder.side);
     }
+  }
+
+  ensureQueueTimer(): void {
+    if (this.queue.size === 0 || this.queueTimer) return;
+    this.queueTimer = this.o.time.after(QUEUE_TICK_MS, () => {
+      this.queueTimer = null;
+      tickQueue(this);
+      this.ensureQueueTimer();
+    });
+  }
+
+  tickQueue(): void {
+    tickQueue(this);
   }
 
   stop(): void {
+    this.queueTimer?.();
+    this.queueTimer = null;
     this.ticker.stop();
   }
 
-  private hasEntry(uid: number): boolean {
+  hasEntry(uid: number, opts: { includePending?: boolean } = {}): boolean {
+    const includePending = opts.includePending ?? true;
+    if (includePending && this.pendingUsers.has(uid)) return true;
     if (this.queue.has(uid) || this.byUser.has(uid)) return true;
-    for (const r of this.rooms.values())
-      if (r.hostUserId === uid && r.status !== 'closed') return true;
+    const now = this.o.time.now();
+    for (const r of this.rooms.values()) {
+      if (r.hostUserId === uid && r.status === 'waiting' && now < r.expiresAt) return true;
+    }
     return false;
   }
 
-  private createRoom(conn: HubConn): void {
-    let code: string;
-    do {
-      code = Array.from(
-        { length: 6 },
-        () => ROOM_CODE_ALPHABET[this.o.rng(ROOM_CODE_ALPHABET.length)],
-      ).join('');
-    } while (this.rooms.has(code));
-    const expiresAt = this.o.time.now() + ROOM_TTL_MS;
-    this.rooms.set(code, {
-      code,
-      host: conn,
-      hostUserId: conn.userId,
-      expiresAt,
-      status: 'waiting',
-    });
-    conn.send({
-      t: 'room_created',
-      code,
-      expiresAt: new Date(this.o.clock.now().getTime() + ROOM_TTL_MS).toISOString(),
-    });
-  }
-
-  private joinRoom(conn: HubConn, code: string): void {
-    const room = this.rooms.get(code);
-    if (!room || room.status === 'closed') return conn.send({ t: 'error', code: 'room_not_found' });
-    if (room.hostUserId === conn.userId) return conn.send({ t: 'error', code: 'self_join' });
-    if (room.status === 'full') return conn.send({ t: 'error', code: 'room_full' });
-    if (this.o.time.now() >= room.expiresAt) {
-      this.closeRoom(room);
-      return conn.send({ t: 'error', code: 'room_expired' });
-    }
-    // US1: nạp đội hình hai bên, `createSession({kind:'friendly'})`.
-  }
-
-  private closeRoom(room: Room): void {
+  closeRoom(room: Room): void {
     room.status = 'closed';
     this.rooms.delete(room.code);
   }
 
+  scheduleRoomCleanup(room: Room): void {
+    const ttl = Math.max(0, room.expiresAt - this.o.time.now());
+    this.o.time.after(ttl, () => {
+      if (this.rooms.get(room.code) === room) this.rooms.delete(room.code);
+    });
+  }
+
   private rejoin(conn: HubConn, pvpId: number): void {
     const s = this.byId.get(pvpId);
-    const side = s?.sideOf(conn.userId);
-    if (!s || !side) return conn.send({ t: 'error', code: 'not_in_match' });
-    const held = s.sockets[side];
-    if (s.live && held && held !== conn) return conn.send({ t: 'error', code: 'busy' });
-    s.attach(side, conn);
-    if (!s.live) return s.sendEnd(side);
-    // US3: `catchup` có `setup`, `log` (recorder.encode()) và `tick` hiện tại; hạn rớt mạng.
-    conn.send({
-      t: 'catchup',
-      setup: s.setup as PvpMatchSetup,
-      log: s.recorder.encode(),
-      tick: Math.max(0, s.state.tick - 1), // khung cuối cùng đã có trong log
-    });
+    if (s) {
+      const side = s.sideOf(conn.userId);
+      if (!side) {
+        conn.send({ t: 'error', code: 'not_in_match' });
+        return;
+      }
+      if (!s.live) {
+        void s.whenEnded().then(() => {
+          if (this.closedConns.has(conn) || !s.result) return;
+          conn.send({
+            t: 'end',
+            reason: s.result.reason,
+            home: s.result.home,
+            away: s.result.away,
+            you: s.result.sides[side],
+          });
+        });
+        return;
+      }
+      const held = s.sockets[side];
+      if (held && held !== conn) {
+        conn.send({ t: 'error', code: 'busy' });
+        return;
+      }
+      s.onRejoin(side, conn);
+      return;
+    }
+
+    void loadStoredPvpResult(this.o.db, pvpId, conn.userId)
+      .then((stored) => {
+        if (this.closedConns.has(conn)) return;
+        if (!stored) {
+          conn.send({ t: 'error', code: 'not_in_match' });
+          return;
+        }
+        conn.send({
+          t: 'end',
+          reason: stored.result.reason,
+          home: stored.result.home,
+          away: stored.result.away,
+          you: stored.result.sides[stored.side],
+        });
+      })
+      .catch((err: unknown) => {
+        this.o.onError?.(err);
+        if (!this.closedConns.has(conn)) conn.send({ t: 'error', code: 'server_busy' });
+      });
   }
 }

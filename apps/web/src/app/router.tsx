@@ -17,6 +17,9 @@ import { useI18n } from '../i18n/I18nContext';
 const PlayPage = lazy(() =>
   import('../features/play/PlayPage').then((m) => ({ default: m.PlayPage })),
 );
+const PvpPage = lazy(() =>
+  import('../features/pvp/PvpPage').then((m) => ({ default: m.PvpPage })),
+);
 
 function PlayFallback() {
   const { t } = useI18n();
@@ -39,6 +42,14 @@ export const router = createBrowserRouter([
             element: (
               <Suspense fallback={<PlayFallback />}>
                 <PlayPage />
+              </Suspense>
+            ),
+          },
+          {
+            path: '/pvp',
+            element: (
+              <Suspense fallback={<PlayFallback />}>
+                <PvpPage />
               </Suspense>
             ),
           },

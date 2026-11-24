@@ -57,6 +57,7 @@ export function RequireAuth() {
 
 const NAV = [
   { to: '/', labelKey: 'nav.home', end: true },
+  { to: '/pvp', labelKey: 'nav.pvp', end: false },
   { to: '/shop', labelKey: 'nav.shop', end: false },
   { to: '/collection', labelKey: 'nav.collection', end: false },
   { to: '/squad', labelKey: 'nav.squad', end: false },

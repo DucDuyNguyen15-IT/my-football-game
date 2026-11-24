@@ -10,7 +10,7 @@ import {
   stateHash,
   stepBoth,
 } from '@pitch/sim';
-import type { PvpServerMessage } from '@pitch/shared';
+import type { PvpClientMessage, PvpServerMessage } from '@pitch/shared';
 import { FakeClock, createUser, resetTestData, testDb } from '../../../test/helpers';
 import { coinTransactions, matches, pvpMatches, users } from '../../db/schema';
 import { gameDay } from '../../domain/rewards';
@@ -146,7 +146,17 @@ describe('PvpSession', () => {
     hub.handle(ca, { t: 'ready' });
     hub.handle(cb, { t: 'ready' });
     run(3000);
-    for (let i = 0; i < 30_000 && !s.done; i++) run(TICK_MS);
+    for (let i = 0; i < 30_000 && !s.done; i++) {
+      run(TICK_MS);
+      const t = s.state.tick;
+      if (t > 0 && t % 60 === 0) {
+        const h = s.serverHashes.get(t);
+        if (h !== undefined) {
+          hub.handle(ca, { t: 'hash', tick: t, h });
+          hub.handle(cb, { t: 'hash', tick: t, h });
+        }
+      }
+    }
     expect(s.done).toBe(true);
     await s.finish('full_time'); // idempotent: cùng promise
     const [row] = await db.select().from(pvpMatches);
@@ -226,6 +236,7 @@ describe('PvpSession', () => {
     hub.handle(second, { t: 'rejoin', pvpId: s.pvpId });
     expect(second.of('catchup')).toHaveLength(1);
     hub.handle(second, { t: 'rejoin', pvpId: 999 });
+    await new Promise((r) => setTimeout(r, 20));
     expect(second.of('error').at(-1)).toEqual({ t: 'error', code: 'not_in_match' });
   });
 
@@ -371,4 +382,153 @@ describe('PvpTicker (bộ giữ nhịp)', () => {
     expect(skips).toEqual([]);
     expect(seen).toHaveLength(Math.floor(1000 / TICK_MS) + 1);
   });
+});
+
+describe('Thay người PvP (T040, T042)', () => {
+  type BenchSlot = Extract<PvpClientMessage, { t: 'sub' }>['bench'];
+  const asBench = (slot: string) => slot as BenchSlot;
+
+  async function startLivePair() {
+    const { s, ca, cb } = await startPair('ranked', true);
+    hub.handle(ca, { t: 'ready' });
+    hub.handle(cb, { t: 'ready' });
+    run(3100);
+    for (let i = 0; i < 600 && s.state.ballDead; i++) run(TICK_MS);
+    expect(s.state.ballDead).toBe(false);
+    return { s, ca, cb };
+  }
+
+  it('bóng lăn chỉ xếp chờ tới bóng chết; lệnh thứ hai của cùng đội thay lệnh đầu', async () => {
+    const { s, ca } = await startLivePair();
+    const out = s.state.players.filter((p) => p.team === 'home' && p.position !== 'GK');
+    const bench = s.state.bench.home.filter((b) => b.position !== 'GK');
+    expect(out.length).toBeGreaterThanOrEqual(2);
+    expect(bench.length).toBeGreaterThanOrEqual(2);
+
+    hub.handle(ca, { t: 'sub', out: out[0]!.id, bench: asBench(bench[0]!.slot) });
+    run(TICK_MS * 2);
+    expect(ca.of('error')).toEqual([]);
+    expect(s.state.subsUsed.home).toBe(0);
+    expect(ca.of('f').some((m) => (m.f[3]?.length ?? 0) > 0)).toBe(false);
+
+    // Lệnh thứ hai thay thế lệnh đầu trước khi tới bóng chết.
+    hub.handle(ca, { t: 'sub', out: out[1]!.id, bench: asBench(bench[1]!.slot) });
+    s.state = { ...s.state, ballDead: true, restart: null };
+    run(TICK_MS);
+
+    expect(ca.of('error')).toEqual([]);
+    expect(s.state.subsUsed.home).toBe(1);
+    expect(s.state.players.some((p) => p.id === out[0]!.id)).toBe(true);
+    expect(s.state.players.some((p) => p.id === out[1]!.id)).toBe(false);
+    const subFrames = ca.of('f').filter((m) => (m.f[3]?.length ?? 0) > 0);
+    expect(subFrames).toHaveLength(1);
+    expect(subFrames[0]!.f[3]).toEqual([
+      { team: 'home', out: out[1]!.id, bench: bench[1]!.slot },
+    ]);
+  });
+
+  it('cấu trúc sai (không trên sân, sai GK, quá số lượt, luân lưu) bị sub_rejected ngay', async () => {
+    const { s, ca } = await startLivePair();
+    const out = s.state.players.filter((p) => p.team === 'home' && p.position !== 'GK');
+    const bench = s.state.bench.home.filter((b) => b.position !== 'GK');
+    const gk = s.state.players.find((p) => p.team === 'home' && p.position === 'GK')!;
+
+    hub.handle(ca, { t: 'sub', out: 'home-NOT-REAL', bench: asBench(bench[0]!.slot) });
+    expect(ca.of('error')).toHaveLength(1);
+
+    hub.handle(ca, { t: 'sub', out: gk.id, bench: asBench(bench[0]!.slot) });
+    expect(ca.of('error')).toHaveLength(2);
+
+    // Dùng hết 3 lượt hợp lệ.
+    for (let i = 0; i < 3; i++) {
+      s.state = { ...s.state, ballDead: true, restart: null };
+      hub.handle(ca, { t: 'sub', out: out[i]!.id, bench: asBench(bench[i]!.slot) });
+      run(TICK_MS);
+    }
+    expect(s.state.subsUsed.home).toBe(3);
+    expect(ca.of('error')).toHaveLength(2);
+
+    // Lượt thứ 4 bị từ chối ngay.
+    hub.handle(ca, { t: 'sub', out: out[3]!.id, bench: asBench(bench[3]!.slot) });
+    expect(ca.of('error')).toHaveLength(3);
+    expect(ca.of('error').every((e) => e.code === 'sub_rejected')).toBe(true);
+
+    // Trong luân lưu cũng bị từ chối ngay dù chưa hết lượt.
+    s.state = {
+      ...s.state,
+      subsUsed: { home: 0, away: 0 },
+      shootout: {
+        home: [],
+        away: [],
+        first: 'home',
+        kicking: 'home',
+        kickTick: null,
+      },
+    };
+    hub.handle(ca, { t: 'sub', out: out[3]!.id, bench: asBench(bench[3]!.slot) });
+    expect(ca.of('error')).toHaveLength(4);
+  });
+
+  it('cầu thủ nhận thẻ đỏ trong lúc chờ → sub_rejected muộn ở tick bóng chết và bỏ lệnh', async () => {
+    const { s, ca } = await startLivePair();
+    const out = s.state.players.find((p) => p.team === 'home' && p.position !== 'GK')!;
+    const bench = s.state.bench.home.find((b) => b.position !== 'GK')!;
+
+    hub.handle(ca, { t: 'sub', out: out.id, bench: asBench(bench.slot) });
+    expect(ca.of('error')).toEqual([]);
+
+    // Giả lập cầu thủ nhận thẻ đỏ (rời sân) trước khi tới bóng chết.
+    s.state = {
+      ...s.state,
+      players: s.state.players.filter((p) => p.id !== out.id),
+      ballDead: true,
+      restart: null,
+    };
+    const prevFrames = ca.of('f').length;
+    run(TICK_MS);
+
+    expect(ca.of('error')).toEqual([{ t: 'error', code: 'sub_rejected' }]);
+    expect(s.state.subsUsed.home).toBe(0);
+    const emitted = ca.of('f')[prevFrames]!.f;
+    expect(emitted[3]).toBeUndefined();
+  });
+
+  it('replayMatch trên input_log có thay người hai đội khớp hoàn toàn với sim bóng', async () => {
+    const { s, ca, cb } = await startLivePair();
+    const hOut = s.state.players.find((p) => p.team === 'home' && p.position !== 'GK')!;
+    const hBench = s.state.bench.home.find((b) => b.position !== 'GK')!;
+    const aOut = s.state.players.find((p) => p.team === 'away' && p.position !== 'GK')!;
+    const aBench = s.state.bench.away.find((b) => b.position !== 'GK')!;
+
+    hub.handle(ca, { t: 'sub', out: hOut.id, bench: asBench(hBench.slot) });
+    hub.handle(cb, { t: 'sub', out: aOut.id, bench: asBench(aBench.slot) });
+
+    for (let i = 0; i < 30_000 && !s.done; i++) {
+      run(TICK_MS);
+      const t = s.state.tick;
+      if (t > 0 && t % 60 === 0) {
+        const h = s.serverHashes.get(t);
+        if (h !== undefined) {
+          hub.handle(ca, { t: 'hash', tick: t, h });
+          hub.handle(cb, { t: 'hash', tick: t, h });
+        }
+      }
+    }
+    expect(s.done).toBe(true);
+    await s.finish('full_time');
+
+    expect(ca.of('error')).toEqual([]);
+    expect(cb.of('error')).toEqual([]);
+    expect(s.state.subsUsed).toEqual({ home: 1, away: 1 });
+
+    const [row] = await db.select().from(pvpMatches);
+    const replay = replayMatch(s.setup, row!.inputLog!);
+    const replayState = replayToState(s.setup, row!.inputLog!);
+    expect(replayState.subsUsed).toEqual({ home: 1, away: 1 });
+    expect(stateHash(replayState)).toBe(stateHash(s.state));
+    expect([replay.score.home, replay.score.away]).toEqual([
+      s.state.score.home,
+      s.state.score.away,
+    ]);
+  }, 60_000);
 });
