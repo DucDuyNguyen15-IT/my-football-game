@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { analyzeMotion, clipWindows, MotionRecorder, type MotionFrame } from './motionLog';
+import {
+  analyzeMotion,
+  clipWindows,
+  compareMotion,
+  MotionRecorder,
+  type MotionFrame,
+} from './motionLog';
 
 /** Log giả 60 FPS: `player(i)` trả [x, z, rot, clip] của cầu thủ "p" ở khung i. */
 function makeLog(
@@ -109,5 +115,30 @@ describe('MotionRecorder', () => {
     for (const f of frame) rec.record(f);
     expect(rec.frames).toHaveLength(2);
     expect(rec.frames[0]!.players.p![0]).toBe(1.235);
+  });
+});
+
+describe('compareMotion', () => {
+  const fr = (tick: number, x: number, camX: number, camZ = 30): MotionFrame => ({
+    t: tick,
+    ms: 16,
+    tick,
+    phase: 'first_half',
+    mode: 'live',
+    covered: false,
+    cam: [camX, 20, camZ],
+    ball: [5, 0.1, 0],
+    players: { p: [x, 0, 0, 'run'] },
+  });
+  it('khớp khi camera lật quanh bóng và vị trí trùng', () => {
+    const r = compareMotion({ frames: [fr(1, 1, 0)] }, { frames: [fr(1, 1.1, 10, -30)] });
+    expect(r.ticks).toBe(1);
+    expect(r.pos.over).toBe(0);
+    expect(r.cam.flipOk).toBe(true);
+  });
+  it('báo lệch vị trí và camera không lật', () => {
+    const r = compareMotion({ frames: [fr(1, 1, 0)] }, { frames: [fr(1, 3, 80, -30)] });
+    expect(r.pos.over).toBe(1);
+    expect(r.cam.flipOk).toBe(false);
   });
 });
