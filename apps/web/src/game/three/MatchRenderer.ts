@@ -145,6 +145,10 @@ function disposeTree(root: THREE.Object3D): void {
     const mats = Array.isArray(obj.material) ? obj.material : [obj.material];
     for (const m of mats as THREE.Material[]) materials.add(m);
   });
+  root.traverse((obj) => {
+    if (obj instanceof THREE.SkinnedMesh) obj.skeleton.dispose();
+    else if (obj instanceof THREE.InstancedMesh) obj.dispose();
+  });
   for (const g of geometries) g.dispose();
   for (const m of materials) {
     for (const value of Object.values(m)) {
@@ -183,6 +187,11 @@ export class MatchRenderer {
   private readonly ball: THREE.Mesh;
   /** Vị trí bóng khung hình trước, để xoay bóng theo quãng đường lăn. */
   private readonly ballLast = new THREE.Vector3();
+  private readonly ballMoved = new THREE.Vector3();
+  private readonly ballAxis = new THREE.Vector3();
+  /** Bảng tạm dùng lại mỗi khung trong `draw` (tránh cấp phát). */
+  private readonly prevById = new Map<string, PlayerState>();
+  private readonly onPitch = new Set<string>();
   private readonly sun: THREE.DirectionalLight;
   private readonly hemi: THREE.HemisphereLight;
   /** Bầu trời, mái khán đài, đèn spot: chỉ hiện ở mức Cao. */
@@ -275,76 +284,79 @@ export class MatchRenderer {
     this.renderer.toneMappingExposure = TONE_EXPOSURE;
     this.renderer.domElement.style.display = 'block';
     parent.appendChild(this.renderer.domElement);
+    // Ném giữa chừng (shader, postFx...) thì dọn canvas/context/listener đã tạo rồi ném lại (C4 F2).
+    try {
+      this.scene.background = new THREE.Color(COLORS.bg);
+      this.scene.fog = new THREE.Fog(COLORS.bg, 70, 140);
+      this.hemi = new THREE.HemisphereLight(0xcfe3ff, 0x0b1a10, 1.1);
+      this.scene.add(this.hemi);
+      // "Đèn pha" chính: chiếu chéo từ trên cao, đổ bóng cầu thủ xuống cỏ.
+      const sun = new THREE.DirectionalLight(0xfff4e0, 2.4);
+      sun.position.set(-18, 40, 22);
+      sun.castShadow = true;
+      sun.shadow.mapSize.set(1024, 1024);
+      // Bóng đổ mềm: bias nhỏ tránh sọc trên cỏ, normalBias tránh "bóng tách chân".
+      sun.shadow.bias = -0.0004;
+      sun.shadow.normalBias = 0.02;
+      Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 28, bottom: -28, far: 120 });
+      this.sun = sun;
+      this.scene.add(sun);
 
-    this.scene.background = new THREE.Color(COLORS.bg);
-    this.scene.fog = new THREE.Fog(COLORS.bg, 70, 140);
-    this.hemi = new THREE.HemisphereLight(0xcfe3ff, 0x0b1a10, 1.1);
-    this.scene.add(this.hemi);
-    // "Đèn pha" chính: chiếu chéo từ trên cao, đổ bóng cầu thủ xuống cỏ.
-    const sun = new THREE.DirectionalLight(0xfff4e0, 2.4);
-    sun.position.set(-18, 40, 22);
-    sun.castShadow = true;
-    sun.shadow.mapSize.set(1024, 1024);
-    // Bóng đổ mềm: bias nhỏ tránh sọc trên cỏ, normalBias tránh "bóng tách chân".
-    sun.shadow.bias = -0.0004;
-    sun.shadow.normalBias = 0.02;
-    Object.assign(sun.shadow.camera, { left: -38, right: 38, top: 28, bottom: -28, far: 120 });
-    this.sun = sun;
-    this.scene.add(sun);
+      this.scene.add(buildPitch(this.nets), buildStadium());
+      this.grass = buildGrass();
+      this.scene.add(this.grass.object);
+      this.crowd = buildCrowd();
+      this.boards = buildAdBoards();
+      this.scene.add(this.crowd.object, this.boards.object);
+      this.highOnly = { sky: buildSky(), roofs: buildRoofs(), spots: buildFloodSpots() };
+      this.scene.add(this.highOnly.sky, this.highOnly.roofs, this.highOnly.spots);
+      this.postFx = createPostFx(this.renderer, this.scene, this.camera);
+      for (const p of this.curr.players) this.addActor(p);
+      const { kit } = this;
+      this.ball = kit.createBall();
+      this.ballShadow = kit.createBlobShadow();
+      this.marker = kit.createMarker();
+      this.chargeBar = kit.createChargeBar();
+      this.countdown = new CountdownRingView(parent);
+      this.contactWidget = new ContactWidgetView(parent);
+      this.transition = new MatchStinger(parent, this.renderer);
+      this.penaltyRing = new PenaltyRingView(parent);
+      this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
 
-    this.scene.add(buildPitch(this.nets), buildStadium());
-    this.grass = buildGrass();
-    this.scene.add(this.grass.object);
-    this.crowd = buildCrowd();
-    this.boards = buildAdBoards();
-    this.scene.add(this.crowd.object, this.boards.object);
-    this.highOnly = { sky: buildSky(), roofs: buildRoofs(), spots: buildFloodSpots() };
-    this.scene.add(this.highOnly.sky, this.highOnly.roofs, this.highOnly.spots);
-    this.postFx = createPostFx(this.renderer, this.scene, this.camera);
-    for (const p of this.curr.players) this.addActor(p);
-    const { kit } = this;
-    this.ball = kit.createBall();
-    this.ballShadow = kit.createBlobShadow();
-    this.marker = kit.createMarker();
-    this.chargeBar = kit.createChargeBar();
-    this.countdown = new CountdownRingView(parent);
-    this.contactWidget = new ContactWidgetView(parent);
-    this.transition = new MatchStinger(parent, this.renderer);
-    this.penaltyRing = new PenaltyRingView(parent);
-    this.scene.add(this.ball, this.ballShadow, this.marker, this.chargeBar.group);
+      this.resizeObserver = new ResizeObserver(() => this.resize());
+      this.resizeObserver.observe(parent);
+      this.setGraphics(graphics);
 
-    this.resizeObserver = new ResizeObserver(() => this.resize());
-    this.resizeObserver.observe(parent);
-    this.setGraphics(graphics);
-
-    window.addEventListener('keydown', this.onKeyDown);
-    window.addEventListener('keyup', this.onKeyUp);
-    window.addEventListener('blur', this.onBlur);
-    document.addEventListener('visibilitychange', this.onVisibility);
-    this.watchDpr();
-    if (perfEnabled(window.location.search)) {
-      this.perf = new FrameStats();
-      this.transitionPerf = new FrameStats();
-    }
-    if (import.meta.env.DEV || this.perf) this.createDebugOverlay();
-    if (motionEnabled(window.location.search)) {
-      this.motion = new MotionRecorder();
-      (window as Window & { __motionLog?: MotionRecorder }).__motionLog = this.motion;
-    }
-
-    this.draw(this.prev, this.curr, 1, 0);
-    this.render();
-    this.transition.warmUp();
-    this.bridge?.onState(this.curr);
-    this.raf = requestAnimationFrame(this.frame);
-    void loadPlayerModel().then((model) => {
-      if (!model) return;
-      if (this.disposed) {
-        disposeTree(model.scene);
-        return;
+      window.addEventListener('keydown', this.onKeyDown);
+      window.addEventListener('keyup', this.onKeyUp);
+      window.addEventListener('blur', this.onBlur);
+      document.addEventListener('visibilitychange', this.onVisibility);
+      this.watchDpr();
+      if (perfEnabled(window.location.search)) {
+        this.perf = new FrameStats();
+        this.transitionPerf = new FrameStats();
       }
-      this.useModel(model);
-    });
+      if (import.meta.env.DEV || this.perf) this.createDebugOverlay();
+      if (motionEnabled(window.location.search)) {
+        this.motion = new MotionRecorder();
+        (window as Window & { __motionLog?: MotionRecorder }).__motionLog = this.motion;
+      }
+
+      this.draw(this.prev, this.curr, 1, 0);
+      this.render();
+      this.transition.warmUp();
+      this.bridge?.onState(this.curr);
+      this.raf = requestAnimationFrame(this.frame);
+      void loadPlayerModel().then((model) => {
+        if (!model) return;
+        // Model dùng chung giữa các trận (cache ở playerModel.ts): không dispose khi rời trận.
+        if (this.disposed) return;
+        this.useModel(model);
+      });
+    } catch (e) {
+      this.dispose();
+      throw e;
+    }
   }
 
   /** Nhân vật cho cầu thủ mới xuất hiện (đầu trận, người vào thay): model nếu đã nạp, không thì khối. */
@@ -482,15 +494,15 @@ export class MatchRenderer {
     window.removeEventListener('blur', this.onBlur);
     document.removeEventListener('visibilitychange', this.onVisibility);
     this.dprQuery?.removeEventListener('change', this.onDprChange);
-    this.resizeObserver.disconnect();
-    this.postFx.dispose();
-    this.countdown.dispose();
-    this.contactWidget.dispose();
-    this.penaltyRing.dispose();
-    this.transition.dispose();
+    // Có thể gọi giữa chừng khi constructor ném: các phần chưa dựng là undefined.
+    this.resizeObserver?.disconnect();
+    this.postFx?.dispose();
+    this.countdown?.dispose();
+    this.contactWidget?.dispose();
+    this.penaltyRing?.dispose();
+    this.transition?.dispose();
     disposeTree(this.scene);
     this.modelMaterials?.dispose();
-    if (this.playerModel) disposeTree(this.playerModel.scene);
     this.renderer.dispose();
     // Trình duyệt chỉ cho ~16 WebGL context sống cùng lúc; trả ngay thay vì chờ GC.
     this.renderer.forceContextLoss();
@@ -499,6 +511,8 @@ export class MatchRenderer {
     this.replayLabel?.remove();
     this.foulCall?.remove();
     delete (this.parent as HTMLElement & { __matchRenderer?: MatchRenderer }).__matchRenderer;
+    const w = window as Window & { __motionLog?: MotionRecorder };
+    if (this.motion && w.__motionLog === this.motion) delete w.__motionLog;
   }
 
   /**
@@ -646,7 +660,14 @@ export class MatchRenderer {
     }
     // PvP không tạm dừng: đang thao tác trong ngăn thay người (role=dialog) thì để phím cho ngăn,
     // kẻo mũi tên bị chặn và không chọn được cầu thủ bằng bàn phím (C4 G3).
-    if (this.net && e.target instanceof Element && e.target.closest('[role="dialog"]')) return;
+    // Chỉ nhường mũi tên: WASD/phím hành động vẫn điều khiển cầu thủ (C4 F3).
+    if (
+      this.net &&
+      e.code.startsWith('Arrow') &&
+      e.target instanceof Element &&
+      e.target.closest('[role="dialog"]')
+    )
+      return;
     if (!this.net && (this.replay || this.pendingReplay)) {
       // Đang phát lại (hoặc đang vào phát lại): S (nút chuyền) để bỏ qua; phím trận không tính vào trận.
       if (e.code === CONTROL_KEYS.pass) this.skipReplay = true;
@@ -845,7 +866,7 @@ export class MatchRenderer {
       for (let t = from; t <= d.curr.tick; t++) {
         const a = t === d.curr.tick ? d.prev : net.stateAt(t - 1);
         const b = t === d.curr.tick ? d.curr : net.stateAt(t);
-        if (!a || !b || a === b) continue;
+        if (!a || !b || b.tick !== a.tick + 1) continue;
         for (const e of animationEvents(a, b)) this.models.get(e.playerId)?.trigger(e.clip);
         if (isGoal(a, b)) this.goalFx(a, b);
       }
@@ -1070,8 +1091,10 @@ export class MatchRenderer {
     animDt = dt,
     cameraOverride?: CameraState,
   ): void {
-    const prevById = new Map(prev.players.map((p) => [p.id, p]));
-    const onPitch = new Set<string>();
+    const { prevById, onPitch } = this;
+    prevById.clear();
+    onPitch.clear();
+    for (const p of prev.players) prevById.set(p.id, p);
 
     // Góc máy sau lưng: ẩn cầu thủ đứng sát camera (trừ người đá) để không che khung hình.
     const near = this.setPieceW > 0.5 && !cameraOverride ? this.camera.position : null;
@@ -1088,11 +1111,12 @@ export class MatchRenderer {
       if (model) model.update(animDt, p, curr, headingFromFacing(p.facing));
       else actor.rotation.y = headingFromFacing(p.facing);
     }
-    // Người bị thẻ đỏ / bị thay rời sân (tài nguyên dùng chung, giải phóng khi huỷ renderer).
+    // Người bị thẻ đỏ / bị thay rời sân: giải phóng phần riêng của model (số áo, skeleton, mixer).
     for (const [id, actor] of this.actors) {
       if (onPitch.has(id)) continue;
       this.scene.remove(actor);
       this.actors.delete(id);
+      this.models.get(id)?.dispose();
       this.models.delete(id);
     }
 
@@ -1147,10 +1171,10 @@ export class MatchRenderer {
     } else {
       this.ball.position.copy(this.ballTarget);
     }
-    const moved = this.ball.position.clone().sub(this.ballLast).setY(0);
+    const moved = this.ballMoved.copy(this.ball.position).sub(this.ballLast).setY(0);
     const dist = moved.length();
     if (dist > 1e-4 && dist < 2) {
-      const axis = new THREE.Vector3(moved.z, 0, -moved.x).normalize();
+      const axis = this.ballAxis.set(moved.z, 0, -moved.x).normalize();
       this.ball.rotateOnWorldAxis(axis, dist / BALL_DRAW_RADIUS);
     }
     this.ballLast.copy(this.ball.position);
