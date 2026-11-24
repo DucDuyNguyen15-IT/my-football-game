@@ -68,6 +68,13 @@ describe('toHudSnapshot / sameHud', () => {
     expect(sameHud(a, toHudSnapshot({ ...s, players, tick: s.tick + 1 }))).toBe(true);
     expect(sameHud(a, toHudSnapshot({ ...s, score: { home: 1, away: 0 } }))).toBe(false);
   });
+
+  it('halfTimeReady theo đội của người xem', () => {
+    const s = { ...match(), halfTimeReady: ['away' as const] };
+    expect(toHudSnapshot(s, undefined, 'away').halfTimeReady).toBe(true);
+    expect(toHudSnapshot(s, undefined, 'home').halfTimeReady).toBe(false);
+    expect(sameHud(toHudSnapshot(match(), undefined, 'away'), toHudSnapshot(s, undefined, 'away'))).toBe(false);
+  });
 });
 
 describe('hudEvents', () => {

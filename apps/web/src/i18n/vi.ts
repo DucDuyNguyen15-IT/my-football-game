@@ -924,6 +924,7 @@ export const vi = {
   'pvp.youSub': '{side} · bạn',
   'pvp.oppSub': '{side} · đối thủ',
   'pvp.halfTime': 'Hết hiệp 1 · cả hai nhấn S để đá hiệp 2 (tự đá sau {seconds} giây)',
+  'pvp.halfTimeWaiting': 'Bạn đã sẵn sàng · đang chờ đối thủ nhấn S (tự đá sau {seconds} giây)',
   'pvp.oppDisconnected': 'Đối thủ mất kết nối · còn {seconds}s',
   'pvp.reconnecting': 'Đang kết nối lại trận…',
   'pvp.busyRetrying': 'Phiên cũ đang đóng, thử vào lại sau vài giây…',

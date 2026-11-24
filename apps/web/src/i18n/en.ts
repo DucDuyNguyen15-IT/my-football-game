@@ -926,6 +926,7 @@ export const en: Record<TranslationKey, string> = {
   'pvp.youSub': '{side} · you',
   'pvp.oppSub': '{side} · opponent',
   'pvp.halfTime': 'Half-time · both press S to start 2nd half (auto in {seconds}s)',
+  'pvp.halfTimeWaiting': 'You are ready · waiting for your opponent to press S (auto in {seconds}s)',
   'pvp.oppDisconnected': 'Opponent disconnected · {seconds}s remaining',
   'pvp.reconnecting': 'Reconnecting to match…',
   'pvp.busyRetrying': 'Previous session still closing, retrying shortly…',

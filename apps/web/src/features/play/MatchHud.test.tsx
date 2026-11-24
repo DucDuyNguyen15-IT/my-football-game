@@ -29,6 +29,7 @@ const hud = (over: Partial<HudSnapshot> = {}): HudSnapshot => ({
   subsLeft: 3,
   substitutions: [],
   shootout: null,
+  halfTimeReady: false,
   ...over,
 });
 

@@ -67,6 +67,8 @@ export interface HudSnapshot {
   substitutions: HudSub[];
   /** Luân lưu: kết quả từng lượt, đội đang chờ sút (null khi bóng đang bay / đã xong). */
   shootout: { home: boolean[]; away: boolean[]; turn: TeamSide | null } | null;
+  /** Nghỉ giữa hiệp: đội mình đã bấm sẵn sàng đá hiệp 2 (PvP: đang chờ đối thủ). */
+  halfTimeReady: boolean;
 }
 
 export interface HudEvent {
@@ -154,6 +156,7 @@ export function toHudSnapshot(
       turn: state.restart ? state.shootout.kicking : null,
     },
     shots: state.shots,
+    halfTimeReady: state.halfTimeReady.includes(side),
     foulRestart:
       r && (r.type === 'free_kick' || r.type === 'penalty')
         ? { type: r.type, team: r.team, startTick: r.startTick }
@@ -177,7 +180,8 @@ export function sameHud(a: HudSnapshot, b: HudSnapshot): boolean {
     a.subWindow === b.subWindow &&
     a.substitutions.length === b.substitutions.length &&
     kicksTaken(a) === kicksTaken(b) &&
-    a.shootout?.turn === b.shootout?.turn
+    a.shootout?.turn === b.shootout?.turn &&
+    a.halfTimeReady === b.halfTimeReady
   );
 }
 

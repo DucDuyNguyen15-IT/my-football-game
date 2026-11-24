@@ -291,7 +291,11 @@ export function PvpMatchPage({
                 <span className="event-strip__mark" aria-hidden="true">
                   ■
                 </span>
-                <span>{t('pvp.halfTime', { seconds: HALF_TIME_MAX_TICKS / TICK_RATE })}</span>
+                <span>
+                  {t(hud.halfTimeReady ? 'pvp.halfTimeWaiting' : 'pvp.halfTime', {
+                    seconds: HALF_TIME_MAX_TICKS / TICK_RATE,
+                  })}
+                </span>
               </div>
             )}
             <StoppageBoard minutes={hud.stoppage} show={stoppageBoard} />
