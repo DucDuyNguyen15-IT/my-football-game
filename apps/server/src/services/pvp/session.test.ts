@@ -146,7 +146,17 @@ describe('PvpSession', () => {
     hub.handle(ca, { t: 'ready' });
     hub.handle(cb, { t: 'ready' });
     run(3000);
-    for (let i = 0; i < 30_000 && !s.done; i++) run(TICK_MS);
+    for (let i = 0; i < 30_000 && !s.done; i++) {
+      run(TICK_MS);
+      const t = s.state.tick;
+      if (t > 0 && t % 60 === 0) {
+        const h = s.serverHashes.get(t);
+        if (h !== undefined) {
+          hub.handle(ca, { t: 'hash', tick: t, h });
+          hub.handle(cb, { t: 'hash', tick: t, h });
+        }
+      }
+    }
     expect(s.done).toBe(true);
     await s.finish('full_time'); // idempotent: cùng promise
     const [row] = await db.select().from(pvpMatches);
@@ -226,6 +236,7 @@ describe('PvpSession', () => {
     hub.handle(second, { t: 'rejoin', pvpId: s.pvpId });
     expect(second.of('catchup')).toHaveLength(1);
     hub.handle(second, { t: 'rejoin', pvpId: 999 });
+    await new Promise((r) => setTimeout(r, 20));
     expect(second.of('error').at(-1)).toEqual({ t: 'error', code: 'not_in_match' });
   });
 

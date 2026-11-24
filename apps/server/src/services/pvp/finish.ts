@@ -163,8 +163,27 @@ export async function finishPvpMatch(db: Db, input: FinishInput): Promise<Finish
         finishedAt: now,
       })
       .where(eq(pvpMatches.id, pvpId));
+    if (input.forfeit) {
+      await track(tx, uid[input.forfeit], 'pvp_forfeit', { pvpId, kind: pvp.kind, reason }, now);
+    }
     return { reason, home: score?.home ?? 0, away: score?.away ?? 0, sides };
   });
+}
+
+/** Tải kết quả đã lưu của trận đã kết thúc/huỷ cho `userId` (null nếu không thuộc trận hoặc trận còn `live`). */
+export async function loadStoredPvpResult(
+  db: Db,
+  pvpId: number,
+  userId: number,
+): Promise<{ side: TeamSide; result: FinishResult } | null> {
+  const [pvp] = await db.select().from(pvpMatches).where(eq(pvpMatches.id, pvpId));
+  if (!pvp || pvp.status === 'live') return null;
+  const side: TeamSide | null =
+    pvp.homeUserId === userId ? 'home' : pvp.awayUserId === userId ? 'away' : null;
+  if (!side) return null;
+  const uid: Record<TeamSide, number> = { home: pvp.homeUserId, away: pvp.awayUserId };
+  const result = await db.transaction((tx) => loadStored(tx, pvp, uid));
+  return { side, result };
 }
 
 /** Kết quả đã lưu của trận không còn `live` (gọi lần hai). Lý do không lưu riêng nên chỉ dựng lại phần suy ra được. */

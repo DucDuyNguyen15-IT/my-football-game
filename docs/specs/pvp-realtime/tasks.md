@@ -191,7 +191,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 **Mục tiêu:** trận không đứng vì một người. Xử thua công bằng. Không né thua được bằng cách cố tình làm lệch.
 **Kiểm thử độc lập:** quickstart, kiểm tra bằng tay bước 4, và test session.
 
-- [ ] T030 [US3] Trong `apps/server/src/services/pvp/session.ts`:
+- [x] T030 [US3] Trong `apps/server/src/services/pvp/session.ts`:
   - socket đóng hoặc nhận `leave` thì bắt đầu đếm rớt mạng: input của bên đó thành 0 (đứng yên), gửi `opp_disconnected {remainingMs}` cho bên kia, ghi sự kiện `pvp_disconnect`;
   - giới hạn 30 s mỗi lần, 60 s cộng dồn cả trận (FR-011);
   - `rejoin`: kiểm `userId ∈ {home, away}` của trận, sai → `error not_in_match`; trận đã `finished`/`cancelled` (phiên còn trong bộ nhớ hoặc chỉ còn dòng DB) → gửi lại `end` với kết quả đã lưu, không gửi `catchup` (A2);
@@ -199,12 +199,12 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - trận xử thua chỉ tính nhiệm vụ `match_play`/`match_win` (người thắng do đối thủ bị xử thua), không tính goals/clean_sheet (A14);
   - bên nào hết hạn trước thì bên đó bị xử thua; chỉ `finish('void_both_left')` khi lúc một bên hết hạn thì bên kia cũng đang rớt;
   - người chơi xoá tài khoản (`anonymizeUser`, `services/auth.ts:53`) khi đang chờ, trong phòng hoặc đang đá thì xử lý như `leave` (gọi hook từ route xoá tài khoản).
-- [ ] T031 [US3] Trong `apps/server/src/services/pvp/finish.ts`, hàm xử thua (FR-023):
+- [x] T031 [US3] Trong `apps/server/src/services/pvp/finish.ts`, hàm xử thua (FR-023):
   - lấy tỉ số hiện tại từ sim bóng; người ở lại thắng 3-0, hoặc giữ tỉ số hiện tại nếu đang dẫn cách biệt hơn 3 bàn;
   - ranked: người thua có `reward = 0`, `consumes_daily_cap = true`, không tính nhiệm vụ, `rewardReason='forfeit'`; người thắng nhận thưởng thắng và chỉ tính nhiệm vụ `match_play`/`match_win`, không tính goals/clean_sheet (A14);
   - dòng `matches` của cả hai có `reward_day = gameDay(finished_at)` (A6);
   - ghi `forfeit_user_id` và sự kiện `pvp_forfeit`.
-- [ ] T032 [US3] Phân xử lệch (FR-010, research.md R5) trong `apps/server/src/services/pvp/session.ts`:
+- [x] T032 [US3] Phân xử lệch (FR-010, research.md R5) trong `apps/server/src/services/pvp/session.ts`:
   - nhận `hash {tick, h}` và so ngay với `serverHashes[tick]`;
   - một bên sai **lần đầu** thì server ép bên đó dựng lại: gửi `catchup` (miễn hạn mã băm 10 s như `rejoin`), chưa xử thua (A3);
   - bên đó sai **lần thứ hai** trong cùng trận thì `finish('forfeit_desync')`, bên đó thua (A3);
@@ -212,7 +212,7 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
   - giữ mã băm 30 s; mã băm cũ hơn thì bỏ qua, không phạt;
   - bên **đang kết nối**, không đang dựng lại (chưa nhận `catchup_done` thì coi là đang dựng lại, nhưng miễn tối đa 10 s kể từ `catchup`), mà quá **15 s thời gian thật** không gửi hash thì bị coi là sai (R5);
   - ghi sự kiện `pvp_desync` (props: tick, bên lệch).
-- [ ] T033 [P] [US3] Test `apps/server/src/services/pvp/disconnect.test.ts`:
+- [x] T033 [P] [US3] Test `apps/server/src/services/pvp/disconnect.test.ts`:
   - rớt 29 s rồi vào lại thì đá tiếp; rớt 31 s thì xử thua;
   - rớt 25 s + 25 s + 11 s thì xử thua do quá 60 s cộng dồn;
   - đang dẫn 5-0 khi đối thủ bỏ thì giữ 5-0;

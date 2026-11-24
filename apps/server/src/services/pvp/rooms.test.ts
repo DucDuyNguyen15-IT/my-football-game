@@ -218,6 +218,14 @@ describe('Phòng PvP (T024–T025)', () => {
     for (let i = 0; i < 30_000 && !sess.done; i++) {
       time.t += TICK_MS;
       hub.ticker.pump();
+      const t = sess.state.tick;
+      if (t > 0 && t % 60 === 0) {
+        const h = sess.serverHashes.get(t);
+        if (h !== undefined) {
+          hub.handle(ca, { t: 'hash', tick: t, h });
+          hub.handle(cb, { t: 'hash', tick: t, h });
+        }
+      }
     }
     expect(sess.done).toBe(true);
     await sess.finish('full_time');

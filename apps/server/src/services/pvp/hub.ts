@@ -10,6 +10,7 @@ import { pvpMatches } from '../../db/schema';
 import type { Rng } from '../../domain/rng';
 import { track } from '../analytics';
 import type { CardCatalog } from '../cards';
+import { loadStoredPvpResult } from './finish';
 import {
   ROOM_TTL_MS,
   handleRoomCreate,
@@ -158,7 +159,10 @@ export class PvpHub {
 
   /** Đăng xuất / xoá tài khoản (session bị thu hồi): đóng mọi WS PvP của user (A18). */
   closeUser(userId: number): void {
-    for (const c of [...(this.conns.get(userId) ?? [])]) c.close(4401);
+    for (const c of [...(this.conns.get(userId) ?? [])]) {
+      c.close(4401);
+      this.onClosed(c);
+    }
   }
 
   /** Mỗi 2 s: ping, và cắt socket quá 5 s không có pong (coi như rớt mạng; `onClosed` lo phần còn lại). */
@@ -166,8 +170,12 @@ export class PvpHub {
     const now = this.o.time.now();
     for (const set of this.conns.values()) {
       for (const c of [...set]) {
-        if (now - c.lastPongAt > PONG_TIMEOUT_MS) c.terminate();
-        else c.ping();
+        if (now - c.lastPongAt > PONG_TIMEOUT_MS) {
+          c.terminate();
+          this.onClosed(c);
+        } else {
+          c.ping();
+        }
       }
     }
   }
@@ -307,8 +315,9 @@ export class PvpHub {
         if (holder) holder.sess.detach(holder.side, conn);
         return conn.close(1000);
       case 'hash':
+        return holder?.sess.onHash(holder.side, msg.tick, msg.h);
       case 'catchup_done':
-        return; // US3: so mã băm với `serverHashes`, ép `catchup`, xử `forfeit_desync`.
+        return holder?.sess.onCatchupDone(holder.side);
     }
   }
 
@@ -341,18 +350,52 @@ export class PvpHub {
 
   private rejoin(conn: HubConn, pvpId: number): void {
     const s = this.byId.get(pvpId);
-    const side = s?.sideOf(conn.userId);
-    if (!s || !side) return conn.send({ t: 'error', code: 'not_in_match' });
-    const held = s.sockets[side];
-    if (s.live && held && held !== conn) return conn.send({ t: 'error', code: 'busy' });
-    s.attach(side, conn);
-    if (!s.live) return s.sendEnd(side);
-    // US3: `catchup` có `setup`, `log` (recorder.encode()) và `tick` hiện tại; hạn rớt mạng.
-    conn.send({
-      t: 'catchup',
-      setup: s.setup as PvpMatchSetup,
-      log: s.recorder.encode(),
-      tick: Math.max(0, s.state.tick - 1), // khung cuối cùng đã có trong log
-    });
+    if (s) {
+      const side = s.sideOf(conn.userId);
+      if (!side) {
+        conn.send({ t: 'error', code: 'not_in_match' });
+        return;
+      }
+      if (!s.live) {
+        void s.whenEnded().then(() => {
+          if (this.closedConns.has(conn) || !s.result) return;
+          conn.send({
+            t: 'end',
+            reason: s.result.reason,
+            home: s.result.home,
+            away: s.result.away,
+            you: s.result.sides[side],
+          });
+        });
+        return;
+      }
+      const held = s.sockets[side];
+      if (held && held !== conn) {
+        conn.send({ t: 'error', code: 'busy' });
+        return;
+      }
+      s.onRejoin(side, conn);
+      return;
+    }
+
+    void loadStoredPvpResult(this.o.db, pvpId, conn.userId)
+      .then((stored) => {
+        if (this.closedConns.has(conn)) return;
+        if (!stored) {
+          conn.send({ t: 'error', code: 'not_in_match' });
+          return;
+        }
+        conn.send({
+          t: 'end',
+          reason: stored.result.reason,
+          home: stored.result.home,
+          away: stored.result.away,
+          you: stored.result.sides[stored.side],
+        });
+      })
+      .catch((err: unknown) => {
+        this.o.onError?.(err);
+        if (!this.closedConns.has(conn)) conn.send({ t: 'error', code: 'server_busy' });
+      });
   }
 }
