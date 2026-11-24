@@ -11,6 +11,7 @@ _Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/pla
 | E2E luồng chính (8.1) | `pnpm e2e` xanh 3 lần liên tiếp | §3 |
 | Tiêu chí chấp nhận PRD (8.4) | 36 tiêu chí: **36 Đạt**, 0 Chưa đạt, 0 Không áp dụng | §4 |
 | Playtest 5–10 người (PRD §10) | Chưa tổ chức; đã có checklist và bảng ghi | §5 |
+| PvP đá trực tiếp (cập nhật 2026-11-24) | Đang làm: test tự động cho sim/WS/phiên đã có; chưa đo SC-001/002/009 trên bản hoàn chỉnh, chưa playtest SC-008 | §7 |
 | Việc còn tồn | 1 việc chặn phát hành (playtest); T1 (đo FPS/bộ nhớ) đã xong; 1 lỗi giao diện mức trung bình phát hiện ở 8.4 (lưới nguyên liệu màn Ép thẻ lặp thẻ — T3, **đã sửa 15/11**, review B4-01); còn lại mức thấp hoặc ghi nhận | §6 |
 
 **Mục lục**
@@ -21,6 +22,7 @@ _Tài liệu tổng hợp kiểm thử & rà soát cho Giai đoạn 8 (`docs/pla
 4. Tiêu chí chấp nhận (Task 8.4) — 4.1 Tổng hợp · 4.2 F1–F3 · 4.3 F5 · 4.4 F6 · 4.5 F10 · 4.6 F11 · 4.7 F7/F9/F12, F8/F13 · 4.8 Chỉ số §9–§10 · 4.9 Nhật ký kiểm tay
 5. Checklist playtest 5–10 người (PRD §10)
 6. Việc còn tồn
+7. PvP đá trực tiếp (`docs/specs/pvp-realtime/`) — 7.1 Kiểm thử đã có · 7.2 Tiêu chí SC-001…009 · 7.3 Khác biệt với đá máy cần nhớ khi kiểm
 
 ---
 
@@ -459,7 +461,53 @@ Trạng thái 2026-11-14. Mức độ: **Chặn** = phải xong mới đóng đ�
 | T8 | Ghi nhận | SEC-07 **đã sửa** bằng replay log input ở server (ADR-0011); còn lại: bot/macro gửi input hợp lệ vẫn ăn thưởng tới trần 15 trận/ngày (nhiệm vụ `win_match`/`score_goals`/`clean_sheet` thêm tối đa ~150 xu/ngày, B3-03); SEC-08: rate limit lưu trong bộ nhớ một tiến trình, đăng ký không có CAPTCHA | §1.2 | Theo thiết kế MVP (PRD §11); xem lại khi chạy nhiều instance |
 | T9 | Ghi nhận | `pnpm audit`: còn 6 moderate + 6 low (đa số ở công cụ dev/build; `fastify`/`fast-uri` ở runtime mức low/moderate) | §1.3 | Nâng phiên bản khi có bản vá; chạy lại `pnpm audit` trước phát hành |
 | T10 | Ghi nhận | Hiệu năng: `getRetentionCohorts` quét toàn bộ `analytics_events` (ước chạm 500 ms ở ~1 triệu sự kiện); `index-*.js` 511 kB chưa lazy-load màn menu | §2.1, §2.3 | Đã có trong `docs/BACKLOG.md`; làm khi dữ liệu/bundle tới ngưỡng |
-| T11 | Ghi nhận | Câu hỏi mở PRD §12 chưa chốt: phím điều khiển chi tiết, OVR/độ trễ AI (chờ playtest), xác minh trận bằng log input, hosting, chính sách quyền riêng tư khi thu analytics | PRD §12 | Phím/AI: lấy từ playtest §5 (Q4, Q6); hosting và quyền riêng tư: Giai đoạn 9 |
+| T11 | Ghi nhận | Câu hỏi mở PRD §12 chưa chốt: phím điều khiển chi tiết, OVR/độ trễ AI (chờ playtest), hosting, chính sách quyền riêng tư khi thu analytics | PRD §12 | Phím/AI: lấy từ playtest §5 (Q4, Q6); hosting và quyền riêng tư: Giai đoạn 9 |
 | T12 | ~~Thấp~~ **Xong (16/11)** | Trận có giật ngắn | §2.4 | Đo lại 16/11 bằng trace Chrome + `PerformanceObserver(longtask)`, vsync bình thường, 3 trận autopilot (có 2 bàn thắng + phát lại, chuyển cảnh, luân lưu): **giữa trận không còn khung đứng** — 1% thấp nhất 35–45 FPS, khung chậm nhất lúc chuyển cảnh 22–78 ms. Khung đứng 0,6–1 s ở các lần đo trước chỉ xuất hiện khi tắt vsync (`--disable-gpu-vsync`): GPU bị dồn việc, `Present` chặn tới 127 ms — không phải lỗi game. Còn lại: lúc vào trận có 2 tác vụ dài (170–500 ms rồi 70–200 ms, biên dịch shader lần đầu) trong lúc đếm ngược giao bóng; đã thử biên dịch trước model cầu thủ bằng `compileAsync` nhưng không giảm nên không giữ. Đã bỏ `PCFSoftShadowMap` (Three r18x đã bỏ, hết cảnh báo console) |
-| T13 | Ghi nhận | Mở trận ở tab thứ hai huỷ trận đang đá ở tab đầu (một người chỉ có 1 trận đang đá, B3-02): nộp kết quả trận cũ bị từ chối "Trận đã hết hạn", không có thưởng. Trong DB trận bị huỷ kiểu này và trận hết hạn thật cùng trạng thái `expired` | Review batch-1 T3 | Theo thiết kế; nếu cần phân biệt thì thêm trạng thái `superseded` |
+| T13 | Ghi nhận | Mở trận **vs máy** ở tab thứ hai huỷ trận đang đá ở tab đầu (một người chỉ có 1 trận đang đá, B3-02; PvP đá trực tiếp xử lý khác, xem §7.3): nộp kết quả trận cũ bị từ chối "Trận đã hết hạn", không có thưởng. Trong DB trận bị huỷ kiểu này và trận hết hạn thật cùng trạng thái `expired` | Review batch-1 T3 | Theo thiết kế; nếu cần phân biệt thì thêm trạng thái `superseded` |
 | T14 | Ghi nhận | Migration `0003_analytics_user_name_idx.sql` dựng lại index `analytics_events` không `CONCURRENTLY` (trong transaction), khoá ghi bảng trong lúc dựng. Bảng hiện nhỏ nên an toàn | Review batch-1 T6 | Migration index tương lai trên bảng lớn: chạy lúc vắng hoặc tách ra `CREATE INDEX CONCURRENTLY` ngoài transaction |
+
+---
+
+## 7. PvP đá trực tiếp (`docs/specs/pvp-realtime/`)
+
+_Trạng thái 2026-11-24: phần nền (sim hai đội, WebSocket, phiên có sim bóng, client `useNetMatch`) đã có test; ghép cặp, phòng, rớt mạng, thay người (US1–US4) và e2e hai trình duyệt đang làm nên chưa nằm trong số liệu dưới đây. Bước đo cuối và playtest là T045, T046 trong `tasks.md` — số đo ghi vào bảng 7.2 khi làm._
+
+### 7.1 Kiểm thử đã có
+
+Mọi test dưới nằm trong `pnpm check` (trừ khi ghi khác); chạy riêng bằng `pnpm --filter <package> exec vitest run <tên file>`.
+
+| Phạm vi | File test | Kiểm điều gì |
+|---|---|---|
+| Sim | `packages/sim/src/hash.test.ts`, `golden-hash.json`, `match.pvp.test.ts` | Golden `stateHash` của trận một người giữ nguyên sau khi tách hai đội; `stepBoth` áp luật cho cả đội khách (SC-007) |
+| Shared | `packages/shared/src/api/pvp.test.ts` | Schema Zod của mọi tin nhắn WS (client→server, server→client) |
+| Server | `apps/server/src/routes/pvp.ws-auth.test.ts` | `Origin` thiếu/sai bị 403, chưa đăng nhập bị 401, **trước** upgrade (FR-020) |
+| Server | `apps/server/src/routes/pvp.ws.test.ts` | Giới hạn WS: tin sai schema đóng 4400, `maxPayload` 512 byte, kết nối thứ 5 cùng IP bị từ chối, `bufferedAmount` > 256 KB đóng 4408; socket đóng thì xoá hàng chờ / đóng phòng; đăng xuất và xoá tài khoản đóng mọi WS PvP; quá `PVP_MAX_SESSIONS` thì `server_busy` |
+| Server | `apps/server/src/services/pvp/session.test.ts` | Phiên lockstep với client giả: khung đúng thứ tự và quy ước tick, input giữ tới khi đổi, kết thúc ở `full_time` với tỉ số bằng `replayMatch`, 30 s chưa đủ `ready` thì `void_not_ready`, một socket giữ mỗi user (`busy`); `finishPvpMatch`: chạy hai lần chỉ thưởng một lần, ranked thưởng như máy Khó, dòng đội khách đảo tỉ số, xử thua 3-0 (0 xu nhưng tốn lượt), friendly 0 xu; bộ giữ nhịp |
+| Server | `apps/server/src/services/matches.pvp-db.test.ts` | `countRewardedMatches` đếm `reward > 0` hoặc `consumes_daily_cap`; ràng buộc `pvp_matches` và `UNIQUE (pvp_match_id, user_id)` (cần Postgres test) |
+| Web | `apps/web/src/features/pvp/netCore.test.ts` | Lõi client: bộ đệm jitter 3–6 khung, thứ tự/bỏ khung cũ/báo hụt, `stepBoth` đúng một lần mỗi khung, gửi `hash` mỗi 60 tick, `catchup` xếp hàng khung tới |
+| Tất định | `e2e/determinism.spec.ts` (`pnpm e2e:determinism`, **không** nằm trong `pnpm check`) | Mã băm mỗi 60 tick giống nhau trên Chromium, Firefox, WebKit (SC-003) |
+| Hiệu năng | `apps/server/scripts/perf-pvp-sim.ts` (`pnpm --filter @pitch/server bench:pvp-sim`) | p99 thời gian `stepBoth` (SC-009) |
+
+Chưa có test (chờ US1–US4): ghép cặp và phòng (mã lỗi, mã phòng, hết hạn 10 phút, trùng cặp quá 3 trận), rớt mạng 30 s / 60 s cộng dồn, lệch mã băm lần một và lần hai, thay người qua WS, vào lại trận đã xong, thưởng đúng một lần khi vào lại/gửi lặp, `e2e/pvp.spec.ts`.
+
+### 7.2 Tiêu chí thành công (spec §Tiêu chí thành công)
+
+| Mã | Tiêu chí | Kết quả | Ghi chú |
+|---|---|---|---|
+| SC-001 | Từ lúc người thứ hai nhập mã tới lúc trận bắt đầu < 10 s | Chưa đo | T045 |
+| SC-002 | RTT 100 ms: phím phản ứng ≤ 200 ms, không khựng | Chưa đo | T045; thiết kế dự kiến ~150 ms (RTT + bộ đệm tối thiểu 3 khung, research R2) |
+| SC-003 | 100 trận tự động trên 3 nhóm trình duyệt: 0 lần lệch | Có `e2e:determinism`, chưa ghi số lần chạy đầy đủ | T006 đã tick; ghi kết quả khi chạy T045 |
+| SC-004 | 100% trận kết thúc: hai màn cùng tỉ số, trùng tỉ số server | Chưa đo | Cần e2e hai context (T029) |
+| SC-005 | Rời trận > 30 s luôn bị xử thua đúng FR-023 | Chưa đo | Chờ US3 |
+| SC-006 | Không ai được thưởng hai lần cho một trận | Một phần: `UNIQUE (pvp_match_id, user_id)` + test `finishPvpMatch` chạy hai lần chỉ thưởng một lần | Hoàn tất khi có test gửi lặp/vào lại (US3) |
+| SC-007 | Đá máy không đổi kết quả hay cảm giác | Đạt ở mức sim: golden hash một người giữ nguyên; `pnpm check` xanh | Kiểm tay cảm giác ở T045 |
+| SC-008 | ≥ 3 người lần đầu tạo/vào phòng không cần hướng dẫn | Chưa làm | T046 |
+| SC-009 | p99 `stepBoth` trong ngưỡng, tổng ≤ 40% một lõi ở số phiên tối đa | Đạt trên máy dev (20/11/2026): p99 0,0455–0,0506 ms, ước tính 131–146 phiên theo p99 so với `PVP_MAX_SESSIONS` = 50 (dư ~2,6 lần) | Máy i7-13620H, Node v26 (chưa có Node 24); chưa tính chi phí mạng/JSON; đo lại trên máy chủ thật sau deploy 9.2 |
+
+### 7.3 Khác biệt với đá máy cần nhớ khi kiểm
+
+- Một người có thể có **một** trận hoặc lượt chờ tại một thời điểm, nhưng mở tab thứ hai **không** huỷ trận ở tab đầu (khác trận vs máy, mục T13 ở §6): tab hai chỉ được `rejoin`, bị `busy` nếu tab một còn sống.
+- Không có tạm dừng; mất focus gửi input rỗng. Nghỉ giữa hiệp cần cả hai bấm chuyền (không thì tự đá sau 30 s).
+- Trận bị xử thua chỉ tính nhiệm vụ "chơi trận" / "thắng trận"; trận PvP không tính nhiệm vụ "đá trận máy Khó".
+- Trận giao hữu: 0 xu, không tính 15 trận/ngày. Trận ghép ngẫu nhiên giữa cùng hai tài khoản quá 3 trận/ngày: không thưởng.
+- Kiểm qua Internet thật cần server đã deploy (giai đoạn 9.2); trước đó chỉ thử được ở máy cục bộ/LAN và throttling DevTools.
