@@ -72,6 +72,7 @@ export function PvpPage() {
   const [countdownMs, setCountdownMs] = useState<number | null>(null);
   const [oppDisconnectedUntil, setOppDisconnectedUntil] = useState<number | null>(null);
   const [ended, setEnded] = useState<EndMessage | null>(null);
+  const [subRejectedSeq, setSubRejectedSeq] = useState(0);
   const [connSeq, setConnSeq] = useState(0);
 
   useEffect(() => {
@@ -103,8 +104,13 @@ export function PvpPage() {
             setQueueTimeout(true);
             break;
           case 'error':
-            if (m.code !== 'busy') setError(m.code);
-            else setError((prev) => prev ?? 'busy');
+            if (m.code === 'sub_rejected') {
+              setSubRejectedSeq((n) => n + 1);
+            } else if (m.code !== 'busy') {
+              setError(m.code);
+            } else {
+              setError((prev) => prev ?? 'busy');
+            }
             break;
           case 'matched':
             setError(null);
@@ -114,6 +120,7 @@ export function PvpPage() {
             setCountdownMs(null);
             setOppDisconnectedUntil(null);
             setEnded(null);
+            setSubRejectedSeq(0);
             setMatched(m);
             break;
           case 'start':
@@ -147,6 +154,7 @@ export function PvpPage() {
     setCountdownMs(null);
     setOppDisconnectedUntil(null);
     setEnded(null);
+    setSubRejectedSeq(0);
     setRoom(null);
     setQueue(null);
     setQueueTimeout(false);
@@ -166,6 +174,7 @@ export function PvpPage() {
         countdownMs={countdownMs}
         oppDisconnectedUntil={oppDisconnectedUntil}
         ended={ended}
+        subRejectedSeq={subRejectedSeq}
         onLeave={() => {
           client.send({ t: 'leave' });
           handleBackLobby();

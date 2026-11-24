@@ -950,4 +950,7 @@ export const en: Record<TranslationKey, string> = {
   'pvp.rewardReason.same_opponent_limit': 'Reached 3 rewarded ranked matches vs this opponent today.',
   'pvp.rewardReason.void': 'Match voided, no reward.',
   'pvp.backLobby': 'Back to PvP lobby',
+  'pvp.subsBtn': 'Subs · {count}',
+  'pvp.subsPendingDeadBall': 'Waiting for dead ball',
+  'pvp.subsWaitHint': 'Your substitution will apply at the next stoppage in play.',
 };

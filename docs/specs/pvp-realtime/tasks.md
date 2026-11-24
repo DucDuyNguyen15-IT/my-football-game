@@ -265,17 +265,17 @@ Làm trước câu chuyện 2. Phải có luật xử thua thì mới mở trậ
 **Mục tiêu:** mỗi người thay người cho đội mình, cả hai màn hình cùng cập nhật.
 **Kiểm thử độc lập:** quickstart, kiểm tra bằng tay bước 5.
 
-- [ ] T040 [US4] Trong `apps/server/src/services/pvp/session.ts`:
+- [x] T040 [US4] Trong `apps/server/src/services/pvp/session.ts`:
   - nhận `sub`, kiểm cấu trúc bằng `checkSubStructure(state, team, out, bench)` trên sim bóng; sai thì gửi `error sub_rejected` ngay (A10);
   - kiểm thời điểm không gây lỗi: bóng đang lăn thì xếp lệnh chờ trong `pendingSubs`, mỗi đội tối đa 1 lệnh chờ (lệnh mới thay lệnh cũ), áp ở tick bóng chết gần nhất (A10);
   - tới bóng chết mà kiểm cấu trúc lại sai (ví dụ cầu thủ vừa nhận thẻ đỏ) thì gửi `sub_rejected` muộn và bỏ lệnh (A10);
   - hợp lệ thì áp `substitute` lên sim bóng, phát kèm khung, ghi `recorder.sub(tick, team, out, bench)`.
-- [ ] T041 [US4] Trong `apps/web/src/game/three/MatchRenderer.ts`, `useNetMatch.ts` và panel thay người hiện có:
+- [x] T041 [US4] Trong `apps/web/src/game/three/MatchRenderer.ts`, `useNetMatch.ts` và panel thay người hiện có:
   - ở chế độ `net`, panel gửi `sub` qua WS thay vì đẩy vào `applyCommands`;
   - client áp `subs` từ khung trước khi `stepBoth`;
   - bóng đang lăn thì hiện "Chờ bóng chết";
   - báo lỗi khi nhận `sub_rejected` (vi/en).
-- [ ] T042 [P] [US4] Test trong `apps/server/src/services/pvp/session.test.ts`: lệnh thay người lúc bóng lăn chỉ có hiệu lực ở tick bóng chết; lệnh chờ thứ hai của cùng đội thay lệnh đầu; cấu trúc sai (quá số lượt, cầu thủ không trên sân) bị `sub_rejected` ngay; cầu thủ nhận thẻ đỏ trong lúc chờ thì `sub_rejected` muộn và bỏ lệnh (A10); `replayMatch` trên `input_log` có thay người hai đội khớp với sim bóng.
+- [x] T042 [P] [US4] Test trong `apps/server/src/services/pvp/session.test.ts`: lệnh thay người lúc bóng lăn chỉ có hiệu lực ở tick bóng chết; lệnh chờ thứ hai của cùng đội thay lệnh đầu; cấu trúc sai (quá số lượt, cầu thủ không trên sân) bị `sub_rejected` ngay; cầu thủ nhận thẻ đỏ trong lúc chờ thì `sub_rejected` muộn và bỏ lệnh (A10); `replayMatch` trên `input_log` có thay người hai đội khớp với sim bóng.
 
 ---
 

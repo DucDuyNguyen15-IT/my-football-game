@@ -129,3 +129,17 @@
   flex-wrap: wrap;
   gap: 6px;
 }
+
+/* Panel thay người PvP (không tạm dừng trận) */
+.pvp-sub-drawer {
+  pointer-events: auto;
+  width: min(720px, calc(100vw - 32px));
+  max-height: calc(100vh - 100px);
+  overflow-y: auto;
+}
+.pvp-sub-drawer__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}

@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Link } from 'react-router';
 import {
   HALF_TIME_MAX_TICKS,
+  MAX_SUBS,
   TICK_RATE,
   type MatchSetup,
   type TeamSide as SimTeamSide,
 } from '@pitch/sim';
-import type { PvpServerMessage } from '@pitch/shared';
+import type { PvpServerMessage, SquadSlot } from '@pitch/shared';
 import { useMe } from '../../api/auth';
 import { useCardCatalog } from '../../api/cards';
 import { MatchCanvas } from '../../game/MatchCanvas';
@@ -14,6 +15,7 @@ import type { MatchBridge } from '../../game/bridge';
 import { avatarSeedsForMatch } from '../../game/render/kit';
 import { useI18n } from '../../i18n/I18nContext';
 import { formatNumber, type TranslationKey } from '../../i18n/i18n';
+import { subOptions, type SubOptions } from '../play/hud';
 import {
   EventStrip,
   Minimap,
@@ -30,7 +32,7 @@ import {
   useMatchHud,
 } from '../play/matchShared';
 import { TeamSide } from '../play/PreMatch';
-import { KeyHints, ShootoutHint } from '../play/screens';
+import { KeyHints, ShootoutHint, SubstitutionPanel } from '../play/screens';
 import type { NetMatch, PvpClientStatus } from './useNetMatch';
 import '../play/play.css';
 import '../play/prematch.css';
@@ -38,6 +40,7 @@ import './pvp.css';
 
 export type MatchedMessage = Extract<PvpServerMessage, { t: 'matched' }>;
 export type EndMessage = Extract<PvpServerMessage, { t: 'end' }>;
+type BenchSlot = 'B1' | 'B2' | 'B3' | 'B4' | 'B5';
 
 export interface PvpMatchPageProps {
   net: NetMatch;
@@ -46,6 +49,7 @@ export interface PvpMatchPageProps {
   countdownMs: number | null;
   oppDisconnectedUntil: number | null;
   ended: EndMessage | null;
+  subRejectedSeq: number;
   onLeave: () => void;
   onBackLobby: () => void;
 }
@@ -65,12 +69,17 @@ export function PvpMatchPage({
   countdownMs,
   oppDisconnectedUntil,
   ended,
+  subRejectedSeq,
   onLeave,
   onBackLobby,
 }: PvpMatchPageProps) {
   const { locale, t } = useI18n();
   const me = useMe().data;
   const catalog = useCardCatalog().data;
+  const catalogRef = useRef(catalog);
+  useEffect(() => {
+    catalogRef.current = catalog;
+  }, [catalog]);
   const side: SimTeamSide = matched.side;
   const setup = matched.setup as MatchSetup;
   const autopilot = Boolean(setup.autopilot);
@@ -80,6 +89,10 @@ export function PvpMatchPage({
   const [hints, setHints] = useState(true);
   const [graphics] = useState(loadGraphics);
   const [confirmLeave, setConfirmLeave] = useState(false);
+  const [subOpen, setSubOpen] = useState(false);
+  const [subs, setSubs] = useState<SubOptions>({ onPitch: [], bench: [] });
+  const [pendingSub, setPendingSub] = useState<{ atLeft: number; rejectedAt: number } | null>(null);
+  const [dismissedRejectAt, setDismissedRejectAt] = useState(0);
   const [countdownLeftSec, setCountdownLeftSec] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState(() => performance.now());
   const [matchStarted, setMatchStarted] = useState(false);
@@ -125,11 +138,22 @@ export function PvpMatchPage({
       isPaused: () => false,
       onState: (state) => {
         if (state.tick > 0) setMatchStarted(true);
-        updateHud(state);
+        updateHud(state, () => {
+          setSubs(subOptions(state, setup[side].players, catalogRef.current, side));
+        });
       },
     }),
-    [updateHud],
+    [setup, side, updateHud],
   );
+
+  const subsLeft = hud?.subsLeft ?? MAX_SUBS;
+  const subAllowed = hud?.subWindow === 'open';
+  const isPendingSub =
+    pendingSub !== null && subsLeft === pendingSub.atLeft && subRejectedSeq === pendingSub.rejectedAt;
+  const showSubRejected = subRejectedSeq > dismissedRejectAt;
+  let drawerHint: string | null = null;
+  if (isPendingSub) drawerHint = t('pvp.subsPendingDeadBall');
+  else if (hud && !subAllowed) drawerHint = t('pvp.subsWaitHint');
 
   const myName = me?.username ?? t('vs.you');
   const oppName = matched.opponent.username;
@@ -278,6 +302,32 @@ export function PvpMatchPage({
           <div className="hud-tl">
             {hints && !autopilot && !hud.shootout && <PowerLegend />}
             <div className="pvp-tl-actions">
+              {!autopilot && !hud.shootout && (
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm hud-pause"
+                  disabled={hud.subsLeft <= 0 && !subOpen}
+                  aria-expanded={subOpen}
+                  onClick={() =>
+                    setSubOpen((v) => {
+                      const next = !v;
+                      if (next && latestState.current) {
+                        setSubs(
+                          subOptions(
+                            latestState.current,
+                            setup[side].players,
+                            catalogRef.current,
+                            side,
+                          ),
+                        );
+                      }
+                      return next;
+                    })
+                  }
+                >
+                  {t('pvp.subsBtn', { count: hud.subsLeft })}
+                </button>
+              )}
               <button
                 type="button"
                 className="btn btn--secondary btn--sm hud-pause"
@@ -286,6 +336,64 @@ export function PvpMatchPage({
                 {t('pvp.leaveBtn')}
               </button>
             </div>
+            {isPendingSub && (
+              <div className="pvp-banner" role="status">
+                {t('pvp.subsPendingDeadBall')}
+              </div>
+            )}
+            {showSubRejected && (
+              <div className="pvp-banner pvp-banner--warn pvp-sub-drawer__head" role="alert">
+                <span>{t('pvp.err.sub_rejected')}</span>
+                <button
+                  type="button"
+                  className="btn btn--secondary btn--sm"
+                  onClick={() => setDismissedRejectAt(subRejectedSeq)}
+                >
+                  ×
+                </button>
+              </div>
+            )}
+            {subOpen && !autopilot && !hud.shootout && (
+              <div
+                className="panel pause__panel pvp-sub-drawer"
+                role="dialog"
+                aria-label={t('subs.title')}
+              >
+                <div className="pvp-sub-drawer__head">
+                  <span className="meta">{drawerHint}</span>
+                  <button
+                    type="button"
+                    className="btn btn--secondary btn--sm"
+                    onClick={() => setSubOpen(false)}
+                  >
+                    {t('common.close')}
+                  </button>
+                </div>
+                <SubstitutionPanel
+                  subs={{
+                    allowed: subAllowed,
+                    penaltyPending: hud.foulRestart?.type === 'penalty',
+                    left: hud.subsLeft,
+                    options: subs,
+                    onSubstitute: (outId: string, benchSlot: SquadSlot) => {
+                      if (
+                        benchSlot !== 'B1' &&
+                        benchSlot !== 'B2' &&
+                        benchSlot !== 'B3' &&
+                        benchSlot !== 'B4' &&
+                        benchSlot !== 'B5'
+                      ) {
+                        return;
+                      }
+                      const bench: BenchSlot = benchSlot;
+                      net.send({ t: 'sub', out: outId, bench });
+                      setPendingSub({ atLeft: hud.subsLeft, rejectedAt: subRejectedSeq });
+                      setDismissedRejectAt(subRejectedSeq);
+                    },
+                  }}
+                />
+              </div>
+            )}
             {confirmLeave && (
               <div className="panel pvp-banner pvp-banner--warn" role="alertdialog">
                 <p style={{ margin: '0 0 8px' }}>{t('pvp.leaveConfirm')}</p>

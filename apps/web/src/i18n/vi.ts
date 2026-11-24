@@ -947,6 +947,9 @@ export const vi = {
   'pvp.rewardReason.same_opponent_limit': 'Đã gặp đối thủ này quá 3 trận xếp hạng hôm nay.',
   'pvp.rewardReason.void': 'Trận bị huỷ, không có thưởng.',
   'pvp.backLobby': 'Về sảnh PvP',
+  'pvp.subsBtn': 'Thay người · {count}',
+  'pvp.subsPendingDeadBall': 'Chờ bóng chết',
+  'pvp.subsWaitHint': 'Lệnh thay người sẽ được áp dụng ở pha bóng chết kế tiếp.',
 } as const;
 
 export type TranslationKey = keyof typeof vi;

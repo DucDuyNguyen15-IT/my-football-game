@@ -255,7 +255,11 @@ export class PvpSession implements Tickable {
 
   /** Lệnh thay người: sai cấu trúc → `sub_rejected` ngay; đúng → xếp chờ tới bóng chết (mỗi đội 1 lệnh). */
   requestSub(side: TeamSide, out: string, bench: BenchSlot): void {
-    if (this.phase === 'ended' || checkSubStructure(this.state, side, out, bench)) {
+    if (
+      this.phase === 'ended' ||
+      this.state.shootout !== null ||
+      checkSubStructure(this.state, side, out, bench)
+    ) {
       this.sockets[side]?.send({ t: 'error', code: 'sub_rejected' });
       return;
     }
