@@ -69,7 +69,7 @@
   - luân phiên đá luân lưu với **hai người chơi** (`stepShootout`), `humanRestart` đúng đội được hưởng, `nearestHuman` theo đội (A9);
   - autopilot hai đội;
   - đội khách chịu hạn 15 s đá phạt, 10 s thủ môn ôm bóng, thủ môn tối đa thẻ vàng;
-  - nghỉ giữa hiệp kết thúc khi đội khách bấm;
+  - nghỉ giữa hiệp chỉ kết thúc khi cả hai đội bấm (hoặc hết 30 s);
   - `checkSubStructure` đúng cho cả hai đội (cầu thủ không trên sân, slot sai, hết lượt, đã bị đuổi đều bị từ chối) và `MAX_SUBS=3` tính riêng mỗi đội (A8, A10).
 - [x] T013 [P] Test trong `packages/sim/src/replay.v2.test.ts`: `replayMatch(v2)` khớp với chạy trực tiếp `stepBoth` (có thay người cho cả hai đội); nhật ký v1 cũ (không tiền tố) vẫn ra cùng kết quả, nhật ký `v2.` được nhận ra đúng (A8); `stateHash(replayToState(...))` khớp với chạy trực tiếp.
 

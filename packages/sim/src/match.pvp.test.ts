@@ -420,3 +420,98 @@ describe('thay người cho cả hai đội', () => {
     expect(h.ok).toBe(true);
   });
 });
+
+describe('công bằng giữa hai đội trong cùng một tick', () => {
+  /** Người giữ bóng của `carrier` ở (0,0), đối thủ cách 0,9 m, đồng đội cách 12 m phía trước. */
+  function duel(seed: number, carrier: TeamSide): MatchState {
+    const s0 = createMatch(setup2(seed));
+    const foe: TeamSide = carrier === 'home' ? 'away' : 'home';
+    const dir = carrier === 'home' ? 1 : -1;
+    const mine = s0.players.filter((p) => p.team === carrier && p.position !== 'GK');
+    const holder = mine[0]!;
+    const mate = mine[1]!;
+    const tackler = s0.players.find((p) => p.team === foe && p.position !== 'GK')!;
+    const players = s0.players.map((p) => {
+      if (p.id === holder.id) return { ...p, pos: vec2(0, 0), vel: ZERO, facing: vec2(dir, 0) };
+      if (p.id === tackler.id)
+        return { ...p, pos: vec2(dir * 0.9, 0), vel: ZERO, facing: vec2(-dir, 0) };
+      if (p.id === mate.id) return { ...p, pos: vec2(dir * 12, 0), vel: ZERO };
+      return { ...p, pos: vec2(p.pos.x > 0 ? 30 : -30, p.pos.y + 20), vel: ZERO };
+    });
+    return {
+      ...s0,
+      phase: 'play',
+      ballDead: false,
+      restart: null,
+      players,
+      ballOwnerId: holder.id,
+      ownerSinceTick: s0.tick,
+      lastTouchTeam: carrier,
+      controlledId: {
+        home: carrier === 'home' ? holder.id : tackler.id,
+        away: carrier === 'away' ? holder.id : tackler.id,
+      },
+      ball: dribbleBall(players.find((p) => p.id === holder.id)!),
+    };
+  }
+
+  /** Số lần người giữ bóng đá được (đổi sang người nhận) khi đối thủ giữ D đúng tick nhả; `idle` tick đệm đổi chẵn/lẻ tick nhả. */
+  function released(carrier: TeamSide, seeds: number, idle: number): number {
+    const foe: TeamSide = carrier === 'home' ? 'away' : 'home';
+    let n = 0;
+    for (let seed = 1; seed <= seeds; seed++) {
+      let s = runBoth(duel(seed, carrier), idle);
+      const holder = s.ballOwnerId;
+      s = stepBoth(s, { ...idle0(), [carrier]: { ...NO_INPUT, pass: true } });
+      s = stepBoth(s, { ...idle0(), [foe]: { ...NO_INPUT, shoot: true } });
+      if (s.controlledId[carrier] !== holder) n++;
+    }
+    return n;
+  }
+  const idle0 = (): TeamInputs => ({ home: NO_INPUT, away: NO_INPUT });
+
+  it('nhả chuyền cùng tick đối thủ tắc: home và away đá được xấp xỉ nhau (tick nhả chẵn lẫn lẻ)', () => {
+    const N = 150;
+    const rate = (team: TeamSide) => (released(team, N, 0) + released(team, N, 1)) / (2 * N);
+    const home = rate('home');
+    const away = rate('away');
+    // Trước khi đảo thứ tự: home 100%, away ~67%.
+    expect(Math.abs(home - away)).toBeLessThan(0.08);
+    expect(Math.min(home, away)).toBeGreaterThan(0.6);
+  });
+});
+
+describe('humans được chuẩn hoá', () => {
+  const chargeTicks = (humans: TeamSide[]) => {
+    let s = createMatch(setup2(3, { humans }));
+    const c = s.players.find((p) => p.id === s.controlledId.home)!;
+    s = {
+      ...s,
+      phase: 'play',
+      ballDead: false,
+      restart: null,
+      ballOwnerId: c.id,
+      ball: dribbleBall(c),
+      ownerSinceTick: s.tick,
+    };
+    for (let i = 0; i < 10; i++)
+      s = stepBoth(s, { home: { ...NO_INPUT, pass: true }, away: NO_INPUT });
+    return s.passCharge.home?.ticks;
+  };
+
+  it("['home','home'] chạy như ['home'] (không xử lý đội hai lần mỗi tick)", () => {
+    expect(chargeTicks(['home'])).toBe(10);
+    expect(chargeTicks(['home', 'home'])).toBe(10);
+  });
+
+  it("['away','home'] cho cùng stateHash với ['home','away'] sau 600 tick input ngẫu nhiên", () => {
+    const run = (humans: TeamSide[]) => {
+      let s = createMatch(setup2(9, { humans }));
+      for (let i = 0; i < 600; i++) s = stepBoth(s, noisy(i));
+      return s;
+    };
+    const a = run(['away', 'home']);
+    expect(a.humans).toEqual(['home', 'away']);
+    expect(stateHash(a)).toBe(stateHash(run(['home', 'away'])));
+  });
+});

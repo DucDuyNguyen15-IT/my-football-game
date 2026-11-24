@@ -94,7 +94,7 @@ Mỗi người chơi được thay người cho đội mình theo luật như kh
 - **Mạng chậm, không mất hẳn:** trận vẫn chạy với tốc độ thật. Phím của người mạng chậm có thể tới trễ, khi đó lấy theo phím gần nhất của người đó. Trận không chậm lại vì một người.
 - **Cả hai cùng rớt mạng:** nếu không ai vào lại trong 30 s, trận bị huỷ và không ai được thưởng.
 - **Tạm dừng:** trận đá trực tiếp không có nút tạm dừng. Khi một người chuyển sang tab khác hoặc cửa sổ mất focus, trận của người đó vẫn chạy và cầu thủ của họ nhận phím rỗng ngay lập tức (kể cả khi đang giữ phím lúc chuyển).
-- **Nghỉ giữa hiệp:** kết thúc khi một trong hai người bấm tiếp tục, hoặc khi hết thời gian nghỉ như luật hiện hành.
+- **Nghỉ giữa hiệp:** cả hai người đều bấm chuyền (không cần cùng lúc) mới đá hiệp 2; chưa đủ thì tự đá sau 30 s như luật hiện hành.
 - **Đội hình không hợp lệ:** ví dụ ô thủ môn không có thủ môn. Người đó bị chặn ngay khi tạo phòng, vào phòng hoặc tìm trận, với cùng thông báo như khi đá với máy.
 - **Đá với chính mình:** một tài khoản không thể vào phòng do chính mình tạo.
 - **Không vào được trận:** sau khi ghép, nếu quá 30 s mà một bên chưa tải xong sân, trận bị huỷ, không thưởng, không ai bị xử thua, cả hai quay về sảnh.

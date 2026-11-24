@@ -344,7 +344,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     shots: { home: 0, away: 0 },
     lastShot: null,
     autopilot: setup.autopilot ?? false,
-    humans: setup.humans ?? ['home'],
+    humans: setup.humans ? TEAMS.filter((t) => setup.humans!.includes(t)) : ['home'],
     homeAi: setup.homeAi ?? 'teammate',
     formations: { home: home.formation, away: away.formation },
     kickoffTeam,
@@ -1305,7 +1305,9 @@ function stepPlay(
   const humanBefore = humansOf(state, controlledId);
   const shotCharge = shotChargeTicks;
   const passCharges = passCharge;
-  for (const team of humanTeams) {
+  // Hai đội người cùng tranh một tick: đổi lượt ai xử trước theo tick chẵn/lẻ để đội nhà không luôn thắng.
+  const actOrder = tick % 2 === 1 ? [...humanTeams].reverse() : humanTeams;
+  for (const team of actOrder) {
     const input = inputs[team];
     const pressed = (b: Button) => pressedBy(team, b);
     const keeperHolds = keeperHoldsNow();
