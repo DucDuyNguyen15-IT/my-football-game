@@ -31,7 +31,7 @@ const WEB_ORIGIN = `http://localhost:${WEB_PORT}`;
 
 export default defineConfig({
   testDir: './e2e',
-  testIgnore: 'determinism.spec.ts',
+  testIgnore: ['determinism.spec.ts', 'motion.spec.ts'],
   // Một trận autopilot `?half=10` mất ~1 phút (lâu hơn nếu hoà → luân lưu) trên WebGL phần mềm.
   timeout: 360_000,
   expect: { timeout: 15_000 },

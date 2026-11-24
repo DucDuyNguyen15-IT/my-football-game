@@ -18,7 +18,9 @@
     "format:check": "prettier --check .",
     "check": "pnpm lint && pnpm typecheck && pnpm test",
     "e2e": "playwright test",
-    "e2e:determinism": "playwright test -c playwright.determinism.config.ts"
+    "e2e:determinism": "playwright test -c playwright.determinism.config.ts",
+    "motion": "playwright test -c playwright.motion.config.ts e2e/motion.spec",
+    "motion:pvp": "playwright test -c playwright.motion.config.ts e2e/motion-pvp"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
