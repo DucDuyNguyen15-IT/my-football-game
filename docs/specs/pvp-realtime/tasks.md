@@ -174,7 +174,7 @@
   - màn kết quả dùng tỉ số trong `end` và hiện lý do khi `reward = 0` theo `rewardReason`;
   - tách phần dùng chung từ `apps/web/src/features/play/PlayPage.tsx` thay vì sao chép.
 - [x] T028 [US1] Thêm route `/pvp` (có `RequireAuth`) vào `apps/web/src/app/router.tsx`, mục PvP vào Topbar, chuỗi vi/en vào file i18n hiện có. Chặn trận trên điện thoại giống `/play`.
-- [ ] T029 [US1] Tạo `e2e/pvp.spec.ts` kịch bản phòng:
+- [x] T029 [US1] Tạo `e2e/pvp.spec.ts` kịch bản phòng:
   - hai `browser.newContext()` hai tài khoản; A tạo phòng, B nhập mã;
   - autopilot hai đội (T009), hiệp 10 s;
   - hai màn kết quả cùng tỉ số và có dòng "Giao hữu";
