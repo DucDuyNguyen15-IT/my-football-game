@@ -89,11 +89,13 @@ export async function startPvpMatch(
   },
 ) {
   const seed = args.rng(SEED_RANGE);
+  // Tung đồng xu chọn sân: người tạo phòng / vào hàng chờ trước không mặc nhiên là đội nhà.
+  const [home, away] = args.rng(2) === 1 ? [args.away, args.home] : [args.home, args.away];
   return hub.createSession({
     kind: args.kind,
     seed,
-    home: args.home,
-    away: args.away,
+    home,
+    away,
     ...(args.dev && { dev: args.dev }),
   });
 }

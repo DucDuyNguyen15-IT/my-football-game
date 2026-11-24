@@ -79,7 +79,12 @@ export function tryPairQueue(hub: PvpHub): void {
       rng: hub.rng,
       dev: hub.dev,
     })
-      .catch((err: unknown) => hub.reportError(err))
+      .catch((err: unknown) => {
+        hub.reportError(err);
+        for (const c of [e1.conn, e2.conn]) {
+          if (!hub.isClosed(c)) c.send({ t: 'error', code: 'server_busy' });
+        }
+      })
       .finally(() => {
         hub.endPending(u1);
         hub.endPending(u2);

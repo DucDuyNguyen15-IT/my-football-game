@@ -129,7 +129,7 @@ describe('Hàng chờ ghép trận PvP (T035–T037)', () => {
     hub.handle(caTab2, { t: 'queue_join' });
     expect(caTab2.of('error')).toEqual([{ t: 'error', code: 'busy' }]);
 
-    // B vào sau A → A là home, B là away; C ở lại hàng chờ
+    // A và B ghép cặp (sân chọn ngẫu nhiên, mỗi người một bên); C ở lại hàng chờ
     hub.handle(cb, { t: 'queue_join' });
     await flush();
     hub.handle(cc, { t: 'queue_join' });
@@ -138,8 +138,7 @@ describe('Hàng chờ ghép trận PvP (T035–T037)', () => {
     const ma = ca.of('matched')[0]!;
     const mb = cb.of('matched')[0]!;
     expect(ma.kind).toBe('ranked');
-    expect(ma.side).toBe('home');
-    expect(mb.side).toBe('away');
+    expect(new Set([ma.side, mb.side])).toEqual(new Set(['home', 'away']));
     expect(cc.of('matched')).toHaveLength(0);
     expect(hub.queue.has(caraId)).toBe(true);
   });

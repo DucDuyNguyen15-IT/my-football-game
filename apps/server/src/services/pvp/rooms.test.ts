@@ -10,7 +10,7 @@ import { createAccount } from '../auth';
 import { loadCardCatalog, type CardCatalog } from '../cards';
 import { countRewardedMatches } from '../matches';
 import { PvpHub, ROOM_TTL_MS, type HubConn } from './hub';
-import { generateRoomCode } from './rooms';
+import { generateRoomCode, startPvpMatch } from './rooms';
 import type { TimeSource } from './ticker';
 
 const db = testDb();
@@ -136,9 +136,8 @@ describe('Phòng PvP (T024–T025)', () => {
     const ma = ca.of('matched')[0]!;
     const mb = cb.of('matched')[0]!;
     expect(ma.kind).toBe('friendly');
-    expect(ma.side).toBe('home');
+    expect(new Set([ma.side, mb.side])).toEqual(new Set(['home', 'away']));
     expect(ma.opponent.username).toBe('bob');
-    expect(mb.side).toBe('away');
     expect(mb.opponent.username).toBe('ann');
     expect(ma.setup.humans).toEqual(['home', 'away']);
     expect(ma.setup.halfLengthSec).toBe(10);
@@ -248,4 +247,21 @@ describe('Phòng PvP (T024–T025)', () => {
     expect((await db.select().from(squads)).length).toBeGreaterThan(0);
     expect((await db.select().from(matches)).every((m) => m.mode === 'pvp_friendly')).toBe(true);
   }, 60_000);
+});
+
+describe('startPvpMatch — chọn sân', () => {
+  it('rng(2) quyết định ai là đội nhà', async () => {
+    const fakeHub = { createSession: async (a: unknown) => a } as unknown as PvpHub;
+    const a = { userId: 1 } as never;
+    const b = { userId: 2 } as never;
+    const run = async (coin: number) =>
+      (await startPvpMatch(fakeHub, {
+        kind: 'friendly',
+        home: a,
+        away: b,
+        rng: (n) => (n === 2 ? coin : 0),
+      })) as unknown as { home: unknown; away: unknown };
+    expect(await run(0)).toMatchObject({ home: a, away: b });
+    expect(await run(1)).toMatchObject({ home: b, away: a });
+  });
 });
