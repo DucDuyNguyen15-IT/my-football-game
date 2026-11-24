@@ -1,0 +1,131 @@
+/*
+ * Sảnh PvP, overlay đếm ngược / rớt mạng và màn kết quả PvP — dùng token thiết kế hiện có.
+ */
+.pvp-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-4);
+}
+@media (max-width: 780px) {
+  .pvp-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.pvp-card {
+  display: grid;
+  gap: var(--sp-3);
+  align-content: start;
+}
+
+.pvp-code-box {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-4);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line-strong);
+  border-radius: var(--radius-md);
+}
+
+.pvp-code {
+  font-family: var(--font-display);
+  font-size: var(--fs-2xl);
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--c-accent);
+  font-variant-numeric: tabular-nums;
+}
+
+.pvp-join-form {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.pvp-code-input {
+  flex: 1;
+  min-width: 140px;
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border: 1px solid var(--c-line-control);
+  border-radius: var(--radius-md);
+  background: var(--c-surface-1);
+  color: var(--c-text);
+  font-family: var(--font-display);
+  font-size: var(--fs-lg);
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.pvp-code-input:focus-visible {
+  outline: 2px solid var(--c-focus);
+  outline-offset: 2px;
+}
+
+.pvp-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  align-items: center;
+}
+
+.pvp-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 4px 10px;
+  border-radius: var(--radius-sm);
+  background: var(--c-surface-2);
+  border: 1px solid var(--c-line);
+  font-size: var(--fs-xs);
+  color: var(--c-text-muted);
+}
+
+/* Overlay đối đầu + đếm ngược trên sân 3D */
+.pvp-versus {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  overflow-y: auto;
+}
+
+.pvp-countdown-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-5);
+  border-radius: var(--radius-md);
+  background: rgb(11 26 19 / 0.92);
+  border: 2px solid var(--r-gold-hi);
+  color: var(--r-gold-hi);
+  font-family: var(--font-display);
+  font-size: var(--fs-xl);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+}
+
+/* Banner rớt mạng / đang vào lại trong trận */
+.pvp-banner {
+  padding: 6px 14px;
+  background: var(--c-hud-bg);
+  border: 1px solid var(--r-gold-hi);
+  border-radius: var(--radius-md);
+  color: var(--r-gold-hi);
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  backdrop-filter: blur(6px);
+}
+.pvp-banner--warn {
+  border-color: #ff6b6b;
+  color: #ffd6d6;
+}
+
+.pvp-tl-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}

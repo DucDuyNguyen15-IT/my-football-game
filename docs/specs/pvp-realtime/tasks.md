@@ -164,16 +164,16 @@
   - khi đủ người: dựng `MatchSetup` bằng `buildHomeTeam` (`domain/match-teams.ts:45`) cho cả hai người, `humans: ['home','away']`, `kind='friendly'`, tạo dòng `pvp_matches`, gửi `matched`, ghi sự kiện `pvp_matched`;
   - viết phần "dựng trận" thành hàm dùng chung để T035 dùng lại.
 - [x] T025 [P] [US1] Test `apps/server/src/services/pvp/rooms.test.ts`: mã không có ký tự 0/O/1/I; mọi mã lỗi; phòng hết hạn sau 10 phút; trận friendly cho `reward = 0` và không tính vào giới hạn ngày (FR-022).
-- [ ] T026 [US1] Tạo `apps/web/src/features/pvp/PvpLobby.tsx`:
+- [x] T026 [US1] Tạo `apps/web/src/features/pvp/PvpLobby.tsx`:
   - nút Tạo phòng hiện mã (có nút sao chép) và dòng "Giao hữu, không có thưởng";
   - ô Nhập mã viết hoa, đúng 6 ký tự;
   - báo lỗi theo `error.code`;
   - khi `matched` thì hiện tên và đội hình đối thủ (FR-005).
-- [ ] T027 [US1] Tạo `apps/web/src/features/pvp/PvpMatchPage.tsx`:
+- [x] T027 [US1] Tạo `apps/web/src/features/pvp/PvpMatchPage.tsx`:
   - nhúng `MatchCanvas` với `driver='net'`, HUD theo `side` (FR-008);
   - màn kết quả dùng tỉ số trong `end` và hiện lý do khi `reward = 0` theo `rewardReason`;
   - tách phần dùng chung từ `apps/web/src/features/play/PlayPage.tsx` thay vì sao chép.
-- [ ] T028 [US1] Thêm route `/pvp` (có `RequireAuth`) vào `apps/web/src/app/router.tsx`, mục PvP vào Topbar, chuỗi vi/en vào file i18n hiện có. Chặn trận trên điện thoại giống `/play`.
+- [x] T028 [US1] Thêm route `/pvp` (có `RequireAuth`) vào `apps/web/src/app/router.tsx`, mục PvP vào Topbar, chuỗi vi/en vào file i18n hiện có. Chặn trận trên điện thoại giống `/play`.
 - [ ] T029 [US1] Tạo `e2e/pvp.spec.ts` kịch bản phòng:
   - hai `browser.newContext()` hai tài khoản; A tạo phòng, B nhập mã;
   - autopilot hai đội (T009), hiệp 10 s;
