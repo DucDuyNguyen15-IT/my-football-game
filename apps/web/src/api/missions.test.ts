@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { keepUnreadClaims, msUntilNextGmt7Midnight } from './missions';
+import { QueryClient } from '@tanstack/react-query';
+import { dismissExpiredClaims, keepUnreadClaims, msUntilNextGmt7Midnight } from './missions';
 
 describe('msUntilNextGmt7Midnight', () => {
   it('23:59 GMT+7 → còn 1 phút', () => {
@@ -24,5 +25,21 @@ describe('keepUnreadClaims', () => {
     expect(keepUnreadClaims(undefined, empty)).toBe(empty);
     const next = { items: [{ ...item, day: '2026-11-16' }], balance: 700 };
     expect(keepUnreadClaims(shown, next)).toBe(next);
+  });
+});
+
+describe('dismissExpiredClaims (F4)', () => {
+  it('xoá items nhưng giữ nguyên dataUpdatedAt để qua 00:00 vẫn gọi lại', () => {
+    const qc = new QueryClient();
+    const key = ['missions', 'expired-claim', 'u1'];
+    const old = Date.parse('2026-11-15T23:50:00+07:00');
+    qc.setQueryData(
+      key,
+      { items: [{ code: 'win_1', title: 'x', day: '2026-11-15', reward: 100 }], balance: 600 },
+      { updatedAt: old },
+    );
+    dismissExpiredClaims(qc, 'u1');
+    expect(qc.getQueryData<{ items: unknown[] }>(key)?.items).toEqual([]);
+    expect(qc.getQueryState(key)?.dataUpdatedAt).toBe(old);
   });
 });

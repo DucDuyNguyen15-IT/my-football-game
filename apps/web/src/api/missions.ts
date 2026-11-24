@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import { ClaimMissionResult, ExpiredClaimResult, MissionProgress, type Me } from '@pitch/shared';
 import { z } from 'zod';
 import { meKey } from './auth';
@@ -59,10 +59,20 @@ export function keepUnreadClaims(
 // Khoá theo người chơi: đổi tài khoản trong cùng tab không thấy thông báo của người trước.
 const expiredClaimKey = (userId: string | undefined) => ['missions', 'expired-claim', userId];
 
+/**
+ * Đóng bảng: đặt items rỗng nhưng giữ `dataUpdatedAt` cũ, kẻo `staleTime` tính lại từ lúc đóng và
+ * tab mở qua 00:00 không tự gọi lại claim (C3-07 F4).
+ */
+export function dismissExpiredClaims(qc: QueryClient, userId: string | undefined): void {
+  const key = expiredClaimKey(userId);
+  qc.setQueryData<ExpiredClaimResult>(key, (d) => d && { ...d, items: [] }, {
+    updatedAt: qc.getQueryState(key)?.dataUpdatedAt,
+  });
+}
+
 export function useDismissExpiredClaims(userId: string | undefined) {
   const qc = useQueryClient();
-  return () =>
-    qc.setQueryData<ExpiredClaimResult>(expiredClaimKey(userId), (d) => d && { ...d, items: [] });
+  return () => dismissExpiredClaims(qc, userId);
 }
 
 /**
