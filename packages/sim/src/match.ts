@@ -90,7 +90,7 @@ import {
   turnAim,
 } from './rules/setPieceAim';
 import { autoSubstitute } from './rules/substitution';
-import { nextShooter, SHOOTOUT_KICK_TICKS, shooterFor, shootoutWinner } from './rules/shootout';
+import { capTally, nextShooter, SHOOTOUT_KICK_TICKS, shooterFor, shootoutWinner } from './rules/shootout';
 import {
   chooseDefensiveSwitchTarget,
   chooseSwitchTarget,
@@ -927,13 +927,21 @@ function stepShootout(
     next.ballOwnerId !== null ||
     tick - (so.kickTick ?? tick) >= SHOOTOUT_KICK_TICKS;
   if (!over) return { ...next, phase: 'shootout', shots: state.shots };
-  const tally = { ...so, [team]: [...so[team], scored] };
+  let tally = { ...so, [team]: [...so[team], scored] };
+  let rng = next.rng;
+  if (tally.home.length === tally.away.length) {
+    const [coin, r] = nextFloat(rng);
+    const capped = capTally(tally, coin);
+    if (capped !== tally) rng = r;
+    tally = capped;
+  }
   // Vào lưới: `stepPlay` đã xếp mọi người về vị trí giao bóng — luân lưu không giao bóng, ai ở đâu
   // đứng yên đó (người sút lượt kế được đặt thẳng vào chấm phạt đền).
   const players = scored ? state.players : next.players;
   const after: MatchState = {
     ...next,
     players,
+    rng,
     score: state.score,
     shots: state.shots,
     shootout: tally,
