@@ -4,7 +4,6 @@ Ghi ý tưởng vào đây thay vì làm ngay. Xem xét lại khi lập kế ho�
 
 | Ý tưởng | Ghi bởi | Giai đoạn phát sinh | Ghi chú |
 |---|---|---|---|
-| PvP thời gian thực (netcode server authoritative) | Agent | 1 | Phương án C; cân nhắc ở Giai đoạn 7, ưu tiên PvP bất đồng bộ trước |
 | Chợ chuyển nhượng giữa người chơi | Agent | 1 | Phương án C; cần phí chợ chống lạm phát |
 | Xếp hạng mùa | Agent | 1 | Phương án C |
 | Điều khiển cảm ứng/mobile, tay cầm | Agent | 2 | PRD §4.2, sau PvP bất đồng bộ và chợ |
@@ -33,3 +32,7 @@ Ghi ý tưởng vào đây thay vì làm ngay. Xem xét lại khi lập kế ho�
 | Playtest 5–10 fan FC Online trước phát hành (PRD §10: ≥ 7/10 thấy "thẻ tốt khác biệt rõ trên sân", thời gian tới trận đầu ≤ 2 phút) | Agent | 8 | Checklist + bảng ghi: `docs/QA-REPORT.md` §5 (T2). Làm trước/trong GĐ9 |
 | Việc nhỏ sau rà 8.4: (1) sửa tên test bị hỏng mã hoá (mojibake) trong `apps/server/src/routes/google-auth.test.ts`; (2) thêm số "tài khoản có ≥ 1 trận" vào trang `/admin` (chỉ số PRD §10); (3) chạy `pnpm --filter @pitch/sim test:slow` + `pnpm --filter @pitch/server balance` mỗi khi đổi sim/AI (không nằm trong `pnpm check`); (4) chuyển các kịch bản kiểm tay giao diện (hộp phiếu, kéo-thả đội hình, cảnh báo đội hình, bán nhiều thẻ, màn ép thẻ) thành test Playwright cố định, gắn `pnpm e2e` vào CI | Agent | 8 | `docs/QA-REPORT.md` §6 T4–T7 (2026-11-14) |
 | ~~Trận có giật ngắn~~ **Xong 16/11** (QA-REPORT T12; đã bỏ `PCFSoftShadowMap`) (đo 8.3: "1% thấp nhất" 6,0 FPS ở Cao, 18,9 ở Thấp; có khung ~1 s): ghi DevTools Performance một trận có bàn thắng để tìm khung dài (biên dịch shader, phát lại, GC). Đổi `PCFSoftShadowMap` → `PCFShadowMap` để hết cảnh báo Three.js | Agent | 8 | `docs/QA-REPORT.md` §2.4, §6 T12 (2026-11-14). Không chặn: PRD chỉ đòi FPS TB |
+| Trang lịch sử trận (phân biệt máy / PvP xếp hạng / PvP giao hữu, tên đối thủ) | Agent | PvP 20/11 | FR-021 của `docs/specs/pvp-realtime/spec.md` đã hoãn vì game chưa có trang lịch sử trận. Dữ liệu đã lưu sẵn: `matches.mode` (`cpu`/`pvp_ranked`/`pvp_friendly`) và `matches.opponent_user_id` (migration `0008_pvp.sql`) |
+| PvP: rollback (GGPO) để mượt hơn khi mạng xấu | Agent | PvP 20/11 | ADR-0012 chọn lockstep không dự đoán nên phím phản ứng sau RTT + bộ đệm (RTT 100 ms → ≤ 200 ms, SC-002); rollback phải clone và tính lại nhiều tick mỗi khung. Cân nhắc khi số đo playtest cho thấy trễ khó chịu |
+| PvP: điểm ELO, bảng xếp hạng PvP, ghép theo trình độ | Agent | PvP 20/11 | Hiện ghép ngẫu nhiên theo thứ tự đến, không xét sức đội hình (spec, mục Ngoài phạm vi); liên quan dòng "Xếp hạng mùa" ở trên |
+| PvP: chạy nhiều instance server (và phân vùng theo khu vực) | Agent | PvP 20/11 | Hàng chờ, phòng, phiên trận nằm trong bộ nhớ một tiến trình (`shortcut:` trong `services/pvp/hub.ts`; research R8): cần chuyển sang kho dùng chung (Redis hoặc tương tự) + định tuyến phiên. Cùng lúc cân nhắc đưa sim bóng sang `worker_threads` nếu vượt `PVP_MAX_SESSIONS` (50) |
