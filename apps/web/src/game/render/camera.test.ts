@@ -8,6 +8,7 @@ import {
   initialCamera,
   setPieceAim,
   setPieceCamera,
+  flipCamera,
   toWorld,
 } from './camera';
 
@@ -103,5 +104,14 @@ describe('followCamera', () => {
     const cam = followCamera(initialCamera(), { x: 20, y: 0 }, 1 / 60);
     expect(cam.look.x).toBeGreaterThan(0);
     expect(cam.look.x).toBeLessThan(5);
+  });
+});
+
+describe('flipCamera', () => {
+  it('quay 180° quanh điểm nhìn: vẫn nhìn đúng chỗ, đứng phía đối diện', () => {
+    const cam = { pos: { x: 30, y: 20, z: 40 }, look: { x: 35, y: 0, z: 2 } };
+    const f = flipCamera(cam);
+    expect(f.look).toEqual(cam.look);
+    expect(f.pos).toEqual({ x: 40, y: 20, z: -36 });
   });
 });

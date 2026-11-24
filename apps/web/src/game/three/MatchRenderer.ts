@@ -31,6 +31,7 @@ import {
 } from '../input/keyboard';
 import {
   blendCamera,
+  flipCamera,
   followCamera,
   initialCamera,
   setPieceAim,
@@ -809,7 +810,9 @@ export class MatchRenderer {
    */
   private frameNet(dt: number): void {
     const net = this.net!;
-    const input = keysToInput(mirrorKeys(this.taps.sample(this.held), this.side === 'away'));
+    // Góc sau lưng người đá không đảo (sim hiểu phím theo hướng nhìn người đá), chỉ camera trận đảo.
+    const mirror = this.side === 'away' && !setPieceAim(this.curr, this.side);
+    const input = keysToInput(mirrorKeys(this.taps.sample(this.held), mirror));
     this.taps.consume();
     net.sendInput(encodeInput(input));
     const d = net.display(dt);
@@ -1100,9 +1103,11 @@ export class MatchRenderer {
       Math.max(0, this.setPieceW + (setPiece ? dt : -dt) / SET_PIECE_BLEND_SEC),
     );
     if (setPiece) this.setPieceCam = setPieceCamera(setPiece.spot, setPiece.aim);
+    const flip = this.side === 'away' ? -1 : 1;
+    const match = flip < 0 ? flipCamera(this.cam) : this.cam;
     const view =
       cameraOverride ??
-      (this.setPieceW > 0 ? blendCamera(this.cam, this.setPieceCam, this.setPieceW) : this.cam);
+      (this.setPieceW > 0 ? blendCamera(match, this.setPieceCam, this.setPieceW) : match);
     const { pos, look } = view;
     const dolly = cameraOverride ? { y: 0, z: 0 } : this.transition.currentDollyOffset();
     this.nets.update(animDt);
@@ -1110,10 +1115,8 @@ export class MatchRenderer {
     if (this.grass.object.visible) this.grass.update(look.x, look.z, timeSec);
     this.crowd.update(animDt, timeSec, this.q.crowd);
     this.boards.update(timeSec);
-    // Đội khách: quay camera 180° quanh trục đứng để sân của mình luôn ở phía dưới màn hình.
-    const flip = this.side === 'away' ? -1 : 1;
-    this.camera.position.set(flip * pos.x, pos.y + dolly.y, flip * (pos.z + dolly.z));
-    this.camera.lookAt(flip * look.x, look.y, flip * look.z);
+    this.camera.position.set(pos.x, pos.y + dolly.y, pos.z + flip * dolly.z);
+    this.camera.lookAt(look.x, look.y, look.z);
     this.drawCountdown(cameraOverride || this.cutHold ? null : countdownRing(this.curr, this.side));
     // Điểm chạm: chỉ khi sân không bị chuyển cảnh che / giữ khung.
     const contact =

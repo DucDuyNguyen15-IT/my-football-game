@@ -101,6 +101,17 @@ const lerp3 = (a: Vec3, b: Vec3, t: number): Vec3 => ({
   z: a.z + (b.z - a.z) * t,
 });
 
+/**
+ * Quay camera 180° quanh trục đứng qua điểm nhìn: đội khách (PvP) nhìn cùng chỗ nhưng từ phía
+ * khán đài đối diện, sân nhà của mình ở dưới màn hình.
+ */
+export function flipCamera(cam: CameraState): CameraState {
+  return {
+    pos: { x: 2 * cam.look.x - cam.pos.x, y: cam.pos.y, z: 2 * cam.look.z - cam.pos.z },
+    look: cam.look,
+  };
+}
+
 /** Trộn hai góc máy, `t` 0 → `a`, 1 → `b` (có làm mượt hai đầu). */
 export function blendCamera(a: CameraState, b: CameraState, t: number): CameraState {
   // Hai đầu trả đúng camera gốc (lerp a + (b − a)·1 lệch số thực).
