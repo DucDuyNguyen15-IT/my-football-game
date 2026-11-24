@@ -154,7 +154,7 @@
 **Mục tiêu:** A tạo phòng, B nhập mã, cả hai đá hết trận cùng tỉ số, không có thưởng.
 **Kiểm thử độc lập:** quickstart, kịch bản tự động #4 (phần phòng) và kiểm tra bằng tay bước 2.
 
-- [ ] T024 [US1] Tạo `apps/server/src/services/pvp/rooms.ts`:
+- [x] T024 [US1] Tạo `apps/server/src/services/pvp/rooms.ts`:
   - `room_create` sinh `code` 6 ký tự từ bảng chữ `ABCDEFGHJKLMNPQRSTUVWXYZ23456789` bằng `node:crypto`, không trùng phòng đang mở, hạn 10 phút;
   - `room_join` trả lỗi `room_not_found`/`room_full`/`room_expired`/`self_join`;
   - mỗi user tối đa một mục trong hàng chờ, phòng hoặc phiên (`busy`, FR-004; gồm cả `room_*` từ socket thứ hai, A1);
@@ -163,7 +163,7 @@
   - đặt `MatchSetup.autopilot` từ env `REPLAY_TEST_AUTOPILOT` và `halfLengthSec` từ `REPLAY_TEST_HALF_LENGTH_SEC` (chỉ khi test), để sim bóng và sim client dùng cùng giá trị;
   - khi đủ người: dựng `MatchSetup` bằng `buildHomeTeam` (`domain/match-teams.ts:45`) cho cả hai người, `humans: ['home','away']`, `kind='friendly'`, tạo dòng `pvp_matches`, gửi `matched`, ghi sự kiện `pvp_matched`;
   - viết phần "dựng trận" thành hàm dùng chung để T035 dùng lại.
-- [ ] T025 [P] [US1] Test `apps/server/src/services/pvp/rooms.test.ts`: mã không có ký tự 0/O/1/I; mọi mã lỗi; phòng hết hạn sau 10 phút; trận friendly cho `reward = 0` và không tính vào giới hạn ngày (FR-022).
+- [x] T025 [P] [US1] Test `apps/server/src/services/pvp/rooms.test.ts`: mã không có ký tự 0/O/1/I; mọi mã lỗi; phòng hết hạn sau 10 phút; trận friendly cho `reward = 0` và không tính vào giới hạn ngày (FR-022).
 - [ ] T026 [US1] Tạo `apps/web/src/features/pvp/PvpLobby.tsx`:
   - nút Tạo phòng hiện mã (có nút sao chép) và dòng "Giao hữu, không có thưởng";
   - ô Nhập mã viết hoa, đúng 6 ký tự;

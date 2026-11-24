@@ -21,6 +21,7 @@ export interface PvpRouteOptions {
   time?: TimeSource;
   maxSessions?: number;
   maxPerIp?: number;
+  dev?: { halfLengthSec?: number | undefined; autopilot?: boolean | undefined };
 }
 
 /** A18: `Origin` bắt buộc và phải trùng `Host` (chống CSWSH); hook chạy ở preValidation, trước upgrade. */
@@ -45,6 +46,8 @@ export function registerPvpRoutes(app: FastifyInstance, opts: PvpRouteOptions = 
     clock: app.clock,
     rng: app.rng,
     time,
+    cardCatalog: () => app.cardCatalog(),
+    ...(opts.dev && { dev: opts.dev }),
     ...(opts.maxSessions !== undefined && { maxSessions: opts.maxSessions }),
     onError: (err) => app.log.error({ err }, 'pvp lỗi'),
   });

@@ -129,7 +129,12 @@ export function buildApp(opts: BuildAppOptions = {}) {
       replay: opts.replay ?? { run: runReplayInWorker },
     });
     registerMissionRoutes(app);
-    registerPvpRoutes(app, opts.pvp);
+    registerPvpRoutes(app, {
+      ...opts.pvp,
+      ...(opts.pvp?.dev || opts.replay?.dev
+        ? { dev: opts.pvp?.dev ?? opts.replay?.dev }
+        : {}),
+    });
     // shortcut: trạng thái trong bộ nhớ một tiến trình, nâng cấp khi chạy nhiều instance.
     // Khởi động lại làm mất mọi phiên đang đá: huỷ các trận `live` (server_restart).
     app.addHook('onReady', async () => {
