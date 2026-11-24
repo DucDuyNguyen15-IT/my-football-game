@@ -8,7 +8,11 @@ import { length, sub, vec2, ZERO } from './math/vec2';
 import { HALF_LENGTH } from './pitch';
 import { buildMatchSetup, decodeInput } from './replay';
 import { judgeFoul } from './rules/fouls';
-import { HALF_TIME_MAX_TICKS, KEEPER_HOLD_MAX_TICKS, SET_PIECE_MAX_TICKS } from './rules/limits';
+import {
+  HALF_TIME_PVP_MAX_TICKS,
+  KEEPER_HOLD_MAX_TICKS,
+  SET_PIECE_MAX_TICKS,
+} from './rules/limits';
 import { dribbleBall } from './rules/possession';
 import { regulationTicks } from './rules/clock';
 import { PENALTY_RUNUP_TICKS } from './rules/setPieceAim';
@@ -256,21 +260,38 @@ describe('luật thời gian cho đội khách', () => {
     }
   });
 
-  it('nghỉ giữa hiệp kết thúc khi đội khách bấm chuyền (đội nhà không bấm)', () => {
+  const toHalfTime = (): MatchState => {
     const s0 = createMatch(setup2());
     const end: MatchState = {
       ...s0,
       halfTick: regulationTicks(s0.halfLengthSec) - 1,
       addedMinutes: 0,
     };
-    let s = stepBoth(end, idle);
+    const s = stepBoth(end, idle);
     expect(s.phase).toBe('half_time');
-    s = runBoth(s, 5);
+    return s;
+  };
+  const tap = (team: TeamSide): TeamInputs => ({ ...idle, [team]: { ...NO_INPUT, pass: true } });
+
+  it('nghỉ giữa hiệp: một đội bấm chưa đủ, cả hai bấm (không cần cùng lúc) mới đá hiệp 2', () => {
+    let s = toHalfTime();
+    s = stepBoth(s, tap('away'));
+    s = runBoth(s, 30);
     expect(s.phase).toBe('half_time');
-    s = stepBoth(s, { home: NO_INPUT, away: { ...NO_INPUT, pass: true } });
+    expect(s.halfTimeReady).toEqual(['away']);
+    s = stepBoth(s, tap('home'));
     expect(s.phase).toBe('kickoff');
     expect(s.half).toBe(2);
-    expect(s.tick).toBeLessThan(HALF_TIME_MAX_TICKS);
+    expect(s.halfTimeReady).toEqual([]);
+  });
+
+  it('nghỉ giữa hiệp PvP: không đủ hai người bấm thì tự đá hiệp 2 sau 15 s', () => {
+    let s = stepBoth(toHalfTime(), tap('home'));
+    const start = s.tick;
+    while (s.phase === 'half_time') s = stepBoth(s, idle);
+    expect(s.half).toBe(2);
+    expect(s.tick - start).toBeLessThanOrEqual(HALF_TIME_PVP_MAX_TICKS);
+    expect(s.tick - start).toBeGreaterThan(HALF_TIME_PVP_MAX_TICKS - 5);
   });
 });
 

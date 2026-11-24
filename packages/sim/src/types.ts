@@ -297,6 +297,8 @@ export interface MatchState {
   actionDeadline: Record<TeamSide, ActionDeadline | null>;
   /** Nghỉ giữa hiệp: tới tick này mà chưa bấm chuyền thì tự đá hiệp 2; null ngoài giờ nghỉ. */
   halfTimeEndTick: number | null;
+  /** Nghỉ giữa hiệp: các đội người đã bấm chuyền; đủ mọi đội người thì đá hiệp 2. */
+  halfTimeReady: TeamSide[];
   /**
    * Cú sút chưa phân định (chưa vào lưới, ra ngoài, bị thủ môn chạm hay có người khống chế): còi hết
    * hiệp chờ nó xong, tối đa WHISTLE_SHOT_WAIT_TICKS. Khác `lastShot` ở chỗ vẫn còn sau khi thủ môn

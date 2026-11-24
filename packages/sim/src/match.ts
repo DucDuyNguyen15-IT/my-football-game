@@ -69,6 +69,7 @@ import { advanceClock, regulationTicks, RESTART_GRACE_TICKS } from './rules/cloc
 import { isKeeperHandling, judgeFoul } from './rules/fouls';
 import {
   HALF_TIME_MAX_TICKS,
+  HALF_TIME_PVP_MAX_TICKS,
   KEEPER_HOLD_MAX_TICKS,
   SET_PIECE_MAX_TICKS,
   WHISTLE_PENALTY_WAIT_TICKS,
@@ -359,6 +360,7 @@ export function createMatch(setup: MatchSetup): MatchState {
     substitutions: [],
     actionDeadline: { home: null, away: null },
     halfTimeEndTick: null,
+    halfTimeReady: [],
     shotInFlight: null,
     setPieceThreat: null,
     shootout: null,
@@ -758,10 +760,11 @@ function advance(state: MatchState, rawInputs: TeamInputs): MatchState {
   const tick = state.tick + 1;
 
   if (state.phase === 'half_time') {
-    const waiting = { ...state, tick, input: inputs };
+    const ready = state.humans.filter((t) => state.halfTimeReady.includes(t) || pressed(t, 'pass'));
+    const waiting = { ...state, tick, input: inputs, halfTimeReady: ready };
     const timeUp = state.halfTimeEndTick !== null && tick >= state.halfTimeEndTick;
-    const anyPass = state.humans.some((t) => pressed(t, 'pass'));
-    return anyPass || state.autopilot || timeUp ? startSecondHalf(waiting, tick) : waiting;
+    const allReady = ready.length > 0 && ready.length === state.humans.length;
+    return allReady || state.autopilot || timeUp ? startSecondHalf(waiting, tick) : waiting;
   }
   if (state.phase === 'shootout') return stepShootout(state, inputs, pressed, tick);
   const played = state.restart
@@ -857,7 +860,11 @@ function whistle(state: MatchState, phase: 'half_time' | 'full_time'): MatchStat
     lastShot: null,
     shotInFlight: null,
     setPieceThreat: null,
-    halfTimeEndTick: phase === 'half_time' ? state.tick + HALF_TIME_MAX_TICKS : null,
+    halfTimeEndTick:
+      phase === 'half_time'
+        ? state.tick + (state.humans.length > 1 ? HALF_TIME_PVP_MAX_TICKS : HALF_TIME_MAX_TICKS)
+        : null,
+    halfTimeReady: [],
     ball: restingBall(state.ball.pos),
   };
 }
@@ -948,6 +955,7 @@ function startSecondHalf(state: MatchState, tick: number): MatchState {
     stoppage: { overrunTicks: 0, goals: 0 },
     addedMinutes: null,
     halfTimeEndTick: null,
+    halfTimeReady: [],
   };
   return enterKickoff(second, other(state.kickoffTeam), tick);
 }
