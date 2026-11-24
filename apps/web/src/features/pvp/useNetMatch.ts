@@ -74,7 +74,7 @@ export interface NetMatch {
   sendInput(code: number): void;
   /** Tab ẩn / mất focus: gửi ngay c=0 (nếu đang khác 0). */
   releaseInput(): void;
-  /** Socket mới vừa mở: gửi lại phím đang giữ (lần gửi lúc socket chưa mở bị bỏ). */
+  /** Vào lại trận xong (`catchup`): gửi lại phím đang giữ — input gửi lúc chưa mở/đang rejoin có thể bị bỏ. */
   resendInput(): void;
   /** Đổi sang socket mới khi tự kết nối lại (giữ nguyên state, gate, history). */
   swapSocket(socket: NetSocket): void;
@@ -224,6 +224,7 @@ export function createNetMatch(opts: NetMatchOptions): NetMatch {
       this.sendInput(0);
     },
     resendInput() {
+      lastInput = -1; // ép gửi: server có thể đã bỏ input trước khi rejoin thành công (busy)
       this.sendInput(wantedInput);
     },
     swapSocket(next) {
@@ -386,6 +387,7 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
         matchRunning = true;
         lastFrameAt = now();
       } else if (m.t === 'catchup') {
+        net.resendInput();
         rejoining = false;
         busyRetrying = false;
         disconnectAt = null;
@@ -439,7 +441,6 @@ export function createPvpClient(opts: PvpClientOptions): PvpClient {
       emitStatus();
       if (inMatch && !matchEnded && net.pvpId !== null) {
         sendRejoin();
-        net.resendInput();
       }
     };
   }

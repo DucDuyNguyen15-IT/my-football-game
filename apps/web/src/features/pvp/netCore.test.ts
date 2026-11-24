@@ -256,7 +256,7 @@ describe('createPvpClient (T034)', () => {
     expect(statuses.at(-1)).toBe(true);
   });
 
-  it('phím bấm lúc socket mới còn CONNECTING bị bỏ → gửi lại khi mở (C3-06)', () => {
+  it('phím bấm lúc socket mới còn CONNECTING bị bỏ → gửi lại khi vào lại xong (C3-06, F1)', () => {
     const clock = { t: 0 };
     const { timers, advance } = makeFakeTimers(clock);
     const sockets: ReturnType<typeof fakeSocket>[] = [];
@@ -280,7 +280,12 @@ describe('createPvpClient (T034)', () => {
     expect(() => client.net.sendInput(5)).not.toThrow();
     s1.send = (d) => s1.sent.push(JSON.parse(d));
     s1.onopen?.();
-    expect(s1.sent).toEqual([{ t: 'rejoin', pvpId: 1 }, { t: 'input', c: 5 }]);
+    expect(s1.sent).toEqual([{ t: 'rejoin', pvpId: 1 }]);
+    // rejoin bị busy rồi thử lại thành công: catchup mới gửi phím đang giữ (review F1)
+    s1.recv({ t: 'error', code: 'busy' });
+    advance(BUSY_RETRY_MS);
+    s1.recv({ t: 'catchup', setup, log: new InputRecorder2().encode(), tick: 0 });
+    expect(s1.sent.filter((m) => m.t === 'input')).toEqual([{ t: 'input', c: 5 }]);
   });
 
   it('đo thời gian dựng lại 21.600 tick (research R6): nhanh hơn ngưỡng 3 s', () => {

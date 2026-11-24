@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Link } from 'react-router';
 import type { MatchSetup } from '@pitch/sim';
 import type { GraphicsSettings, MatchBridge } from './bridge';
 import { DEFAULT_GRAPHICS } from './render/quality';
@@ -73,6 +74,9 @@ export function MatchCanvas({
     return (
       <div className="screen-msg" role="alert">
         <p>{t('match.webglError')}</p>
+        <Link to="/" className="btn btn--secondary">
+          {t('nav.home')}
+        </Link>
       </div>
     );
   }

@@ -252,7 +252,7 @@ export function CollectionPage() {
   }, [confirming, detailId, selecting, items]);
 
   if (list.isPending || catalog.isPending || economy.isPending) return <CollectionSkeleton />;
-  if (list.isError || catalog.isError || economy.isError) {
+  if (list.isLoadingError || catalog.isLoadingError || economy.isLoadingError) {
     return (
       <div className="panel empty" role="alert">
         <h1 className="empty__title">{t('coll.loadErrorTitle')}</h1>
