@@ -52,3 +52,27 @@ describe('WS PvP: xác thực trước upgrade', () => {
     expect(addConn).not.toHaveBeenCalled();
   });
 });
+
+describe('WS PvP: gắn với phiên đăng nhập', () => {
+  it('đăng nhập lại từ trình duyệt đang giữ sid cũ (xoay phiên) thì đóng WS gắn với sid đó', async () => {
+    const sock = await ws(good(alice));
+    const closed = new Promise<number>((resolve) => sock.on('close', (code: number) => resolve(code)));
+    const res = await api.call(
+      null,
+      'POST',
+      '/auth/login',
+      { username: 'alice', password: 'mat-khau-dai' },
+      {},
+    );
+    expect(res.statusCode).toBe(200); // không cookie sid: không xoay phiên của sock
+    const rotate = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/login',
+      payload: { username: 'alice', password: 'mat-khau-dai' },
+      headers: { 'content-type': 'application/json' },
+      cookies: { sid: alice.sid },
+    });
+    expect(rotate.statusCode).toBe(200);
+    expect(await closed).toBe(4401);
+  });
+});

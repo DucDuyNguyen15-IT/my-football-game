@@ -15,7 +15,7 @@ import { FakeClock, createUser, resetTestData, testDb } from '../../../test/help
 import { coinTransactions, matches, pvpMatches, users } from '../../db/schema';
 import { gameDay } from '../../domain/rewards';
 import { cryptoRng } from '../../domain/rng';
-import { finishPvpMatch, forfeitScore } from './finish';
+import { clampScore, finishPvpMatch, forfeitScore } from './finish';
 import { PvpHub, type HubConn } from './hub';
 import { MAX_CATCHUP_TICKS, PvpTicker, type Tickable, type TimeSource } from './ticker';
 
@@ -43,8 +43,13 @@ class FakeConn implements HubConn {
   close(code: number) {
     this.closedWith = code;
   }
+  terminated = false;
+  sid?: string;
+  sessionExpiresAt?: number;
   ping() {}
-  terminate() {}
+  terminate() {
+    this.terminated = true;
+  }
   of<T extends PvpServerMessage['t']>(t: T) {
     return this.msgs.filter((m): m is Extract<PvpServerMessage, { t: T }> => m.t === t);
   }
@@ -422,9 +427,7 @@ describe('Thay người PvP (T040, T042)', () => {
     expect(s.state.players.some((p) => p.id === out[1]!.id)).toBe(false);
     const subFrames = ca.of('f').filter((m) => (m.f[3]?.length ?? 0) > 0);
     expect(subFrames).toHaveLength(1);
-    expect(subFrames[0]!.f[3]).toEqual([
-      { team: 'home', out: out[1]!.id, bench: bench[1]!.slot },
-    ]);
+    expect(subFrames[0]!.f[3]).toEqual([{ team: 'home', out: out[1]!.id, bench: bench[1]!.slot }]);
   });
 
   it('cấu trúc sai (không trên sân, sai GK, quá số lượt, luân lưu) bị sub_rejected ngay', async () => {
@@ -531,4 +534,140 @@ describe('Thay người PvP (T040, T042)', () => {
       s.state.score.away,
     ]);
   }, 60_000);
+});
+
+describe('Sửa lỗi bảo mật PvP (audit run-1)', () => {
+  it('tỉ số sim vượt trần 20: kết thúc ở 20 bàn, lưu được kết quả, không kẹt live', async () => {
+    const { s, ca, cb } = await startPair();
+    hub.handle(ca, { t: 'ready' });
+    hub.handle(cb, { t: 'ready' });
+    run(3100);
+    s.state = { ...s.state, score: { home: 25, away: 0 } };
+    run(100);
+    await s.whenEnded();
+    expect(s.result).toMatchObject({ reason: 'full_time', home: 20, away: 0 });
+    const [row] = await db.select().from(pvpMatches).where(eq(pvpMatches.id, s.pvpId));
+    expect(row?.status).toBe('finished');
+    expect(ca.of('end')[0]?.you.outcome).toBe('win');
+    expect(cb.of('end')[0]?.you.outcome).toBe('loss');
+  });
+
+  it('clampScore: kéo về trần nhưng giữ người thắng và hiệu số', () => {
+    expect(clampScore({ home: 3, away: 1 })).toEqual({ home: 3, away: 1 });
+    expect(clampScore({ home: 25, away: 22 })).toEqual({ home: 20, away: 17 });
+    expect(clampScore({ home: 30, away: 2 })).toEqual({ home: 20, away: 0 });
+  });
+
+  it('sim ném lỗi: huỷ (void) đúng phiên đó, không kẹt live, không văng khỏi pump', async () => {
+    const { s, ca, cb } = await startPair();
+    hub.handle(ca, { t: 'ready' });
+    hub.handle(cb, { t: 'ready' });
+    run(3100);
+    s.state = { ...s.state, actionDeadline: undefined } as never; // làm stepBoth ném
+    run(100);
+    await s.whenEnded();
+    expect(s.done).toBe(true);
+    expect(ca.of('end')[0]?.reason).toBe('void_desync');
+    const [row] = await db.select().from(pvpMatches).where(eq(pvpMatches.id, s.pvpId));
+    expect(row?.status).toBe('cancelled');
+  });
+
+  it('PvpTicker: onTick ném lỗi chỉ loại phiên đó, phiên khác vẫn chạy', () => {
+    const t = new FakeTime();
+    const errs: unknown[] = [];
+    const ticker = new PvpTicker(t, undefined, (e) => errs.push(e));
+    const seen: number[] = [];
+    ticker.add({
+      done: false,
+      onTick: () => {
+        throw new Error('boom');
+      },
+    });
+    ticker.add({ done: false, onTick: (now) => void seen.push(now) });
+    t.t = 20;
+    expect(() => ticker.pump()).not.toThrow();
+    expect(errs).toHaveLength(1);
+    expect(ticker.size).toBe(1);
+    expect(seen.length).toBeGreaterThan(0);
+  });
+
+  it('sảnh: A bấm sẵn sàng rồi rớt, B sẵn sàng → A vào đồng hồ rớt mạng và B được báo', async () => {
+    const { s, ca, cb } = await startPair();
+    hub.handle(ca, { t: 'ready' });
+    hub.onClosed(ca);
+    hub.handle(cb, { t: 'ready' });
+    expect(cb.of('opp_disconnected')).toEqual([{ t: 'opp_disconnected', remainingMs: 30_000 }]);
+    run(3000 + 30_100);
+    await s.whenEnded();
+    expect(s.result?.reason).toBe('forfeit_disconnect');
+    expect(s.result?.sides.away.outcome).toBe('win');
+  });
+
+  it('createSession từ chối user đã có phiên live (không ghi đè byUser)', async () => {
+    const { s } = await startPair();
+    const c1 = new FakeConn(ids[0]!);
+    const c2 = new FakeConn(ids[1]!);
+    const again = await hub.createSession({
+      kind: 'friendly',
+      seed: 9,
+      home: player(0, c1),
+      away: player(1, c2),
+    });
+    expect(again).toBeNull();
+    expect(c1.of('error')).toEqual([{ t: 'error', code: 'busy' }]);
+    expect(hub.session(s.pvpId)?.live).toBe(true);
+    expect(hub.sessionCount).toBe(1);
+  });
+
+  it('pendingUsers đếm theo user: begin 2 lần, end 1 lần vẫn bận', () => {
+    hub.beginPending(ids[0]!);
+    hub.beginPending(ids[0]!);
+    hub.endPending(ids[0]!);
+    expect(hub.hasEntry(ids[0]!)).toBe(true);
+    hub.endPending(ids[0]!);
+    expect(hub.hasEntry(ids[0]!)).toBe(false);
+  });
+
+  it('socket đã đóng: tin sau đó bị bỏ qua (không rejoin lại), closeUser terminate', async () => {
+    const { s, ca } = await startPair();
+    hub.addConn(ca);
+    hub.closeUser(ids[0]!);
+    expect(ca.closedWith).toBe(4401);
+    expect(ca.terminated).toBe(true);
+    ca.msgs.length = 0;
+    hub.handle(ca, { t: 'rejoin', pvpId: s.pvpId });
+    expect(ca.msgs).toEqual([]);
+    expect(s.sockets.home).toBeUndefined();
+  });
+
+  it('thu hồi/hết hạn phiên đăng nhập: closeSession và sweep đóng socket gắn với phiên', async () => {
+    const { ca, cb } = await startPair();
+    ca.sid = 'sid-a';
+    cb.sid = 'sid-b';
+    cb.sessionExpiresAt = clock.now().getTime() + 1000;
+    hub.addConn(ca);
+    hub.addConn(cb);
+    hub.closeSession('sid-a');
+    expect(ca.closedWith).toBe(4401);
+    expect(cb.closedWith).toBeNull();
+    hub.sweep();
+    expect(cb.closedWith).toBeNull();
+    clock.advance(1500);
+    hub.sweep();
+    expect(cb.closedWith).toBe(4401);
+    expect(cb.terminated).toBe(true);
+  });
+
+  it('rejoin dồn dập: socket đã giữ phía đó chỉ được 1 catchup / 2 s; tra DB 1 lần / 2 s', async () => {
+    const { s, ca } = await startPair();
+    hub.addConn(ca);
+    for (let i = 0; i < 5; i++) hub.handle(ca, { t: 'rejoin', pvpId: s.pvpId });
+    expect(ca.of('catchup')).toHaveLength(1);
+    time.t += 2100;
+    hub.handle(ca, { t: 'rejoin', pvpId: s.pvpId });
+    expect(ca.of('catchup')).toHaveLength(2);
+    for (let i = 0; i < 5; i++) hub.handle(ca, { t: 'rejoin', pvpId: 999 });
+    await new Promise((r) => setTimeout(r, 30));
+    expect(ca.of('error').filter((e) => e.code === 'not_in_match')).toHaveLength(1);
+  });
 });
