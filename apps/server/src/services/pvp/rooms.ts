@@ -1,9 +1,5 @@
 import { eq } from 'drizzle-orm';
-import {
-  ROOM_CODE_ALPHABET,
-  SquadSlot,
-  type MatchTeamSetup,
-} from '@pitch/shared';
+import { ROOM_CODE_ALPHABET, SquadSlot, type MatchTeamSetup } from '@pitch/shared';
 import type { Db } from '../../db/client';
 import { playerCards, squads, squadSlots, users } from '../../db/schema';
 import { buildHomeTeam, type SquadEntry } from '../../domain/match-teams';
@@ -103,10 +99,9 @@ export async function startPvpMatch(
 export function generateRoomCode(rng: Rng, existing: ReadonlyMap<string, Room>): string {
   let code: string;
   do {
-    code = Array.from(
-      { length: 6 },
-      () => ROOM_CODE_ALPHABET[rng(ROOM_CODE_ALPHABET.length)],
-    ).join('');
+    code = Array.from({ length: 6 }, () => ROOM_CODE_ALPHABET[rng(ROOM_CODE_ALPHABET.length)]).join(
+      '',
+    );
   } while (existing.has(code));
   return code;
 }
@@ -190,6 +185,9 @@ export function handleRoomJoin(hub: PvpHub, conn: HubConn, code: string): void {
   room.status = 'full';
   const uid = conn.userId;
   hub.beginPending(uid);
+  // Host cũng "đang bận": phòng đã 'full' nên hasEntry không còn thấy host, mà host vẫn có thể vào phiên khác.
+  const hostUid = room.hostUserId;
+  hub.beginPending(hostUid);
 
   const hostPromise = room.hostPlayer
     ? Promise.resolve({ ok: true as const, player: room.hostPlayer })
@@ -237,5 +235,6 @@ export function handleRoomJoin(hub: PvpHub, conn: HubConn, code: string): void {
     })
     .finally(() => {
       hub.endPending(uid);
+      hub.endPending(hostUid);
     });
 }

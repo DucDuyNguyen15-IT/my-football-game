@@ -1,8 +1,11 @@
 import websocket, { type WebSocket } from '@fastify/websocket';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import { eq } from 'drizzle-orm';
 import { PvpClientMessage, type PvpServerMessage } from '@pitch/shared';
-import { requireAuth } from '../plugins/auth';
+import { SESSION_COOKIE, requireAuth } from '../plugins/auth';
 import { AppError } from '../plugins/errors';
+import { sessions } from '../db/schema';
+import { hashToken } from '../services/auth';
 import { HEARTBEAT_MS, PvpHub, type HubConn } from '../services/pvp/hub';
 import { realTime, type TimeSource } from '../services/pvp/ticker';
 
@@ -53,6 +56,8 @@ export function registerPvpRoutes(app: FastifyInstance, opts: PvpRouteOptions = 
   });
   app.decorate('pvp', hub);
   const perIp = new Map<string, number>();
+  /** Phiên đăng nhập của request nâng cấp WS (băm token + hạn), để gắn vào conn. */
+  const wsSession = new WeakMap<FastifyRequest, { sid: string; expiresAt: number }>();
 
   const heartbeat = setInterval(() => hub.sweep(), HEARTBEAT_MS);
   heartbeat.unref();
@@ -75,17 +80,33 @@ export function registerPvpRoutes(app: FastifyInstance, opts: PvpRouteOptions = 
               throw new AppError('rate_limited', 429, 'Quá nhiều kết nối');
             }
           },
+          // Gắn WS với phiên đăng nhập (sau requireAuth đã gia hạn): xoay phiên / hết hạn thì đóng socket.
+          async (req) => {
+            const sid = hashToken(req.cookies[SESSION_COOKIE]!);
+            const [row] = await app.db
+              .select({ expiresAt: sessions.expiresAt })
+              .from(sessions)
+              .where(eq(sessions.id, sid));
+            if (!row) throw new AppError('unauthenticated', 401, 'Chưa đăng nhập');
+            wsSession.set(req, { sid, expiresAt: row.expiresAt.getTime() });
+          },
         ],
       },
-      (socket, req) => onConnection(socket, req.user!.id, req.ip),
+      (socket, req) => onConnection(socket, req.user!.id, req.ip, wsSession.get(req)),
     );
   });
 
-  function onConnection(socket: WebSocket, userId: number, ip: string): void {
+  function onConnection(
+    socket: WebSocket,
+    userId: number,
+    ip: string,
+    session?: { sid: string; expiresAt: number },
+  ): void {
     perIp.set(ip, (perIp.get(ip) ?? 0) + 1);
     let closed = false;
     const conn: HubConn = {
       userId,
+      ...(session && { sid: session.sid, sessionExpiresAt: session.expiresAt }),
       lastPongAt: time.now(),
       send(msg: PvpServerMessage) {
         if (closed) return;

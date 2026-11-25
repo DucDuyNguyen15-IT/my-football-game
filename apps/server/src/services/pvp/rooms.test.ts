@@ -144,6 +144,20 @@ describe('Phòng PvP (T024–T025)', () => {
     expect(ma.setup.autopilot).toBe(true);
   });
 
+  it('host phòng đang ghép (full) vẫn bận: không vào hàng chờ/phòng khác trong lúc dựng trận', async () => {
+    const ca = new FakeConn(annId);
+    const cb = new FakeConn(bobId);
+    hub.addConn(ca);
+    hub.addConn(cb);
+    hub.handle(ca, { t: 'room_create' });
+    await waitUntil(() => ca.of('room_created').length >= 1);
+    hub.handle(cb, { t: 'room_join', code: ca.of('room_created')[0]!.code });
+    hub.handle(ca, { t: 'queue_join' }); // ngay trong khoảng bất đồng bộ của room_join
+    expect(ca.of('error').at(-1)).toEqual({ t: 'error', code: 'busy' });
+    await waitUntil(() => ca.of('matched').length >= 1);
+    expect(hub.queue.has(annId)).toBe(false);
+  });
+
   it('đội hình thiếu người hoặc GK không phải thủ môn → invalid_squad khi tạo/vào phòng', async () => {
     // Thiếu cầu thủ đá chính (chỉ tạo user không có squad)
     const brokenId = (await createUser(db, 'broken')).id;

@@ -2,7 +2,7 @@ import { createHash, randomBytes } from 'node:crypto';
 import { and, count, eq, gte, inArray, lt, or } from 'drizzle-orm';
 import type { MatchOutcome, MatchTeamSetup, PvpEndReason, PvpRewardReason } from '@pitch/shared';
 import type { TeamSide } from '@pitch/sim';
-import { MATCH_REWARD_DAILY_CAP } from '../../config/economy';
+import { MATCH_MAX_GOALS, MATCH_REWARD_DAILY_CAP } from '../../config/economy';
 import type { Db, Tx } from '../../db/client';
 import { matches, pvpMatches } from '../../db/schema';
 import { gameDay, judgeMatchResult, matchReward } from '../../domain/rewards';
@@ -54,6 +54,13 @@ export function forfeitScore(
   return { [stay]: 3, [loser]: 0 } as Record<TeamSide, number>;
 }
 
+/** Tỉ số sim của server không bị `judgeMatchResult` (trần 20) từ chối: kéo xuống trần nhưng giữ nguyên hiệu số/người thắng. */
+export function clampScore(score: Record<TeamSide, number>): Record<TeamSide, number> {
+  const over = Math.max(score.home, score.away) - MATCH_MAX_GOALS;
+  if (over <= 0) return score;
+  return { home: Math.max(0, score.home - over), away: Math.max(0, score.away - over) };
+}
+
 /**
  * Kết thúc trận PvP cho MỌI cách kết thúc (T019), idempotent: một transaction khoá `pvp_matches`
  * (FOR UPDATE) rồi hai `users` theo thứ tự id (tránh khoá chéo), ghi đủ hai dòng `matches`, thưởng
@@ -73,8 +80,8 @@ export async function finishPvpMatch(db: Db, input: FinishInput): Promise<Finish
     const score = cancelled
       ? null
       : input.forfeit
-        ? forfeitScore(input.score, input.forfeit)
-        : input.score;
+        ? clampScore(forfeitScore(input.score, input.forfeit))
+        : clampScore(input.score);
     const shootout = input.forfeit ? undefined : input.shootout;
     const snap = pvp.squadSnapshot as { home: MatchTeamSetup; away: MatchTeamSetup };
 

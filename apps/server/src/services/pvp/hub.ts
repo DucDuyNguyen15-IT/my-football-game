@@ -1,9 +1,6 @@
+import { eq } from 'drizzle-orm';
 import { buildMatchSetup, type MatchSetup } from '@pitch/sim';
-import {
-  type MatchTeamSetup,
-  type PvpClientMessage,
-  type PvpMatchSetup,
-} from '@pitch/shared';
+import { type MatchTeamSetup, type PvpClientMessage, type PvpMatchSetup } from '@pitch/shared';
 import type { Clock } from '../../clock';
 import type { Db } from '../../db/client';
 import { pvpMatches } from '../../db/schema';
@@ -31,6 +28,8 @@ export { ROOM_TTL_MS };
 export const ENDED_KEEP_MS = 60_000;
 export const HEARTBEAT_MS = 2000;
 export const PONG_TIMEOUT_MS = 5000;
+/** Chặn `rejoin` dồn dập: cùng socket đã giữ phía đó / tra DB trận đã xong. */
+export const REJOIN_COOLDOWN_MS = 2000;
 
 /** Đầu cuối WebSocket như hub thấy. */
 export interface HubConn extends PvpConn {
@@ -39,6 +38,10 @@ export interface HubConn extends PvpConn {
   ping(): void;
   /** Cắt ngay, không chờ bắt tay đóng. */
   terminate(): void;
+  /** Băm token phiên đăng nhập (`sessions.id`) lúc nâng cấp WS; không có thì không gắn với phiên. */
+  sid?: string;
+  /** Hạn phiên đăng nhập (ms epoch, giờ `Clock`) lúc nâng cấp WS. */
+  sessionExpiresAt?: number;
 }
 
 export interface HubOptions {
@@ -74,18 +77,30 @@ export class PvpHub {
   private readonly byUser = new Map<number, PvpSession>();
   private readonly conns = new Map<number, Set<HubConn>>();
   private readonly closedConns = new WeakSet<HubConn>();
-  private readonly pendingUsers = new Set<number>();
+  /** Đếm theo user (không phải Set): `tryPairQueue` và `handleQueueJoin` có thể cùng giữ chỗ một user. */
+  private readonly pendingUsers = new Map<number, number>();
+  /** Lần `rejoin` cuối của từng socket (chống dồn tin, A: rejoin-unthrottled). */
+  private readonly lastRejoinAt = new WeakMap<HubConn, number>();
+  private readonly lastLookupAt = new WeakMap<HubConn, number>();
   private queueTimer: (() => void) | null = null;
   private readonly maxSessions: number;
   private readonly sessionDeps: SessionDeps;
 
   constructor(private readonly o: HubOptions) {
     this.maxSessions = o.maxSessions ?? PVP_MAX_SESSIONS;
-    this.ticker = new PvpTicker(o.time, (skipped) => {
-      void track(o.db, null, 'pvp_desync', { tickSkipped: skipped }, o.clock.now()).catch(
-        (err: unknown) => o.onError?.(err),
-      );
-    });
+    this.ticker = new PvpTicker(
+      o.time,
+      (skipped) => {
+        void track(o.db, null, 'pvp_desync', { tickSkipped: skipped }, o.clock.now()).catch(
+          (err: unknown) => o.onError?.(err),
+        );
+      },
+      (err, s) => {
+        o.onError?.(err);
+        // Phiên lỗi: huỷ (void) riêng phiên đó để không kẹt `live` mãi.
+        if (s instanceof PvpSession) void s.finish('void_desync');
+      },
+    );
     this.sessionDeps = {
       db: o.db,
       clock: o.clock,
@@ -123,11 +138,13 @@ export class PvpHub {
   }
 
   beginPending(userId: number): void {
-    this.pendingUsers.add(userId);
+    this.pendingUsers.set(userId, (this.pendingUsers.get(userId) ?? 0) + 1);
   }
 
   endPending(userId: number): void {
-    this.pendingUsers.delete(userId);
+    const n = (this.pendingUsers.get(userId) ?? 0) - 1;
+    if (n > 0) this.pendingUsers.set(userId, n);
+    else this.pendingUsers.delete(userId);
   }
 
   isClosed(conn: HubConn): boolean {
@@ -163,16 +180,35 @@ export class PvpHub {
   closeUser(userId: number): void {
     for (const c of [...(this.conns.get(userId) ?? [])]) {
       c.close(4401);
+      c.terminate();
       this.onClosed(c);
+    }
+  }
+
+  /** Phiên đăng nhập `sid` (băm) bị huỷ/xoay: đóng mọi WS PvP gắn với phiên đó. */
+  closeSession(sid: string): void {
+    for (const set of [...this.conns.values()]) {
+      for (const c of [...set]) {
+        if (c.sid !== sid) continue;
+        c.close(4401);
+        c.terminate();
+        this.onClosed(c);
+      }
     }
   }
 
   /** Mỗi 2 s: ping, và cắt socket quá 5 s không có pong (coi như rớt mạng; `onClosed` lo phần còn lại). */
   sweep(): void {
     const now = this.o.time.now();
-    for (const set of this.conns.values()) {
+    const wall = this.o.clock.now().getTime();
+    for (const set of [...this.conns.values()]) {
       for (const c of [...set]) {
-        if (now - c.lastPongAt > PONG_TIMEOUT_MS) {
+        if (c.sessionExpiresAt !== undefined && wall >= c.sessionExpiresAt) {
+          // Phiên đăng nhập hết hạn: socket không được sống lâu hơn phiên.
+          c.close(4401);
+          c.terminate();
+          this.onClosed(c);
+        } else if (now - c.lastPongAt > PONG_TIMEOUT_MS) {
           c.terminate();
           this.onClosed(c);
         } else {
@@ -210,6 +246,12 @@ export class PvpHub {
       return null;
     }
     const { home, away } = args;
+    // Mỗi user chỉ một phiên live: không ghi đè `byUser` làm phiên cũ mồ côi (kiểm cả sau await bên dưới).
+    const busy = () => this.byUser.get(home.userId)?.live || this.byUser.get(away.userId)?.live;
+    if (busy()) {
+      for (const p of [home, away]) p.conn.send({ t: 'error', code: 'busy' });
+      return null;
+    }
     const [row] = await this.o.db
       .insert(pvpMatches)
       .values({
@@ -226,6 +268,12 @@ export class PvpHub {
         startedAt: this.o.clock.now(),
       })
       .returning({ id: pvpMatches.id });
+    if (busy()) {
+      // Race: user vừa vào phiên khác trong lúc ghi DB. Huỷ dòng vừa tạo (chưa có ai tham gia).
+      for (const p of [home, away]) p.conn.send({ t: 'error', code: 'busy' });
+      await this.o.db.delete(pvpMatches).where(eq(pvpMatches.id, row!.id));
+      return null;
+    }
     const setup: MatchSetup = {
       ...buildMatchSetup(
         { seed: args.seed, difficulty: 'hard', home: home.team, away: away.team },
@@ -268,6 +316,8 @@ export class PvpHub {
 
   /** Xử một tin đã qua zod từ socket `conn`. */
   handle(conn: HubConn, msg: PvpClientMessage): void {
+    // Socket đã bị đóng/thu hồi (VD đăng xuất) không được điều khiển hay gắn lại vào trận.
+    if (this.closedConns.has(conn)) return;
     const uid = conn.userId;
     const sess = this.byUser.get(uid);
     const side = sess?.sideOf(uid) ?? null;
@@ -366,6 +416,20 @@ export class PvpHub {
 
   private rejoin(conn: HubConn, pvpId: number): void {
     const s = this.byId.get(pvpId);
+    const now = this.o.time.now();
+    const mySide = s?.sideOf(conn.userId);
+    // Socket đã giữ phía đó và vừa rejoin: bỏ qua (mỗi lần là mã hoá lại cả log).
+    if (s?.live && mySide && s.sockets[mySide] === conn) {
+      const last = this.lastRejoinAt.get(conn);
+      if (last !== undefined && now - last < REJOIN_COOLDOWN_MS) return;
+      this.lastRejoinAt.set(conn, now);
+    }
+    // Tra DB trận không còn trong bộ nhớ: tối đa một lần / cooldown mỗi socket.
+    if (!s) {
+      const last = this.lastLookupAt.get(conn);
+      if (last !== undefined && now - last < REJOIN_COOLDOWN_MS) return;
+      this.lastLookupAt.set(conn, now);
+    }
     if (s) {
       const side = s.sideOf(conn.userId);
       if (!side) {
