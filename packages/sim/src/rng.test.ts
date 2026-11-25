@@ -50,3 +50,10 @@ describe('rng (mulberry32)', () => {
     expect(xs.every(Number.isFinite)).toBe(true);
   });
 });
+
+describe('nextGaussian tại trạng thái cho u1 = 0', () => {
+  it('trạng thái 0x92d4860b (nextFloat = 0) vẫn ra số hữu hạn', () => {
+    expect(nextFloat(0x92d4860b as RngState)[0]).toBe(0);
+    expect(Number.isFinite(nextGaussian(0x92d4860b as RngState)[0])).toBe(true);
+  });
+});

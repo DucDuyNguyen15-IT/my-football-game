@@ -9,6 +9,8 @@ const TWO_PI = 2 * Math.PI;
 /** ln(x) với x > 0 (nhận x ngoài (0, 1] nhưng chậm dần theo |log2 x|). */
 export function ln(x: number): number {
   if (!(x > 0)) return x === 0 ? -Infinity : NaN;
+  // Rút gọn bên dưới đưa x = 1 về m = 0.5, k = −1 và làm tròn ra +2.2e-16 → nextGaussian ra NaN.
+  if (x === 1) return 0;
   let m = x;
   let k = 0;
   // Đưa m về [0.5, 1): nhân/chia 2 là chính xác trong IEEE-754.

@@ -16,3 +16,10 @@ describe('hàm số học tất định', () => {
     }
   });
 });
+
+describe('ln quanh 1', () => {
+  it('ln(1) đúng bằng 0 và ln(x) ≤ 0 trên (0, 1]', () => {
+    expect(ln(1)).toBe(0);
+    for (let j = 0; j < 2000; j++) expect(ln(1 - j / 2 ** 32)).toBeLessThanOrEqual(0);
+  });
+});
