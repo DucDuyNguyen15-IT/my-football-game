@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient, type QueryClient } from '@tanstack/react-query';
 import {
   AuthConfig,
   GoogleAuthResult,
@@ -12,25 +12,39 @@ import { apiFetch, ApiClientError } from './client';
 
 export const meKey = ['me'] as const;
 
-/** Người chơi hiện tại; `null` = chưa đăng nhập (server trả 401). */
-export async function fetchMe(): Promise<Me | null> {
+/**
+ * Xoá mọi dữ liệu theo người chơi (squad, packs, admin…) trừ `me`, để phiên/người đăng nhập sau
+ * trong cùng tab không thấy cache của phiên trước. `removeQueries` đã huỷ các request đang bay.
+ */
+export function purgeUserCache(qc: QueryClient): void {
+  qc.removeQueries({ predicate: (q) => q.queryKey[0] !== meKey[0] });
+}
+
+/** Người chơi hiện tại; `null` = chưa đăng nhập (server trả 401, lúc đó cũng xoá cache phiên cũ). */
+export async function fetchMe(qc: QueryClient): Promise<Me | null> {
   try {
     return await apiFetch('/me', Me);
   } catch (err) {
-    if (err instanceof ApiClientError && err.code === 'unauthenticated') return null;
+    if (err instanceof ApiClientError && err.code === 'unauthenticated') {
+      purgeUserCache(qc);
+      return null;
+    }
     throw err;
   }
 }
 
 export function useMe() {
-  return useQuery({ queryKey: meKey, queryFn: fetchMe, staleTime: 30_000 });
+  return useQuery({ queryKey: meKey, queryFn: ({ client }) => fetchMe(client), staleTime: 30_000 });
 }
 
 export function useLogin() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: LoginRequest) => apiFetch('/auth/login', Me, { method: 'POST', body }),
-    onSuccess: (me) => qc.setQueryData(meKey, me),
+    onSuccess: (me) => {
+      purgeUserCache(qc);
+      qc.setQueryData(meKey, me);
+    },
   });
 }
 
@@ -38,7 +52,10 @@ export function useRegister() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (body: RegisterRequest) => apiFetch('/auth/register', Me, { method: 'POST', body }),
-    onSuccess: (me) => qc.setQueryData(meKey, me),
+    onSuccess: (me) => {
+      purgeUserCache(qc);
+      qc.setQueryData(meKey, me);
+    },
   });
 }
 
@@ -59,7 +76,9 @@ export function useGoogleSignIn() {
     mutationFn: (body: GoogleAuthRequest) =>
       apiFetch('/auth/google', GoogleAuthResult, { method: 'POST', body }),
     onSuccess: (result) => {
-      if (result.status === 'signed_in') qc.setQueryData(meKey, result.me);
+      if (result.status !== 'signed_in') return;
+      purgeUserCache(qc);
+      qc.setQueryData(meKey, result.me);
     },
   });
 }
@@ -71,7 +90,7 @@ export function useDeleteAccount() {
     mutationFn: (body: DeleteAccountRequest) => apiFetch('/me', null, { method: 'DELETE', body }),
     onSuccess: () => {
       qc.setQueryData(meKey, null);
-      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== meKey[0] });
+      purgeUserCache(qc);
     },
   });
 }
@@ -84,7 +103,7 @@ export function useLogout() {
     onSettled: () => {
       // Không `clear()`: các màn đang theo dõi `me` phải nhận `null` để chuyển về /login.
       qc.setQueryData(meKey, null);
-      qc.removeQueries({ predicate: (q) => q.queryKey[0] !== meKey[0] });
+      purgeUserCache(qc);
     },
   });
 }
