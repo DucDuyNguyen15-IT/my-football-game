@@ -25,6 +25,7 @@ import type {
 type BenchSlot = Extract<PvpClientMessage, { t: 'sub' }>['bench'];
 import type { Clock } from '../../clock';
 import type { Db } from '../../db/client';
+import { MATCH_MAX_GOALS } from '../../config/economy';
 import { track } from '../analytics';
 import { finishPvpMatch, type FinishResult } from './finish';
 import type { Tickable, TimeSource } from './ticker';
@@ -145,16 +146,17 @@ export class PvpSession implements Tickable {
     if (this.sockets[side] !== conn) return;
     delete this.sockets[side];
     this.setInput(side, 0);
-    if (
-      (this.phase === 'countdown' || this.phase === 'running') &&
-      this.disconnectedSince[side] === null
-    ) {
-      const now = this.deps.time.now();
-      this.disconnectedSince[side] = now;
-      const remainingMs = Math.ceil(this.remainingDisconnectMs(side, now));
-      this.sockets[other(side)]?.send({ t: 'opp_disconnected', remainingMs });
-      void this.track('pvp_disconnect', { kind: this.kind, side, userId: this.users[side] });
-    }
+    if (this.phase === 'countdown' || this.phase === 'running') this.markDisconnected(side);
+  }
+
+  /** Bắt đầu đồng hồ rớt mạng của `side` (nếu chưa chạy) và báo đối thủ. */
+  private markDisconnected(side: TeamSide): void {
+    if (this.disconnectedSince[side] !== null) return;
+    const now = this.deps.time.now();
+    this.disconnectedSince[side] = now;
+    const remainingMs = Math.ceil(this.remainingDisconnectMs(side, now));
+    this.sockets[other(side)]?.send({ t: 'opp_disconnected', remainingMs });
+    void this.track('pvp_disconnect', { kind: this.kind, side, userId: this.users[side] });
   }
 
   /** Vào lại trận (sau khi rớt hoặc tụt > 300 khung): gắn socket, cộng dồn thời gian rớt, gửi `catchup`. */
@@ -246,6 +248,8 @@ export class PvpSession implements Tickable {
     this.readySides.add(side);
     if (this.readySides.size < 2) return;
     this.phase = 'countdown';
+    // Bên đã bấm sẵn sàng rồi rớt ngay trong sảnh (không có socket) vẫn phải vào đồng hồ 30 s/60 s.
+    for (const s of SIDES) if (!this.sockets[s]) this.markDisconnected(s);
     this.goAt = this.deps.time.now() + COUNTDOWN_MS;
     // Tương đối (A16): không gửi startAt theo đồng hồ server.
     this.broadcast({ t: 'start', countdownMs: COUNTDOWN_MS });
@@ -352,8 +356,15 @@ export class PvpSession implements Tickable {
         subs.push({ team: side, out: p.out, bench: p.bench });
       }
     }
-    this.recorder.tick(this.inputs);
-    this.state = stepBoth(this.state, this.inputs);
+    try {
+      this.recorder.tick(this.inputs);
+      this.state = stepBoth(this.state, this.inputs);
+    } catch (err) {
+      // Sim ném lỗi: báo rồi huỷ trận (void) chứ không kẹt `live`; `finish` đặt phase 'ended' ngay nên ticker bỏ phiên.
+      this.deps.onError(err);
+      void this.finish('void_desync');
+      return;
+    }
     this.broadcast({
       t: 'f',
       f: subs.length
@@ -366,7 +377,15 @@ export class PvpSession implements Tickable {
         this.serverHashes.delete(this.serverHashes.keys().next().value!);
       }
     }
-    if (this.state.phase === 'full_time') void this.finish('full_time');
+    // Đủ MATCH_MAX_GOALS thì kết thúc (mercy), kẻo tỉ số vượt trần judgeMatchResult làm lưu kết quả lỗi.
+    const sc = this.state.score;
+    if (
+      this.state.phase === 'full_time' ||
+      sc.home >= MATCH_MAX_GOALS ||
+      sc.away >= MATCH_MAX_GOALS
+    ) {
+      void this.finish('full_time');
+    }
   }
 
   /** Kết thúc (mọi cách), idempotent: gọi lại trả cùng promise. Ghi DB rồi gửi `end` cho cả hai. */
@@ -375,7 +394,7 @@ export class PvpSession implements Tickable {
     this.phase = 'ended';
     const sh = this.state.shootout;
     const goals = (k: boolean[]) => k.filter(Boolean).length;
-    this.endPromise = finishPvpMatch(this.deps.db, {
+    const input = {
       pvpId: this.pvpId,
       reason,
       ...(forfeit && { forfeit }),
@@ -383,17 +402,24 @@ export class PvpSession implements Tickable {
       shootout: sh ? { home: goals(sh.home), away: goals(sh.away) } : undefined,
       inputLog: this.recorder.encode(),
       now: this.deps.clock.now(),
-    }).then(
-      (res) => {
-        this.result = res;
-        for (const side of SIDES) this.sendEnd(side);
-        this.deps.onEnded(this, res);
-      },
-      (err: unknown) => {
+    };
+    this.endPromise = finishPvpMatch(this.deps.db, input)
+      .catch((err: unknown) => {
+        // Ghi kết quả lỗi: báo rồi huỷ trận (void) để không bao giờ kẹt `live` không thưởng.
         this.deps.onError(err);
-        this.deps.onEnded(this, null);
-      },
-    );
+        return finishPvpMatch(this.deps.db, { ...input, reason: 'void_desync' });
+      })
+      .then(
+        (res) => {
+          this.result = res;
+          for (const side of SIDES) this.sendEnd(side);
+          this.deps.onEnded(this, res);
+        },
+        (err: unknown) => {
+          this.deps.onError(err);
+          this.deps.onEnded(this, null);
+        },
+      );
     return this.endPromise;
   }
 

@@ -32,7 +32,7 @@ const TICK_MS = 1000 / TICK_RATE;
 /**
  * MỘT vòng lặp chung cho mọi phiên (R11). Tick thứ n đến hạn lúc `t0 + n·1000/60` (mốc tuyệt đối, không
  * cộng dồn sai số). Trễ thì chạy bù tối đa {@link MAX_CATCHUP_TICKS} tick mỗi lượt, trễ hơn thì bỏ nhịp
- * (báo `onSkip`). Phiên mới vào vòng ở tick kế tiếp. Vòng tự dừng khi hết phiên.
+ * (báo `onSkip`). Phiên ném lỗi ở `onTick` bị loại khỏi vòng (báo `onError`). Phiên mới vào vòng ở tick kế tiếp. Vòng tự dừng khi hết phiên.
  */
 export class PvpTicker {
   private readonly sessions = new Set<Tickable>();
@@ -43,6 +43,7 @@ export class PvpTicker {
   constructor(
     private readonly time: TimeSource,
     private readonly onSkip: (skipped: number) => void = () => {},
+    private readonly onError: (err: unknown, s: Tickable) => void = () => {},
   ) {}
 
   get size(): number {
@@ -65,7 +66,14 @@ export class PvpTicker {
     const run = Math.min(due - this.n, MAX_CATCHUP_TICKS);
     for (let i = 0; i < run; i++) {
       for (const s of this.sessions) {
-        s.onTick(now);
+        try {
+          s.onTick(now);
+        } catch (err) {
+          // Một phiên ném lỗi chỉ được hỏng phiên đó, không kéo sập tiến trình / các phiên khác.
+          this.sessions.delete(s);
+          this.onError(err, s);
+          continue;
+        }
         if (s.done) this.sessions.delete(s);
       }
     }
