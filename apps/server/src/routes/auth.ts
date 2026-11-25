@@ -29,6 +29,7 @@ import {
   destroySession,
   findUserByGoogleSub,
   findUserByUsername,
+  hashToken,
   isUniqueViolation,
   purgeExpiredSessions,
   registerUser,
@@ -62,7 +63,11 @@ async function rotateSession(
   now: Date,
 ): Promise<{ token: string; expiresAt: Date }> {
   const old = req.cookies[SESSION_COOKIE];
-  if (old) await destroySession(db, old);
+  if (old) {
+    await destroySession(db, old);
+    // WS PvP gắn với phiên cũ không được sống tiếp (kể cả khi đổi sang tài khoản khác).
+    req.server.pvp?.closeSession(hashToken(old));
+  }
   await purgeExpiredSessions(db, now);
   return createSession(db, user.id, now);
 }
