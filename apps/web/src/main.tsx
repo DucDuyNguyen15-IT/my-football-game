@@ -12,7 +12,7 @@ import '@fontsource/ibm-plex-sans/700.css';
 import './styles/tokens.css';
 import './app/app.css';
 import './styles/ui.css';
-import { meKey } from './api/auth';
+import { meKey, purgeUserCache } from './api/auth';
 import { ApiClientError } from './api/client';
 import { router } from './app/router';
 import { applyLocaleToDocument, readLocale, setActiveLocale } from './i18n/i18n';
@@ -37,7 +37,7 @@ const onApiError = (err: unknown) => {
   if (err instanceof ApiClientError && err.code === 'unauthenticated') {
     queryClient.setQueryData(meKey, null);
     // Giống useLogout: không giữ dữ liệu của phiên cũ cho người đăng nhập lại trong cùng tab.
-    queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== meKey[0] });
+    purgeUserCache(queryClient);
   }
 };
 
